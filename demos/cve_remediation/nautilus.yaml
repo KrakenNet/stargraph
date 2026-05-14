@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# cve_remediation Nautilus broker config.
+#
+# Loaded by harbor.serve.lifecycle.broker_lifespan via Broker.from_config.
+# Schema matches Nautilus 0.1.5 (see /home/sean/leagues/nautilus/examples/
+# full-showcase/nautilus.yaml for the canonical reference).
+#
+# Sources covered:
+#
+#   servicenow      Phase 4 CR creation, doc publish, change tickets
+#   pgvector        Vector retrieval (retro buffer + doctrine embeddings)
+#   threat_graph    Graph retrieval via Neo4j-shaped adapter (4 KGs, RyuGraph
+#                   speaks the bolt subset Nautilus expects)
+#   audit_store     Postgres audit chain head + retro store + EPSS/KEV refresh
+#
+# Env-substitution syntax: ${VAR}, resolved at load time from process env.
+# Defaults match docker-compose service names; override in .env to point at
+# real instances.
+
+sources:
+  - id: servicenow
+    type: servicenow
+    description: "ServiceNow change-management surface (CR creation, doc publish, lab inventory, restart batches)"
+    classification: cui
+    data_types: [change-request, incident, asset, runbook]
+    allowed_purposes: [incident-response, remediation, compliance-audit]
+    connection: "${SERVICENOW_BASE_URL}"
+    table: change_request
+    auth:
+      type: basic
+      username: "${SERVICENOW_USERNAME}"
+      password: "${SERVICENOW_PASSWORD}"
+
+  - id: pgvector
+    type: pgvector
+    description: "Embedding store for retrospective buffer + doctrine corpora"
+    classification: unclassified
+    data_types: [embedding, retrospective, doctrine]
+    allowed_purposes: [retrieval, threat-analysis]
+    connection: "${PGVECTOR_DSN}"
+    table: cve_embeddings
+    embedding_column: embedding
+    metadata_column: metadata
+    distance_operator: "<=>"
+    top_k: 10
+
+  - id: threat_graph
+    type: neo4j
+    description: "Asset / runtime / framework / cargonet knowledge graphs (RyuGraph behind a Neo4j-compatible bolt endpoint)"
+    classification: cui
+    data_types: [asset, cve, exploit, runtime, framework]
+    allowed_purposes: [threat-analysis, incident-response]
+    connection: "${RYUGRAPH_URL}"
+    label: Asset
+    auth:
+      type: basic
+      username: "${RYUGRAPH_USERNAME}"
+      password: "${RYUGRAPH_PASSWORD}"
+
+  - id: audit_store
+    type: postgres
+    description: "Audit-chain head, EPSS/KEV refresh feed, and retro persistence"
+    classification: cui
+    data_types: [audit-trail, epss, kev, retrospective]
+    allowed_purposes: [compliance-audit, incident-response]
+    connection: "${POSTGRES_DSN}"
+    table: cve_audit
+
+agents:
+  cve-rem-pipeline:
+    id: cve-rem-pipeline
+    clearance: cui
+    compartments: []
+    default_purpose: incident-response
+
+rules:
+  user_rules_dirs: []
+
+analysis:
+  mode: pattern
+  keyword_map:
+    vulnerability: [vulnerability, vuln, cve, weakness, exploit, advisory]
+    change-request: [change, cr, ticket, ritm, approval]
+    embedding: [embedding, vector, retrieval, similarity]
+    asset: [asset, host, container, runtime, kg]
+    audit-trail: [audit, anchor, attestation, chain, hash]
+    retrospective: [retrospective, retro, learn, lesson]
+    epss: [epss, kev, exploit-prediction]
+    incident-response: [remediate, remediation, patch, mitigation]
+
+audit:
+  path: "${NAUTILUS_AUDIT_PATH}"
+
+attestation:
+  enabled: true
+
+api:
+  host: "127.0.0.1"
+  port: 8765
+  keys:
+    - "${NAUTILUS_API_KEY}"
+
+session_store:
+  backend: memory

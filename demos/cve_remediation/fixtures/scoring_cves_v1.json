@@ -1,0 +1,1015 @@
+{
+  "bucket_quotas": {
+    "cargonet": 30,
+    "docker": 35,
+    "hitl": 20,
+    "static": 15
+  },
+  "count": 100,
+  "cves": [
+    {
+      "cve_id": "CVE-2014-2120",
+      "kev_date_added": "2024-11-12",
+      "known_exploited": true,
+      "product": "Adaptive Security Appliance (ASA)",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "vuln_name": "Cisco Adaptive Security Appliance (ASA) Cross-Site Scripting (XSS) Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2016-1555",
+      "kev_date_added": "2022-03-25",
+      "known_exploited": true,
+      "product": "Wireless Access Point (WAP) Devices",
+      "ransomware_use": "Unknown",
+      "vendor": "NETGEAR",
+      "vuln_class": "cargonet",
+      "vuln_name": "NETGEAR Multiple WAP Devices Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-12319",
+      "kev_date_added": "2022-03-03",
+      "known_exploited": true,
+      "product": "IOS XE Software",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "vuln_name": "Cisco IOS XE Software Ethernet Virtual Private Network Border Gateway Protocol Denial-of-Service Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-3881",
+      "kev_date_added": "2022-03-25",
+      "known_exploited": true,
+      "product": "IOS and IOS XE",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "vuln_name": "Cisco IOS and IOS XE Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-6077",
+      "kev_date_added": "2022-03-07",
+      "known_exploited": true,
+      "product": "Wireless Router DGN2200",
+      "ransomware_use": "Unknown",
+      "vendor": "NETGEAR",
+      "vuln_class": "cargonet",
+      "vuln_name": "NETGEAR DGN2200 Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-6738",
+      "kev_date_added": "2022-03-03",
+      "known_exploited": true,
+      "product": "IOS and IOS XE Software",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "vuln_name": "Cisco IOS and IOS XE Software SNMP Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2018-0171",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "IOS and IOS XE",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "vuln_name": "Cisco IOS and IOS XE Software Smart Install Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2018-6530",
+      "kev_date_added": "2022-09-08",
+      "known_exploited": true,
+      "product": "Multiple Routers",
+      "ransomware_use": "Known",
+      "vendor": "D-Link",
+      "vuln_class": "cargonet",
+      "vuln_name": "D-Link Multiple Routers OS Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-15505",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "MobileIron Multiple Products",
+      "ransomware_use": "Unknown",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "vuln_name": "Ivanti MobileIron Multiple Products Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-25079",
+      "kev_date_added": "2025-08-05",
+      "known_exploited": true,
+      "product": "DCS-2530L and DCS-2670L Devices",
+      "ransomware_use": "Unknown",
+      "vendor": "D-Link",
+      "vuln_class": "cargonet",
+      "vuln_name": "D-Link DCS-2530L and DCS-2670L Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-29583",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Multiple Products",
+      "ransomware_use": "Unknown",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "vuln_name": "Zyxel Multiple Products Use of Hard-Coded Credentials Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-8515",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Multiple Vigor Routers",
+      "ransomware_use": "Unknown",
+      "vendor": "DrayTek",
+      "vuln_class": "cargonet",
+      "vuln_name": "Multiple DrayTek Vigor Routers Web Management Page Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-1497",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "HyperFlex HX",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "vuln_name": "Cisco HyperFlex HX Installer Virtual Machine Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-20035",
+      "kev_date_added": "2025-04-16",
+      "known_exploited": true,
+      "product": "SMA100 Appliances",
+      "ransomware_use": "Unknown",
+      "vendor": "SonicWall",
+      "vuln_class": "cargonet",
+      "vuln_name": "SonicWall SMA100 Appliances OS Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-22941",
+      "kev_date_added": "2022-03-25",
+      "known_exploited": true,
+      "product": "ShareFile",
+      "ransomware_use": "Known",
+      "vendor": "Citrix",
+      "vuln_class": "cargonet",
+      "vuln_name": "Citrix ShareFile Improper Access Control Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-44529",
+      "kev_date_added": "2024-03-25",
+      "known_exploited": true,
+      "product": "Endpoint Manager Cloud Service Appliance (EPM CSA)",
+      "ransomware_use": "Known",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "vuln_name": "Ivanti Endpoint Manager Cloud Service Appliance (EPM CSA) Code Injection Vulnerability "
+    },
+    {
+      "cve_id": "CVE-2022-1388",
+      "kev_date_added": "2022-05-10",
+      "known_exploited": true,
+      "product": "BIG-IP",
+      "ransomware_use": "Known",
+      "vendor": "F5",
+      "vuln_class": "cargonet",
+      "vuln_name": "F5 BIG-IP Missing Authentication Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2022-30525",
+      "kev_date_added": "2022-05-16",
+      "known_exploited": true,
+      "product": "Multiple Firewalls",
+      "ransomware_use": "Unknown",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "vuln_name": "Zyxel Multiple Firewalls OS Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-33009",
+      "kev_date_added": "2023-06-05",
+      "known_exploited": true,
+      "product": "Multiple Firewalls",
+      "ransomware_use": "Unknown",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "vuln_name": "Zyxel Multiple Firewalls Buffer Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-36846",
+      "kev_date_added": "2023-11-13",
+      "known_exploited": true,
+      "product": "Junos OS",
+      "ransomware_use": "Unknown",
+      "vendor": "Juniper",
+      "vuln_class": "cargonet",
+      "vuln_name": "Juniper Junos OS SRX Series Missing Authentication for Critical Function Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-47565",
+      "kev_date_added": "2023-12-21",
+      "known_exploited": true,
+      "product": "VioStor NVR",
+      "ransomware_use": "Unknown",
+      "vendor": "QNAP",
+      "vuln_class": "cargonet",
+      "vuln_name": "QNAP VioStor NVR OS Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-13160",
+      "kev_date_added": "2025-03-10",
+      "known_exploited": true,
+      "product": "Endpoint Manager (EPM)",
+      "ransomware_use": "Unknown",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "vuln_name": "Ivanti Endpoint Manager (EPM) Absolute Path Traversal Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-20399",
+      "kev_date_added": "2024-07-02",
+      "known_exploited": true,
+      "product": "NX-OS",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "vuln_name": "Cisco NX-OS Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-21887",
+      "kev_date_added": "2024-01-10",
+      "known_exploited": true,
+      "product": "Connect Secure and Policy Secure",
+      "ransomware_use": "Known",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "vuln_name": "Ivanti Connect Secure and Policy Secure Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-21893",
+      "kev_date_added": "2024-01-31",
+      "known_exploited": true,
+      "product": "Connect Secure, Policy Secure, and Neurons",
+      "ransomware_use": "Known",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "vuln_name": "Ivanti Connect Secure, Policy Secure, and Neurons Server-Side Request Forgery (SSRF) Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-40891",
+      "kev_date_added": "2025-02-11",
+      "known_exploited": true,
+      "product": "DSL CPE Devices",
+      "ransomware_use": "Unknown",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "vuln_name": "Zyxel DSL CPE OS Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2025-64446",
+      "kev_date_added": "2025-11-14",
+      "known_exploited": true,
+      "product": "FortiWeb",
+      "ransomware_use": "Unknown",
+      "vendor": "Fortinet",
+      "vuln_class": "cargonet",
+      "vuln_name": "Fortinet FortiWeb Path Traversal Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2025-7775",
+      "kev_date_added": "2025-08-26",
+      "known_exploited": true,
+      "product": "NetScaler",
+      "ransomware_use": "Unknown",
+      "vendor": "Citrix",
+      "vuln_class": "cargonet",
+      "vuln_name": "Citrix NetScaler Memory Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-0300",
+      "kev_date_added": "2026-05-06",
+      "known_exploited": true,
+      "product": "PAN-OS",
+      "ransomware_use": "Unknown",
+      "vendor": "Palo Alto Networks",
+      "vuln_class": "cargonet",
+      "vuln_name": "Palo Alto Networks PAN-OS Out-of-bounds Write Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-1340",
+      "kev_date_added": "2026-04-08",
+      "known_exploited": true,
+      "product": "Endpoint Manager Mobile (EPMM)",
+      "ransomware_use": "Unknown",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "vuln_name": "Ivanti Endpoint Manager Mobile (EPMM) Code Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2006-1547",
+      "kev_date_added": "2022-01-21",
+      "known_exploited": true,
+      "product": "Struts 1",
+      "ransomware_use": "Unknown",
+      "vendor": "Apache",
+      "vuln_class": "docker",
+      "vuln_name": "Apache Struts 1 ActionForm Denial-of-Service Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2010-2861",
+      "kev_date_added": "2022-03-25",
+      "known_exploited": true,
+      "product": "ColdFusion",
+      "ransomware_use": "Known",
+      "vendor": "Adobe",
+      "vuln_class": "docker",
+      "vuln_name": "Adobe ColdFusion Directory Traversal Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2014-1776",
+      "kev_date_added": "2022-01-28",
+      "known_exploited": true,
+      "product": "Internet Explorer",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Internet Explorer Memory Corruption Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2015-2425",
+      "kev_date_added": "2022-05-25",
+      "known_exploited": true,
+      "product": "Internet Explorer",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Internet Explorer Memory Corruption Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-0261",
+      "kev_date_added": "2022-03-03",
+      "known_exploited": true,
+      "product": "Office",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Office Use-After-Free Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-0262",
+      "kev_date_added": "2022-02-10",
+      "known_exploited": true,
+      "product": "Office",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Office Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-1000253",
+      "kev_date_added": "2024-09-09",
+      "known_exploited": true,
+      "product": "Kernel",
+      "ransomware_use": "Known",
+      "vendor": "Linux",
+      "vuln_class": "docker",
+      "vuln_name": "Linux Kernel PIE Stack Buffer Corruption Vulnerability "
+    },
+    {
+      "cve_id": "CVE-2017-9841",
+      "kev_date_added": "2022-02-15",
+      "known_exploited": true,
+      "product": "PHPUnit",
+      "ransomware_use": "Unknown",
+      "vendor": "PHPUnit",
+      "vuln_class": "docker",
+      "vuln_name": "PHPUnit Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2018-6961",
+      "kev_date_added": "2022-03-25",
+      "known_exploited": true,
+      "product": "SD-WAN Edge",
+      "ransomware_use": "Unknown",
+      "vendor": "VMware",
+      "vuln_class": "docker",
+      "vuln_name": "VMware SD-WAN Edge by VeloCloud Command Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2019-1003029",
+      "kev_date_added": "2022-04-25",
+      "known_exploited": true,
+      "product": "Script Security Plugin",
+      "ransomware_use": "Unknown",
+      "vendor": "Jenkins",
+      "vuln_class": "docker",
+      "vuln_name": "Jenkins Script Security Plugin Sandbox Bypass Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2019-1214",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Windows Privilege Common Log File System (CLFS) Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2019-1297",
+      "kev_date_added": "2022-03-03",
+      "known_exploited": true,
+      "product": "Excel",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Excel Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2019-1367",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Internet Explorer",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Internet Explorer Scripting Engine Memory Corruption Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-14883",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "WebLogic Server",
+      "ransomware_use": "Unknown",
+      "vendor": "Oracle",
+      "vuln_class": "docker",
+      "vuln_name": "Oracle WebLogic Server Unspecified Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-21148",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Chromium V8",
+      "ransomware_use": "Unknown",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "vuln_name": "Google Chromium V8 Heap Buffer Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-26411",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Internet Explorer",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Internet Explorer Memory Corruption Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-30633",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Chromium Indexed DB API",
+      "ransomware_use": "Unknown",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "vuln_name": "Google Chromium Indexed DB API Use-After-Free Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-38000",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Chromium Intents",
+      "ransomware_use": "Unknown",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "vuln_name": "Google Chromium Intents Improper Input Validation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-38646",
+      "kev_date_added": "2022-03-28",
+      "known_exploited": true,
+      "product": "Office",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Office Access Connectivity Engine Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-42321",
+      "kev_date_added": "2021-11-17",
+      "known_exploited": true,
+      "product": "Exchange",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Exchange Server Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-45046",
+      "kev_date_added": "2023-05-01",
+      "known_exploited": true,
+      "product": "Log4j2",
+      "ransomware_use": "Known",
+      "vendor": "Apache",
+      "vuln_class": "docker",
+      "vuln_name": "Apache Log4j2 Deserialization of Untrusted Data Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2022-32894",
+      "kev_date_added": "2022-08-18",
+      "known_exploited": true,
+      "product": "iOS and macOS",
+      "ransomware_use": "Unknown",
+      "vendor": "Apple",
+      "vuln_class": "docker",
+      "vuln_name": "Apple iOS and macOS Out-of-Bounds Write Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-0266",
+      "kev_date_added": "2023-03-30",
+      "known_exploited": true,
+      "product": "Kernel",
+      "ransomware_use": "Unknown",
+      "vendor": "Linux",
+      "vuln_class": "docker",
+      "vuln_name": "Linux Kernel Use-After-Free Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-21529",
+      "kev_date_added": "2026-04-13",
+      "known_exploited": true,
+      "product": "Exchange Server",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Exchange Server Deserialization of Untrusted Data Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-7028",
+      "kev_date_added": "2024-05-01",
+      "known_exploited": true,
+      "product": "GitLab CE/EE",
+      "ransomware_use": "Unknown",
+      "vendor": "GitLab",
+      "vuln_class": "docker",
+      "vuln_name": "GitLab Community and Enterprise Editions Improper Access Control Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-20953",
+      "kev_date_added": "2025-02-24",
+      "known_exploited": true,
+      "product": "Agile Product Lifecycle Management (PLM)",
+      "ransomware_use": "Unknown",
+      "vendor": "Oracle",
+      "vuln_class": "docker",
+      "vuln_name": "Oracle Agile Product Lifecycle Management (PLM) Deserialization Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-38213",
+      "kev_date_added": "2024-08-13",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Windows SmartScreen Security Feature Bypass Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-38475",
+      "kev_date_added": "2025-05-01",
+      "known_exploited": true,
+      "product": "HTTP Server",
+      "ransomware_use": "Unknown",
+      "vendor": "Apache",
+      "vuln_class": "docker",
+      "vuln_name": "Apache HTTP Server Improper Escaping of Output Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2025-10585",
+      "kev_date_added": "2025-09-23",
+      "known_exploited": true,
+      "product": "Chromium V8",
+      "ransomware_use": "Unknown",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "vuln_name": "Google Chromium V8 Type Confusion Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2025-21418",
+      "kev_date_added": "2025-02-11",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Windows Ancillary Function Driver for WinSock Heap-Based Buffer Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2025-32706",
+      "kev_date_added": "2025-05-13",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Windows Common Log File System (CLFS) Driver Heap-Based Buffer Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-20700",
+      "kev_date_added": "2026-02-12",
+      "known_exploited": true,
+      "product": "Multiple Products",
+      "ransomware_use": "Unknown",
+      "vendor": "Apple",
+      "vuln_class": "docker",
+      "vuln_name": "Apple Multiple Buffer Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-21519",
+      "kev_date_added": "2026-02-10",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Windows Type Confusion Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-21533",
+      "kev_date_added": "2026-02-10",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "vuln_name": "Microsoft Windows Improper Privilege Management Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-34621",
+      "kev_date_added": "2026-04-13",
+      "known_exploited": true,
+      "product": "Acrobat and Reader",
+      "ransomware_use": "Unknown",
+      "vendor": "Adobe",
+      "vuln_class": "docker",
+      "vuln_name": "Adobe Acrobat and Reader Prototype Pollution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2011-1823",
+      "kev_date_added": "2022-09-08",
+      "known_exploited": true,
+      "product": "Android OS",
+      "ransomware_use": "Unknown",
+      "vendor": "Android",
+      "vuln_class": "hitl",
+      "vuln_name": "Android OS Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2013-2094",
+      "kev_date_added": "2022-09-15",
+      "known_exploited": true,
+      "product": "Kernel",
+      "ransomware_use": "Unknown",
+      "vendor": "Linux",
+      "vuln_class": "hitl",
+      "vuln_name": "Linux Kernel Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2016-0099",
+      "kev_date_added": "2022-03-03",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows Secondary Logon Service Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2016-0165",
+      "kev_date_added": "2023-06-22",
+      "known_exploited": true,
+      "product": "Win32k",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Win32k Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2016-3309",
+      "kev_date_added": "2022-03-15",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows Kernel Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2018-8440",
+      "kev_date_added": "2022-03-28",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2019-1388",
+      "kev_date_added": "2023-04-07",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows Certificate Dialog Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-10148",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Orion",
+      "ransomware_use": "Unknown",
+      "vendor": "SolarWinds",
+      "vuln_class": "hitl",
+      "vuln_name": "SolarWinds Orion Authentication Bypass Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-8193",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Application Delivery Controller (ADC), Gateway, and SD-WAN WANOP Appliance",
+      "ransomware_use": "Unknown",
+      "vendor": "Citrix",
+      "vuln_class": "hitl",
+      "vuln_name": "Citrix ADC, Gateway, and SD-WAN WANOP Appliance Authorization Bypass Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2020-8599",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Apex One and OfficeScan",
+      "ransomware_use": "Unknown",
+      "vendor": "Trend Micro",
+      "vuln_class": "hitl",
+      "vuln_name": "Trend Micro Apex One and OfficeScan Authentication Bypass Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-22600",
+      "kev_date_added": "2022-04-11",
+      "known_exploited": true,
+      "product": "Kernel",
+      "ransomware_use": "Unknown",
+      "vendor": "Linux",
+      "vuln_class": "hitl",
+      "vuln_name": "Linux Kernel Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-36934",
+      "kev_date_added": "2022-02-10",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows SAM Local Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-36955",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows Common Log File System (CLFS) Driver Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-41357",
+      "kev_date_added": "2022-04-25",
+      "known_exploited": true,
+      "product": "Win32k",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Win32k Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2022-41125",
+      "kev_date_added": "2022-11-08",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows CNG Key Isolation Service Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-21823",
+      "kev_date_added": "2023-02-14",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft Windows Graphic Component Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-29357",
+      "kev_date_added": "2024-01-10",
+      "known_exploited": true,
+      "product": "SharePoint Server",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "vuln_name": "Microsoft SharePoint Server Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-46747",
+      "kev_date_added": "2023-10-31",
+      "known_exploited": true,
+      "product": "BIG-IP Configuration Utility",
+      "ransomware_use": "Known",
+      "vendor": "F5",
+      "vuln_class": "hitl",
+      "vuln_name": "F5 BIG-IP Configuration Utility Authentication Bypass Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-38813",
+      "kev_date_added": "2024-11-20",
+      "known_exploited": true,
+      "product": "vCenter Server",
+      "ransomware_use": "Unknown",
+      "vendor": "VMware",
+      "vuln_class": "hitl",
+      "vuln_name": "VMware vCenter Server Privilege Escalation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-7593",
+      "kev_date_added": "2024-09-24",
+      "known_exploited": true,
+      "product": "Virtual Traffic Manager",
+      "ransomware_use": "Unknown",
+      "vendor": "Ivanti",
+      "vuln_class": "hitl",
+      "vuln_name": "Ivanti Virtual Traffic Manager Authentication Bypass Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2010-1428",
+      "kev_date_added": "2022-05-25",
+      "known_exploited": true,
+      "product": "JBoss",
+      "ransomware_use": "Known",
+      "vendor": "Red Hat",
+      "vuln_class": "static",
+      "vuln_name": "Red Hat JBoss Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2014-0160",
+      "kev_date_added": "2022-05-04",
+      "known_exploited": true,
+      "product": "OpenSSL",
+      "ransomware_use": "Unknown",
+      "vendor": "OpenSSL",
+      "vuln_class": "static",
+      "vuln_name": "OpenSSL Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2015-5317",
+      "kev_date_added": "2023-05-12",
+      "known_exploited": true,
+      "product": "Jenkins User Interface (UI)",
+      "ransomware_use": "Unknown",
+      "vendor": "Jenkins",
+      "vuln_class": "static",
+      "vuln_name": "Jenkins User Interface (UI) Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2016-0162",
+      "kev_date_added": "2022-05-24",
+      "known_exploited": true,
+      "product": "Internet Explorer",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "vuln_name": "Microsoft Internet Explorer Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2016-3351",
+      "kev_date_added": "2022-05-24",
+      "known_exploited": true,
+      "product": "Internet Explorer and Edge",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "vuln_name": "Microsoft Internet Explorer and Edge Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2016-4655",
+      "kev_date_added": "2022-05-24",
+      "known_exploited": true,
+      "product": "iOS",
+      "ransomware_use": "Unknown",
+      "vendor": "Apple",
+      "vuln_class": "static",
+      "vuln_name": "Apple iOS Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-0059",
+      "kev_date_added": "2022-03-28",
+      "known_exploited": true,
+      "product": "Internet Explorer",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "vuln_name": "Microsoft Internet Explorer Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2017-0147",
+      "kev_date_added": "2022-05-24",
+      "known_exploited": true,
+      "product": "SMBv1 server",
+      "ransomware_use": "Known",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "vuln_name": "Microsoft Windows SMBv1 Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2019-0676",
+      "kev_date_added": "2022-05-23",
+      "known_exploited": true,
+      "product": "Internet Explorer",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "vuln_name": "Microsoft Internet Explorer Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2019-1653",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Small Business RV320 and RV325 Routers",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "static",
+      "vuln_name": "Cisco Small Business RV320 and RV325 Routers Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2021-31955",
+      "kev_date_added": "2021-11-03",
+      "known_exploited": true,
+      "product": "Windows",
+      "ransomware_use": "Unknown",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "vuln_name": "Microsoft Windows Kernel Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-26083",
+      "kev_date_added": "2023-04-07",
+      "known_exploited": true,
+      "product": "Mali Graphics Processing Unit (GPU)",
+      "ransomware_use": "Unknown",
+      "vendor": "Arm",
+      "vuln_class": "static",
+      "vuln_name": "Arm Mali GPU Kernel Driver Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2023-41991",
+      "kev_date_added": "2023-09-25",
+      "known_exploited": true,
+      "product": "Multiple Products",
+      "ransomware_use": "Unknown",
+      "vendor": "Apple",
+      "vuln_class": "static",
+      "vuln_name": "Apple Multiple Products Improper Certificate Validation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-24919",
+      "kev_date_added": "2024-05-30",
+      "known_exploited": true,
+      "product": "Quantum Security Gateways",
+      "ransomware_use": "Known",
+      "vendor": "Check Point",
+      "vuln_class": "static",
+      "vuln_name": "Check Point Quantum Security Gateways Information Disclosure Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2025-22226",
+      "kev_date_added": "2025-03-04",
+      "known_exploited": true,
+      "product": "ESXi, Workstation, and Fusion",
+      "ransomware_use": "Unknown",
+      "vendor": "VMware",
+      "vuln_class": "static",
+      "vuln_name": "VMware ESXi, Workstation, and Fusion Information Disclosure Vulnerability"
+    }
+  ],
+  "kev_catalog_version": "2026.05.06",
+  "kev_date_released": "2026-05-06T20:05:35.8538Z",
+  "schema_version": "1.0",
+  "seed": 20260507
+}

@@ -1,0 +1,17 @@
+id: cve_rem.doctrine_trust
+version: '1.0'
+flavor: governance
+api_version: '1'
+harbor_facts_version: '1.0'
+description: 'Enforces the trusted-doctrine policy: only sources in the trusted-doctrine
+  class (MITRE, NIST, CWE/CAPEC) skip the injection classifier, and only doctrine
+  manifests whose Ed25519-signed hash is in the boot-gate allowlist may participate
+  in framework_mapping retrieval. Pin sha256 immutability is enforced — re-using a
+  corpus pin with mismatched bytes emits a halt-severity violation.'
+ruleset_file: rules.clp
+provides:
+- harbor_facts:cve_rem.doctrine_source
+- harbor_facts:cve_rem.doctrine_manifest
+- harbor_facts:cve_rem.allowlist_entry
+- harbor_facts:bosun.violation
+rules: []

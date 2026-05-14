@@ -1,0 +1,2519 @@
+{
+  "version": "1",
+  "cves": [
+    {
+      "cve_id": "CVE-2014-2120",
+      "product": "Adaptive Security Appliance (ASA)",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-01"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2016-1555",
+      "product": "Wireless Access Point (WAP) Devices",
+      "vendor": "NETGEAR",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-12319",
+      "product": "IOS XE Software",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2017-3881",
+      "product": "IOS and IOS XE",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2017-6077",
+      "product": "Wireless Router DGN2200",
+      "vendor": "NETGEAR",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-02",
+        "h11-sw-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-02",
+        "h11-sw-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-6738",
+      "product": "IOS and IOS XE Software",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2018-0171",
+      "product": "IOS and IOS XE",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-01"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2018-6530",
+      "product": "Multiple Routers",
+      "vendor": "D-Link",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2020-15505",
+      "product": "MobileIron Multiple Products",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-02",
+        "h11-fw-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-02",
+        "h11-fw-02"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2020-25079",
+      "product": "DCS-2530L and DCS-2670L Devices",
+      "vendor": "D-Link",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-02"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2020-29583",
+      "product": "Multiple Products",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2020-8515",
+      "product": "Multiple Vigor Routers",
+      "vendor": "DrayTek",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2021-1497",
+      "product": "HyperFlex HX",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-20035",
+      "product": "SMA100 Appliances",
+      "vendor": "SonicWall",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-01",
+        "h11-sw-01",
+        "h11-rtr-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-01",
+        "h11-sw-01",
+        "h11-rtr-02"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 3,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2021-22941",
+      "product": "ShareFile",
+      "vendor": "Citrix",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-fw-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-fw-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-44529",
+      "product": "Endpoint Manager Cloud Service Appliance (EPM CSA)",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2022-1388",
+      "product": "BIG-IP",
+      "vendor": "F5",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2022-30525",
+      "product": "Multiple Firewalls",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-33009",
+      "product": "Multiple Firewalls",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-02"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2023-36846",
+      "product": "Junos OS",
+      "vendor": "Juniper",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-47565",
+      "product": "VioStor NVR",
+      "vendor": "QNAP",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-13160",
+      "product": "Endpoint Manager (EPM)",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-fw-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-fw-02"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-20399",
+      "product": "NX-OS",
+      "vendor": "Cisco",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-fw-01",
+        "h11-rtr-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-fw-01",
+        "h11-rtr-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-21887",
+      "product": "Connect Secure and Policy Secure",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-01",
+        "h11-rtr-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-01",
+        "h11-rtr-01"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2024-21893",
+      "product": "Connect Secure, Policy Secure, and Neurons",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-02"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-40891",
+      "product": "DSL CPE Devices",
+      "vendor": "Zyxel",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2025-64446",
+      "product": "FortiWeb",
+      "vendor": "Fortinet",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2025-7775",
+      "product": "NetScaler",
+      "vendor": "Citrix",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-04",
+        "h11-rtr-02",
+        "h11-fw-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-04",
+        "h11-rtr-02",
+        "h11-fw-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 3,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2026-0300",
+      "product": "PAN-OS",
+      "vendor": "Palo Alto Networks",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-fw-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-fw-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2026-1340",
+      "product": "Endpoint Manager Mobile (EPMM)",
+      "vendor": "Ivanti",
+      "vuln_class": "cargonet",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2006-1547",
+      "product": "Struts 1",
+      "vendor": "Apache",
+      "vuln_class": "docker",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-02"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2010-2861",
+      "product": "ColdFusion",
+      "vendor": "Adobe",
+      "vuln_class": "docker",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-04",
+        "h11-api-05"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-04",
+        "h11-api-05"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2014-1776",
+      "product": "Internet Explorer",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2015-2425",
+      "product": "Internet Explorer",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-worker-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-worker-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-0261",
+      "product": "Office",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-03",
+        "h11-db-04",
+        "h11-api-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-03",
+        "h11-db-04",
+        "h11-api-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 3,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-0262",
+      "product": "Office",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-1000253",
+      "product": "Kernel",
+      "vendor": "Linux",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-9841",
+      "product": "PHPUnit",
+      "vendor": "PHPUnit",
+      "vuln_class": "docker",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-04"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2018-6961",
+      "product": "SD-WAN Edge",
+      "vendor": "VMware",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2019-1003029",
+      "product": "Script Security Plugin",
+      "vendor": "Jenkins",
+      "vuln_class": "docker",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-02",
+        "h11-decom-api-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-02"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2019-1214",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-jump-01",
+        "h11-web-06"
+      ],
+      "expected_topo_nodes": [
+        "h11-jump-01",
+        "h11-web-06"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2019-1297",
+      "product": "Excel",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-01",
+        "h11-decom-api-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2019-1367",
+      "product": "Internet Explorer",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2020-14883",
+      "product": "WebLogic Server",
+      "vendor": "Oracle",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-02",
+        "h11-web-01",
+        "h11-api-05"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-02",
+        "h11-web-01",
+        "h11-api-05"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 3,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-21148",
+      "product": "Chromium V8",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-05",
+        "h11-decom-jump-05"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-05"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-26411",
+      "product": "Internet Explorer",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-30633",
+      "product": "Chromium Indexed DB API",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-38000",
+      "product": "Chromium Intents",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-38646",
+      "product": "Office",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-42321",
+      "product": "Exchange",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-worker-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-worker-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-45046",
+      "product": "Log4j2",
+      "vendor": "Apache",
+      "vuln_class": "docker",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-worker-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-worker-01"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2022-32894",
+      "product": "iOS and macOS",
+      "vendor": "Apple",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-worker-01",
+        "h11-jump-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-worker-01",
+        "h11-jump-02"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-0266",
+      "product": "Kernel",
+      "vendor": "Linux",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-21529",
+      "product": "Exchange Server",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-7028",
+      "product": "GitLab CE/EE",
+      "vendor": "GitLab",
+      "vuln_class": "docker",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-02"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2024-20953",
+      "product": "Agile Product Lifecycle Management (PLM)",
+      "vendor": "Oracle",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-38213",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-38475",
+      "product": "HTTP Server",
+      "vendor": "Apache",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2025-10585",
+      "product": "Chromium V8",
+      "vendor": "Google",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2025-21418",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2025-32706",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": false,
+      "expected_cmdb_cis": [
+        "h11-decom-worker-04"
+      ],
+      "expected_topo_nodes": [],
+      "tier": "orphan_cmdb",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "low_conf_no_topo",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2026-20700",
+      "product": "Multiple Products",
+      "vendor": "Apple",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-decom-worker-04",
+        "h11-decom-db-03",
+        "h11-api-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2026-21519",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2026-21533",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2026-34621",
+      "product": "Acrobat and Reader",
+      "vendor": "Adobe",
+      "vuln_class": "docker",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2011-1823",
+      "product": "Android OS",
+      "vendor": "Android",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2013-2094",
+      "product": "Kernel",
+      "vendor": "Linux",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2016-0099",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2016-0165",
+      "product": "Win32k",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2016-3309",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-02"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2018-8440",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2019-1388",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2020-10148",
+      "product": "Orion",
+      "vendor": "SolarWinds",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2020-8193",
+      "product": "Application Delivery Controller (ADC), Gateway, and SD-WAN WANOP Appliance",
+      "vendor": "Citrix",
+      "vuln_class": "hitl",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2020-8599",
+      "product": "Apex One and OfficeScan",
+      "vendor": "Trend Micro",
+      "vuln_class": "hitl",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-07"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-07"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2021-22600",
+      "product": "Kernel",
+      "vendor": "Linux",
+      "vuln_class": "hitl",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-02",
+        "h11-web-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-02",
+        "h11-web-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2021-36934",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-idp-02",
+        "h11-web-07",
+        "h11-web-05"
+      ],
+      "expected_topo_nodes": [
+        "h11-idp-02",
+        "h11-web-07",
+        "h11-web-05"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 3,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-36955",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2021-41357",
+      "product": "Win32k",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-03"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2022-41125",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-03",
+        "h11-db-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-03",
+        "h11-db-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-21823",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-29357",
+      "product": "SharePoint Server",
+      "vendor": "Microsoft",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-05"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-05"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-46747",
+      "product": "BIG-IP Configuration Utility",
+      "vendor": "F5",
+      "vuln_class": "hitl",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-38813",
+      "product": "vCenter Server",
+      "vendor": "VMware",
+      "vuln_class": "hitl",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-api-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-api-02"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2024-7593",
+      "product": "Virtual Traffic Manager",
+      "vendor": "Ivanti",
+      "vuln_class": "hitl",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2010-1428",
+      "product": "JBoss",
+      "vendor": "Red Hat",
+      "vuln_class": "static",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-04"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2014-0160",
+      "product": "OpenSSL",
+      "vendor": "OpenSSL",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2015-5317",
+      "product": "Jenkins User Interface (UI)",
+      "vendor": "Jenkins",
+      "vuln_class": "static",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2016-0162",
+      "product": "Internet Explorer",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-01",
+        "h11-db-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-01",
+        "h11-db-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2016-3351",
+      "product": "Internet Explorer and Edge",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-01",
+        "h11-sw-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-01",
+        "h11-sw-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 2,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2016-4655",
+      "product": "iOS",
+      "vendor": "Apple",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-decom-web-01",
+        "h11-fw-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-fw-02"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-0059",
+      "product": "Internet Explorer",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-db-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-db-04"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2017-0147",
+      "product": "SMBv1 server",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2019-0676",
+      "product": "Internet Explorer",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-01"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-01"
+      ],
+      "tier": "applicable_no_recipe",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched",
+        "mitigation_applied",
+        "hitl_review"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2019-1653",
+      "product": "Small Business RV320 and RV325 Routers",
+      "vendor": "Cisco",
+      "vuln_class": "static",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-sw-03"
+      ],
+      "expected_topo_nodes": [
+        "h11-sw-03"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2021-31955",
+      "product": "Windows",
+      "vendor": "Microsoft",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-26083",
+      "product": "Mali Graphics Processing Unit (GPU)",
+      "vendor": "Arm",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2023-41991",
+      "product": "Multiple Products",
+      "vendor": "Apple",
+      "vuln_class": "static",
+      "recipe_authored": false,
+      "in_cmdb": false,
+      "in_topology": false,
+      "expected_cmdb_cis": [],
+      "expected_topo_nodes": [],
+      "tier": "not_in_env",
+      "expected_outcome": "not_applicable",
+      "accepted_outcomes": [
+        "not_applicable"
+      ],
+      "expected_correlation_quality": "miss",
+      "expected_sandbox_status": "skipped",
+      "expected_verify_outcome": "vulnerable",
+      "expected_hosts_min": 0,
+      "patchable_in_test_rig": false
+    },
+    {
+      "cve_id": "CVE-2024-24919",
+      "product": "Quantum Security Gateways",
+      "vendor": "Check Point",
+      "vuln_class": "static",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-rtr-02"
+      ],
+      "expected_topo_nodes": [
+        "h11-rtr-02"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    },
+    {
+      "cve_id": "CVE-2025-22226",
+      "product": "ESXi, Workstation, and Fusion",
+      "vendor": "VMware",
+      "vuln_class": "static",
+      "recipe_authored": true,
+      "in_cmdb": true,
+      "in_topology": true,
+      "expected_cmdb_cis": [
+        "h11-web-04"
+      ],
+      "expected_topo_nodes": [
+        "h11-web-04"
+      ],
+      "tier": "patchable",
+      "expected_outcome": "patched",
+      "accepted_outcomes": [
+        "patched"
+      ],
+      "expected_correlation_quality": "high",
+      "expected_sandbox_status": "ok",
+      "expected_verify_outcome": "patched",
+      "expected_hosts_min": 1,
+      "patchable_in_test_rig": true
+    }
+  ]
+}

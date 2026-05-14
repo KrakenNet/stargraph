@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Phase 0 doctrine ingest (v6).
+# One-shot. Re-run only when corpus version pin bumps.
+# Sources: MITRE ATT&CK, MITRE ATLAS, NIST 800-40r4, NIST 800-53r5,
+# NIST AI RMF, CWE/CAPEC. All pinned by version + sha256 in nautilus.yaml.
+# All flow through the trusted-route canonicalizer — injection classifier
+# is skipped. Output: signed Doctrine-KG manifest hash, added to
+# krakntrust boot-gate allowlist.
+ir_version: "1.0.0"
+id: "graph:cve-rem-doctrine-ingest"
+
+nodes:
+  - id: idempotency_check          # D0: check allowlist for corpus_sha256
+    kind: "demos.cve_remediation.graph.real_nodes:IdempotencyCheckNode"
+  - id: doctrine_loader            # D1: pull pinned corpora (offline fixture)
+    kind: "demos.cve_remediation.graph.real_nodes:DoctrineLoaderNode"
+  - id: canonicalize_doctrine      # D2: NFKC + markdown→AST (trusted route)
+    kind: "demos.cve_remediation.graph.real_nodes:CanonicalizeDoctrineNode"
+  - id: doctrine_extractor         # D3: schema-constrained extractor
+    kind: "demos.cve_remediation.graph.real_nodes:DoctrineExtractorNode"
+  - id: kg_loader                  # D4 -> Doctrine-KG (offline JSON)
+    kind: "demos.cve_remediation.graph.real_nodes:KgLoaderNode"
+  - id: manifest_sign              # D5 -> Ed25519 over node+edge sha256
+    kind: "demos.cve_remediation.graph.real_nodes:ManifestSignNode"
+  - id: emit_manifest_artifact     # P1: persist manifest as ArtifactRef
+    kind: "demos.cve_remediation.graph.real_nodes:WriteArtifactRealNode"
+  - id: bootgate_allowlist_update  # D6: persist manifest hash to allowlist
+    kind: "demos.cve_remediation.graph.real_nodes:BootgateAllowlistUpdateNode"
+  - id: idempotent_skip            # P2: corpus already in allowlist
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+
+state_class: "demos.cve_remediation.graph.state:CveRemState"
+
+tools:
+  - id: nautilus.broker_request           # canonical Harbor-registered broker
+    version: "1"
+  - id: tei.embed                         # placeholder; see tool-id-mapping.md
+    version: "1.0"
+  - id: krakntrust.allowlist_update       # placeholder
+    version: "1.0"
+  - id: artifacts.write                   # for emit_manifest_artifact
+    version: "1.0"
+
+governance:
+  - id: harbor.bosun.budgets
+    version: "1.0"
+    requires: { harbor_facts_version: "1.0", api_version: "1" }
+  - id: harbor.bosun.audit
+    version: "1.0"
+    requires: { harbor_facts_version: "1.0", api_version: "1" }
+  - id: cve_rem.doctrine_trust
+    version: "1.0"
+    requires: { harbor_facts_version: "1.0", api_version: "1" }
+
+stores: []  # Phase E binds real provider list (StoreRef[])
+
+
+rules:
+  - id: r-idempotent-skip
+    when: "?n <- (node-id (id idempotency_check)) (state (corpus_already_allowlisted true))"
+    then: [{ kind: goto, target: idempotent_skip }]
+  - id: r-idempotent-proceed
+    when: "?n <- (node-id (id idempotency_check)) (state (corpus_already_allowlisted false))"
+    then: [{ kind: goto, target: doctrine_loader }]
+  - id: r-skip-halt
+    when: "?n <- (node-id (id idempotent_skip))"
+    then:
+      - kind: halt
+        reason: "Doctrine corpus already in boot-gate allowlist; skipped"
+
+  - id: r-load-canon
+    when: "?n <- (node-id (id doctrine_loader))"
+    then: [{ kind: goto, target: canonicalize_doctrine }]
+  - id: r-canon-extract
+    when: "?n <- (node-id (id canonicalize_doctrine))"
+    then: [{ kind: goto, target: doctrine_extractor }]
+  - id: r-extract-kg
+    when: "?n <- (node-id (id doctrine_extractor))"
+    then: [{ kind: goto, target: kg_loader }]
+  - id: r-kg-sign
+    when: "?n <- (node-id (id kg_loader))"
+    then: [{ kind: goto, target: manifest_sign }]
+  - id: r-sign-emit
+    when: "?n <- (node-id (id manifest_sign))"
+    then: [{ kind: goto, target: emit_manifest_artifact }]
+  - id: r-emit-allowlist
+    when: "?n <- (node-id (id emit_manifest_artifact))"
+    then: [{ kind: goto, target: bootgate_allowlist_update }]
+  - id: r-done
+    when: "?n <- (node-id (id bootgate_allowlist_update))"
+    then:
+      - kind: halt
+        reason: "Doctrine ingest complete; manifest signed + allowlisted"

@@ -1,0 +1,131 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# cve_remediation trigger specs.
+#
+# Loaded by `harbor serve` from <harbor-config>/triggers.yaml. Three
+# trigger plugins ship with Harbor core: manual, cron, webhook.
+#
+# Coverage: 8 triggers across 8 distinct graphs.
+#
+#   Main pipeline (graph:cve-rem-main)
+#     - manual.cve_replay              — operator-driven (re)run
+#     - webhook.cve_feed_ingest        — Hugin webhook delivers CVE doc
+#
+#   Phase 0 doctrine (graph:cve-rem-doctrine-ingest)
+#     - cron.weekly_doctrine_refresh   — Sunday 02:00 UTC
+#
+#   Phase 6 offline learning (graph:cve-rem-offline-learning)
+#     - manual.gepa_compile            — operator-initiated; gated by
+#                                         Shamir 2-of-3 ceremony
+#
+#   Triggered safety / orthogonal block (5 graphs)
+#     - cron.drift_watch_window        — every 4h
+#     - cron.tier_re_eval_daily        — daily 04:00 UTC
+#     - cron.audit_anchor_daily        — daily 03:00 UTC
+#     - cron.lab_leak_reaper_hourly    — hourly :00
+#     - cron.rolling_restart_window    — Sunday 04:00 UTC
+#                                         (also fires on artifact_ready
+#                                          webhook — split-trigger
+#                                          binding lands in Phase E)
+version: "1.0"
+
+# ---------------------------------------------------------------------------
+# Manual triggers (CLI / POST /v1/runs)
+# ---------------------------------------------------------------------------
+manual:
+  - id: manual.cve_replay
+    graph_id: graph:cve-rem-main
+    description: "Operator-driven (re)run of the full CVE remediation pipeline."
+
+  - id: manual.gepa_compile
+    graph_id: graph:cve-rem-offline-learning
+    description: |
+      Operator-initiated GEPA compile + Shamir 2-of-3 ship ceremony.
+      Manual-only by policy: cron-fired compiles cannot reach the ship
+      step without a quorum signature.
+
+# ---------------------------------------------------------------------------
+# Webhook triggers (HTTP receive)
+# ---------------------------------------------------------------------------
+webhook:
+  - id: webhook.cve_feed_ingest
+    graph_id: graph:cve-rem-main
+    path: "/triggers/cve-feed"
+    timestamp_window_seconds: 300
+    nonce_lru_size: 10000
+    current_secret_env: "CVE_REM_WEBHOOK_SECRET_CURRENT"
+    previous_secret_env: "CVE_REM_WEBHOOK_SECRET_PREVIOUS"
+    params_extractor: "json"
+    description: |
+      Hugin / NVD / vendor PSIRT feed delivery. Body is a JSON envelope
+      containing raw_source_url + source_trust hint; the source_trust_gate
+      node re-derives trust independently from the doctrine source-trust
+      table.
+
+# ---------------------------------------------------------------------------
+# Cron triggers (scheduler-driven)
+# ---------------------------------------------------------------------------
+cron:
+  - id: cron.weekly_doctrine_refresh
+    graph_id: graph:cve-rem-doctrine-ingest
+    expr: "0 2 * * 0"          # Sunday 02:00 UTC
+    tz: "UTC"
+    missed_fire_policy: "fire_once_catchup"
+    params:
+      trigger_kind: "cron"
+      corpus_version_pin: "weekly"
+    description: "Pulls pinned doctrine corpora; bumps allowlist hash."
+
+  - id: cron.drift_watch_window
+    graph_id: graph:cve-rem-drift-watch
+    expr: "0 */4 * * *"        # every 4h on the hour
+    tz: "UTC"
+    missed_fire_policy: "fire_once_catchup"
+    params:
+      trigger_kind: "cron"
+      watch_window_hours: 4
+    description: "Sweeps recent drift events; spawns child runs on signature match."
+
+  - id: cron.tier_re_eval_daily
+    graph_id: graph:cve-rem-tier-re-eval
+    expr: "0 4 * * *"          # daily 04:00 UTC
+    tz: "UTC"
+    missed_fire_policy: "fire_once_catchup"
+    params:
+      trigger_kind: "cron"
+    description: |
+      Re-scans (cve, asset) pairs at TRACK / DEFER tier; spawns main
+      pipeline runs on tier escalations.
+
+  - id: cron.audit_anchor_daily
+    graph_id: graph:cve-rem-audit-anchor
+    expr: "0 3 * * *"          # daily 03:00 UTC
+    tz: "UTC"
+    missed_fire_policy: "fire_once_catchup"
+    params:
+      trigger_kind: "cron"
+    description: |
+      Hashes the audit-chain head + publishes to Nautilus JWS public
+      chain. Hourly retry on failure; pages at 24h sustained, fires
+      halt-new at 72h.
+
+  - id: cron.lab_leak_reaper_hourly
+    graph_id: graph:cve-rem-lab-leak-reaper
+    expr: "0 * * * *"          # hourly :00
+    tz: "UTC"
+    missed_fire_policy: "skip"  # short-cycle; catchup not useful
+    params:
+      trigger_kind: "cron"
+    description: "Tears down CargoNet labs whose age exceeds per-scenario TTL."
+
+  - id: cron.rolling_restart_window
+    graph_id: graph:cve-rem-rolling-restart
+    expr: "0 4 * * 0"          # Sunday 04:00 UTC
+    tz: "UTC"
+    missed_fire_policy: "fire_once_catchup"
+    params:
+      trigger_kind: "cron"
+    description: |
+      Weekly maintenance window: rolls workers to the live compiled-
+      prompt artifact. Phase E adds a webhook split-trigger so post-
+      Shamir ship events fire this graph immediately.

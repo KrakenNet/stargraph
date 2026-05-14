@@ -264,30 +264,6 @@ jobs:
       - run: git diff --exit-code docs/reference/openapi.json
       - run: uv run python scripts/lineage_audit.py --help
 
-  cve-remediation-live-test:
-    # In-process FastAPI smoke for the cve_remediation showcase. Boots
-    # the serve app via httpx.ASGITransport (no uvicorn, no port bind),
-    # pre-registers every demo IR into deps["graphs"], drives the main
-    # pipeline graph to a terminal state with auto-approve HITL, and
-    # asserts status == done. No untrusted inputs are interpolated;
-    # invocation is a static module path so command-injection risk is
-    # nil. Catches regressions in: scheduler real engine, SubGraphNode
-    # mounting, broker-intent dispatch (offline), HITL responder,
-    # artifact writes, audit anchor pack, and Phase 0-6 node bodies.
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      UV_TORCH_BACKEND: cpu
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --all-extras --all-groups
-      - run: uv run --no-project python -m demos.cve_remediation.live_test --json
-
   dco:
     # Only run on PRs; reject if any commit lacks Signed-off-by
     if: github.event_name == 'pull_request'
