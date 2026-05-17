@@ -35,6 +35,7 @@ strict-mode green without forcing speculative type imports.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 import anyio
@@ -293,6 +294,8 @@ class GraphRun:
         checkpointer: Checkpointer | None = None,
         capabilities: Any = None,
         fathom: Any = None,
+        fact_store: Any = None,
+        audit_sink: Any = None,
     ) -> None:
         self.run_id = run_id
         self.graph = graph
@@ -303,6 +306,9 @@ class GraphRun:
         self.checkpointer = checkpointer
         self.capabilities = capabilities
         self.fathom = fathom
+        # Scaffold stub -- task T01 (consumed by T13/T02). Optional, default None.
+        self.fact_store = fact_store
+        self.audit_sink = audit_sink
         # Per-node cassette wiring (design §10.3). ``node_cassette`` is
         # ``None`` until a caller wires one; ``node_id`` is stamped by
         # :func:`harbor.runtime.dispatch.dispatch_node` for the duration
@@ -637,14 +643,34 @@ class GraphRun:
         return await execute(self)
 
     def checkpoint(self) -> Checkpoint:
-        """Capture an on-demand checkpoint snapshot of current run state.
+        """Capture an on-demand checkpoint snapshot of current run state (T01).
 
-        Full implementation lands when the Checkpointer Protocol + drivers
-        land (tasks 1.20-1.21). Skeleton raises rather than returning a
-        partial snapshot.
+        Assembly mirrors :func:`harbor.runtime.dispatch.dispatch_node` step 7
+        (``dispatch.py:101-117``) but reads from ``self`` rather than a fresh
+        ``state`` argument.  Returns a fully-populated
+        :class:`harbor.checkpoint.protocol.Checkpoint` Pydantic model (INV-2).
         """
-        raise NotImplementedError(
-            "GraphRun.checkpoint lands with the Checkpointer Protocol (tasks 1.20-1.21)"
+        from harbor.checkpoint.protocol import Checkpoint as _Ckpt
+
+        state_dict: dict[str, Any] = (
+            self.initial_state.model_dump(mode="json")
+            if self.initial_state is not None
+            else {}
+        )
+        return _Ckpt(
+            run_id=self.run_id,
+            step=0,
+            branch_id=None,
+            parent_step_idx=None,
+            graph_hash=self.graph.graph_hash,
+            runtime_hash=self.graph.runtime_hash,
+            state=state_dict,
+            clips_facts=[],
+            last_node=self.node_id,
+            next_action=None,
+            timestamp=datetime.now(UTC),
+            parent_run_id=self.parent_run_id,
+            side_effects_hash="",
         )
 
     @classmethod
