@@ -80,6 +80,20 @@ class ToolRegistry:
     def __init__(self) -> None:
         self._by_id: dict[str, Tool] = {}
         self._by_namespace: dict[str, list[Tool]] = defaultdict(list)
+        # Scaffold stub -- task T06 (skill shadow store; mirrors ``_by_id``
+        # for tools). Real ``register_skill`` / ``list_skills`` consumers
+        # land in Ralph-Loop T06/T07.
+        self._by_id_skill: dict[str, SkillSpec] = {}
+
+    def register_skill(self, spec: SkillSpec) -> None:
+        """Register a :class:`SkillSpec` in the skill shadow store.
+
+        Key is ``f"{spec.namespace}/{spec.name}"`` -- SkillSpec has no
+        standalone ``id`` field (IRBase forbids extras), so the composite
+        identity is synthesized at registration time. Mirrors
+        :func:`_tool_id` for tools.
+        """
+        self._by_id_skill[f"{spec.namespace}/{spec.name}"] = spec
 
     def register(self, tool: Tool) -> None:
         """Register a tool. Raises :class:`PluginLoadError` on id conflict.
@@ -129,14 +143,8 @@ class ToolRegistry:
             ) from exc
 
     def list_skills(self) -> list[SkillSpec]:
-        """List registered skills.
-
-        **Phase 1 stub**: returns ``[]``. The skill registry lands with
-        the ``register_skills`` hook plumbing in Phase 3 (task 3.13);
-        this method is here only so the design §3.5 surface is complete
-        from day one.
-        """
-        return []
+        """List registered skills in registration order."""
+        return list(self._by_id_skill.values())
 
     def search_skills(self, query: str) -> list[SkillSpec]:
         """Substring-search skills by name/description.

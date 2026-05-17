@@ -476,8 +476,8 @@
         "Do NOT alter _by_id / _by_namespace layout"
       ],
       "bucket": "A",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T07",

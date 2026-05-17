@@ -78,7 +78,7 @@
     },
     {
       "path": "tests/unit/test_registry_tools.py",
-      "sha256": "1433e04489b693deb5aa94c6b4424154c470859d52419031f67a5aaee080899b",
+      "sha256": "c30e0f5b2a0381183b48b3d01bcc2692c41a38cae5018afdec8e29774788644c",
       "action": "new",
       "task": "T06/T07/T08",
       "tests_added": [
