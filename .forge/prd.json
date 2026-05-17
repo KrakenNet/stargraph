@@ -600,8 +600,8 @@
         "Match DSPy node pattern from skills/shipwright/nodes/interview.py:81-102"
       ],
       "bucket": "A",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T10",

@@ -30,8 +30,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+import dspy  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
 
+from harbor.adapters.dspy import _install_filter
+from harbor.logging import get_logger
 from harbor.nodes.retrieval import RetrievalNode
 from harbor.skills.base import Skill, SkillKind
 from harbor.stores.vector import Hit  # noqa: TC001 -- used as Pydantic field type
@@ -45,6 +48,8 @@ if TYPE_CHECKING:
     from harbor.stores.vector import VectorStore
 
 __all__ = ["RagSkill", "RagState"]
+
+_LOGGER = get_logger(__name__)
 
 
 _RAG_REQUIRES: tuple[str, ...] = (
@@ -114,7 +119,7 @@ class RagSkill(Skill):
         hits = cast("list[Hit]", retrieved_out.get("retrieved", []))
 
         context_window = self._format_context(hits)
-        answer = self._llm_stub(state.query, hits)
+        answer = self._call_llm(state.query, hits)
         sources = [h.id for h in hits]
 
         return state.model_copy(
@@ -141,14 +146,32 @@ class RagSkill(Skill):
             lines.append(f"[{h.id}]")
         return "\n".join(lines)
 
-    @staticmethod
-    def _llm_stub(query: str, hits: list[Hit]) -> str:
-        """POC LLM stub -- no real model call.
+    def _call_llm(self, query: str, hits: list[Hit]) -> str:
+        """Route answer synthesis through the DSPy seam (FR-32, T09).
 
-        Returns a deterministic string keyed off the retrieved hit count
-        so smoke tests can assert on it without a model dependency.
-        Phase 2 routes this through the engine model registry per
-        design §3.9 / FR-32.
+        Builds ``context`` from retrieved hits, invokes
+        ``dspy.Predict(_RagAnswerSignature)`` with force-loud adapter
+        installed via :func:`harbor.adapters.dspy._install_filter`, and
+        returns the LM-produced ``answer`` field.
+
+        Surfaces :class:`~harbor.errors.AdapterFallbackError` rather than
+        silently degrading when DSPy hits its JSONAdapter fallback path.
         """
-        del query  # POC stub; production passes query + context_window
-        return f"Based on {len(hits)} sources: POC stub answer"
+        _install_filter()
+        context = self._format_context(hits)
+        predictor = dspy.Predict(_RagAnswerSignature)
+        _LOGGER.debug("rag._call_llm", query=query, n_hits=len(hits))
+        result = predictor(query=query, context=context)
+        return str(result.answer)
+
+
+class _RagAnswerSignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]
+    """RAG answer synthesis (T09).
+
+    Inputs: ``query`` (the user question), ``context`` (retrieved hit
+    text block). Output: ``answer`` (model-produced string).
+    """
+
+    query: str = dspy.InputField()  # pyright: ignore[reportUnknownMemberType]
+    context: str = dspy.InputField()  # pyright: ignore[reportUnknownMemberType]
+    answer: str = dspy.OutputField()  # pyright: ignore[reportUnknownMemberType]

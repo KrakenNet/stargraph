@@ -221,7 +221,7 @@
     },
     {
       "path": "tests/integration/test_rag_skill.py",
-      "sha256": "2cfcb440d6b804d73859e097c84466c1d6029ff93b2928284550ac9a45a437a6",
+      "sha256": "b3d31b27804a6172290e77509e5a930fe347bfc486a47e8e2a6d23a2270e28bd",
       "action": "new",
       "task": "T09",
       "tests_added": [
