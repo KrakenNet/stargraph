@@ -785,8 +785,8 @@
         "Match house-style logging"
       ],
       "bucket": "B",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T11",

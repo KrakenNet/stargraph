@@ -169,7 +169,12 @@ async def _persist_audit(event: BosunAuditEvent) -> None:
     await sink.write(event)
 
 
-def _resolve_run(run_id: str, run: GraphRun | None) -> GraphRun:
+def _resolve_run(
+    run_id: str,
+    run: GraphRun | None,
+    *,
+    deps: dict[str, Any] | None = None,
+) -> GraphRun:
     """Resolve a live :class:`GraphRun` handle for ``run_id``.
 
     POC behavior: the in-process run registry (mapping ``run_id ->
@@ -190,11 +195,16 @@ def _resolve_run(run_id: str, run: GraphRun | None) -> GraphRun:
     :func:`harbor.serve.lifecycle._resolve_run` (task 1.22).
     """
     if run is None:
+        if deps is not None:
+            registry = deps.get("runs")
+            if isinstance(registry, dict):
+                resolved = registry.get(run_id)
+                if resolved is not None:
+                    return resolved
         raise HarborRuntimeError(
             f"cannot resolve live GraphRun for run_id={run_id!r}: "
-            "in-process run registry lands in Phase 2 (task 2.30); "
-            "callers must pass the live handle explicitly via _run= "
-            "until then",
+            "not present in deps['runs'] registry and no _run= override "
+            "supplied",
             run_id=run_id,
         )
     if run.run_id != run_id:
