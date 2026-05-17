@@ -519,8 +519,8 @@
         "Do NOT add fuzzy matching, ranking, or score thresholds"
       ],
       "bucket": "A",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T08",
@@ -559,8 +559,8 @@
         "Do not invent new capability protocol"
       ],
       "bucket": "A",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T09",

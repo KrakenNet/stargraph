@@ -29,7 +29,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from harbor.errors import PluginLoadError
+from harbor.errors import CapabilityError, PluginLoadError
 
 if TYPE_CHECKING:
     from harbor.graph import Graph
@@ -147,21 +147,38 @@ class ToolRegistry:
         return list(self._by_id_skill.values())
 
     def search_skills(self, query: str) -> list[SkillSpec]:
-        """Substring-search skills by name/description.
+        """Case-insensitive substring scan over registered skills.
 
-        **Phase 1 stub**: returns ``[]``. Full in-memory substring search
-        lands in Phase 3 alongside the skill registry; the v1 contract
-        explicitly limits this to in-memory scan (no FTS index).
+        Matches when ``query.lower()`` is a substring of ``spec.name`` or
+        ``spec.description`` (both lowered). Empty / whitespace-only query
+        returns the full list (mirrors ``list_skills`` ordering).
         """
-        return []
+        q = query.strip().lower()
+        if not q:
+            return self.list_skills()
+        return [
+            spec
+            for spec in self._by_id_skill.values()
+            if q in spec.name.lower() or q in spec.description.lower()
+        ]
 
     def compatible_with(self, graph: Graph) -> list[Tool]:
         """List tools whose capability requirements are satisfied by ``graph``.
 
-        **Phase 1 stub**: returns all registered tools (no filter). The
-        capability-driven filter lands with the security/capabilities
-        wiring in Phase 3 (task 3.13). The signature returns ``list[Tool]``
-        (concrete tools, not :class:`SkillRef` as design §3.5 sketches)
-        because Phase 1 has no skill registry to dereference against.
+        Mirrors :func:`harbor.graph.loop._check_tool_capabilities` semantics:
+        ``graph.capabilities is None`` returns the full tool list (no gate);
+        otherwise ``capabilities.check(spec)`` is invoked per tool and a
+        raised :class:`CapabilityError` excludes the tool. Order is the
+        underlying ``_by_id`` insertion order.
         """
-        return self.list_tools()
+        caps = getattr(graph, "capabilities", None)
+        if caps is None:
+            return self.list_tools()
+        out: list[Tool] = []
+        for tool in self.list_tools():
+            try:
+                caps.check(tool.spec)
+            except CapabilityError:
+                continue
+            out.append(tool)
+        return out
