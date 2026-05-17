@@ -833,8 +833,8 @@
         "If sign_pack requires additional manifest files, surface as open question"
       ],
       "bucket": "A",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T12",
@@ -872,8 +872,8 @@
         "Same as T11"
       ],
       "bucket": "A",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     }
   ]
 }

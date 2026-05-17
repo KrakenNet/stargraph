@@ -105,7 +105,7 @@
     },
     {
       "path": "tests/unit/test_bosun_retries_signing.py",
-      "sha256": "64c1d6711fe1980f9adf924d59b81c76d7d10ca7e4a310eedc63bb7befcd09af",
+      "sha256": "c842b864d5a062899d94d1dc8d455a10b358c3e573ebdffc8488124c2c74fd59",
       "action": "new",
       "task": "T11",
       "tests_added": [
@@ -125,7 +125,7 @@
     },
     {
       "path": "tests/unit/test_bosun_budgets_signing.py",
-      "sha256": "37dbb95448282757b6e259f3146bc5480376ea1ce5639d57130c09eaa77e03d2",
+      "sha256": "d91d81cbfc1621949e8db6fc5015535143765d841c175458960ad10c31e6e738",
       "action": "new",
       "task": "T12",
       "tests_added": [
