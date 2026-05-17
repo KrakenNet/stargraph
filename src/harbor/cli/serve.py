@@ -355,4 +355,5 @@ def cmd(
             await checkpointer.close()
 
     app = create_app(selected, deps=deps, lifespan=_lifespan)
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    cfg = uvicorn.Config(app, host=host, port=port, log_level="info")
+    uvicorn.Server(cfg).run()

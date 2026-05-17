@@ -707,8 +707,8 @@
         "Do NOT introduce new uvicorn dependency"
       ],
       "bucket": "B",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T16",

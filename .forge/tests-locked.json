@@ -243,7 +243,7 @@
     },
     {
       "path": "tests/integration/test_cli_serve.py",
-      "sha256": "ba6a631cf0ef00de88d92d5fd6a2db4a6009d3058404f01870b7a81bf5c29a86",
+      "sha256": "6cc110a4b3c69b0a53fd398d187e874cb2ebac5ed848efc0545289b2fe77104c",
       "action": "new",
       "task": "T15",
       "tests_added": [
