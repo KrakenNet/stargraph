@@ -743,8 +743,8 @@
         "Use get_logger(__name__), not legacy logging.getLogger"
       ],
       "bucket": "B",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T17",

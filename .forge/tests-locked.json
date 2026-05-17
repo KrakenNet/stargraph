@@ -145,7 +145,7 @@
     },
     {
       "path": "tests/unit/test_triggers_webhook.py",
-      "sha256": "ba7508e494e716cdd18277e3a9ed2f91e103d1912da8e990ceed5507ffcd9a90",
+      "sha256": "2d327b0d302bde723f2ac3884e5df053f3f790e18da5a336f9ce976dfc60b600",
       "action": "new",
       "task": "T16",
       "tests_added": [
