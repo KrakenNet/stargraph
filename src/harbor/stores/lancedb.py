@@ -46,9 +46,9 @@ from harbor.stores._common import (
 from harbor.stores.rerankers import RRFReranker
 from harbor.stores.vector import Hit
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
+if TYPE_CHECKING:
     from harbor.stores._common import MigrationPlan
     from harbor.stores.embeddings import Embedding
     from harbor.stores.vector import Row
@@ -64,19 +64,23 @@ class LanceDBVectorStore:
 
     def __init__(
         self,
-        path: Path,
-        embedder: Embedding,
+        path: Path | str | None = None,
+        embedder: Embedding | None = None,
         *,
         table_name: str = "vectors",
         tmp_dir: Path | None = None,
+        # Convenience aliases used by tests / callers that prefer URI-style kwargs.
+        uri: Path | str | None = None,
+        table: str | None = None,
     ) -> None:
-        self._path = path
+        resolved_path = Path(uri if uri is not None else path)  # type: ignore[arg-type]
+        self._path = resolved_path
         self._embedder = embedder
-        self._table_name = table_name
+        self._table_name = table if table is not None else table_name
         self._version = _SCHEMA_V
         # FR-9 / lance#2461: keep FTS scratch off the table dir to avoid
         # cross-process write contention. Default ``<path>/.tmp``.
-        self._tmp_dir = tmp_dir if tmp_dir is not None else path / ".tmp"
+        self._tmp_dir = tmp_dir if tmp_dir is not None else resolved_path / ".tmp"
 
     # ------------------------------------------------------------------ lifecycle
 
@@ -139,18 +143,14 @@ class LanceDBVectorStore:
         )
 
     async def migrate(self, plan: MigrationPlan) -> None:
-        """POC stub -- migration support arrives in a later task.
+        """Validate-then-noop migration (T04).
 
         Narrows / renames / drops are rejected up-front by
-        :func:`_validate_migration_plan` so callers see the same
-        ``MigrationNotSupported`` error every store raises for v1
-        unsupported ops; otherwise this stub still raises
-        ``NotImplementedError`` until task 3.48 lands real LanceDB
-        column-add support.
+        :func:`_validate_migration_plan` so callers see
+        ``MigrationNotSupported`` for unsupported ops.
+        Valid ``add_column nullable=True`` plans return silently.
         """
         _validate_migration_plan(plan, store="lancedb")
-        msg = "LanceDBVectorStore.migrate is not implemented in the POC"
-        raise NotImplementedError(msg)
 
     async def current_version(self) -> int:
         """Return the current LanceDB table version (FR-10).

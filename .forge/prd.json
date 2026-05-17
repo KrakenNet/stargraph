@@ -1,0 +1,879 @@
+{
+  "version": 1,
+  "feature": "harbor stub-fix refactor (T01-T21)",
+  "created": "2026-05-17T00:00:00Z",
+  "anchors": {
+    "scope": ".forge/scope.md",
+    "shared": ".forge/shared.md",
+    "prd": ".forge/prd.md",
+    "tests_locked": ".forge/tests-locked.json",
+    "contracts_index": ".forge/contracts/README.md"
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "GraphRun.checkpoint sync method returns Checkpoint model",
+      "cluster": "graph-runtime",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/graph/run.py",
+        "/home/sean/leagues/harbor/tests/unit/test_graph_run.py",
+        "/home/sean/leagues/harbor/tests/integration/test_resume_checkpoint_round_trip.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"NotImplementedError|raise NotImplemented\" src/harbor/graph/run.py \u2014 confirm stub at line :646",
+        "GraphRun.checkpoint is def (sync), not async def. Returns a Checkpoint Pydantic model",
+        "Returned Checkpoint carries all required fields per checkpoint/protocol.py:34-63",
+        "Field assembly mirrors runtime/dispatch.py:101-117, reads from self",
+        "side_effects_hash populated as \"\" (matches current norm)",
+        "graph_hash and runtime_hash pulled from self (already computed at GraphRun.__init__)",
+        "Two successive calls on unchanged GraphRun return Checkpoint with identical graph_hash (INV-1)",
+        "cf-prefix logic at graph/run.py:103 untouched (line-range diff check)",
+        "Resume-refuse logic at graph/run.py:145-154 untouched",
+        "No new NotImplementedError introduced",
+        "Extend GraphRun.__init__(:285-296) with two optional kwargs: fact_store: FactStore | None = None, audit_sink: AuditSink | None = None",
+        "Both kwargs default to None, stored on self, back-compat preserved",
+        "Imports added for FactStore (stores.fact) and AuditSink (audit), gated by TYPE_CHECKING",
+        "Unit test test_checkpoint_returns_checkpoint_model_with_all_required_fields replaces negative pin",
+        "Unit test test_graph_run_init_accepts_fact_store_and_audit_sink_kwargs asserts both kwargs",
+        "Integration test test_checkpoint_round_trips_through_sqlite_checkpointer round-trips through write\u2192read"
+      ],
+      "covers_tests": [
+        "tests/unit/test_graph_run.py::test_checkpoint_returns_checkpoint_model_with_all_required_fields",
+        "tests/unit/test_graph_run.py::test_checkpoint_preserves_graph_hash_across_successive_calls",
+        "tests/unit/test_graph_run.py::test_graph_run_init_accepts_fact_store_and_audit_sink_kwargs",
+        "tests/integration/test_resume_checkpoint_round_trip.py::test_checkpoint_round_trips_through_sqlite_checkpointer"
+      ],
+      "covers_criteria": [
+        "AC-T01-1",
+        "AC-T01-2",
+        "AC-T01-3",
+        "AC-T01-4",
+        "AC-T01-5",
+        "AC-T01-6",
+        "AC-T01-7",
+        "AC-T01-8"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [
+        "INV-2",
+        "INV-3"
+      ],
+      "guardrails": [
+        "Do NOT touch graph/run.py:103 cf-prefix",
+        "Do NOT touch graph/run.py:145-154 resume-refuse logic",
+        "Do NOT touch GraphRun.resume or GraphRun.counterfactual",
+        "Match existing logging style in graph/run.py"
+      ],
+      "bucket": "A",
+      "passes": true,
+      "attempts": 1
+    },
+    {
+      "id": "T02",
+      "title": "Graph.start minimal construct + return path",
+      "cluster": "graph-runtime",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/graph/definition.py",
+        "/home/sean/leagues/harbor/tests/unit/test_graph_definition.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"NotImplementedError|raise NotImplemented\" src/harbor/graph/definition.py \u2014 confirm stub at line :420",
+        "Graph.start is async def and returns a GraphRun",
+        "Signature remains state, *, checkpointer, capabilities, audit_sink, run_id (no changes)",
+        "Body constructs GraphRun by passing all five kwargs through to GraphRun.__init__",
+        "run_id minting: when None, default to uuid.uuid4().hex (matches in-tree convention)",
+        "No EventBroadcaster registration, no deps[\"runs\"] write, no await run.start() call",
+        "Given identical IR + state + capabilities, two Graph.start() invocations produce distinct GraphRun instances with identical graph_hash",
+        "No new NotImplementedError introduced"
+      ],
+      "covers_tests": [
+        "tests/unit/test_graph_definition.py::test_graph_start_returns_graphrun_with_default_run_id",
+        "tests/unit/test_graph_definition.py::test_graph_start_preserves_graph_hash_across_starts"
+      ],
+      "covers_criteria": [
+        "AC-T02-1",
+        "AC-T02-2",
+        "AC-T02-3",
+        "AC-T02-4",
+        "AC-T02-5"
+      ],
+      "depends_on": [
+        "T01"
+      ],
+      "attestation_invariants": [
+        "INV-1",
+        "INV-3"
+      ],
+      "guardrails": [
+        "Do NOT replicate scheduler's _drive_real_run register/EventBroadcaster/await logic",
+        "Do NOT touch Graph.__init__ or _compile_state_schema",
+        "Do NOT introduce new run-id minter helper module"
+      ],
+      "bucket": "A",
+      "passes": true,
+      "attempts": 0
+    },
+    {
+      "id": "T18",
+      "title": "graph/hash._state_schema_signature force-loud IRValidationError",
+      "cluster": "graph-runtime",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/graph/hash.py",
+        "/home/sean/leagues/harbor/tests/unit/test_graph_hash.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"repr(state_schema)|_state_schema_signature\" src/harbor/graph/hash.py \u2014 confirm fallback",
+        "BaseModel-subclass branch (.model_json_schema(mode=\"serialization\")) UNCHANGED (INV-1 protection)",
+        "repr(state_schema) fallback replaced with raise IRValidationError(...)",
+        "Force-loud per FR-6, matches house error style with path=, expected=, actual=, hint= context kwargs",
+        "Graph.__init__ callers unaffected (already compile via _compile_state_schema)",
+        "Direct callers bypassing Graph see loud error instead of silent placeholder hash",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_graph_hash.py::test_state_schema_signature_raises_irvalidationerror_on_non_basemodel",
+        "tests/unit/test_graph_hash.py::test_state_schema_signature_succeeds_on_basemodel_subclass"
+      ],
+      "covers_criteria": [
+        "AC-T18-1",
+        "AC-T18-2",
+        "AC-T18-3"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [
+        "INV-1"
+      ],
+      "guardrails": [
+        "Do NOT touch BaseModel branch",
+        "Do NOT change _compile_state_schema in graph/definition.py:113-147",
+        "INV-1 reproducibility tests must still pass"
+      ],
+      "bucket": "B",
+      "passes": true,
+      "attempts": 1
+    },
+    {
+      "id": "T21",
+      "title": "graph/loop._run_parallel_block reducer-aware merge",
+      "cluster": "graph-runtime",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/graph/loop.py",
+        "/home/sean/leagues/harbor/tests/integration/test_parallel_merge.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"merged_state = results\\[-1\\]|_run_parallel_block\" src/harbor/graph/loop.py \u2014 expect last-write-wins at :582-586",
+        "merged_state = results[-1] last-write-wins line replaced with reducer-aware merge",
+        "Merger consults runtime/merge.py reducer registry",
+        "When parallel branches write disjoint state fields, merge succeeds with no conflict",
+        "When two branches write same field with no reducer, merge raises using build_last_write_conflict_evidence (force-loud per FR-11)",
+        "When reducer IS declared in IR for conflicting field, merge applies reducer's combine(a, b) function",
+        "Body of _run_parallel_block outside merge line NOT touched",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/integration/test_parallel_merge.py::test_parallel_merge_disjoint_fields_succeeds",
+        "tests/integration/test_parallel_merge.py::test_parallel_merge_conflict_without_reducer_raises_with_evidence",
+        "tests/integration/test_parallel_merge.py::test_parallel_merge_conflict_with_reducer_applies_combine"
+      ],
+      "covers_criteria": [
+        "AC-T21-1",
+        "AC-T21-2",
+        "AC-T21-3",
+        "AC-T21-4"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [
+        "INV-2",
+        "INV-3"
+      ],
+      "guardrails": [
+        "Do NOT touch runtime/dispatch.py:_dispatch_parallel body",
+        "Do NOT touch runtime/parallel.py",
+        "Do NOT modify _check_parallel_writes_have_reducers in definition.py:150-186",
+        "Reuse build_last_write_conflict_evidence from runtime/merge.py"
+      ],
+      "bucket": "B",
+      "passes": true,
+      "attempts": 1
+    },
+    {
+      "id": "T13",
+      "title": "runtime/mirror_lifecycle._persist_pinned pin-loop wiring",
+      "cluster": "core-ir",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/runtime/mirror_lifecycle.py",
+        "/home/sean/leagues/harbor/tests/unit/test_mirror_lifecycle.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"_persist_pinned|write_batch\" src/harbor/ \u2014 confirm _persist_pinned no-op, write_batch NOT on FactStore Protocol",
+        "_persist_pinned(self, fact_store: FactStore) -> None replaced with async method looping over self._pinned",
+        "Async method calls await fact_store.pin(fact) per item",
+        "NEW helper _assert_spec_to_fact(spec: AssertSpec) -> Fact defined in runtime/mirror_lifecycle.py",
+        "Maps AssertSpec.template + AssertSpec.slots -> Fact with deterministic JCS-hash id",
+        "Fact.id derived from (template, slots) JCS hash",
+        "Fact.payload carries rendered fact, lineage carries originating template id",
+        "FactStore Protocol shape NOT modified",
+        "Caller wired from GraphRun.start loop body at checkpoint write seam",
+        "Force-loud: if self._pinned non-empty and fact_store is None, raise HarborRuntimeError (FR-6)",
+        "When self._pinned empty, returns immediately",
+        "When self._pinned has N specs, fact_store.pin called exactly N times",
+        "Errors from pin propagate (force-loud per FR-6)",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_mirror_lifecycle.py::test_persist_pinned_empty_specs_is_noop",
+        "tests/unit/test_mirror_lifecycle.py::test_persist_pinned_calls_pin_once_per_spec",
+        "tests/unit/test_mirror_lifecycle.py::test_persist_pinned_propagates_pin_error",
+        "tests/unit/test_mirror_lifecycle.py::test_assert_spec_to_fact_deterministic_id"
+      ],
+      "covers_criteria": [
+        "AC-T13-1",
+        "AC-T13-2",
+        "AC-T13-3",
+        "AC-T13-4",
+        "AC-T13-5"
+      ],
+      "depends_on": [
+        "T01"
+      ],
+      "attestation_invariants": [
+        "INV-2"
+      ],
+      "guardrails": [
+        "Do NOT extend FactStore Protocol with write_batch",
+        "Do NOT introduce separate stores/_assert_fact_adapter.py module",
+        "Test doubles MUST be hand-rolled, no unittest.mock"
+      ],
+      "bucket": "A",
+      "passes": true,
+      "attempts": 1
+    },
+    {
+      "id": "T19",
+      "title": "tools/decorator._derive_input_schema accept type[BaseModel]",
+      "cluster": "core-ir",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/tools/decorator.py",
+        "/home/sean/leagues/harbor/tests/unit/test_tool_decorator.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"_derive_input_schema|input_schema\" src/harbor/tools/decorator.py \u2014 confirm location",
+        "New isinstance(input_schema, type) and issubclass(input_schema, BaseModel) branch added",
+        "When input_schema is BaseModel subclass, return input_schema.model_json_schema(mode=\"serialization\")",
+        "When input_schema is dict[str, Any], existing behavior preserved",
+        "When input_schema unspecified, pydantic.TypeAdapter-from-signature path preserved",
+        "All three branches return JSON-Schema-shaped dict[str, Any]",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_tool_decorator.py::test_derive_input_schema_from_basemodel_subclass",
+        "tests/unit/test_tool_decorator.py::test_derive_input_schema_from_dict_unchanged",
+        "tests/unit/test_tool_decorator.py::test_derive_input_schema_from_signature_unchanged"
+      ],
+      "covers_criteria": [
+        "AC-T19-1",
+        "AC-T19-2",
+        "AC-T19-3"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT change existing TypeAdapter signature-derivation path",
+        "Use model_json_schema(mode=\"serialization\") (matches graph/hash.py:227)"
+      ],
+      "bucket": "B",
+      "passes": true,
+      "attempts": 0
+    },
+    {
+      "id": "T20",
+      "title": "plugin/hookspecs.authorize_action BosunAction Pydantic model",
+      "cluster": "core-ir",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/plugin/hookspecs.py",
+        "/home/sean/leagues/harbor/src/harbor/plugin/types.py",
+        "/home/sean/leagues/harbor/tests/unit/test_plugin_hookspecs.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"authorize_action|dict\\[str, Any\\]\" src/harbor/plugin/hookspecs.py \u2014 confirm :95 carries dict parameter",
+        "NEW Pydantic model BosunAction defined in harbor/plugin/types.py",
+        "BosunAction fields: action_kind: str, target: str, payload: dict[str, Any]",
+        "authorize_action(action: BosunAction) -> bool | None (signature change)",
+        "All call sites pass BosunAction instance, not raw dict",
+        "harbor.plugin.types.__all__ exports BosunAction",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_plugin_hookspecs.py::test_bosun_action_model_round_trip",
+        "tests/unit/test_plugin_hookspecs.py::test_authorize_action_accepts_bosun_action_instance"
+      ],
+      "covers_criteria": [
+        "AC-T20-1",
+        "AC-T20-2",
+        "AC-T20-3"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT add fields beyond minimal-viable three without scope amendment",
+        "Match house-style: explicit __all__ export",
+        "Pluggy hookspec bodies remain pass (declaration-only)"
+      ],
+      "bucket": "B",
+      "passes": true,
+      "attempts": 2
+    },
+    {
+      "id": "T03",
+      "title": "stores/ryugraph.RyuGraphStore.migrate validate-then-noop",
+      "cluster": "stores",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/stores/ryugraph.py",
+        "/home/sean/leagues/harbor/tests/unit/test_stores_migrate.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"NotImplementedError|raise NotImplemented\" src/harbor/stores/ryugraph.py \u2014 expect a raise",
+        "git grep -rn \"MigrationNotSupported\" tests/ \u2014 inspect existing test pinning for pre-change understanding",
+        "RyuGraphStore.migrate(plan) calls _validate_migration_plan(plan, store=\"ryugraph\") first",
+        "On valid add_column nullable=True plan, returns silently (no raise)",
+        "On unsupported op, _validate_migration_plan raises MigrationNotSupported",
+        "Matches sibling pattern at sqlite_fact.migrate",
+        "Method remains async def",
+        "No new DDL execution against ryugraph in v1",
+        "No new NotImplementedError introduced"
+      ],
+      "covers_tests": [
+        "tests/unit/test_stores_migrate.py::test_ryugraph_migrate_valid_add_column_succeeds_silently",
+        "tests/unit/test_stores_migrate.py::test_ryugraph_migrate_rejects_drop_column"
+      ],
+      "covers_criteria": [
+        "AC-T03-1",
+        "AC-T03-2",
+        "AC-T03-3",
+        "AC-T03-4"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT add real Cypher DDL",
+        "Do NOT change migrate method signature",
+        "Do NOT touch _validate_migration_plan in _common.py"
+      ],
+      "bucket": "A",
+      "passes": true,
+      "attempts": 1
+    },
+    {
+      "id": "T04",
+      "title": "stores/lancedb.LanceDBVectorStore.migrate validate-then-noop",
+      "cluster": "stores",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/stores/lancedb.py",
+        "/home/sean/leagues/harbor/tests/unit/test_stores_migrate.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"NotImplementedError|raise NotImplemented\" src/harbor/stores/lancedb.py \u2014 expect a raise",
+        "git grep -rn \"MigrationNotSupported\" tests/ \u2014 check for lancedb-targeted assertions",
+        "LanceDBVectorStore.migrate(plan) calls _validate_migration_plan(plan, store=\"lancedb\") first",
+        "On valid add_column nullable=True plan, returns silently",
+        "On unsupported ops, MigrationNotSupported raised",
+        "Mirrors sqlite_memory.migrate shape",
+        "Method remains async def",
+        "No new NotImplementedError introduced"
+      ],
+      "covers_tests": [
+        "tests/unit/test_stores_migrate.py::test_lancedb_migrate_valid_add_column_succeeds_silently",
+        "tests/unit/test_stores_migrate.py::test_lancedb_migrate_rejects_drop_column"
+      ],
+      "covers_criteria": [
+        "AC-T04-1",
+        "AC-T04-2",
+        "AC-T04-3",
+        "AC-T04-4"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT call tbl.add_columns() or tbl.alter_columns()",
+        "Do NOT touch _validate_migration_plan"
+      ],
+      "bucket": "A",
+      "passes": true,
+      "attempts": 1
+    },
+    {
+      "id": "T05",
+      "title": "stores/rerankers.CrossEncoderReranker.fuse real implementation",
+      "cluster": "stores",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/stores/rerankers.py",
+        "/home/sean/leagues/harbor/tests/unit/test_rerankers.py",
+        "/home/sean/leagues/harbor/tests/integration/test_rerankers.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"NotImplementedError|raise NotImplemented\" src/harbor/stores/rerankers.py \u2014 expect raise in CrossEncoderReranker.fuse",
+        "Signature: async def fuse(per_store: list[list[Hit]], *, k: int, query: str | None = None) -> list[Hit]",
+        "Loads cross-encoder model via existing loader at stores/_rerank_loader.py",
+        "When query is None, raises HarborRuntimeError (force-loud per FR-6)",
+        "Flattens per_store into single hit list, scores pairs via cross-encoder, sorts descending, returns top k",
+        "Deterministic order for equal scores (stable sort)",
+        "Optional-extra gating: if cross-encoder extra not installed, _rerank_loader raises",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_rerankers.py::test_cross_encoder_fuse_raises_when_query_missing",
+        "tests/integration/test_rerankers.py::test_cross_encoder_fuse_returns_top_k_sorted_by_score"
+      ],
+      "covers_criteria": [
+        "AC-T05-1",
+        "AC-T05-2",
+        "AC-T05-3",
+        "AC-T05-4",
+        "AC-T05-5"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT change signature of base reranker contract",
+        "Match RRFReranker.fuse shape line-for-line where possible",
+        "Do NOT introduce custom model-loading path"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T06",
+      "title": "registry/tools.ToolRegistry.list_skills substring scan",
+      "cluster": "registry",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/registry/tools.py",
+        "/home/sean/leagues/harbor/tests/unit/test_registry_tools.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"NotImplementedError|raise NotImplemented|return \\[\\]\" src/harbor/registry/tools.py \u2014 confirm stub",
+        "ToolRegistry carries new instance attribute _by_id_skill: dict[str, SkillSpec] initialized to {} in __init__",
+        "New method register_skill(spec: SkillSpec) -> None adds to _by_id_skill keyed by spec.id",
+        "list_skills() returns list(self._by_id_skill.values())",
+        "Given empty registry, list_skills() returns []",
+        "Given three registered skills, list_skills() returns them in registration order",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_registry_tools.py::test_list_skills_empty_registry_returns_empty_list",
+        "tests/unit/test_registry_tools.py::test_list_skills_returns_registered_specs_in_order"
+      ],
+      "covers_criteria": [
+        "AC-T06-1",
+        "AC-T06-2",
+        "AC-T06-3",
+        "AC-T06-4"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT FTS-index. Plain dict.values() walk per pattern.md",
+        "Do NOT alter _by_id / _by_namespace layout"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T07",
+      "title": "registry/tools.ToolRegistry.search_skills substring scan",
+      "cluster": "registry",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/registry/tools.py",
+        "/home/sean/leagues/harbor/tests/unit/test_registry_tools.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"return \\[\\]\" src/harbor/registry/tools.py \u2014 confirm stub at :141",
+        "search_skills(query: str) does case-insensitive substring scan over _by_id_skill.values()",
+        "Match condition: query.lower() in spec.name.lower() or query.lower() in spec.description.lower()",
+        "Empty query returns all skills",
+        "Whitespace-only query returns all skills",
+        "Unknown query returns []",
+        "Order preserved from _by_id_skill insertion",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_registry_tools.py::test_search_skills_substring_name_match",
+        "tests/unit/test_registry_tools.py::test_search_skills_substring_description_match",
+        "tests/unit/test_registry_tools.py::test_search_skills_case_insensitive",
+        "tests/unit/test_registry_tools.py::test_search_skills_empty_query_returns_all",
+        "tests/unit/test_registry_tools.py::test_search_skills_unknown_query_returns_empty"
+      ],
+      "covers_criteria": [
+        "AC-T07-1",
+        "AC-T07-2",
+        "AC-T07-3",
+        "AC-T07-4",
+        "AC-T07-5"
+      ],
+      "depends_on": [
+        "T06"
+      ],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT add fuzzy matching, ranking, or score thresholds"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T08",
+      "title": "registry/tools.ToolRegistry.compatible_with capability filter",
+      "cluster": "registry",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/registry/tools.py",
+        "/home/sean/leagues/harbor/tests/unit/test_registry_tools.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"list_tools\" src/harbor/registry/tools.py \u2014 confirm stub returns unfiltered list",
+        "Signature: compatible_with(graph) -> list[ToolSpec] (kept as-is)",
+        "Implementation iterates self.list_tools() and filters via capability check pattern in graph/loop.py:614-636",
+        "Reuse existing _check_tool_capabilities pattern, do not duplicate",
+        "If graph.capabilities is None, returns full tool list",
+        "If tool requires capability not granted, it is excluded",
+        "Order preserved from _by_id insertion",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_registry_tools.py::test_compatible_with_no_capabilities_returns_all_tools",
+        "tests/unit/test_registry_tools.py::test_compatible_with_filters_disallowed_tools"
+      ],
+      "covers_criteria": [
+        "AC-T08-1",
+        "AC-T08-2",
+        "AC-T08-3",
+        "AC-T08-4"
+      ],
+      "depends_on": [
+        "T06"
+      ],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Pattern-match _check_tool_capabilities from graph/loop.py",
+        "Do not invent new capability protocol"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T09",
+      "title": "skills/refs/rag.py _call_llm via DSPy seam",
+      "cluster": "skills",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/skills/refs/rag.py",
+        "/home/sean/leagues/harbor/tests/integration/test_rag_skill.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"POC stub answer|_llm_stub\" src/harbor/skills/refs/rag.py \u2014 expect hit at :144-154",
+        "_call_llm no longer returns f-string with POC stub answer",
+        "Defines dspy.Signature with query: str and context: str inputs, answer: str output",
+        "Uses dspy.Predict or dspy.ChainOfThought configured via harbor.adapters.dspy.bind(...)",
+        "When dspy.settings.lm unconfigured, existing force-loud filter raises AdapterFallbackError",
+        "Returned answer is a str passthrough",
+        "Logging via harbor.logging.get_logger(__name__)",
+        "No unittest.mock imports in prod code",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/integration/test_rag_skill.py::test_rag_call_llm_invokes_dspy_signature",
+        "tests/integration/test_rag_skill.py::test_rag_call_llm_raises_when_lm_not_configured",
+        "tests/integration/test_rag_skill.py::test_rag_answer_signature_symbol_exists"
+      ],
+      "covers_criteria": [
+        "AC-T09-1",
+        "AC-T09-2",
+        "AC-T09-3",
+        "AC-T09-4"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT introduce new LLM adapter layer",
+        "Do NOT swallow AdapterFallbackError",
+        "Match DSPy node pattern from skills/shipwright/nodes/interview.py:81-102"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T10",
+      "title": "skills/refs/autoresearch.py summary via DSPy seam",
+      "cluster": "skills",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/skills/refs/autoresearch.py",
+        "/home/sean/leagues/harbor/tests/integration/test_autoresearch_skill.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"POC stub summary\" src/harbor/skills/refs/autoresearch.py \u2014 expect hit at :202",
+        "Replace hardcoded f-string with DSPy invocation",
+        "Defines dspy.Signature with topic: str and claims: list[str] inputs, summary: str output",
+        "Uses dspy.Predict or dspy.ChainOfThought per shipwright/synthesize.py pattern",
+        "Same force-loud filter contract as T09",
+        "Returned summary is str with no literal \"POC stub summary\" substring",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/integration/test_autoresearch_skill.py::test_autoresearch_summary_routes_through_dspy_signature",
+        "tests/integration/test_autoresearch_skill.py::test_autoresearch_summary_raises_when_lm_not_configured",
+        "tests/integration/test_autoresearch_skill.py::test_autoresearch_summary_signature_symbol_exists"
+      ],
+      "covers_criteria": [
+        "AC-T10-1",
+        "AC-T10-2",
+        "AC-T10-3"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Same DSPy seam constraints as T09",
+        "Do NOT touch surrounding web-fetch and claim-extraction logic"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T14",
+      "title": "serve/api._RunsPage adds cursor field",
+      "cluster": "serve-layer",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/serve/api.py",
+        "/home/sean/leagues/harbor/tests/unit/test_serve_api.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"_RunsPage\" src/harbor/serve/api.py \u2014 confirm Pydantic model at :779-814",
+        "_RunsPage gains new field cursor: str | None = None",
+        "All construction sites of _RunsPage updated to pass cursor=None or rely on default",
+        "Existing items, total, limit, offset fields unchanged",
+        "Existing tests on _RunsPage still pass",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_serve_api.py::test_runs_page_default_cursor_is_none",
+        "tests/unit/test_serve_api.py::test_runs_page_serializes_cursor_field"
+      ],
+      "covers_criteria": [
+        "AC-T14-1",
+        "AC-T14-2",
+        "AC-T14-3"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT encode cursor logic yet",
+        "Do NOT change RunHistory.list/count"
+      ],
+      "bucket": "B",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T15",
+      "title": "cli/serve.py uvicorn programmatic Config/Server pattern",
+      "cluster": "serve-layer",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/cli/serve.py",
+        "/home/sean/leagues/harbor/tests/integration/test_cli_serve.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"uvicorn.run|uvicorn.Config|uvicorn.Server\" src/harbor/cli/serve.py \u2014 expect uvicorn.run(...)",
+        "cli/serve.py switches from uvicorn.run(app, ...) to cfg = uvicorn.Config(...); uvicorn.Server(cfg).run()",
+        "All current kwargs to uvicorn.run passed through to uvicorn.Config",
+        "Profile-driven config knobs can be threaded in follow-up",
+        "CLI surface unchanged (no new flags)",
+        "Existing CLI tests still pass",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/integration/test_cli_serve.py::test_cli_serve_uses_uvicorn_server_class"
+      ],
+      "covers_criteria": [
+        "AC-T15-1",
+        "AC-T15-2",
+        "AC-T15-3"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT change CLI command names or flags",
+        "Do NOT introduce new uvicorn dependency"
+      ],
+      "bucket": "B",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T16",
+      "title": "triggers/webhook.py structlog fallback when audit_sink is None",
+      "cluster": "serve-layer",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/triggers/webhook.py",
+        "/home/sean/leagues/harbor/tests/unit/test_triggers_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"audit_sink is None|_audit_sink\" src/harbor/triggers/webhook.py \u2014 confirm None branch silent drop",
+        "When self._audit_sink is None, calls harbor.logging.get_logger(__name__).info(\"webhook_request\", **bosun_audit_event_dict)",
+        "BosunAuditEvent shape matches sink path (run_id, pack_id, pack_version, etc)",
+        "Sink path (:479-489) NOT modified, only None fallback branch",
+        "Field names match audit-sink shape exactly per webhook.py:510-518",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_triggers_webhook.py::test_emit_audit_with_no_sink_logs_via_structlog",
+        "tests/unit/test_triggers_webhook.py::test_emit_audit_with_sink_does_not_log_fallback"
+      ],
+      "covers_criteria": [
+        "AC-T16-1",
+        "AC-T16-2",
+        "AC-T16-3"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT rewrite audit-sink path",
+        "Do NOT change BosunAuditEvent shape",
+        "Use get_logger(__name__), not legacy logging.getLogger"
+      ],
+      "bucket": "B",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T17",
+      "title": "serve/lifecycle._resolve_run + serve/respond._resolve_run look up deps[\"runs\"]",
+      "cluster": "serve-layer",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/serve/lifecycle.py",
+        "/home/sean/leagues/harbor/src/harbor/serve/respond.py",
+        "/home/sean/leagues/harbor/tests/unit/test_serve_lifecycle.py",
+        "/home/sean/leagues/harbor/tests/unit/test_serve_respond.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"_resolve_run\" src/harbor/serve/ and deps[\"runs\"] \u2014 confirm both resolvers raise unconditionally, _drive_real_run populates registry",
+        "Both _resolve_run functions check deps[\"runs\"].get(run_id) first, return GraphRun if present",
+        "If not present, raise HarborRuntimeError with existing context kwargs",
+        "If _run= passed explicitly (legacy override), that path takes precedence",
+        "Cross-cluster consistency: both resolvers use same lookup key string \"runs\"",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_serve_lifecycle.py::test_resolve_run_returns_run_from_registry_when_present",
+        "tests/unit/test_serve_lifecycle.py::test_resolve_run_raises_when_absent",
+        "tests/unit/test_serve_respond.py::test_resolve_run_returns_run_from_registry_when_present",
+        "tests/unit/test_serve_respond.py::test_resolve_run_raises_when_absent"
+      ],
+      "covers_criteria": [
+        "AC-T17-1",
+        "AC-T17-2",
+        "AC-T17-3"
+      ],
+      "depends_on": [
+        "T02"
+      ],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT touch _resolve_run_registry in serve/api.py",
+        "Do NOT change error class or **context kwargs",
+        "Match house-style logging"
+      ],
+      "bucket": "B",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T11",
+      "title": "bosun/retries/__init__.py rule logic + signing",
+      "cluster": "bosun",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/bosun/retries/__init__.py",
+        "/home/sean/leagues/harbor/tests/unit/test_bosun_retries.py",
+        "/home/sean/leagues/harbor/tests/unit/test_bosun_retries_signing.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"__all__: list\\[str\\] = \\[\\]\" src/harbor/bosun/retries/__init__.py \u2014 confirm scaffold",
+        "Module follows sibling shape of bosun/safety_pii/__init__.py:1-70",
+        "SPDX header and from __future__ import annotations present",
+        "_LOG = logging.getLogger(\"harbor.bosun.retries\") matches bosun/signing.py:90 style",
+        "@dataclass(frozen=True) class RetryDecision result type",
+        "_PATTERNS tuple of (name, predicate, action) rule entries mirroring rules.clp",
+        "def decide(...) function returning RetryDecision",
+        "NEW module-level constant _PACK_ROOT: Path = Path(__file__).parent",
+        "Audit emit path calls bosun.signing.sign_pack(tree=_PACK_ROOT, signing_key=..., key_id=...)",
+        "__all__ lists every exported symbol",
+        "decide() is sync (matches safety_pii.scan sync shape)",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_bosun_retries.py::test_decide_returns_retry_decision_for_known_pattern",
+        "tests/unit/test_bosun_retries.py::test_decide_returns_no_retry_when_no_pattern_matches",
+        "tests/unit/test_bosun_retries_signing.py::test_pack_root_constant_resolves_to_module_dir",
+        "tests/unit/test_bosun_retries_signing.py::test_sign_pack_against_retries_pack_root_returns_jwt"
+      ],
+      "covers_criteria": [
+        "AC-T11-1",
+        "AC-T11-2",
+        "AC-T11-3",
+        "AC-T11-4",
+        "AC-T11-5"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Do NOT introduce new signing code",
+        "Do NOT add HSM/KMS abstraction",
+        "Do NOT change pack manifest layout",
+        "If sign_pack requires additional manifest files, surface as open question"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    },
+    {
+      "id": "T12",
+      "title": "bosun/budgets/__init__.py rule logic + signing",
+      "cluster": "bosun",
+      "files": [
+        "/home/sean/leagues/harbor/src/harbor/bosun/budgets/__init__.py",
+        "/home/sean/leagues/harbor/tests/unit/test_bosun_budgets.py",
+        "/home/sean/leagues/harbor/tests/unit/test_bosun_budgets_signing.py"
+      ],
+      "acceptance_criteria": [
+        "git grep -n \"__all__: list\\[str\\] = \\[\\]\" src/harbor/bosun/budgets/__init__.py \u2014 confirm scaffold",
+        "Same shape constraints as T11, substituting BudgetDecision for RetryDecision",
+        "_PACK_ROOT constant defined",
+        "_LOG = logging.getLogger(\"harbor.bosun.budgets\")",
+        "decide() returns BudgetDecision reflecting CLIPS rule set in rules.clp",
+        "Signing path identical to T11 (call bosun.signing.sign_pack with _PACK_ROOT)",
+        "No new NotImplementedError"
+      ],
+      "covers_tests": [
+        "tests/unit/test_bosun_budgets.py::test_decide_returns_budget_decision_for_known_pattern",
+        "tests/unit/test_bosun_budgets.py::test_decide_returns_no_action_when_under_budget",
+        "tests/unit/test_bosun_budgets_signing.py::test_pack_root_constant_resolves_to_module_dir",
+        "tests/unit/test_bosun_budgets_signing.py::test_sign_pack_against_budgets_pack_root_returns_jwt"
+      ],
+      "covers_criteria": [
+        "AC-T12-1",
+        "AC-T12-2",
+        "AC-T12-3",
+        "AC-T12-4"
+      ],
+      "depends_on": [],
+      "attestation_invariants": [],
+      "guardrails": [
+        "Same as T11"
+      ],
+      "bucket": "A",
+      "passes": false,
+      "attempts": 0
+    }
+  ]
+}
