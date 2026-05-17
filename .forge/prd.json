@@ -672,8 +672,8 @@
         "Do NOT change RunHistory.list/count"
       ],
       "bucket": "B",
-      "passes": false,
-      "attempts": 0
+      "passes": true,
+      "attempts": 1
     },
     {
       "id": "T15",

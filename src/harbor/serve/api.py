@@ -287,6 +287,7 @@ class _RunsPage(BaseModel):
     total: int
     limit: int
     offset: int
+    cursor: str | None = None
 
 
 class _ResumeRequest(BaseModel):
