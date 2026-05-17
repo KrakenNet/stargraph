@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """BasicChat — plain LLM fallback for the basic route.
 
-Reads `turn` and `history` from state, calls the LLM (or returns a stub
-response for Phase A before the model registry decision lands), and writes
+Reads `turn` and `history` from state, calls the LLM (or returns an explicit
+"LLM not configured" message when no dspy.LM is wired), and writes
 the result to `response` (design §3.1).
 
 State contract: reads `turn`, `history`; writes `response`.
@@ -29,26 +29,49 @@ _SYSTEM_PROMPT = (
     "Keep responses concise and specific to Harbor/StarGraph."
 )
 
+_LLM_NOT_CONFIGURED = (
+    "LLM not configured. Set STARGRAPH_LLM_URL and STARGRAPH_LLM_MODEL "
+    "environment variables (or pass --lm-url / --lm-model to stargraph serve) "
+    "to enable AI Builder chat."
+)
+
 
 def _call_llm(
     turn: str,
     history: list[dict[str, Any]],
-    model: Any | None = None,  # noqa: ANN401 -- model registry TBD (§8 Q4)
 ) -> str:
-    """Call the LLM with system prompt + history + turn.
+    """Call the LLM via dspy.Predict when dspy.settings.lm is set.
 
-    Phase A stub: returns a canned response. Wire real LLM when model
-    registry decision lands (design §8 Q4).
+    Falls back to an explicit "LLM not configured" message (not a stub, not
+    a fictional reply) when no LM is wired, per design §14.2 decision.
     """
-    del model  # unused until model registry lands
-    del history  # passed to LLM once wired
-    del turn
-    # TODO Phase A polish: replace with real LLM call once model registry is decided.
-    return "stub: basic chat — LLM not yet wired (Phase A scaffold)"
+    import dspy  # pyright: ignore[reportMissingTypeStubs]
+
+    if dspy.settings.lm is None:  # pyright: ignore[reportUnknownMemberType]
+        return _LLM_NOT_CONFIGURED
+
+    class _ChatSignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]
+        """Chat with an AI Builder assistant."""
+
+        system_prompt: str = dspy.InputField()  # pyright: ignore[reportUnknownMemberType]
+        history: str = dspy.InputField()  # pyright: ignore[reportUnknownMemberType]
+        user_turn: str = dspy.InputField()  # pyright: ignore[reportUnknownMemberType]
+        response: str = dspy.OutputField()  # pyright: ignore[reportUnknownMemberType]
+
+    predictor = dspy.Predict(_ChatSignature)  # pyright: ignore[reportUnknownMemberType]
+    history_text = "\n".join(
+        f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in history
+    )
+    result = predictor(  # pyright: ignore[reportUnknownMemberType]
+        system_prompt=_SYSTEM_PROMPT,
+        history=history_text,
+        user_turn=turn,
+    )
+    return str(result.response)  # pyright: ignore[reportUnknownMemberType]
 
 
 class BasicChat(NodeBase):
-    """Plain LLM chat node. Phase A: stub response; Phase A polish: real LLM."""
+    """Plain LLM chat node. Calls dspy.Predict when an LM is configured."""
 
     async def execute(self, state: BaseModel, ctx: ExecutionContext) -> dict[str, Any]:
         turn: str = getattr(state, "turn", "")
