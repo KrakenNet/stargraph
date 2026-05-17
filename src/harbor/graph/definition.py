@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -40,11 +41,11 @@ from pydantic import BaseModel, create_model
 import harbor
 from harbor.errors import IRValidationError, SimulationError, ValidationError
 from harbor.graph.hash import runtime_hash, structural_hash
+from harbor.graph.run import GraphRun
 from harbor.ir._validate import validate as _validate_ir
 from harbor.tools.spec import SideEffects
 
 if TYPE_CHECKING:
-    from harbor.graph.run import GraphRun
     from harbor.ir._models import IRDocument, ParallelBlock
 
 __all__ = ["Graph", "RuleFiring", "SimulationResult"]
@@ -416,8 +417,16 @@ class Graph:
         scheduler) lands in task 1.16; this skeleton raises so callers don't
         silently get a no-op run.
         """
-        del state, checkpointer, capabilities, audit_sink, run_id  # task 1.16
-        raise NotImplementedError("Graph.start lands in task 1.16 (run-loop wiring)")
+        if run_id is None:
+            run_id = uuid.uuid4().hex
+        return GraphRun(
+            run_id=run_id,
+            graph=self,
+            initial_state=state,
+            checkpointer=checkpointer,
+            capabilities=capabilities,
+            audit_sink=audit_sink,
+        )
 
     async def simulate(self, fixtures: dict[str, Any]) -> SimulationResult:
         """Run this graph against offline fixtures and return the rule-firing trace (FR-9).
