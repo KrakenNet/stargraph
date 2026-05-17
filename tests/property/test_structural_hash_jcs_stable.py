@@ -237,12 +237,21 @@ def _build_ir(
 
 @pytest.mark.property
 def test_irdocument_hash_stable() -> None:
-    """Same IR built with two different node-insertion orders → identical hash."""
+    """Same IR built with two different node-insertion orders → identical hash.
+
+    Amended per T18: mirrors Graph.__init__:384 — compile state_schema to a
+    BaseModel subclass via _compile_state_schema and inject via model_copy
+    before calling structural_hash (repr fallback removed by T18, FR-6).
+    """
+    from harbor.graph.definition import _compile_state_schema
     from harbor.graph.hash import structural_hash
 
     rule_packs: list[tuple[str, str, str]] = [("pack-a", "deadbeef", "1.0.0")]
-    ir1 = _build_ir(["alpha", "beta", "gamma"])
-    ir2 = _build_ir(["gamma", "alpha", "beta"])
+    compiled = _compile_state_schema({}, graph_id="ir-test-stable")
+    ir1_raw = _build_ir(["alpha", "beta", "gamma"])
+    ir2_raw = _build_ir(["gamma", "alpha", "beta"])
+    ir1 = ir1_raw.model_copy(update={"state_schema": compiled})  # type: ignore[arg-type]
+    ir2 = ir2_raw.model_copy(update={"state_schema": compiled})  # type: ignore[arg-type]
 
     h1 = structural_hash(ir1, rule_pack_versions=rule_packs)
     h2 = structural_hash(ir2, rule_pack_versions=rule_packs)
@@ -252,10 +261,15 @@ def test_irdocument_hash_stable() -> None:
 
 @pytest.mark.property
 def test_irdocument_rule_pack_order_invariant() -> None:
-    """Same IR + same rule-pack triples in different orders → identical hash."""
+    """Same IR + same rule-pack triples in different orders → identical hash.
+
+    Amended per T18: mirrors Graph.__init__:384 compile-then-replace pattern.
+    """
+    from harbor.graph.definition import _compile_state_schema
     from harbor.graph.hash import structural_hash
 
-    ir = _build_ir(["n1", "n2"])
+    compiled = _compile_state_schema({}, graph_id="ir-test-order")
+    ir = _build_ir(["n1", "n2"]).model_copy(update={"state_schema": compiled})  # type: ignore[arg-type]
     packs_a: list[tuple[str, str, str]] = [
         ("pack-a", "aa11", "1.0.0"),
         ("pack-b", "bb22", "2.0.0"),
@@ -275,12 +289,19 @@ def test_irdocument_rule_pack_order_invariant() -> None:
 
 @pytest.mark.property
 def test_irdocument_state_schema_change_changes_hash() -> None:
-    """Different state schema → different hash (rule (c) participates)."""
+    """Different state schema → different hash (rule (c) participates).
+
+    Amended per T18: compile raw dicts via _compile_state_schema and inject
+    via model_copy (mirrors Graph.__init__:384; repr fallback removed FR-6).
+    """
+    from harbor.graph.definition import _compile_state_schema
     from harbor.graph.hash import structural_hash
 
     rule_packs: list[tuple[str, str, str]] = [("pack-a", "deadbeef", "1.0.0")]
-    ir1 = _build_ir(["n1"], state_schema={"counter": "int"})
-    ir2 = _build_ir(["n1"], state_schema={"counter": "str"})
+    schema1 = _compile_state_schema({"counter": "int"}, graph_id="ir-test-1")
+    schema2 = _compile_state_schema({"counter": "str"}, graph_id="ir-test-2")
+    ir1 = _build_ir(["n1"]).model_copy(update={"state_schema": schema1})  # type: ignore[arg-type]
+    ir2 = _build_ir(["n1"]).model_copy(update={"state_schema": schema2})  # type: ignore[arg-type]
 
     h1 = structural_hash(ir1, rule_pack_versions=rule_packs)
     h2 = structural_hash(ir2, rule_pack_versions=rule_packs)

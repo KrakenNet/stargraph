@@ -46,6 +46,7 @@ from typing import TYPE_CHECKING, Any, cast
 import rfc8785
 from pydantic import BaseModel
 
+from harbor.errors import IRValidationError
 from harbor.ir._models import GotoAction, ParallelAction, RetryAction
 
 if TYPE_CHECKING:
@@ -219,13 +220,23 @@ def _state_schema_signature(state_schema: Any) -> Any:
     If ``state_schema`` is a Pydantic ``BaseModel`` *subclass*, return its
     serialization-mode JSON schema (the schema produced by
     ``model_dump(mode='json')``, which is what gets persisted across runs).
-    Otherwise return ``repr(state_schema)`` — the POC IR stores
-    ``state_schema`` as a ``dict[str, str]`` placeholder until the
-    state-model compiler lands in task 1.10.
+    All other inputs raise :class:`~harbor.errors.IRValidationError` (FR-6
+    force-loud). Callers that previously fed raw ``dict[str, str]`` must
+    compile via :func:`harbor.graph.definition._compile_state_schema` first;
+    ``Graph.__init__`` already does this.
     """
     if isinstance(state_schema, type) and issubclass(state_schema, BaseModel):
         return state_schema.model_json_schema(mode="serialization")
-    return repr(cast("Any", state_schema))
+    raise IRValidationError(
+        "state_schema must be a BaseModel subclass at the structural-hash boundary",
+        path="state_schema",
+        expected="type[BaseModel]",
+        actual=type(state_schema).__name__,
+        hint=(
+            "callers via Graph.__init__ are already compiled; "
+            "direct callers must compile via _compile_state_schema"
+        ),
+    )
 
 
 def _structural_hash_dict(payload: dict[str, Any]) -> str:
