@@ -37,8 +37,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import dspy  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
 
+from harbor.adapters.dspy import _install_filter
+from harbor.logging import get_logger
 from harbor.skills.base import Skill, SkillKind
 
 if TYPE_CHECKING:
@@ -56,6 +59,8 @@ __all__ = [
     "SourceRecord",
     "WikiEntry",
 ]
+
+_LOGGER = get_logger(__name__)
 
 
 _AUTORESEARCH_REQUIRES: tuple[str, ...] = (
@@ -197,9 +202,10 @@ class AutoresearchSkill(Skill):
                 )
                 raise ValueError(msg)
 
+        summary = self._call_summary(state.topic, [c.text for c in claims])
         wiki_entry = WikiEntry(
             topic=state.topic,
-            summary=f"POC stub summary for {state.topic} ({len(claims)} claims)",
+            summary=summary,
             claim_ids=[c.id for c in claims],
         )
 
@@ -210,3 +216,30 @@ class AutoresearchSkill(Skill):
                 "wiki_entry": wiki_entry,
             }
         )
+
+    def _call_summary(self, topic: str, claims: list[str]) -> str:
+        """Route the wiki-entry summary through the DSPy seam (FR-33, T10).
+
+        Invokes ``dspy.Predict(_AutoresearchSummarySignature)`` with
+        force-loud adapter installed. Returns the LM-produced ``summary``
+        string. Raises :class:`~harbor.errors.AdapterFallbackError` when
+        DSPy hits the silent JSONAdapter fallback path.
+        """
+        _install_filter()
+        predictor = dspy.Predict(_AutoresearchSummarySignature)
+        _LOGGER.debug("autoresearch._call_summary", topic=topic, n_claims=len(claims))
+        result = predictor(topic=topic, claims=claims)
+        return str(result.summary)
+
+
+class _AutoresearchSummarySignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]
+    """Autoresearch wiki-entry summary (T10).
+
+    Inputs: ``topic`` (the research subject), ``claims`` (the list of
+    extracted claim texts). Output: ``summary`` (the synthesized wiki
+    entry summary).
+    """
+
+    topic: str = dspy.InputField()  # pyright: ignore[reportUnknownMemberType]
+    claims: list[str] = dspy.InputField()  # pyright: ignore[reportUnknownMemberType]
+    summary: str = dspy.OutputField()  # pyright: ignore[reportUnknownMemberType]

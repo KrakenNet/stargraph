@@ -232,7 +232,7 @@
     },
     {
       "path": "tests/integration/test_autoresearch_skill.py",
-      "sha256": "28f2eae12e980f735dffe3e4228f6dcf7adf4eebb285037d9384028e916ce9f2",
+      "sha256": "04792a5389ea3775d23d868c20a397f69156f78c9caf03d77524bfb64a900bf8",
       "action": "new",
       "task": "T10",
       "tests_added": [
