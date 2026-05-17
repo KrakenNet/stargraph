@@ -64,23 +64,19 @@ class LanceDBVectorStore:
 
     def __init__(
         self,
-        path: Path | str | None = None,
-        embedder: Embedding | None = None,
+        path: Path,
+        embedder: Embedding,
         *,
         table_name: str = "vectors",
         tmp_dir: Path | None = None,
-        # Convenience aliases used by tests / callers that prefer URI-style kwargs.
-        uri: Path | str | None = None,
-        table: str | None = None,
     ) -> None:
-        resolved_path = Path(uri if uri is not None else path)  # type: ignore[arg-type]
-        self._path = resolved_path
+        self._path = path
         self._embedder = embedder
-        self._table_name = table if table is not None else table_name
+        self._table_name = table_name
         self._version = _SCHEMA_V
         # FR-9 / lance#2461: keep FTS scratch off the table dir to avoid
         # cross-process write contention. Default ``<path>/.tmp``.
-        self._tmp_dir = tmp_dir if tmp_dir is not None else resolved_path / ".tmp"
+        self._tmp_dir = tmp_dir if tmp_dir is not None else path / ".tmp"
 
     # ------------------------------------------------------------------ lifecycle
 
