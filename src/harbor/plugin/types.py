@@ -18,6 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from pydantic import BaseModel
+
 if TYPE_CHECKING:
     import pluggy
 
@@ -26,6 +28,7 @@ if TYPE_CHECKING:
 
 
 __all__ = [
+    "BosunAction",
     "MCPAdapterSpec",
     "PackSpec",
     "PluginManager",
@@ -34,6 +37,18 @@ __all__ = [
     "ToolCall",
     "ToolResult",
 ]
+
+
+class BosunAction(BaseModel):
+    """Pluggy ``authorize_action`` payload model.
+
+    Typed parameter for :func:`harbor.plugin.hookspecs.authorize_action`.
+    Three minimal-viable fields per ``shared.md §4``.
+    """
+
+    action_kind: str
+    target: str
+    payload: dict[str, Any]
 
 
 # Pluggy plugin manager handle — used by lifecycle hooks
