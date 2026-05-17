@@ -28,7 +28,13 @@ restore is wired here; checkpoint integration is a Phase 3 concern.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import hashlib
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
+
+import rfc8785
+
+from harbor.stores.fact import Fact
 
 if TYPE_CHECKING:
     import fathom
@@ -36,6 +42,34 @@ if TYPE_CHECKING:
     from harbor.ir._mirror import Lifecycle
 
 __all__ = ["MirrorScheduler"]
+
+
+def _assert_spec_to_fact(
+    spec: Any,
+    *,
+    run_id: str,
+    step: int,
+    user: str = "harbor",
+    agent: str = "engine",
+) -> Fact:
+    """Translate a ``fathom.AssertSpec`` into a :class:`harbor.stores.fact.Fact`.
+
+    Builds a deterministic ``id`` from JCS-canonical ``(template, slots)``,
+    ``payload`` from slots, single-row ``lineage`` carrying
+    ``(kind="mirror", run_id, step, template)``, ``confidence=1.0``,
+    ``pinned_at=datetime.now(UTC)``.
+    """
+    canonical_input: dict[str, Any] = {"template": spec.template, "slots": spec.slots}
+    fact_id = hashlib.sha256(rfc8785.dumps(canonical_input)).hexdigest()
+    return Fact(
+        id=fact_id,
+        user=user,
+        agent=agent,
+        payload={"template": spec.template, **spec.slots},
+        lineage=[{"kind": "mirror", "run_id": run_id, "step": step, "template": spec.template}],
+        confidence=1.0,
+        pinned_at=datetime.now(UTC),
+    )
 
 
 class MirrorScheduler:
@@ -84,17 +118,31 @@ class MirrorScheduler:
         """
         self._step.clear()
 
-    def persist_pinned(self) -> None:
-        """Flush the ``pinned`` bucket to the FactStore (Phase 3).
+    async def persist_pinned(
+        self,
+        fact_store: Any,
+        *,
+        run_id: str,
+        step: int,
+    ) -> None:
+        """Flush the ``pinned`` bucket to the FactStore.
 
-        v1 stub: pinned specs are recorded by :meth:`schedule` but not yet
-        persisted. The FactStore protocol lives in the harbor-knowledge spec
-        and is wired up in Phase 3 of harbor-engine; until then this method
-        is a no-op (specs remain in the in-memory bucket, available for
-        introspection but not durable across runs).
+        Calls :meth:`~harbor.stores.fact.FactStore.pin` once per pinned spec.
+        Raises :class:`harbor.errors.HarborRuntimeError` (FR-6 force-loud) if
+        ``self._pinned`` is non-empty and ``fact_store`` is ``None``. Errors
+        from ``pin`` propagate -- no swallowing.
 
-        TODO(harbor-knowledge): replace this stub with a FactStore.write_batch
-        call and clear ``self._pinned`` on success.
+        When ``self._pinned`` is empty this method returns immediately.
         """
-        # Phase 3 stub -- FactStore integration deferred (knowledge spec).
-        return
+        if not self._pinned:
+            return
+        if fact_store is None:
+            from harbor.errors import HarborRuntimeError
+
+            raise HarborRuntimeError(
+                "fact_store required when pinned specs are present",
+                pinned_count=len(self._pinned),
+            )
+        for spec in self._pinned:
+            fact = _assert_spec_to_fact(spec, run_id=run_id, step=step)
+            await fact_store.pin(fact)

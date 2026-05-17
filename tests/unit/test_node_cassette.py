@@ -210,6 +210,9 @@ class _FakeMirror:
     def retract_step(self) -> None:
         return None
 
+    async def persist_pinned(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
 
 @dataclass
 class _FakeGraph:
@@ -222,6 +225,7 @@ class _FakeRun:
     run_id: str = "run-1"
     parent_run_id: str | None = None
     fathom: Any = None
+    fact_store: Any = None
     node_id: str = ""
     graph: Any = field(default_factory=_FakeGraph)
     checkpointer: Any = field(default_factory=_FakeCheckpointer)
