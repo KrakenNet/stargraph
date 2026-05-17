@@ -163,8 +163,6 @@ class RyuGraphStore:
         unsupported ops.
         """
         _validate_migration_plan(plan, store="ryugraph")
-        msg = "RyuGraphStore.migrate is not implemented in the POC"
-        raise NotImplementedError(msg)
 
     # ------------------------------------------------------------------ CRUD
 
