@@ -193,3 +193,54 @@ def test_decorator_preserves_callable_behavior() -> None:
         return a + b
 
     assert add(2, 3) == 5
+
+
+# ---------------------------------------------------------------------------
+# T19: _derive_input_schema accepts type[BaseModel]
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_derive_input_schema_from_basemodel_subclass() -> None:
+    """A :class:`pydantic.BaseModel` subclass passed as ``input_schema`` is
+    converted via ``.model_json_schema(mode="serialization")`` (T19)."""
+    from pydantic import BaseModel
+
+    from harbor.tools.decorator import _derive_input_schema
+
+    class _Inputs(BaseModel):
+        query: str
+        top_k: int = 5
+
+    def _fn(query: str, top_k: int = 5) -> None: ...
+
+    out = _derive_input_schema(_Inputs, _fn)
+    assert isinstance(out, dict)
+    assert "properties" in out
+    assert set(out["properties"].keys()) == {"query", "top_k"}
+
+
+@pytest.mark.unit
+def test_derive_input_schema_from_dict_unchanged() -> None:
+    """``input_schema`` already a dict is returned unchanged (T19)."""
+    from harbor.tools.decorator import _derive_input_schema
+
+    given = {"type": "object", "properties": {"x": {"type": "string"}}}
+
+    def _fn(x: str) -> None: ...
+
+    out = _derive_input_schema(given, _fn)
+    assert out == given
+
+
+@pytest.mark.unit
+def test_derive_input_schema_from_signature_unchanged() -> None:
+    """``input_schema=None`` falls through to the ``TypeAdapter`` signature path
+    -- existing behavior preserved (T19)."""
+    from harbor.tools.decorator import _derive_input_schema
+
+    def _fn(x: str, y: int = 0) -> None: ...
+
+    out = _derive_input_schema(None, _fn)
+    assert isinstance(out, dict)
+    assert "properties" in out

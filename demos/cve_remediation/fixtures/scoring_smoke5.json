@@ -1,0 +1,81 @@
+{
+  "bucket_quotas": {
+    "library": 2,
+    "web-framework": 1,
+    "host": 1,
+    "config-only": 1
+  },
+  "count": 5,
+  "cves": [
+    {
+      "cve_id": "CVE-2021-44228",
+      "kev_date_added": "2021-12-10",
+      "known_exploited": true,
+      "product": "Log4j",
+      "ransomware_use": "Known",
+      "vendor": "Apache",
+      "vuln_class": "library",
+      "expected_cwe": "CWE-502",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_auto",
+      "vuln_name": "Apache Log4j2 Remote Code Execution Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-26130",
+      "kev_date_added": null,
+      "known_exploited": false,
+      "product": "cryptography",
+      "ransomware_use": "Unknown",
+      "vendor": "PyCA",
+      "vuln_class": "library",
+      "expected_cwe": "CWE-476",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "attend",
+      "vuln_name": "Python cryptography NULL pointer dereference in PKCS12 parsing"
+    },
+    {
+      "cve_id": "CVE-2014-2120",
+      "kev_date_added": "2024-11-12",
+      "known_exploited": true,
+      "product": "Adaptive Security Appliance (ASA)",
+      "ransomware_use": "Unknown",
+      "vendor": "Cisco",
+      "vuln_class": "web-framework",
+      "expected_cwe": "CWE-79",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_auto",
+      "vuln_name": "Cisco Adaptive Security Appliance (ASA) Cross-Site Scripting (XSS) Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2024-3094",
+      "kev_date_added": null,
+      "known_exploited": false,
+      "product": "xz-utils",
+      "ransomware_use": "Unknown",
+      "vendor": "tukaani",
+      "vuln_class": "host",
+      "expected_cwe": "CWE-506",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_hitl_required",
+      "vuln_name": "Malicious backdoor in xz-utils 5.6.0 / 5.6.1 (sshd RCE chain)",
+      "annotation_note": "Not in CISA KEV catalog as of 2026-05-06 (caught pre-exploitation); high EPSS+CVSS still routes to act_hitl_required."
+    },
+    {
+      "cve_id": "CVE-2023-32681",
+      "kev_date_added": null,
+      "known_exploited": false,
+      "product": "requests",
+      "ransomware_use": "Unknown",
+      "vendor": "PSF",
+      "vuln_class": "config-only",
+      "expected_cwe": "CWE-200",
+      "expected_dispatcher_runtime": "static_detection",
+      "expected_ssvc_tier": "attend",
+      "vuln_name": "Python requests leaks Proxy-Authorization on cross-host redirect"
+    }
+  ],
+  "kev_catalog_version": "smoke5",
+  "kev_date_released": "2026-05-07",
+  "schema_version": "1",
+  "seed": 5
+}

@@ -1,0 +1,19 @@
+id: cve_rem.gepa_score_policy
+version: '1.0'
+flavor: governance
+api_version: '1'
+harbor_facts_version: '1.0'
+description: "Encodes the v6-locked weighted GEPA score:\n\n  score = 0.35*validation_passed\n\
+  \        + 0.25*sandbox_passed\n        + 0.15*CR_approved\n        + 0.15*no_drift_within_7d\n\
+  \        + 0.10*no_rollback_within_30d\n\nEach component is asserted as a cve_rem.score_component\
+  \ fact (value in [0,1]). A consolidated cve_rem.gepa_score fact is emitted. The\
+  \ strictly-better gate fires cve_rem.gepa_decision (accept | reject) based on the\
+  \ candidate vs current score and the epsilon margin (default 0.02). Out-of-range\
+  \ component values raise a halt violation (data-quality fail-loud)."
+ruleset_file: rules.clp
+provides:
+- harbor_facts:cve_rem.score_component
+- harbor_facts:cve_rem.gepa_score
+- harbor_facts:cve_rem.gepa_decision
+- harbor_facts:bosun.violation
+rules: []

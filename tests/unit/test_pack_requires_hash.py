@@ -27,13 +27,22 @@ from harbor.ir._models import (
 
 
 def _build_ir(governance: list[PackMount]) -> IRDocument:
-    """Tiny IRDocument shell with a single node and the supplied ``governance``."""
-    return IRDocument(
+    """Tiny IRDocument shell with a single node and the supplied ``governance``.
+
+    Amended per T18: compile state_schema to a BaseModel subclass and inject
+    via model_copy before returning. Mirrors Graph.__init__:384 pattern, since
+    structural_hash now force-louds on raw dict state_schema (FR-6).
+    """
+    from harbor.graph.definition import _compile_state_schema
+
+    ir = IRDocument(
         ir_version="1.0.0",
         id="run:test",
         nodes=[NodeSpec(id="n0", kind="test")],
         governance=governance,
     )
+    compiled = _compile_state_schema({}, graph_id="ir-pack-requires-hash")
+    return ir.model_copy(update={"state_schema": compiled})  # type: ignore[arg-type]
 
 
 @pytest.mark.unit

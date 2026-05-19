@@ -1,0 +1,662 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# CVE Remediation Pipeline — main parent graph (v6, P0+P1+P2+P3 applied)
+# See ../cve-rem-graph.md for design.
+#
+# Topology covers steps 1-18 (Phase 1 intake -> Phase 5 retro).
+# Phase 0 (doctrine ingest), Phase 6 (offline learning), and 5 triggered
+# graphs (drift_watch, tier_re_eval, audit_anchor, lab_leak_reaper,
+# rolling_restart) live in their own files under phase0/, phase6/, and
+# triggered/.
+#
+# Node-kind dictionary used here:
+#   passthrough     -- branching/dispatch helper, no external side-effect
+#   broker          -- nautilus-mediated external call (Nautobot, CMDB, SN, Doc+, CargoNet, Harbor /v1/runs)
+#   dspy            -- DSPy module (extractor, classifier, planner, code_writer, critic)
+#   ml              -- ML inference node (SSVC tier pre-classifier; pre-computed cache miss)
+#   tool            -- typed tool call (Fathom, ansible-lint/kubeval/tflint, gNMI, Batfish, ed25519, sha256, redis, TEI)
+#   write_artifact  -- emit ArtifactRef into the artifact store
+#   interrupt       -- HITL gate (durable wait, timeout=null)
+#   subgraph        -- sub-graph reference (sandbox_dispatch, progressive_execute)
+#
+# vuln_class -> sandbox_runtime selection (deterministic; not LLM):
+#   network/routing/switching/firewall/ipsec/bgp/ospf -> 11a cargonet_lab
+#   application/library/web-framework/container/host -> 11b docker_compose
+#   config-only/cipher-suite/tls-policy/acl-rule     -> 11c static_detection
+#   logic-flaw/business-rule/no-probe                -> 11d skip (forces HITL)
+#
+# All HITL gates use timeout: null (Temporal durable wait). Each gate is
+# followed by a branch_resp_<gate> passthrough that pattern-matches on
+# (response (decision approve|reject)) and routes accordingly.
+
+ir_version: "1.0.0"
+id: "graph:cve-rem-pipeline"
+
+nodes:
+  # ---------- Pre-flight gates (Fancy CRITERIA #5/#12) ----------
+  - id: halt_new_gate                # F12: fleet-wide halt-new gate at run start
+    kind: "demos.cve_remediation.graph.real_nodes:HaltNewGateNode"
+
+  # ---------- Phase 1: intake ----------
+  - id: intake_fetch                 # 0: NVD JSON 2.0 fetch by cve_id (demo-local tool)
+    kind: "demos.cve_remediation.graph.real_nodes:IntakeFetchNode"
+  - id: source_trust_gate            # routes trusted | semi | untrusted
+    kind: "demos.cve_remediation.graph.real_nodes:SourceTrustGateNode"
+  - id: canonicalize_trusted         # 1t: NFKC + markdown->AST
+    kind: "demos.cve_remediation.graph.real_nodes:CanonicalizeTrustedNode"
+  - id: extract_trusted              # 2t: schema-constrained extractor
+    kind: "demos.cve_remediation.graph.real_nodes:ExtractTrustedNode"
+  - id: enrich_cve_trusted           # 3t: NVD/EPSS/KEV merge; watermark clean
+    kind: "demos.cve_remediation.graph.real_nodes:EnrichCveTrustedNode"
+  - id: source_trust_audit           # task #74: source-trust audit row
+    kind: "demos.cve_remediation.graph.real_nodes:SourceTrustAuditNode"
+  - id: canonicalize_untrusted       # 1u: same + quarantine flag
+    kind: "demos.cve_remediation.graph.real_nodes:CanonicalizeUntrustedNode"
+  - id: emit_quarantine_artifact     # P1: raw text persisted as ArtifactRef
+    kind: "demos.cve_remediation.graph.real_nodes:EmitQuarantineArtifactNode"
+  - id: extract_untrusted            # 2u
+    kind: "demos.cve_remediation.graph.real_nodes:ExtractUntrustedNode"
+  - id: injection_classify           # 3u: clean | suspicious | attack_pattern
+    kind: "demos.cve_remediation.graph.real_nodes:InjectionClassifyNode"
+  - id: critique_extracted           # 4u: critique-shaped schema-validation critic
+    kind: "demos.cve_remediation.graph.real_nodes:CritiqueExtractedNode"
+  - id: enrich_cve_untrusted         # 5u: sets untrusted_text_influenced=true on retrieval edges
+    kind: "demos.cve_remediation.graph.real_nodes:EnrichCveUntrustedNode"
+  - id: hitl_ingest_review           # durable wait (offline auto-approve)
+    kind: "demos.cve_remediation.graph.real_nodes:HitlIngestReviewNode"
+  - id: branch_resp_ingest           # P0: route on response decision
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: remediation_discovery        # 5.5: agentic discovery of fixes/workarounds
+                                     # for advisories without a clean fixed_version
+                                     # (xz no_fix_published path). 4 sources:
+                                     # advisory_ref + registry latest + DDG +
+                                     # local SearXNG -> LM JSON extract with
+                                     # citation guard. High-confidence
+                                     # upgrade/downgrade auto-promotes its
+                                     # target_version into state.fixed_version.
+    kind: "demos.cve_remediation.graph.real_nodes:RemediationDiscoveryNode"
+
+  # ---------- Phase 2: correlate + tier ----------
+  - id: correlate_assets             # 6: Nautobot + CMDB + reachability via Nautilus
+    kind: "demos.cve_remediation.graph.real_nodes:CorrelateAssetsBrokerNode"
+  - id: suppress_not_applicable      # 6 branch
+    kind: "demos.cve_remediation.graph.real_nodes:SuppressNotApplicableNode"
+  - id: ssvc_evaluate                # 7: Fathom rule-eval (cache hit) | ML pre-classifier (miss)
+    kind: "demos.cve_remediation.graph.real_nodes:SsvcTierEvaluatorNode"
+  - id: tier_terminal_track          # 7 TRACK -> exposure-monitor only
+    kind: "demos.cve_remediation.graph.real_nodes:TierTerminalTrackNode"
+  - id: tier_terminal_defer          # 7 DEFER -> with future_review_at
+    kind: "demos.cve_remediation.graph.real_nodes:TierTerminalDeferNode"
+
+  # ---------- Phase 3: plan + sandbox ----------
+  - id: plan_template_lookup         # 8: Plan-KG match cwe x asset-class x runtime
+    kind: "demos.cve_remediation.graph.real_nodes:PlanTemplateLookupNode"
+
+  # P1: agentic retrieval fanned out in parallel (up to 5 calls/attempt per v6)
+  - id: mcp_retrieval_dispatch       # fan-out helper
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: vec_search_retros            # pgvector retros similarity
+    kind: "demos.cve_remediation.graph.real_nodes:VecSearchRetrosNode"
+  - id: graph_prior_remediations     # Plan-KG prior plans
+    kind: "demos.cve_remediation.graph.real_nodes:GraphPriorRemediationsNode"
+  - id: graph_blast_radius           # Asset-KG reachability impact
+    kind: "demos.cve_remediation.graph.real_nodes:GraphBlastRadiusNode"
+  - id: framework_mapping            # Doctrine-KG control mapping
+    kind: "demos.cve_remediation.graph.real_nodes:FrameworkMappingNode"
+  - id: cargonet_lab_telemetry       # CargoNet historical probe traces
+    kind: "demos.cve_remediation.graph.real_nodes:CargonetLabTelemetryNode"
+
+  - id: planner                      # 9 planner: compiled prompt + Reflexion buffer
+    kind: "demos.cve_remediation.graph.real_nodes:PlannerNode"
+  - id: code_writer                  # 9 code writer: multi-runtime 4-tuple
+    kind: "demos.cve_remediation.graph.real_nodes:CodeWriterNode"
+  - id: emit_remediation_bundle      # P1: artifact ref for downstream consumers
+    kind: "demos.cve_remediation.graph.real_nodes:EmitRemediationBundleNode"
+  - id: critic                       # 9 critic: Fathom code-safety
+    kind: "demos.cve_remediation.graph.real_nodes:CriticNode"
+
+  - id: hitl_plan_review             # durable wait (offline auto-approve)
+    kind: "demos.cve_remediation.graph.real_nodes:HitlPlanReviewNode"
+  - id: branch_resp_plan             # P0: route on response decision
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+
+  # P1: dual judges in parallel
+  - id: validate_dispatch            # fan-out helper
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: judge_safety                 # Fathom code-safety + watermark recheck
+    kind: "demos.cve_remediation.graph.real_nodes:JudgeSafetyNode"
+  - id: judge_lint                   # runtime-specific lint + Batfish where applicable
+    kind: "demos.cve_remediation.graph.real_nodes:JudgeLintNode"
+  - id: validate_plan_join           # convergence; sets validation_passed
+    kind: "demos.cve_remediation.graph.real_nodes:ValidatePlanJoinNode"
+
+  - id: plan_quarantine_gate         # F5: halt-new on plan-KG quarantined plan_hash
+    kind: "demos.cve_remediation.graph.real_nodes:PlanQuarantineGateNode"
+  - id: sandbox_dispatch             # 11: deterministic runtime selection
+    kind: "demos.cve_remediation.graph.real_nodes:SandboxDispatchNode"
+  - id: sandbox_run                  # 11a/11b/11c via subgraph
+    kind: "demos.cve_remediation.graph.real_nodes:SandboxRunNode"
+  - id: sandbox_skip                 # 11d
+    kind: "demos.cve_remediation.graph.real_nodes:SandboxSkipNode"
+  - id: emit_sandbox_evidence        # P1: probe traces / Batfish diffs / container logs
+    kind: "demos.cve_remediation.graph.real_nodes:EmitSandboxEvidenceNode"
+
+  # ---------- Phase 4: CR + execute + verify ----------
+  - id: create_change_request        # 12: SN via Nautilus (envelope; live deferred)
+    kind: "demos.cve_remediation.graph.real_nodes:CreateChangeRequestNode"
+  - id: emit_evidence_bundle         # P1: plan + bundles + sandbox + JWS chain + Reflexion + recon_anomaly
+    kind: "demos.cve_remediation.graph.real_nodes:EmitEvidenceBundleNode"
+  - id: attach_all_artifacts         # task #79: upload every artifact ref + per-phase sandbox stdout to CR
+    kind: "demos.cve_remediation.graph.real_nodes:AttachAllArtifactsNode"
+  - id: hitl_change_approval         # durable wait (offline auto-approve)
+    kind: "demos.cve_remediation.graph.real_nodes:HitlChangeApprovalNode"
+  - id: branch_resp_change           # P0: route on response decision
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: progressive_execute          # 13: canary -> stage -> fleet
+    kind: "demos.cve_remediation.graph.real_nodes:ProgressiveExecuteNode"
+  - id: partial_apply_rollback       # 13 fail branch: per-asset ledger preserved
+    kind: "demos.cve_remediation.graph.real_nodes:PartialApplyRollbackNode"
+  - id: verify_immediate             # 14: runtime-appropriate probes
+    kind: "demos.cve_remediation.graph.real_nodes:VerifyImmediateNode"
+  - id: divergence_quarantine        # 14: sandbox-prod disagreement
+    kind: "demos.cve_remediation.graph.real_nodes:DivergenceQuarantineNode"
+  - id: drift_watch_spawn            # 15: POST /v1/runs to triggered drift_watch graph
+    kind: "demos.cve_remediation.graph.real_nodes:DriftWatchSpawnNode"
+
+  # ---------- Phase 5: retro + learn ----------
+  - id: write_retrospective          # 16: assemble retro data
+    kind: "demos.cve_remediation.graph.real_nodes:WriteRetrospectiveNode"
+  - id: kg_run_writeback             # Phase B: runtime KG (CVE/Action/Run/CI/Product) UPSERT
+    kind: "demos.cve_remediation.graph.real_nodes:KgRunWriterNode"
+  - id: emit_retro_payload           # P1: retro ArtifactRef
+    kind: "demos.cve_remediation.graph.real_nodes:EmitRetroPayloadNode"
+  - id: render_docx                  # 17: python-docx + Jinja2 narrative
+    kind: "demos.cve_remediation.graph.real_nodes:RenderDocxNode"
+  - id: emit_docx_archive            # P1: DOCX archive (also serves as Doc+ staging)
+    kind: "demos.cve_remediation.graph.real_nodes:EmitDocxArchiveNode"
+  - id: retro_dispatch               # P1: fan-out helper
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: publish_docplus              # 17: ServiceNow Doc+ via Nautilus (non-blocking)
+    kind: "demos.cve_remediation.graph.real_nodes:PublishDocPlusNode"
+  - id: cargonet_writeback           # 18: CargoNet visibility-only writeback (non-blocking)
+    kind: "demos.cve_remediation.graph.real_nodes:CargoNetWritebackNode"
+  - id: plan_kg_writeback            # 18: Plan-KG VERIFIED_ON edge (with outcome=patched|rollback)
+    kind: "demos.cve_remediation.graph.real_nodes:PlanKgWritebackNode"
+  - id: retro_join                   # P1: fan-in from parallel retro fan-out
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: krakntrust_attest            # F1: Ed25519-sign run attestation, attach to CR
+    kind: "demos.cve_remediation.graph.real_nodes:KrakntrustAttestNode"
+  - id: run_outcome_persist          # F12: persist run outcome for rollback-rate metric
+    kind: "demos.cve_remediation.graph.real_nodes:RunOutcomePersistNode"
+  - id: cr_self_validate             # task #84: refetch CR + assert substance thresholds
+    kind: "demos.cve_remediation.graph.real_nodes:CrSelfValidationNode"
+  - id: emit_proof_report            # task #86: single Markdown auditor report attached to CR
+    kind: "demos.cve_remediation.graph.real_nodes:EmitProofReportNode"
+  - id: hitl_retrospective_review    # durable wait (offline auto-approve)
+    kind: "demos.cve_remediation.graph.real_nodes:HitlRetrospectiveReviewNode"
+  - id: branch_resp_retro            # P0: route on response decision; feeds GEPA Critic signal
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+
+  # ---------- Terminal ----------
+  - id: action_done
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+
+state_class: "demos.cve_remediation.graph.state:CveRemState"
+
+tools:
+  # The single Harbor-registered tool. Every broker node in this graph
+  # (Nautobot, CMDB, ServiceNow, Doc+, CargoNet, Harbor /v1/runs spawn)
+  # dispatches via the canonical Nautilus broker — adapter routing in the
+  # broker is what hits the right downstream system.
+  - id: nautilus.broker_request
+    version: "1"
+
+  # Non-broker tools below — placeholders for design intent. Real binding
+  # lands when each tool is registered as an @tool-decorated callable or
+  # exposed via MCP. See ../tool-id-mapping.md for status per id.
+  - id: ryugraph.cypher                     # graph reads (Plan-KG, Asset-KG, Doctrine-KG)
+    version: "1.0"
+  - id: fathom.ssvc_evaluate                # CLIPS rule eval (cache miss path)
+    version: "1.0"
+  - id: fathom.code_safety_check
+    version: "1.0"
+  - id: fathom.watermark_recheck
+    version: "1.0"
+  - id: ansible.lint
+    version: "1.0"
+  - id: k8s.kubeval
+    version: "1.0"
+  - id: terraform.tflint
+    version: "1.0"
+  - id: container.sbom_scan
+    version: "1.0"
+  - id: vendor.dry_run
+    version: "1.0"
+  - id: docker.compose_probe                # local docker harness (11b sandbox)
+    version: "1.0"
+  - id: batfish.diff                        # config-only sandbox (11c)
+    version: "1.0"
+  - id: tei.embed                           # text-embeddings-inference
+    version: "1.0"
+  - id: redis.reflexion_buffer              # episodic memory per CWE-class
+    version: "1.0"
+  - id: krakntrust.ed25519_sign             # boot-gate-trusted signer
+    version: "1.0"
+  - id: artifacts.write                     # ArtifactStore write — also used by write_artifact nodes
+    version: "1.0"
+
+governance:
+  - id: harbor.bosun.budgets
+    version: "1.0"
+    requires:
+      harbor_facts_version: "1.0"
+      api_version: "1"
+  - id: harbor.bosun.audit
+    version: "1.0"
+    requires:
+      harbor_facts_version: "1.0"
+      api_version: "1"
+  - id: harbor.bosun.safety_pii
+    version: "1.0"
+    requires:
+      harbor_facts_version: "1.0"
+      api_version: "1"
+  - id: harbor.bosun.retries                # P3: wired to broker calls below
+    version: "1.0"
+    requires:
+      harbor_facts_version: "1.0"
+      api_version: "1"
+  - id: cve_rem.routing
+    version: "1.0"
+    requires:
+      harbor_facts_version: "1.0"
+      api_version: "1"
+  - id: cve_rem.kill_switches
+    version: "1.0"
+    requires:
+      harbor_facts_version: "1.0"
+      api_version: "1"
+
+stores: []  # Phase E binds real provider list (StoreRef[])
+
+
+rules:
+  # =========================================================================
+  # Pre-flight gates (halt-new freezes the fleet before any work runs)
+  # =========================================================================
+  - id: r-haltnew-active
+    when: "?n <- (node-id (id halt_new_gate)) (state (halt_new_active true))"
+    then:
+      - kind: halt
+        reason: "halt-new active: fleet frozen by error-budget breach (CRITERIA fancy #12)"
+  - id: r-haltnew-clear
+    when: "?n <- (node-id (id halt_new_gate)) (state (halt_new_active false))"
+    then: [{ kind: goto, target: intake_fetch }]
+
+  # =========================================================================
+  # Phase 1: intake
+  # =========================================================================
+  - id: r-intake-fetch-to-gate
+    when: "?n <- (node-id (id intake_fetch))"
+    then: [{ kind: goto, target: source_trust_gate }]
+  - id: r-source-trusted
+    when: "?n <- (node-id (id source_trust_gate)) (state (source_trust trusted))"
+    then: [{ kind: goto, target: canonicalize_trusted }]
+  - id: r-source-semi
+    when: "?n <- (node-id (id source_trust_gate)) (state (source_trust semi))"
+    then: [{ kind: goto, target: canonicalize_untrusted }]
+  - id: r-source-untrusted
+    when: "?n <- (node-id (id source_trust_gate)) (state (source_trust untrusted))"
+    then: [{ kind: goto, target: canonicalize_untrusted }]
+
+  # trusted path
+  - id: r-trusted-chain-1
+    when: "?n <- (node-id (id canonicalize_trusted))"
+    then: [{ kind: goto, target: extract_trusted }]
+  - id: r-trusted-chain-2
+    when: "?n <- (node-id (id extract_trusted))"
+    then: [{ kind: goto, target: enrich_cve_trusted }]
+  - id: r-trusted-enrich-to-audit
+    when: "?n <- (node-id (id enrich_cve_trusted))"
+    then: [{ kind: goto, target: source_trust_audit }]
+  - id: r-source-audit-clean
+    when: "?n <- (node-id (id source_trust_audit)) (state (untrusted_text_influenced false))"
+    then: [{ kind: goto, target: correlate_assets }]
+  - id: r-source-audit-influenced
+    when: "?n <- (node-id (id source_trust_audit)) (state (untrusted_text_influenced true))"
+    then: [{ kind: goto, target: hitl_ingest_review }]
+
+  # untrusted path
+  - id: r-untrusted-canon-emit
+    when: "?n <- (node-id (id canonicalize_untrusted))"
+    then: [{ kind: goto, target: emit_quarantine_artifact }]
+  - id: r-untrusted-emit-extract
+    when: "?n <- (node-id (id emit_quarantine_artifact))"
+    then: [{ kind: goto, target: extract_untrusted }]
+  - id: r-untrusted-extract-classify
+    when: "?n <- (node-id (id extract_untrusted))"
+    then: [{ kind: goto, target: injection_classify }]
+  - id: r-untrusted-classify-critique
+    when: "?n <- (node-id (id injection_classify))"
+    then: [{ kind: goto, target: critique_extracted }]
+  - id: r-untrusted-critique-enrich
+    when: "?n <- (node-id (id critique_extracted))"
+    then: [{ kind: goto, target: enrich_cve_untrusted }]
+  - id: r-untrusted-enrich-audit
+    when: "?n <- (node-id (id enrich_cve_untrusted))"
+    then: [{ kind: goto, target: source_trust_audit }]
+  - id: r-untrusted-audit-hitl
+    when: "?n <- (node-id (id source_trust_audit)) (state (untrusted_text_influenced true))"
+    then: [{ kind: goto, target: hitl_ingest_review }]
+
+  # HITL ingest gate (P0)
+  - id: r-hitl-ingest-gate
+    when: "?n <- (node-id (id hitl_ingest_review))"
+    then:
+      - kind: interrupt
+        prompt: "Approve ingest of {cve_id}? trust={source_trust} injection_class={injection_class}"
+        interrupt_payload:
+          requested_capability: "runs:respond"
+        requested_capability: "runs:respond"
+        timeout: null
+        on_timeout: "noop"
+  - id: r-hitl-ingest-to-branch
+    when: "?n <- (node-id (id hitl_ingest_review))"
+    then: [{ kind: goto, target: branch_resp_ingest }]
+  - id: r-branch-ingest-approve
+    when: "?n <- (node-id (id branch_resp_ingest)) (response (decision approve))"
+    then: [{ kind: goto, target: remediation_discovery }]
+  - id: r-discovery-to-correlate
+    when: "?n <- (node-id (id remediation_discovery))"
+    then: [{ kind: goto, target: correlate_assets }]
+  - id: r-branch-ingest-reject
+    when: "?n <- (node-id (id branch_resp_ingest)) (response (decision reject))"
+    then:
+      - kind: halt
+        reason: "Ingest rejected at HITL; quarantine artifact retained"
+
+  # =========================================================================
+  # Phase 2: correlate + tier
+  # =========================================================================
+  - id: r-correlate-not-applicable
+    when: "?n <- (node-id (id correlate_assets)) (state (disposition not_applicable))"
+    then: [{ kind: goto, target: suppress_not_applicable }]
+  - id: r-correlate-applicable
+    when: "?n <- (node-id (id correlate_assets)) (state (disposition applicable))"
+    then: [{ kind: goto, target: ssvc_evaluate }]
+  - id: r-suppress-halt
+    when: "?n <- (node-id (id suppress_not_applicable))"
+    then: [{ kind: halt, reason: "Not applicable to any asset; suppressed + audited" }]
+
+  - id: r-ssvc-track
+    when: "?n <- (node-id (id ssvc_evaluate)) (state (ssvc_tier track))"
+    then: [{ kind: goto, target: tier_terminal_track }]
+  - id: r-ssvc-defer
+    when: "?n <- (node-id (id ssvc_evaluate)) (state (ssvc_tier defer))"
+    then: [{ kind: goto, target: tier_terminal_defer }]
+  - id: r-ssvc-act
+    when: "?n <- (node-id (id ssvc_evaluate)) (state (ssvc_tier act_auto | act_hitl_required | attend))"
+    then: [{ kind: goto, target: plan_template_lookup }]
+  - id: r-track-halt
+    when: "?n <- (node-id (id tier_terminal_track))"
+    then: [{ kind: halt, reason: "TRACK tier — exposure-monitor only" }]
+  - id: r-defer-halt
+    when: "?n <- (node-id (id tier_terminal_defer))"
+    then: [{ kind: halt, reason: "DEFER tier — scheduled re-evaluation by tier_re_eval graph" }]
+
+  # =========================================================================
+  # Phase 3: plan + sandbox
+  # =========================================================================
+  - id: r-template-hit
+    when: "?n <- (node-id (id plan_template_lookup)) (state (template_lookup_hit true))"
+    then: [{ kind: goto, target: validate_dispatch }]
+  - id: r-template-miss
+    when: "?n <- (node-id (id plan_template_lookup)) (state (template_lookup_hit false))"
+    then: [{ kind: goto, target: mcp_retrieval_dispatch }]
+
+  # P1: parallel agentic retrieval (up to 5 calls/attempt)
+  - id: r-mcp-fanout
+    when: "?n <- (node-id (id mcp_retrieval_dispatch))"
+    then:
+      - kind: parallel
+        targets:
+          - vec_search_retros
+          - graph_prior_remediations
+          - graph_blast_radius
+          - framework_mapping
+          - cargonet_lab_telemetry
+        join: planner
+        strategy: all
+
+  - id: r-plan-write
+    when: "?n <- (node-id (id planner))"
+    then: [{ kind: goto, target: code_writer }]
+  - id: r-write-emit
+    when: "?n <- (node-id (id code_writer))"
+    then: [{ kind: goto, target: emit_remediation_bundle }]
+  - id: r-emit-critic
+    when: "?n <- (node-id (id emit_remediation_bundle))"
+    then: [{ kind: goto, target: critic }]
+
+  - id: r-critic-approved
+    when: "?n <- (node-id (id critic)) (state (critic_verdict approved))"
+    then: [{ kind: goto, target: validate_dispatch }]
+  - id: r-critic-feedback-loop
+    when: "?n <- (node-id (id critic)) (state (critic_verdict feedback)) (state (critic_attempt 1 | 2))"
+    then: [{ kind: goto, target: mcp_retrieval_dispatch }]
+  - id: r-critic-3x-to-hitl
+    when: "?n <- (node-id (id critic)) (state (critic_verdict feedback | veto)) (state (critic_attempt 3))"
+    then: [{ kind: goto, target: hitl_plan_review }]
+  - id: r-critic-veto-immediate
+    when: "?n <- (node-id (id critic)) (state (critic_verdict veto)) (state (critic_attempt 1 | 2))"
+    then: [{ kind: goto, target: hitl_plan_review }]
+
+  # HITL plan gate (P0)
+  - id: r-hitl-plan-gate
+    when: "?n <- (node-id (id hitl_plan_review))"
+    then:
+      - kind: interrupt
+        prompt: "Approve plan for {cve_id}? plan_hash={plan_hash} runtime={code_runtime}"
+        interrupt_payload:
+          requested_capability: "runs:respond"
+        requested_capability: "runs:respond"
+        timeout: null
+        on_timeout: "noop"
+  - id: r-hitl-plan-to-branch
+    when: "?n <- (node-id (id hitl_plan_review))"
+    then: [{ kind: goto, target: branch_resp_plan }]
+  - id: r-branch-plan-approve
+    when: "?n <- (node-id (id branch_resp_plan)) (response (decision approve))"
+    then: [{ kind: goto, target: validate_dispatch }]
+  - id: r-branch-plan-replan
+    when: "?n <- (node-id (id branch_resp_plan)) (response (decision approve_replan))"
+    then: [{ kind: goto, target: mcp_retrieval_dispatch }]
+  - id: r-branch-plan-reject
+    when: "?n <- (node-id (id branch_resp_plan)) (response (decision reject))"
+    then: [{ kind: halt, reason: "Plan rejected at HITL; pipeline aborted" }]
+
+  # P1: parallel dual judges
+  - id: r-validate-fanout
+    when: "?n <- (node-id (id validate_dispatch))"
+    then:
+      - kind: parallel
+        targets: [judge_safety, judge_lint]
+        join: validate_plan_join
+        strategy: all
+  - id: r-validate-pass
+    when: "?n <- (node-id (id validate_plan_join)) (state (validation_passed true))"
+    then: [{ kind: goto, target: plan_quarantine_gate }]
+  - id: r-plan-quarantine-block
+    when: "?n <- (node-id (id plan_quarantine_gate)) (state (plan_quarantined true))"
+    then:
+      - kind: halt
+        reason: "halt-new: plan_hash plan-KG quarantined (CRITERIA fancy #5)"
+  - id: r-plan-quarantine-clear
+    when: "?n <- (node-id (id plan_quarantine_gate)) (state (plan_quarantined false))"
+    then: [{ kind: goto, target: sandbox_dispatch }]
+  - id: r-validate-fail-template
+    when: "?n <- (node-id (id validate_plan_join)) (state (validation_passed false)) (state (template_lookup_hit true))"
+    then: [{ kind: goto, target: mcp_retrieval_dispatch }]
+  - id: r-validate-fail-agent
+    when: "?n <- (node-id (id validate_plan_join)) (state (validation_passed false)) (state (template_lookup_hit false))"
+    then: [{ kind: goto, target: hitl_plan_review }]
+
+  - id: r-sandbox-skip
+    when: "?n <- (node-id (id sandbox_dispatch)) (state (sandbox_runtime skip))"
+    then: [{ kind: goto, target: sandbox_skip }]
+  - id: r-sandbox-run
+    when: "?n <- (node-id (id sandbox_dispatch)) (state (sandbox_runtime cargonet_lab | docker_compose | static_detection))"
+    then: [{ kind: goto, target: sandbox_run }]
+  - id: r-sandbox-skip-to-cr
+    when: "?n <- (node-id (id sandbox_skip))"
+    then: [{ kind: goto, target: create_change_request }]
+  - id: r-sandbox-run-emit
+    when: "?n <- (node-id (id sandbox_run)) (state (sandbox_status ok))"
+    then: [{ kind: goto, target: emit_sandbox_evidence }]
+  - id: r-sandbox-evidence-cr
+    when: "?n <- (node-id (id emit_sandbox_evidence))"
+    then: [{ kind: goto, target: create_change_request }]
+  - id: r-sandbox-fail-replan
+    when: "?n <- (node-id (id sandbox_run)) (state (sandbox_status fail))"
+    then: [{ kind: goto, target: hitl_plan_review }]   # P2: re-plan via HITL only
+
+  # =========================================================================
+  # Phase 4: CR + execute + verify
+  # =========================================================================
+  - id: r-cr-emit-evidence
+    when: "?n <- (node-id (id create_change_request))"
+    then: [{ kind: goto, target: emit_evidence_bundle }]
+
+  - id: r-evidence-attach
+    when: "?n <- (node-id (id emit_evidence_bundle))"
+    then: [{ kind: goto, target: attach_all_artifacts }]
+  # Phase C (2026-05-11): honest unpatchable terminal. When advisory
+  # offers no upstream fix AND no IoC-driven primitive action was
+  # synthesizable, RemediationDiscoveryNode set
+  # unpatchable_disposition. Route through HITL change approval so the
+  # operator confirms isolate/disable rather than the run faking
+  # fleet_passed=True. Higher specificity than the tier rules below,
+  # so this rule wins via attach_all_artifacts overlap.
+  - id: r-attach-unpatchable-hitl
+    when: "?n <- (node-id (id attach_all_artifacts)) (state (unpatchable_disposition isolate_recommended | disable_recommended))"
+    then: [{ kind: goto, target: hitl_change_approval }]
+  - id: r-attach-act-auto
+    when: "?n <- (node-id (id attach_all_artifacts)) (state (ssvc_tier act_auto)) (state (skip_sandbox false)) (not (state (unpatchable_disposition isolate_recommended | disable_recommended)))"
+    then: [{ kind: goto, target: progressive_execute }]
+  - id: r-attach-hitl-required
+    when: "?n <- (node-id (id attach_all_artifacts)) (state (ssvc_tier act_hitl_required | attend))"
+    then: [{ kind: goto, target: hitl_change_approval }]
+  - id: r-attach-skip-sandbox-hitl
+    when: "?n <- (node-id (id attach_all_artifacts)) (state (skip_sandbox true))"
+    then: [{ kind: goto, target: hitl_change_approval }]
+
+  # HITL change-approval gate (P0)
+  - id: r-hitl-change-gate
+    when: "?n <- (node-id (id hitl_change_approval))"
+    then:
+      - kind: interrupt
+        prompt: "Approve CR {cr_correlation_id} for {cve_id}?"
+        interrupt_payload:
+          requested_capability: "runs:respond"
+        requested_capability: "runs:respond"
+        timeout: null
+        on_timeout: "noop"
+  - id: r-hitl-change-to-branch
+    when: "?n <- (node-id (id hitl_change_approval))"
+    then: [{ kind: goto, target: branch_resp_change }]
+  - id: r-branch-change-approve
+    when: "?n <- (node-id (id branch_resp_change)) (response (decision approve))"
+    then: [{ kind: goto, target: progressive_execute }]
+  - id: r-branch-change-reject
+    when: "?n <- (node-id (id branch_resp_change)) (response (decision reject))"
+    then: [{ kind: halt, reason: "CR rejected at HITL; nothing applied to production" }]
+
+  - id: r-progressive-pass
+    when: "?n <- (node-id (id progressive_execute)) (state (fleet_passed true))"
+    then: [{ kind: goto, target: verify_immediate }]
+  - id: r-progressive-fail
+    when: "?n <- (node-id (id progressive_execute)) (state (rollback_triggered true))"
+    then: [{ kind: goto, target: partial_apply_rollback }]
+  - id: r-rollback-to-retro
+    when: "?n <- (node-id (id partial_apply_rollback))"
+    then: [{ kind: goto, target: write_retrospective }]
+
+  - id: r-verify-ok
+    when: "?n <- (node-id (id verify_immediate)) (state (verify_outcome patched)) (state (sandbox_prod_divergence false))"
+    then: [{ kind: goto, target: drift_watch_spawn }]
+  - id: r-verify-divergence
+    when: "?n <- (node-id (id verify_immediate)) (state (sandbox_prod_divergence true))"
+    then: [{ kind: goto, target: divergence_quarantine }]
+  - id: r-divergence-to-retro
+    when: "?n <- (node-id (id divergence_quarantine))"
+    then: [{ kind: goto, target: write_retrospective }]
+  - id: r-drift-spawn-to-retro
+    when: "?n <- (node-id (id drift_watch_spawn))"
+    then: [{ kind: goto, target: write_retrospective }]
+
+  # =========================================================================
+  # Phase 5: retro + learn (P1: parallel fan-out)
+  # =========================================================================
+  - id: r-retro-kg-writeback
+    when: "?n <- (node-id (id write_retrospective))"
+    then: [{ kind: goto, target: kg_run_writeback }]
+  - id: r-kg-emit-payload
+    when: "?n <- (node-id (id kg_run_writeback))"
+    then: [{ kind: goto, target: emit_retro_payload }]
+  - id: r-payload-render-docx
+    when: "?n <- (node-id (id emit_retro_payload))"
+    then: [{ kind: goto, target: render_docx }]
+  - id: r-render-emit-docx
+    when: "?n <- (node-id (id render_docx))"
+    then: [{ kind: goto, target: emit_docx_archive }]
+  - id: r-docx-dispatch
+    when: "?n <- (node-id (id emit_docx_archive))"
+    then: [{ kind: goto, target: retro_dispatch }]
+
+  - id: r-retro-fanout
+    when: "?n <- (node-id (id retro_dispatch))"
+    then:
+      - kind: parallel
+        targets: [publish_docplus, cargonet_writeback, plan_kg_writeback]
+        join: retro_join
+        strategy: all
+  - id: r-retro-join-attest
+    when: "?n <- (node-id (id retro_join))"
+    then: [{ kind: goto, target: krakntrust_attest }]
+  - id: r-attest-outcome
+    when: "?n <- (node-id (id krakntrust_attest))"
+    then: [{ kind: goto, target: run_outcome_persist }]
+  - id: r-outcome-cr-validate
+    when: "?n <- (node-id (id run_outcome_persist))"
+    then: [{ kind: goto, target: cr_self_validate }]
+  - id: r-cr-validate-emit-proof
+    when: "?n <- (node-id (id cr_self_validate))"
+    then: [{ kind: goto, target: emit_proof_report }]
+  - id: r-emit-proof-hitl
+    when: "?n <- (node-id (id emit_proof_report))"
+    then: [{ kind: goto, target: hitl_retrospective_review }]
+
+  # HITL retro gate (P0)
+  - id: r-hitl-retro-gate
+    when: "?n <- (node-id (id hitl_retrospective_review))"
+    then:
+      - kind: interrupt
+        prompt: "Was CMDB/live-device match correct for {cve_id}?"
+        interrupt_payload:
+          requested_capability: "runs:respond"
+        requested_capability: "runs:respond"
+        timeout: null
+        on_timeout: "noop"
+  - id: r-hitl-retro-to-branch
+    when: "?n <- (node-id (id hitl_retrospective_review))"
+    then: [{ kind: goto, target: branch_resp_retro }]
+  - id: r-branch-retro-approve
+    when: "?n <- (node-id (id branch_resp_retro)) (response (decision approve))"
+    then: [{ kind: goto, target: action_done }]
+  - id: r-branch-retro-reject
+    when: "?n <- (node-id (id branch_resp_retro)) (response (decision reject))"
+    then: [{ kind: goto, target: action_done }]   # still terminal — feedback captured for GEPA Critic
+
+  - id: r-halt-action
+    when: "?n <- (node-id (id action_done))"
+    then: [{ kind: halt, reason: "CVE remediation pipeline complete" }]

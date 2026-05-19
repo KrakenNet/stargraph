@@ -1,0 +1,49 @@
+{
+  "CVE-2021-44228": {
+    "cwe_class": "CWE-502",
+    "vuln_class": "library",
+    "cvss_score_bp": 1000,
+    "epss_score_bp": 9700,
+    "kev_listed": true,
+    "affected_products": ["log4j-core"],
+    "affected_versions": ["2.0-2.14.1"],
+    "references": [
+      "https://logging.apache.org/log4j/2.x/security.html",
+      "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+    ]
+  },
+  "CVE-2024-3094": {
+    "cwe_class": "CWE-506",
+    "vuln_class": "library",
+    "cvss_score_bp": 1000,
+    "epss_score_bp": 5000,
+    "kev_listed": true,
+    "affected_products": ["xz-utils"],
+    "affected_versions": ["5.6.0", "5.6.1"],
+    "references": [
+      "https://www.openwall.com/lists/oss-security/2024/03/29/4"
+    ]
+  },
+  "CVE-2023-44487": {
+    "cwe_class": "CWE-400",
+    "vuln_class": "application",
+    "cvss_score_bp": 770,
+    "epss_score_bp": 8500,
+    "kev_listed": true,
+    "affected_products": ["nginx", "envoy", "h2o"],
+    "affected_versions": ["*"],
+    "references": [
+      "https://www.cve.org/CVERecord?id=CVE-2023-44487"
+    ]
+  },
+  "CVE-2024-1234": {
+    "cwe_class": "CWE-79",
+    "vuln_class": "web-framework",
+    "cvss_score_bp": 650,
+    "epss_score_bp": 200,
+    "kev_listed": false,
+    "affected_products": ["acme-cms"],
+    "affected_versions": ["1.0.0-1.4.7"],
+    "references": []
+  }
+}

@@ -27,7 +27,7 @@ import inspect
 from decimal import Decimal  # noqa: TC003 -- runtime use in keyword default
 from typing import TYPE_CHECKING, Any, cast, get_type_hints
 
-from pydantic import TypeAdapter, create_model
+from pydantic import BaseModel, TypeAdapter, create_model
 
 from harbor.tools.spec import ReplayPolicy, SideEffects
 
@@ -50,14 +50,31 @@ def _default_replay_policy(side_effects: SideEffects) -> ReplayPolicy:
     return ReplayPolicy.must_stub
 
 
-def _derive_input_schema(fn: Callable[..., Any]) -> dict[str, Any]:
-    """Build a JSON Schema for the callable's positional/keyword parameters.
+def _derive_input_schema(
+    input_schema: type[BaseModel] | dict[str, Any] | None,
+    fn: Callable[..., Any],
+) -> dict[str, Any]:
+    """Build a JSON Schema for *input_schema* or, when ``None``, the callable's
+    positional/keyword parameters.
 
-    Uses :func:`pydantic.create_model` so each parameter becomes a required
-    field (default-less) or an optional one (annotated default). Skips
-    ``*args`` / ``**kwargs`` -- they are not part of the schema surface
-    (TODO task 1.13: decide whether to surface them as ``additionalProperties``).
+    Three branches (T19):
+
+    1. ``type[BaseModel]`` subclass -- returned via
+       ``.model_json_schema(mode="serialization")``.
+    2. ``dict`` -- returned unchanged (already a JSON Schema).
+    3. ``None`` -- derived from *fn*'s annotated signature via
+       :class:`pydantic.TypeAdapter` over a synthetic :func:`pydantic.create_model`
+       shell (original behavior).
+
+    Skips ``*args`` / ``**kwargs`` in the signature path -- they are not part of
+    the schema surface.
     """
+    if isinstance(input_schema, type) and issubclass(input_schema, BaseModel):
+        return input_schema.model_json_schema(mode="serialization")
+    if isinstance(input_schema, dict):
+        return input_schema
+
+    # input_schema is None -- derive from fn's signature.
     sig = inspect.signature(fn)
     try:
         hints = get_type_hints(fn, include_extras=False)
@@ -110,7 +127,7 @@ def tool(
     side_effects: SideEffects,
     replay_policy: ReplayPolicy | None = None,
     requires_capability: str | list[str] | None = None,
-    input_schema: dict[str, Any] | None = None,
+    input_schema: type[BaseModel] | dict[str, Any] | None = None,
     output_schema: dict[str, Any] | None = None,
     description: str | None = None,
     idempotency_key: str | None = None,
@@ -148,9 +165,6 @@ def tool(
     the execution-path's job (design 3.4.4 step 5). The wrapper preserves
     whatever calling convention the wrapped callable uses.
     """
-    # TODO(task 1.13): support BaseModel-typed input_schema (currently dict-only
-    # because ToolSpec.input_schema is dict[str, object]). The decorator's
-    # public type accepts dict only; type[BaseModel] forms come later.
     requires_capability_list: list[str]
     if requires_capability is None:
         requires_capability_list = []
@@ -168,9 +182,7 @@ def tool(
         # circular-import rationale (harbor.ir._models imports our enums).
         from harbor.ir._models import ToolSpec
 
-        resolved_input: dict[str, Any] = (
-            input_schema if input_schema is not None else _derive_input_schema(fn)
-        )
+        resolved_input: dict[str, Any] = _derive_input_schema(input_schema, fn)
         resolved_output: dict[str, Any] = (
             output_schema if output_schema is not None else _derive_output_schema(fn)
         )

@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# cve_remediation demo stack — every external dep in containers.
+#
+#   postgres        audit chain + retro store + ServiceNow CR mock backing
+#   redis           Reflexion episodic memory
+#   pgvector        VectorStore (retro buffer + doctrine embeddings)
+#   ryugraph        GraphStore (Asset-KG / Plan-KG / Doctrine-KG / Retrospective-KG)
+#   mock-servicenow tiny FastAPI echo of /api/now/table/* with happy-path responses
+#   llm-shim        OpenAI-compatible deterministic responder bound to :41001
+#                   (override LLM_BASE_URL in .env to point at a real LM)
+#
+# Bring up:    docker compose -f demos/cve_remediation/docker-compose.yml up -d
+# Tear down:   docker compose -f demos/cve_remediation/docker-compose.yml down -v
+#
+# Health-check polling lives in bootstrap.py — wait for all five "healthy"
+# before invoking serve_demo.py.
+
+name: cve-rem-demo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cve-rem-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-harbor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harbor}
+      POSTGRES_DB: ${POSTGRES_DB:-cve_rem}
+    ports:
+      - "${POSTGRES_PORT:-5439}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: cve-rem-pgvector
+    environment:
+      POSTGRES_USER: ${PGVECTOR_USER:-harbor}
+      POSTGRES_PASSWORD: ${PGVECTOR_PASSWORD:-harbor}
+      POSTGRES_DB: ${PGVECTOR_DB:-cve_rem_vec}
+    ports:
+      - "${PGVECTOR_PORT:-5440}:5432"
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: cve-rem-redis
+    ports:
+      - "${REDIS_PORT:-6390}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Bolt-speaking graph backing for Nautilus's ``threat_graph`` source
+  # (Nautilus's neo4j adapter speaks the bolt protocol). RyuGraph is
+  # embedded-library-only and ships no daemon, so the demo's broker
+  # path uses real Neo4j community here. Harbor's *own* GraphStore
+  # (``harbor.stores.ryugraph``) still uses embedded RyuGraph for
+  # local file-backed reads -- that path needs no container.
+  neo4j:
+    image: neo4j:5-community
+    container_name: cve-rem-neo4j
+    environment:
+      # Default creds; override via ``.env``. Password must be >= 8 chars
+      # per Neo4j 5.x security policy.
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-cve-rem-dev-pw}
+      NEO4J_PLUGINS: "[]"
+      NEO4J_server_memory_pagecache_size: "256m"
+    ports:
+      - "${RYUGRAPH_PORT:-7687}:7687"     # bolt
+      - "${NEO4J_HTTP_PORT:-7474}:7474"   # browser / HTTP API
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    profiles: ["full"]                    # opt-in: most demos use embedded RyuGraph file driver
+
+  mock-servicenow:
+    build:
+      context: ./mocks/servicenow
+      dockerfile: Dockerfile
+    container_name: cve-rem-servicenow
+    ports:
+      - "${SERVICENOW_PORT:-8089}:8000"
+    environment:
+      SN_INSTANCE_NAME: ${SERVICENOW_INSTANCE:-cve-rem-mock}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  llm-shim:
+    build:
+      context: ./mocks/llm-shim
+      dockerfile: Dockerfile
+    container_name: cve-rem-llm
+    ports:
+      - "${LLM_PORT:-41001}:41001"
+    environment:
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-cve-rem-shim}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:41001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
+  pgvector-data:
+  redis-data:
+  neo4j-data:

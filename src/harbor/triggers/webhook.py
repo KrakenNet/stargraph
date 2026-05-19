@@ -70,6 +70,7 @@ from fastapi import Request  # noqa: TC002
 
 from harbor.errors import HarborRuntimeError
 from harbor.ir import IRBase
+from harbor.logging import get_logger
 from harbor.runtime.events import BosunAuditEvent
 
 if TYPE_CHECKING:
@@ -80,6 +81,7 @@ if TYPE_CHECKING:
 __all__ = ["WebhookSpec", "WebhookTrigger"]
 
 _logger = logging.getLogger(__name__)
+_structlog = get_logger(__name__)
 
 # Route is aliased to ``Any`` to keep this module import-light; FastAPI is
 # imported lazily inside :meth:`WebhookTrigger.routes` so non-serve plugin
@@ -491,10 +493,19 @@ class WebhookTrigger:
         present in the lifespan-built deps.
         """
         sink = self._audit_sink
-        if sink is None:
-            return
         now = datetime.now(UTC)
         run_id_str = f"webhook:{spec.trigger_id}"
+        if sink is None:
+            _structlog.info(
+                "webhook_request",
+                run_id=run_id_str,
+                step=0,
+                ts=now.isoformat(),
+                pack_id="harbor.triggers.webhook",
+                pack_version="1.0",
+                fact={"kind": kind, **detail},
+            )
+            return
         # ProvenanceBundle (FR-55, AC-11.2): webhook signature failures
         # are system-emitted at the trigger boundary; origin="system"
         # with the trigger pack id as source matches the runtime

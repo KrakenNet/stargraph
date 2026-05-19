@@ -1,0 +1,57 @@
+# Phase 6 air-gap firewall (CRITERIA fancy #14).
+#
+# Apply on the Phase 6 host with:
+#   sudo nft -f demos/cve_remediation/ops/phase6.nft
+# Verify with:
+#   sudo nft list ruleset
+#
+# Policy:
+#   * Outbound: deny all by default. Single permitted destination is
+#     a UNIX-domain socket on /run/cve-rem-prompt-drop.sock for the
+#     one-way prompt drop (TCP outbound is fully blocked at filter
+#     layer; the socket is local-only by construction).
+#   * Inbound from prod: deny. Only loopback and the Phase 6 admin
+#     subnet (RFC1918 fixed at admin VLAN) are accepted on SSH (22)
+#     for operator access.
+#
+# This is the canonical iptables/nft policy file referenced by the
+# Phase 6 deployment runbook; the demo does NOT auto-apply it
+# (irreversible kernel-level action). The verifier
+# verify_F14_airgap.py asserts the file shape + permissions and runs
+# `nft -c -f` (check-only) to validate syntax without applying.
+
+table inet phase6_airgap {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Loopback always allowed.
+        iif "lo" accept
+
+        # Established / related connections (outbound replies).
+        ct state established,related accept
+
+        # Admin SSH from Phase 6 admin VLAN only.
+        # (Operator: replace 10.50.0.0/24 with your Phase 6 admin range.)
+        ip saddr 10.50.0.0/24 tcp dport 22 accept
+
+        # Drop everything else from prod / external.
+        log prefix "phase6-input-drop: " level info
+        drop
+    }
+
+    chain output {
+        type filter hook output priority 0; policy drop;
+
+        # Loopback (UNIX-domain socket on /run/cve-rem-prompt-drop.sock
+        # is loopback-only; this rule keeps it reachable).
+        oif "lo" accept
+
+        # No other outbound TCP / UDP / ICMP.
+        log prefix "phase6-output-drop: " level info
+        drop
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+    }
+}

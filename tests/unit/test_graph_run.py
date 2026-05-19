@@ -157,9 +157,50 @@ async def test_stream_is_async_generator_yielding_nothing_in_skeleton() -> None:
 
 
 @pytest.mark.unit
-def test_checkpoint_method_is_not_implemented_in_phase_1() -> None:
-    """``checkpoint()`` is a documented Phase-1 stub (raises rather than
-    returning a partial snapshot)."""
+def test_checkpoint_returns_checkpoint_model_with_all_required_fields() -> None:
+    """``checkpoint()`` returns a :class:`Checkpoint` with every required field
+    populated per ``checkpoint/protocol.py:34-63`` (INV-2).
+
+    Pinned via Pydantic re-construction: ``Checkpoint(**result.model_dump())``
+    raises if any required field is missing or wrong-typed, so the assertion
+    self-updates as the protocol model evolves. T01.
+    """
+    from harbor.checkpoint.protocol import Checkpoint
+
     run = GraphRun(run_id="run-ckpt", graph=_graph())
-    with pytest.raises(NotImplementedError):
-        run.checkpoint()
+    result = run.checkpoint()
+    assert isinstance(result, Checkpoint)
+    # Round-trip through model_dump → Checkpoint(**...) so Pydantic raises
+    # on missing required fields. Self-updating against schema evolution.
+    Checkpoint(**result.model_dump())
+
+
+@pytest.mark.unit
+def test_checkpoint_preserves_graph_hash_across_successive_calls() -> None:
+    """Two ``checkpoint()`` calls on an unchanged run return identical
+    ``graph_hash`` -- INV-1 reproducibility under T01."""
+    run = GraphRun(run_id="run-ckpt-stable", graph=_graph())
+    cp1 = run.checkpoint()
+    cp2 = run.checkpoint()
+    assert cp1.graph_hash == cp2.graph_hash
+
+
+@pytest.mark.unit
+def test_graph_run_init_accepts_fact_store_and_audit_sink_kwargs() -> None:
+    """T01 extends ``GraphRun.__init__`` with ``fact_store`` and
+    ``audit_sink`` optional kwargs (default ``None``, stored on self)."""
+    run = GraphRun(run_id="run-extras", graph=_graph())
+    # Default-None pins back-compat for legacy callers.
+    assert run.fact_store is None
+    assert run.audit_sink is None
+    # Explicit-pass round-trip pins attribute storage shape.
+    sentinel_fs = object()
+    sentinel_as = object()
+    run2 = GraphRun(
+        run_id="run-extras-set",
+        graph=_graph(),
+        fact_store=sentinel_fs,
+        audit_sink=sentinel_as,
+    )
+    assert run2.fact_store is sentinel_fs
+    assert run2.audit_sink is sentinel_as

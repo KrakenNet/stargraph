@@ -1,0 +1,30 @@
+{
+  "schema_version": "1",
+  "kev_catalog_version": "smoke20-stratified",
+  "kev_date_released": "2026-05-08",
+  "seed": 200,
+  "count": 20,
+  "comment": "Stratified 20: 6 patchable + 8 applicable_no_recipe + 1 orphan + 5 not_in_env. Tests LM-bundle wiring + correlation across all 4 tiers.",
+  "cves": [
+    {"cve_id": "CVE-2014-2120", "vendor": "Cisco", "product": "Adaptive Security Appliance (ASA)", "vuln_class": "host", "expected_cwe": "CWE-79", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Cisco ASA WebVPN XSS", "tier": "patchable"},
+    {"cve_id": "CVE-2017-3881", "vendor": "Cisco", "product": "IOS and IOS XE", "vuln_class": "host", "expected_cwe": "CWE-20", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Cisco IOS / IOS XE RCE", "tier": "patchable"},
+    {"cve_id": "CVE-2021-45046", "vendor": "Apache", "product": "Log4j2", "vuln_class": "library", "expected_cwe": "CWE-917", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Apache Log4j2 Deserialization", "tier": "patchable"},
+    {"cve_id": "CVE-2010-2861", "vendor": "Adobe", "product": "ColdFusion", "vuln_class": "library", "expected_cwe": "CWE-22", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Adobe ColdFusion Path Traversal", "tier": "patchable"},
+    {"cve_id": "CVE-2006-1547", "vendor": "Apache", "product": "Struts 1", "vuln_class": "library", "expected_cwe": "CWE-749", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Apache Struts 1 ActionForm DoS", "tier": "patchable"},
+    {"cve_id": "CVE-2024-24919", "vendor": "Check Point", "product": "Quantum Security Gateways", "vuln_class": "config-only", "expected_cwe": "CWE-200", "expected_dispatcher_runtime": "static_detection", "expected_ssvc_tier": "act_hitl_required", "vuln_name": "Check Point Quantum Gateway Info Disclosure", "tier": "patchable"},
+    {"cve_id": "CVE-2024-20399", "vendor": "Cisco", "product": "NX-OS", "vuln_class": "host", "expected_cwe": "CWE-78", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Cisco NX-OS Command Injection", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2025-7775", "vendor": "Citrix", "product": "NetScaler", "vuln_class": "web-framework", "expected_cwe": "CWE-119", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Citrix NetScaler Buffer Overflow", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2024-38475", "vendor": "Apache", "product": "HTTP Server", "vuln_class": "library", "expected_cwe": "CWE-22", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Apache HTTP Server Path Traversal", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2026-34621", "vendor": "Adobe", "product": "Acrobat and Reader", "vuln_class": "library", "expected_cwe": "CWE-787", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Adobe Acrobat OOB Write", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2011-1823", "vendor": "Android", "product": "Android OS", "vuln_class": "host", "expected_cwe": "CWE-77", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Android volumed Privilege Escalation", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2016-4655", "vendor": "Apple", "product": "iOS", "vuln_class": "host", "expected_cwe": "CWE-200", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Apple iOS Trident Info Disclosure", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2022-32894", "vendor": "Apple", "product": "iOS and macOS", "vuln_class": "host", "expected_cwe": "CWE-787", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Apple iOS/macOS Kernel OOB Write", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2026-20700", "vendor": "Apple", "product": "Multiple Products", "vuln_class": "host", "expected_cwe": "CWE-119", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Apple WebKit Memory Corruption", "tier": "applicable_no_recipe"},
+    {"cve_id": "CVE-2025-32706", "vendor": "Microsoft", "product": "Windows", "vuln_class": "host", "expected_cwe": "CWE-269", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Microsoft Streaming Service Privilege Escalation", "tier": "orphan_cmdb"},
+    {"cve_id": "CVE-2017-6738", "vendor": "Cisco", "product": "IOS and IOS XE Software", "vuln_class": "host", "expected_cwe": "CWE-119", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Cisco IOS Buffer Overflow", "tier": "not_in_env"},
+    {"cve_id": "CVE-2018-6530", "vendor": "D-Link", "product": "Multiple Routers", "vuln_class": "host", "expected_cwe": "CWE-78", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "D-Link Routers Command Injection", "tier": "not_in_env"},
+    {"cve_id": "CVE-2021-1497", "vendor": "Cisco", "product": "HyperFlex HX", "vuln_class": "host", "expected_cwe": "CWE-78", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Cisco HyperFlex HX Command Injection", "tier": "not_in_env"},
+    {"cve_id": "CVE-2023-26083", "vendor": "Arm", "product": "Mali GPU", "vuln_class": "host", "expected_cwe": "CWE-200", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Arm Mali GPU Info Disclosure", "tier": "not_in_env"},
+    {"cve_id": "CVE-2023-41991", "vendor": "Apple", "product": "Multiple Products", "vuln_class": "host", "expected_cwe": "CWE-295", "expected_dispatcher_runtime": "docker_compose", "expected_ssvc_tier": "act_auto", "vuln_name": "Apple Multiple Products Cert Validation", "tier": "not_in_env"}
+  ]
+}

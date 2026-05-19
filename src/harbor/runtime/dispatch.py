@@ -117,8 +117,10 @@ async def dispatch_node(
     )
     await asyncio.shield(run.checkpointer.write(checkpoint))
 
-    # 8. Mirror lifecycle: retract step-scoped mirrors at the boundary.
+    # 8. Mirror lifecycle: retract step-scoped mirrors at the boundary, then
+    #    flush pinned specs to the FactStore (T13).
     run.mirror_scheduler.retract_step()
+    await run.mirror_scheduler.persist_pinned(run.fact_store, run_id=run.run_id, step=step)
 
     # 9. Routing.
     if isinstance(decision, HaltAction):

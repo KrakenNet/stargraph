@@ -125,6 +125,7 @@ from harbor.runtime.events import (
     ResultEvent,
     WaitingForInputEvent,
 )
+from harbor.runtime.merge import build_last_write_conflict_evidence
 from harbor.runtime.parallel import execute_parallel
 
 if TYPE_CHECKING:
@@ -579,12 +580,81 @@ async def _run_parallel_block(
         run_id=run.run_id,
         step=step,
     )
-    # Last-write-wins placeholder merge across branches (POC, FR-11 typed
-    # merge lands later). ``results`` is non-empty: a parallel block must
-    # declare at least one target (validated upstream by the IR loader).
-    merged_state = results[-1]
+    # Reducer-aware merge across branches (FR-11). Disjoint fields merge
+    # silently; conflicts without a declared reducer raise with evidence.
+    merged_state = _merge_branch_results(results, ir=run.graph.ir, reducer_registry=None)
     next_id = block.join or None
     return merged_state, next_id
+
+
+def _merge_branch_results(
+    results: list[Any],
+    *,
+    ir: Any,
+    reducer_registry: Any,
+) -> Any:
+    """Reducer-aware merge across parallel-block branch outputs (FR-11).
+
+    For each field written by any branch:
+
+    * If only one branch wrote it, accept that value unconditionally.
+    * If multiple branches wrote the same field and ``reducer_registry``
+      has a reducer registered under that field name, apply
+      ``reducer(a, b)`` (pairwise left-fold across all branch values).
+    * If multiple branches wrote the same field and no reducer is
+      declared, raise :class:`harbor.errors.HarborRuntimeError` with
+      :func:`harbor.runtime.merge.build_last_write_conflict_evidence`
+      payload (force-loud per FR-11).
+
+    ``ir`` is accepted for future use (reducer lookup by IR field
+    annotation); unused in the current implementation where
+    ``reducer_registry`` carries the field→callable map directly.
+    """
+    del ir  # reserved for future IR-annotation-driven reducer lookup
+
+    # Collect all keys and per-field branch values.
+    all_keys: dict[str, list[Any]] = {}
+    for branch in results:
+        if not isinstance(branch, dict):
+            # Non-dict branch state: no field-level merge possible.
+            # Return the last branch's state (degenerate case).
+            return results[-1]
+        for key, value in branch.items():
+            all_keys.setdefault(key, []).append(value)
+
+    merged: dict[str, Any] = {}
+    for field, values in all_keys.items():
+        if len(values) == 1:
+            # Disjoint: only one branch wrote this field.
+            merged[field] = values[0]
+        else:
+            # Conflict: multiple branches wrote the same field.
+            if reducer_registry is not None:
+                try:
+                    reducer = reducer_registry.get(field)
+                except (KeyError, Exception):
+                    reducer = None
+            else:
+                reducer = None
+
+            if reducer is not None:
+                # Apply reducer as binary combine(a, b) left-fold.
+                result = values[0]
+                for v in values[1:]:
+                    result = reducer(result, v)
+                merged[field] = result
+            else:
+                evidence = build_last_write_conflict_evidence(
+                    field=field,
+                    n_branches=len(values),
+                    original_confidence=1.0,
+                )
+                raise HarborRuntimeError(
+                    f"parallel branch conflict on field {field!r}: "
+                    "no reducer declared (FR-11 force-loud). "
+                    f"Evidence: {evidence!r}",
+                )
+    return merged
 
 
 async def _check_tool_capabilities(run: GraphRun) -> None:

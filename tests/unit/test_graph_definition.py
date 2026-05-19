@@ -229,3 +229,34 @@ def test_graph_stores_ir_and_optional_wiring() -> None:
     g_default = Graph(ir)
     assert g_default.plugin_loader is None
     assert g_default.registry is None
+
+
+# ---------------------------------------------------------------------------
+# Graph.start construct + return path (T02)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+async def test_graph_start_returns_graphrun_with_default_run_id() -> None:
+    """``Graph.start(...)`` with ``run_id=None`` mints a fresh ``uuid4().hex``
+    and returns a :class:`GraphRun` instance (T02)."""
+    from harbor.graph import GraphRun
+
+    g = Graph(_ir())
+    run = await g.start(checkpointer=None)
+    assert isinstance(run, GraphRun)
+    assert isinstance(run.run_id, str)
+    assert len(run.run_id) == 32  # uuid4().hex == 32 lowercase hex chars
+    assert all(c in "0123456789abcdef" for c in run.run_id)
+
+
+@pytest.mark.unit
+async def test_graph_start_preserves_graph_hash_across_starts() -> None:
+    """Two successive ``Graph.start(...)`` calls produce distinct ``GraphRun``
+    instances with distinct ``run_id`` but identical ``graph_hash`` (T02)."""
+    g = Graph(_ir())
+    run_a = await g.start(checkpointer=None)
+    run_b = await g.start(checkpointer=None)
+    assert run_a is not run_b
+    assert run_a.run_id != run_b.run_id
+    assert run_a.graph.graph_hash == run_b.graph.graph_hash == g.graph_hash

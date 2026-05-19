@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 
 from harbor.plugin._markers import hookspec
 from harbor.plugin.types import (
+    BosunAction,
     MCPAdapterSpec,
     PackSpec,
     PluginManager,
@@ -92,7 +93,7 @@ def register_mcp_adapters() -> list[MCPAdapterSpec]:
 
 
 @hookspec(firstresult=True)
-def authorize_action(action: dict[str, Any]) -> bool | None:
+def authorize_action(action: BosunAction) -> bool | None:
     """Authorisation hook: first non-``None`` result wins.
 
     Returning ``False`` denies, ``True`` allows, ``None`` abstains so

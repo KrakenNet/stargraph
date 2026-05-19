@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Progressive execute sub-graph (v6 step 13).
+# canary -> health gate 1 -> stage -> health gate 2 -> fleet -> health gate 3.
+# Any health-gate fail -> partial-apply rollback (per-asset ledger preserved
+# in parent state).
+ir_version: "1.0.0"
+id: "graph:cve-rem-progressive-execute"
+
+nodes:
+  - id: canary_apply
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: health_gate_1
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: stage_apply
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: health_gate_2
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: fleet_apply
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: health_gate_3
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: emit_success
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+  - id: emit_rollback_signal
+    kind: "demos.cve_remediation.graph.nodes:PassthroughStub"
+
+state_class: "demos.cve_remediation.graph.state:CveRemState"
+
+rules:
+  - id: r-canary
+    when: "?n <- (node-id (id canary_apply))"
+    then: [{ kind: goto, target: health_gate_1 }]
+  - id: r-hg1-pass
+    when: "?n <- (node-id (id health_gate_1)) (state (canary_passed true))"
+    then: [{ kind: goto, target: stage_apply }]
+  - id: r-hg1-fail
+    when: "?n <- (node-id (id health_gate_1)) (state (canary_passed false))"
+    then: [{ kind: goto, target: emit_rollback_signal }]
+
+  - id: r-stage
+    when: "?n <- (node-id (id stage_apply))"
+    then: [{ kind: goto, target: health_gate_2 }]
+  - id: r-hg2-pass
+    when: "?n <- (node-id (id health_gate_2)) (state (stage_passed true))"
+    then: [{ kind: goto, target: fleet_apply }]
+  - id: r-hg2-fail
+    when: "?n <- (node-id (id health_gate_2)) (state (stage_passed false))"
+    then: [{ kind: goto, target: emit_rollback_signal }]
+
+  - id: r-fleet
+    when: "?n <- (node-id (id fleet_apply))"
+    then: [{ kind: goto, target: health_gate_3 }]
+  - id: r-hg3-pass
+    when: "?n <- (node-id (id health_gate_3)) (state (fleet_passed true))"
+    then: [{ kind: goto, target: emit_success }]
+  - id: r-hg3-fail
+    when: "?n <- (node-id (id health_gate_3)) (state (fleet_passed false))"
+    then: [{ kind: goto, target: emit_rollback_signal }]
+
+  - id: r-success-halt
+    when: "?n <- (node-id (id emit_success))"
+    then: [{ kind: halt, reason: "Progressive execute fleet success" }]
+  - id: r-rollback-halt
+    when: "?n <- (node-id (id emit_rollback_signal))"
+    then: [{ kind: halt, reason: "Health gate failed; rollback signaled to parent" }]
