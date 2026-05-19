@@ -6,7 +6,6 @@
 - Finish shipwrite
 - Finish code-graph
 - code-graph/shipwrite TUI
-- Web UI
 - Implement graph knowledge graphs
 - Custom nodes
 - Provider nodes
