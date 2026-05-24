@@ -38,9 +38,10 @@ import csv
 import io
 import json
 import os
+import re
 import time
 import zipfile
-from collections import defaultdict
+from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,11 @@ __all__ = [
     "DoctrineCorpus",
 ]
 
+
+# Chain version tag — folded into the corpus sha256 so that any change
+# to chain composition (e.g. enabling ChildOf propagation) invalidates a
+# previously-allowlisted manifest and forces re-ingest.
+_CHAIN_VERSION = b"v2-childof-propagation"
 
 _DEFAULT_TTL_S = int(os.environ.get("HARBOR_DOCTRINE_TTL_S", str(7 * 24 * 3600)))
 _HTTP_TIMEOUT_S = float(os.environ.get("HARBOR_DOCTRINE_TIMEOUT_S", "120.0"))
@@ -287,14 +293,23 @@ def _parse_capec_relationships(
     return catalog, dict(capec_to_cwe), dict(capec_to_attack)
 
 
-def _parse_cwe_csv(blob: bytes) -> dict[str, dict[str, str]]:
-    """CWE 1000.csv.zip → ``{CWE-N: {name, abstraction}}``."""
+def _parse_cwe_csv(
+    blob: bytes,
+) -> tuple[dict[str, dict[str, str]], dict[str, list[str]]]:
+    """CWE 1000.csv.zip → ``({CWE-N: {name, abstraction}}, {child: [parents]})``.
+
+    The second return value carries ``ChildOf`` parents from the MITRE
+    ``Related Weaknesses`` field (View-1000 abstraction hierarchy). It is
+    consumed by :func:`build_doctrine_kg` to propagate Control→CWE coverage
+    down the abstraction tree (controls that mitigate the parent CWE also
+    mitigate every child — this is the intended use of the View-1000 view).
+    """
     out: dict[str, dict[str, str]] = {}
+    childof: dict[str, list[str]] = {}
     with zipfile.ZipFile(io.BytesIO(blob)) as zf:
-        # The archive contains a single ``1000.csv`` file (View 1000).
         names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
         if not names:
-            return out
+            return out, childof
         with zf.open(names[0]) as f:
             text = io.TextIOWrapper(f, encoding="utf-8", errors="replace")
             reader = csv.DictReader(text)
@@ -308,7 +323,24 @@ def _parse_cwe_csv(blob: bytes) -> dict[str, dict[str, str]]:
                     "name": str(row.get("Name", "")),
                     "abstraction": str(row.get("Weakness Abstraction", "")),
                 }
-    return out
+                # Related Weaknesses field format:
+                # ``::NATURE:ChildOf:CWE ID:74:VIEW ID:1000::NATURE:...::``
+                # Each parent appears as a NATURE:ChildOf chunk; chunks may
+                # repeat the same parent across multiple VIEW IDs, so dedupe.
+                rw = row.get("Related Weaknesses", "") or ""
+                parents: list[str] = []
+                for chunk in rw.split("::"):
+                    if "NATURE:ChildOf" not in chunk:
+                        continue
+                    m = re.search(r"CWE ID:(\d+)", chunk)
+                    if not m:
+                        continue
+                    pid = f"CWE-{m.group(1)}"
+                    if pid not in parents:
+                        parents.append(pid)
+                if parents:
+                    childof[cwe_id] = parents
+    return out, childof
 
 
 def _parse_ctid_control_lookup(blob: bytes) -> dict[str, str]:
@@ -374,10 +406,14 @@ async def build_doctrine_kg() -> DoctrineCorpus:
 
     Edges produced:
 
-    * ``Control -[:MAPS_TO]-> CWE``  (transitive Control→ATT&CK→CAPEC→CWE)
+    * ``Control -[:MAPS_TO]-> CWE``  (transitive Control→ATT&CK→CAPEC→CWE,
+      then propagated down the View-1000 ``ChildOf`` abstraction tree so a
+      control that mitigates an abstract parent CWE also maps to every
+      concrete child)
     * ``Control -[:MITIGATES]-> Attack``
     * ``Attack  -[:RELATES_TO]-> Capec``
     * ``Capec   -[:WEAKNESS]-> CWE``
+    * ``CWE     -[:CHILD_OF]-> CWE``  (from CWE View-1000 ``Related Weaknesses``)
 
     Nodes produced: ``Control``, ``Attack``, ``Capec``, ``CWE``. Labels
     intentionally use ``CWE`` (uppercase) to match the CRITERIA Cypher.
@@ -392,7 +428,7 @@ async def build_doctrine_kg() -> DoctrineCorpus:
     capecs, capec_to_cwe, capec_to_attack = _parse_capec_relationships(
         blobs["capec_stix"]
     )
-    cwes = _parse_cwe_csv(blobs["cwe_csv_zip"])
+    cwes, cwe_childof = _parse_cwe_csv(blobs["cwe_csv_zip"])
 
     technique_stix_to_id = {
         v["stix_id"]: k for k, v in attack_techs.items() if v.get("stix_id")
@@ -417,6 +453,35 @@ async def build_doctrine_kg() -> DoctrineCorpus:
             for cwe_id in capec_to_cwe.get(cap_id, []):
                 if cwe_id in cwes:
                     control_to_cwe.add((ctl_id, cwe_id))
+    direct_control_cwe_count = len(control_to_cwe)
+
+    # Propagate Control coverage down the View-1000 ``ChildOf`` tree:
+    # a control that mitigates parent CWE-74 (Injection) inherently
+    # mitigates child CWE-89 (SQL Injection), CWE-77, CWE-917, etc.
+    # The CAPEC STIX bundle only lists Taxonomy_Mappings on ~28% of
+    # CAPECs, so the unaugmented chain reaches only ~14% of CWEs;
+    # propagation lifts coverage to ~73% without inventing edges.
+    parent_to_children: dict[str, list[str]] = defaultdict(list)
+    for child, parents in cwe_childof.items():
+        for p in parents:
+            parent_to_children[p].append(child)
+
+    ctl_to_cwes: dict[str, set[str]] = defaultdict(set)
+    for ctl_id, cwe_id in control_to_cwe:
+        ctl_to_cwes[ctl_id].add(cwe_id)
+    # BFS down from every covered CWE; guard against cycles via the
+    # set-membership check on each control's covered CWEs.
+    queue: deque[tuple[str, str]] = deque(control_to_cwe)
+    while queue:
+        ctl_id, cwe_id = queue.popleft()
+        for child in parent_to_children.get(cwe_id, []):
+            if child not in cwes:
+                continue
+            if child in ctl_to_cwes[ctl_id]:
+                continue
+            ctl_to_cwes[ctl_id].add(child)
+            control_to_cwe.add((ctl_id, child))
+            queue.append((ctl_id, child))
 
     # Build node + edge dict lists.
     nodes: list[dict[str, str]] = []
@@ -456,12 +521,22 @@ async def build_doctrine_kg() -> DoctrineCorpus:
                 _add_edge("Capec", cap_id, "WEAKNESS", "CWE", cwe)
     for ctl_id, cwe_id in control_to_cwe:
         _add_edge("Control", ctl_id, "MAPS_TO", "CWE", cwe_id)
+    # CWE abstraction tree (View 1000 ChildOf). Keeps the parent edge
+    # explicit in the graph so downstream queries can walk it directly
+    # instead of re-deriving from the propagation above.
+    for child, parents in cwe_childof.items():
+        if child not in cwes:
+            continue
+        for p in parents:
+            if p in cwes:
+                _add_edge("CWE", child, "CHILD_OF", "CWE", p)
 
-    # Source bytes for sha256: concatenated raw cached blobs in fixed order
-    # so the hash is deterministic across runs (same upstream files →
-    # same sha → bootgate idempotency stays sound).
+    # Source bytes for sha256: chain version tag + concatenated raw cached
+    # blobs in fixed order. Same upstream files + same chain → same sha →
+    # bootgate idempotency stays sound; bumping _CHAIN_VERSION forces a
+    # rebuild even when upstream sources are unchanged.
     source_bytes = b"\n".join(
-        blobs[k] for k in sorted(_URLS.keys())
+        [_CHAIN_VERSION] + [blobs[k] for k in sorted(_URLS.keys())]
     )
 
     counts = {
@@ -470,7 +545,12 @@ async def build_doctrine_kg() -> DoctrineCorpus:
         "capecs": len(capecs),
         "cwes": len(cwes),
         "control_attack_edges": len(control_attack_pairs),
+        "control_cwe_edges_direct": direct_control_cwe_count,
         "control_cwe_edges_materialized": len(control_to_cwe),
+        "cwe_childof_edges": sum(
+            1 for child, ps in cwe_childof.items()
+            if child in cwes for p in ps if p in cwes
+        ),
     }
     return DoctrineCorpus(
         nodes=nodes,

@@ -42,11 +42,13 @@ from demos.cve_remediation.graph.real_nodes import (
 from demos.cve_remediation.graph.state import CveRemState
 
 
-# CWEs that the published Control->ATT&CK->CAPEC->CWE chain genuinely
-# reaches. (See coverage report at end of run for the full reachable
-# set; CWEs absent from that set -- e.g. CWE-78 OS Command Injection --
-# are a real upstream-mapping gap, not a parser bug.)
-TEST_CWES = ["CWE-287", "CWE-285", "CWE-522"]
+# CWEs the chain reaches. The first three (287, 285, 522) are reachable
+# via the direct Control->ATT&CK->CAPEC->CWE chain. The remaining four
+# (89, 787, 863, 917) only become reachable once the View-1000 ChildOf
+# propagation is enabled in :func:`build_doctrine_kg` -- they were the
+# headline failures in the audit that motivated propagation. Keeping
+# them in the test makes regressions in the propagation path loud.
+TEST_CWES = ["CWE-287", "CWE-285", "CWE-522", "CWE-89", "CWE-787", "CWE-863", "CWE-917"]
 
 
 def _ctx() -> object:
