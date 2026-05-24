@@ -2186,12 +2186,28 @@ class CanonicalizeUntrustedNode(NodeBase):
 
 
 class _ExtractorBase(NodeBase):
-    """Shared regex-based CVE/CWE/CVSS/EPSS extractor (offline DSPy stand-in).
+    """Shared regex-based CVE/CWE/CVSS/EPSS extractor with LM-classified
+    ``vuln_class`` (regex stand-in for the production DSPy module).
 
-    The production path swaps the regex set for a schema-constrained
-    DSPy module bound to a real LM; the output shape (one
-    :class:`CveExtract` written to ``state.extract`` plus a top-level
-    ``cve_id``/``cwe_class``/``vuln_class`` mirror) is identical.
+    Two paths for the dispatcher's ``vuln_class`` vocabulary:
+
+    1. **LM classifier (primary)** -- when ``LLM_BASE_URL`` + ``LLM_MODEL``
+       are set, calls the configured OpenAI-compatible endpoint with a
+       schema-constrained prompt that returns one enum value from
+       :attr:`_VULN_CLASS_ENUM`. The LM sees the advisory description
+       (full canonical body), the CWE (when present), the CVE id, and
+       the enum definition. This breaks the cascade where CVEs with
+       no CWE in NVD silently collapse to ``vuln_class=""``.
+    2. **CWE→vuln_class heuristic (offline fallback)** -- the small
+       hardcoded :attr:`_CWE_TO_VULN_CLASS` dict only fires when the
+       LM endpoint is unset (offline tests / cold-start) OR the LM
+       call failed / returned out-of-enum. ``state.vuln_class_source``
+       records which path produced the final value so audits can
+       distinguish ``"lm"`` from ``"heuristic"`` from ``""``.
+
+    The output shape (one :class:`CveExtract` written to ``state.extract``
+    plus a top-level ``cve_id`` / ``cwe_class`` / ``vuln_class`` mirror)
+    is unchanged from the pre-LM extractor.
     """
 
     _CVE_RE = r"CVE-\d{4}-\d{4,7}"
@@ -2199,13 +2215,23 @@ class _ExtractorBase(NodeBase):
     _CVSS_RE = r"CVSS[:\s]*(\d+\.\d+)"
     _EPSS_RE = r"EPSS[:\s]*(\d+\.\d+)"
 
-    # CWE → vuln_class mapping (dispatcher vocabulary). Without this
-    # the dispatcher's ``_SANDBOX_BY_VULN_CLASS.get(vuln, "docker_compose")``
-    # default fires for every CVE because vuln_class was never populated
-    # — see SCORING_FINDINGS_20260507.md root cause #4. Mapping is best-
-    # effort by CWE family; CVEs with no CWE or unmapped CWE keep the
-    # empty default (which still hits docker_compose, but that's the
-    # honest answer for "we don't know" rather than a silent collapse).
+    _VULN_CLASS_ENUM: tuple[str, ...] = (
+        "web-framework",
+        "library",
+        "application",
+        "host",
+        "cipher-suite",
+        "config-only",
+        "acl-rule",
+        "logic-flaw",
+    )
+
+    # CWE → vuln_class mapping (dispatcher vocabulary). Used only as the
+    # offline fallback when the LM classifier is unreachable. The LM
+    # path supersedes this for every live run; this dict exists so
+    # offline unit tests + cold-start (no LLM_BASE_URL) keep producing
+    # a non-empty vuln_class. See SCORING_FINDINGS_20260507.md root
+    # cause #4 for why the dispatcher needs a non-empty value at all.
     _CWE_TO_VULN_CLASS: dict[str, str] = {
         "CWE-79":  "web-framework",   # XSS
         "CWE-352": "web-framework",   # CSRF
@@ -2280,12 +2306,21 @@ class _ExtractorBase(NodeBase):
         epss_bp = int(round(float(epss_match.group(1)) * 10000)) if epss_match else None
         kev_listed = "kev" in body.lower() or "known exploited" in body.lower()
 
-        # Derive vuln_class from CWE (dispatcher vocab). Empty CWE or
-        # unmapped CWE → _DEFAULT_VULN_CLASS so the dispatcher table at
-        # least gets a key it knows about.
-        vuln_class = self._CWE_TO_VULN_CLASS.get(
-            cwe_class, self._DEFAULT_VULN_CLASS if cwe_class else ""
+        # Derive vuln_class. LM classifier is primary (sees full advisory
+        # description + optional CWE + CVE id, returns one of
+        # _VULN_CLASS_ENUM). Heuristic dict is the offline fallback —
+        # fires only when LLM_BASE_URL is unset or the LM call failed.
+        vuln_class_lm, lm_err = await self._classify_vuln_class_via_llm(
+            cve_id=cve_id, cwe_class=cwe_class, description=body,
         )
+        if vuln_class_lm:
+            vuln_class = vuln_class_lm
+            vuln_class_source = "lm"
+        else:
+            vuln_class = self._CWE_TO_VULN_CLASS.get(
+                cwe_class, self._DEFAULT_VULN_CLASS if cwe_class else ""
+            )
+            vuln_class_source = "heuristic" if vuln_class else ""
 
         extract = CveExtract(
             cve_id=cve_id,
@@ -2300,7 +2335,107 @@ class _ExtractorBase(NodeBase):
             "cve_id": cve_id,
             "cwe_class": cwe_class,
             "vuln_class": vuln_class,
+            "vuln_class_source": vuln_class_source,
+            "last_vuln_class_lm_error": lm_err,
         }
+
+    @classmethod
+    async def _classify_vuln_class_via_llm(
+        cls,
+        *,
+        cve_id: str,
+        cwe_class: str,
+        description: str,
+    ) -> tuple[str, str]:
+        """Call the configured LM to classify into ``_VULN_CLASS_ENUM``.
+
+        Returns ``(vuln_class, error)``. Empty vuln_class on any
+        non-success path (endpoint unset, network error, JSON parse
+        failure, out-of-enum response); the caller falls back to the
+        heuristic dict.
+
+        Uses the same ``LLM_BASE_URL`` / ``LLM_MODEL`` / ``LLM_API_KEY``
+        env conventions every other LM call in this module follows so
+        the demo can drive all calls through one endpoint.
+        """
+        base_url = os.environ.get("LLM_BASE_URL", "").strip()
+        model = os.environ.get("LLM_MODEL", "").strip()
+        api_key = (
+            os.environ.get("LLM_API_KEY", "placeholder").strip()
+            or "placeholder"
+        )
+        timeout_s = float(
+            os.environ.get("LLM_TIMEOUT_SECONDS", "30") or "30"
+        )
+        if not base_url or not model:
+            return "", "LLM_BASE_URL or LLM_MODEL unset"
+        try:
+            import httpx
+        except ImportError:
+            return "", "httpx not installed"
+        cwe_line = f"CWE: {cwe_class}\n" if cwe_class else ""
+        enum_csv = ", ".join(cls._VULN_CLASS_ENUM)
+        system = (
+            "You classify a CVE into ONE vuln_class for sandbox "
+            "dispatcher routing. Pick based on what KIND of static "
+            "probe will reveal whether a host is patched:\n"
+            "- web-framework: HTTP request probe (XSS/CSRF/SQLi at "
+            "the framework layer)\n"
+            "- library: dependency-version check (pip/npm/maven coord "
+            "lookup)\n"
+            "- application: app-behaviour or RCE probe (Tomcat, "
+            "Struts, Confluence, Jenkins, etc.)\n"
+            "- host: OS/kernel/binary version check (sudo, glibc, "
+            "openssl, sshd)\n"
+            "- cipher-suite: TLS handshake / cert validation probe\n"
+            "- config-only: config-file diff (permissive defaults, "
+            "exposed admin endpoints)\n"
+            "- acl-rule: permission / authz policy check\n"
+            "- logic-flaw: no static probe (skip; HITL only)\n"
+            f"Return JSON: {{\"vuln_class\": \"<one of: {enum_csv}>\"}}"
+        )
+        user = (
+            f"CVE: {cve_id}\n{cwe_line}"
+            f"Advisory description:\n{description[:1800]}\n\n"
+            "Return only the JSON object, no prose."
+        )
+        try:
+            async with httpx.AsyncClient(timeout=timeout_s) as client:
+                resp = await client.post(
+                    f"{base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user},
+                        ],
+                        "temperature": 0.0,
+                        # Some local OpenAI-compatible servers (Ollama,
+                        # vLLM) spend the first dozens of tokens on
+                        # internal reasoning before the JSON token --
+                        # 60 truncated mid-thought (finish_reason=length,
+                        # empty content). 200 is the smallest cap that
+                        # reliably reaches the closing brace across
+                        # gpt-oss / qwen / llama families.
+                        "max_tokens": 200,
+                        "response_format": {"type": "json_object"},
+                    },
+                )
+                resp.raise_for_status()
+                content = (
+                    resp.json()["choices"][0]["message"]["content"]
+                )
+        except Exception as exc:  # noqa: BLE001 — capture-and-route
+            return "", f"{type(exc).__name__}: {exc}"
+        try:
+            parsed = json.loads(content)
+        except (ValueError, TypeError) as exc:
+            return "", f"json parse: {exc}"
+        vc = str(parsed.get("vuln_class", "")).strip()
+        if vc in cls._VULN_CLASS_ENUM:
+            return vc, ""
+        return "", f"out-of-enum: {vc!r}"
 
 
 class ExtractTrustedNode(_ExtractorBase):

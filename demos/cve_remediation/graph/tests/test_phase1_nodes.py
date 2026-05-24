@@ -107,6 +107,113 @@ def test_extract_untrusted_same_logic() -> None:
     assert out["extract"].cve_id == "CVE-2024-3094"
 
 
+def test_extract_vuln_class_offline_falls_back_to_heuristic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LM unset → vuln_class comes from CWE→heuristic dict; source='heuristic'."""
+    monkeypatch.delenv("LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    state = CveRemState(
+        canonical_body="CVE-2024-1 CWE-502 deserialization RCE. CVSS: 9.8"
+    )
+    out = asyncio.run(ExtractTrustedNode().execute(state, _ctx()))
+    assert out["vuln_class"] == "library"
+    assert out["vuln_class_source"] == "heuristic"
+    assert out["last_vuln_class_lm_error"] == "LLM_BASE_URL or LLM_MODEL unset"
+
+
+def test_extract_vuln_class_lm_supersedes_heuristic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LM reachable + in-enum answer wins over CWE heuristic."""
+    monkeypatch.setenv("LLM_BASE_URL", "http://stub.invalid/v1")
+    monkeypatch.setenv("LLM_MODEL", "stub-model")
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "5")
+
+    from demos.cve_remediation.graph import real_nodes as rn_mod
+
+    async def fake(cls, *, cve_id, cwe_class, description):  # noqa: ANN001
+        del cls, cve_id, cwe_class, description
+        return "application", ""
+
+    monkeypatch.setattr(
+        rn_mod._ExtractorBase,
+        "_classify_vuln_class_via_llm",
+        classmethod(fake),
+    )
+    # CWE-502 would map to "library" via heuristic; LM stubbed to
+    # "application" must win.
+    state = CveRemState(
+        canonical_body="CVE-2024-2 CWE-502 deserialization RCE. CVSS: 9.8"
+    )
+    out = asyncio.run(ExtractTrustedNode().execute(state, _ctx()))
+    assert out["vuln_class"] == "application"
+    assert out["vuln_class_source"] == "lm"
+    assert out["last_vuln_class_lm_error"] == ""
+
+
+def test_extract_vuln_class_breaks_no_cwe_cascade(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty CWE used to leave vuln_class='' (cascade root). LM path
+    must populate vuln_class even when fetch_advisory dropped CWE."""
+    monkeypatch.setenv("LLM_BASE_URL", "http://stub.invalid/v1")
+    monkeypatch.setenv("LLM_MODEL", "stub-model")
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "5")
+
+    from demos.cve_remediation.graph import real_nodes as rn_mod
+
+    async def fake(cls, *, cve_id, cwe_class, description):  # noqa: ANN001
+        del cls, cve_id, description
+        assert cwe_class == ""  # exercises the no-CWE path
+        return "application", ""
+
+    monkeypatch.setattr(
+        rn_mod._ExtractorBase,
+        "_classify_vuln_class_via_llm",
+        classmethod(fake),
+    )
+    state = CveRemState(
+        canonical_body=(
+            "Apache Struts versions 2.3 to 2.5 suffer from possible "
+            "Remote Code Execution when alwaysSelectFullNamespace is "
+            "true. CVSS: 8.1"
+        ),
+        cve_id="CVE-2018-11776",
+    )
+    out = asyncio.run(ExtractTrustedNode().execute(state, _ctx()))
+    assert out["cwe_class"] == ""  # honest gap from NVD
+    assert out["vuln_class"] == "application"
+    assert out["vuln_class_source"] == "lm"
+
+
+def test_extract_vuln_class_lm_out_of_enum_falls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LM returning a value outside _VULN_CLASS_ENUM → heuristic fallback,
+    error surface populated so auditors see the model misbehaved."""
+    monkeypatch.setenv("LLM_BASE_URL", "http://stub.invalid/v1")
+    monkeypatch.setenv("LLM_MODEL", "stub-model")
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "5")
+
+    from demos.cve_remediation.graph import real_nodes as rn_mod
+
+    async def fake(cls, *, cve_id, cwe_class, description):  # noqa: ANN001
+        del cls, cve_id, cwe_class, description
+        return "", "out-of-enum: 'unicorn'"
+
+    monkeypatch.setattr(
+        rn_mod._ExtractorBase,
+        "_classify_vuln_class_via_llm",
+        classmethod(fake),
+    )
+    state = CveRemState(canonical_body="CVE-2024-3 CWE-502 RCE. CVSS: 9.8")
+    out = asyncio.run(ExtractTrustedNode().execute(state, _ctx()))
+    assert out["vuln_class"] == "library"  # heuristic for CWE-502
+    assert out["vuln_class_source"] == "heuristic"
+    assert "out-of-enum" in out["last_vuln_class_lm_error"]
+
+
 # ---------------------------------------------------------------------------
 # Injection classify
 # ---------------------------------------------------------------------------

@@ -301,6 +301,18 @@ class CveRemState(BaseRunState):
     raw_source_url: str = ""
     raw_source_body: str = ""  # raw fetched advisory body (markdown / HTML / text)
     last_intake_error: str = ""  # IntakeFetchNode failure surface (empty on success)
+    # _ExtractorBase LM classifier diagnostic. Empty on success or when the
+    # LM endpoint is unset (offline path falls back to the CWE→vuln_class
+    # heuristic). Populated when the LM call was attempted but failed,
+    # returned an out-of-enum value, or timed out — so auditors can tell
+    # an "LM said library" from a "fallback heuristic said library".
+    last_vuln_class_lm_error: str = ""
+    # Source of the final vuln_class value: ``"lm"`` when the LM
+    # classifier produced an in-enum answer, ``"heuristic"`` when the
+    # offline CWE→vuln_class dict fired (LM unreachable or returned
+    # garbage), ``""`` when no classification ran (cwe_class empty AND
+    # LM offline).
+    vuln_class_source: str = ""
     cve_vendor: str = ""  # NVD CPE-derived; used by CMDB lookup in Phase 2
     cve_product: str = ""  # NVD CPE-derived; used by CMDB lookup in Phase 2
     # Full candidate-product list (NVD CPE products + description fallback,
