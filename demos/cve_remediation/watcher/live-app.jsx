@@ -1165,7 +1165,7 @@ function HaltNewGateView({ node, status, delta, timing }) {
   );
 }
 
-function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta, timing }) {
+function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta, timing, runState, runTerminal }) {
   if (!node) {
     return (
       <div className="nv-pending">
@@ -1195,11 +1195,21 @@ function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta,
     return s;
   }, [allEvents, node.id]);
 
-  // Per-node hero. Currently authored: halt_new_gate. Other nodes fall back
-  // to the generic profile/outcome/routing layout below (still real data).
-  const hero = node.id === "halt_new_gate"
-    ? <HaltNewGateView node={node} status={status} delta={delta} timing={timing} />
-    : null;
+  // Dispatcher: priority-id → family → OutcomePanel fallback.
+  const Panel = (typeof window.panelForNode === "function"
+    ? window.panelForNode(node)
+    : null) || OutcomePanel;
+
+  const panelProps = {
+    node,
+    profile,
+    status,
+    delta,
+    events,
+    timing,
+    runState: runState || {},
+    runTerminal: !!runTerminal,
+  };
 
   return (
     <>
@@ -1221,11 +1231,9 @@ function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta,
         </div>
       </header>
 
-      {hero && (
-        <div style={{ borderBottom: "1px solid var(--edge)", padding: 12 }}>
-          {hero}
-        </div>
-      )}
+      <div style={{ borderBottom: "1px solid var(--edge)", padding: 12 }}>
+        <Panel {...panelProps} />
+      </div>
 
       <div
         className="nv-grid"
@@ -1481,6 +1489,11 @@ function LiveApp({ runId }) {
   const stateDeltaByNode = useMemoL(() => buildStateDeltas(checkpoints), [checkpoints]);
   const timingByNode = useMemoL(() => buildTimings(allEvents), [allEvents]);
 
+  // Latest full state snapshot (for panels that need cross-node fields).
+  const runState = checkpoints.length > 0 ? (checkpoints[checkpoints.length - 1].state || {}) : {};
+  // Terminal flag — true once the run can no longer produce new events.
+  const runTerminal = runStatus === "done" || runStatus === "failed" || runStatus === "cancelled";
+
   // Total elapsed for the run = first transition ts → last transition ts (or now).
   const runElapsedMs = useMemoL(() => {
     const firstTs = allEvents.length ? allEvents[0].ts : null;
@@ -1676,6 +1689,8 @@ function LiveApp({ runId }) {
             runStatus={runStatus}
             delta={stateDeltaByNode.get(visibleNode.id) || null}
             timing={timingByNode.get(visibleNode.id) || null}
+            runState={runState}
+            runTerminal={runTerminal}
           />
         </section>
       </main>
