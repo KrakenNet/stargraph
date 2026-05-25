@@ -54,17 +54,17 @@ function IntakeFetchPanel({ node, profile, status, delta, runState, timing, even
 
   // FR-PK3: lifecycle gate
   if (status === "pending") {
-    return <div data-panel-id="intake_fetch">{headerRow}<p>{EMPTY_COPY.pending}</p></div>;
+    return <div data-panel-id="intake_fetch">{headerRow}<p>{emptyCopy("source", "pending")}</p></div>;
   }
   if (status === "running" && !delta) {
-    return <div data-panel-id="intake_fetch">{headerRow}<p>{EMPTY_COPY.running_empty}</p></div>;
+    return <div data-panel-id="intake_fetch">{headerRow}<p>{emptyCopy("source", "running_empty")}</p></div>;
   }
   if (status === "failed") {
     return (
       <div data-panel-id="intake_fetch">
         {headerRow}
         <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginBottom: "12px" }}>
-          {runState.last_intake_error || EMPTY_COPY.failed}
+          {runState.last_intake_error || emptyCopy("source", "failed")}
         </div>
       </div>
     );
@@ -209,13 +209,33 @@ const FAMILY_PANEL = {};
 const PHASE_ORDER = [];
 const PHASE_LABEL = {};
 
-// Clinical-voice empty-state copy per D3.
+// single grep-target for all 4×~10 empty-state cells per D3
 const EMPTY_COPY = {
-  pending: "pending",
-  running_empty: "running — no checkpoint yet",
-  done_empty: "no state changes",
-  failed: "FAILED",
+  default: {
+    pending: "pending",
+    running_empty: "running — no checkpoint yet",
+    done_empty: "no state changes",
+    failed: "FAILED",
+  },
+  gate: { done_empty: "gate passed (no halt)" },
+  decision: { done_empty: "decision made — no state change" },
+  branch: { done_empty: "branch not yet evaluated" },
+  artifact: { done_empty: "no artifact emitted" },
+  hitl: { running_empty: "waiting for human input" },
+  llm: { running_empty: "running — awaiting token stream" },
+  kg: { done_empty: "no retrieval results" },
+  sandbox: { done_empty: "probe not yet run" },
+  terminal: { done_empty: "run complete" },
 };
+
+/** Return lifecycle copy for a given family, falling back to default. */
+function emptyCopy(family, lifecycle) {
+  const override = EMPTY_COPY[family];
+  if (override && override[lifecycle] !== undefined) {
+    return override[lifecycle];
+  }
+  return EMPTY_COPY.default[lifecycle];
+}
 
 // Diagnostic fields for cargonet panels per D12.
 const CARGONET_DIAGNOSTIC_FIELDS = [
@@ -285,5 +305,6 @@ window.UnimplementedPanel = UnimplementedPanel;
 window.PHASE_ORDER = PHASE_ORDER;
 window.PHASE_LABEL = PHASE_LABEL;
 window.EMPTY_COPY = EMPTY_COPY;
+window.emptyCopy = emptyCopy;
 window.CARGONET_DIAGNOSTIC_FIELDS = CARGONET_DIAGNOSTIC_FIELDS;
 window.panelDataNodeId = panelDataNodeId;
