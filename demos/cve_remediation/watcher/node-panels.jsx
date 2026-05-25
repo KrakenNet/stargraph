@@ -1016,6 +1016,1167 @@ function CargonetFamilyPanel({ node, profile, status, delta, runState, timing, e
   }
 }
 
+// ─── GateFamilyPanel (FR-F1) ──────────────────────────────────────────────
+
+function GateFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("gate", lifecycle)}</p></div>;
+  }
+
+  // FR-F1.1: verdict per node id
+  let passed = false;
+  let reason = "";
+  if (node.id === "halt_new_gate") {
+    passed = runState.halt_new_active === false;
+    reason = runState.halt_reason || "";
+  } else if (node.id === "plan_quarantine_gate") {
+    passed = runState.plan_quarantined === false;
+    reason = runState.plan_quarantine_reason || "";
+  } else if (node.id === "divergence_quarantine") {
+    passed = !runState.gepa_divergence_record_id;
+    reason = runState.gepa_divergence_record_id ? ("divergence record: " + runState.gepa_divergence_record_id) : "";
+  }
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* FR-F1.1: verdict pill */}
+      <div style={{ marginBottom: "8px" }}>
+        <span style={{
+          background: passed ? "#d1fae5" : "#fee2e2",
+          color: passed ? "#065f46" : "#991b1b",
+          borderRadius: "4px", padding: "2px 8px", fontSize: "13px",
+        }}>{passed ? "passed" : "halted"}</span>
+      </div>
+
+      {/* FR-F1.2: reason */}
+      {reason && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Reason:</strong> {reason}
+        </div>
+      )}
+
+      {/* FR-F1.3: telemetry fields */}
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+        <tbody>
+          {runState.halt_new_active != null && (
+            <tr><td style={{ padding: "4px 8px", fontWeight: "500" }}>halt_new_active</td><td style={{ padding: "4px 8px" }}>{String(runState.halt_new_active)}</td></tr>
+          )}
+          {runState.plan_quarantined != null && (
+            <tr><td style={{ padding: "4px 8px", fontWeight: "500" }}>plan_quarantined</td><td style={{ padding: "4px 8px" }}>{String(runState.plan_quarantined)}</td></tr>
+          )}
+          {runState.gepa_divergence_record_id != null && (
+            <tr><td style={{ padding: "4px 8px", fontWeight: "500" }}>gepa_divergence_record_id</td><td style={{ padding: "4px 8px" }}>{runState.gepa_divergence_record_id}</td></tr>
+          )}
+        </tbody>
+      </table>
+
+      {/* Error banner */}
+      {status === "failed" && (
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginTop: "8px" }}>
+          {emptyCopy("gate", "failed")}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DecisionFamilyPanel (FR-F3) ─────────────────────────────────────────
+
+function DecisionFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("decision", lifecycle)}</p></div>;
+  }
+
+  // FR-F3.1: decision from transition event
+  const transitionEvent = events.find(e => e.type === "transition");
+  const decision = transitionEvent ? (transitionEvent.to_node || transitionEvent.decision || "transition recorded") : null;
+
+  // FR-F3.2: per-node inputs
+  const DECISION_INPUTS = {
+    source_trust_gate: [
+      { key: "source_trust", label: "Source Trust" },
+      { key: "source_class", label: "Source Class" },
+    ],
+    ssvc_evaluate: [
+      { key: "ssvc_tier", label: "SSVC Tier" },
+    ],
+    sandbox_dispatch: [
+      { key: "sandbox_runtime", label: "Sandbox Runtime" },
+    ],
+    suppress_not_applicable: [
+      { key: "disposition", label: "Disposition" },
+    ],
+  };
+
+  const inputs = DECISION_INPUTS[node.id] || [];
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* Decision pill */}
+      {decision && (
+        <div style={{ marginBottom: "8px" }}>
+          <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{decision}</span>
+        </div>
+      )}
+
+      {/* Input fields */}
+      {inputs.length > 0 && (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", marginBottom: "8px" }}>
+          <tbody>
+            {inputs.filter(f => runState[f.key] != null).map(f => (
+              <tr key={f.key}>
+                <td style={{ padding: "4px 8px", fontWeight: "500", width: "40%" }}>{f.label}</td>
+                <td style={{ padding: "4px 8px" }}>{String(runState[f.key])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ─── TransformFamilyPanel (FR-F4) ────────────────────────────────────────
+
+function TransformFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("default", lifecycle)}</p></div>;
+  }
+
+  // FR-F4.1: before/after from delta keys with truncated values
+  const deltaFields = delta && delta.fields ? Object.keys(delta.fields).filter(k => delta.fields[k] != null) : [];
+
+  // FR-F4.2: canonicalize_* specific
+  const isCanonicalize = node.id.startsWith("canonicalize_");
+  // FR-F4.3: enrich_* specific
+  const isEnrich = node.id.startsWith("enrich_");
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* FR-F4.1: delta fields */}
+      {deltaFields.length > 0 && (
+        <div style={{ marginBottom: "12px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Changed Fields</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <tbody>
+              {deltaFields.map(k => {
+                const val = delta.fields[k];
+                const strVal = typeof val === "string" ? val : JSON.stringify(val);
+                const truncated = strVal.length > 120 ? strVal.slice(0, 120) + "..." : strVal;
+                return (
+                  <tr key={k}>
+                    <td style={{ padding: "4px 8px", fontWeight: "500", width: "30%" }}>{k}</td>
+                    <td style={{ padding: "4px 8px" }}>{truncated}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* FR-F4.2: canonicalize specific */}
+      {isCanonicalize && (
+        <div style={{ marginBottom: "8px" }}>
+          {runState.canonical_body != null && (
+            <div><strong>Canonical body length:</strong> {typeof runState.canonical_body === "string" ? runState.canonical_body.length : JSON.stringify(runState.canonical_body).length}</div>
+          )}
+          {runState.injection_class != null && (
+            <div><strong>Injection class:</strong> {runState.injection_class}</div>
+          )}
+        </div>
+      )}
+
+      {/* FR-F4.3: enrich specific */}
+      {isEnrich && runState.extract != null && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Extract Summary</strong>
+          <pre style={{ fontSize: "11px", whiteSpace: "pre-wrap", background: "#f8fafc", padding: "8px", borderRadius: "4px" }}>
+            {typeof runState.extract === "string" ? runState.extract : JSON.stringify(runState.extract, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── LlmFamilyPanel (FR-F5) ─────────────────────────────────────────────
+
+// FR-F5.1: streaming token block — monospace pre-wrap auto-scroll
+function StreamingTokenBlock({ model, text }) {
+  const React = window.React;
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  });
+  return (
+    <div style={{ marginBottom: "12px" }}>
+      {model && <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "4px" }}>model: {model}</div>}
+      <pre ref={ref} style={{
+        fontFamily: "monospace", fontSize: "12px", whiteSpace: "pre-wrap",
+        background: "#f8fafc", padding: "8px", borderRadius: "4px",
+        maxHeight: "400px", overflow: "auto",
+      }}>{text}</pre>
+    </div>
+  );
+}
+
+function LlmFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("llm", lifecycle)}</p></div>;
+  }
+
+  // FR-F5.5: mutual exclusion — token streaming early return
+  const tokenEvents = events.filter(e => e.type === "token");
+  if (tokenEvents.length > 0) {
+    const text = tokenEvents.sort((a, b) => a.index - b.index).map(e => e.token).join("");
+    const model = tokenEvents[0].model;
+    return (
+      <div data-panel-id={node.id}>
+        <StreamingTokenBlock model={model} text={text} />
+      </div>
+    );
+  }
+
+  // FR-F5.2: static fallback per node
+  return (
+    <div data-panel-id={node.id}>
+      {/* code_writer: FR-F5.3, FR-F5.4 */}
+      {node.id === "code_writer" && (
+        <div>
+          {runState.plan_rationale && (
+            <div style={{ marginBottom: "8px" }}>
+              <strong>Plan Rationale:</strong>
+              <pre style={{ fontSize: "11px", whiteSpace: "pre-wrap", background: "#f8fafc", padding: "8px", borderRadius: "4px", marginTop: "4px" }}>{runState.plan_rationale}</pre>
+            </div>
+          )}
+          {runState.plan_spec && (
+            <div style={{ marginBottom: "8px" }}>
+              <strong>Plan Spec:</strong>
+              <pre style={{ fontSize: "11px", whiteSpace: "pre-wrap", background: "#f8fafc", padding: "8px", borderRadius: "4px", marginTop: "4px" }}>
+                {typeof runState.plan_spec === "string" ? runState.plan_spec : JSON.stringify(runState.plan_spec, null, 2)}
+              </pre>
+            </div>
+          )}
+          {runState.code_runtime && <div style={{ marginBottom: "4px" }}><strong>Runtime:</strong> {runState.code_runtime}</div>}
+          {runState.apply_bundle_ref && <div style={{ marginBottom: "4px" }}><strong>Apply bundle:</strong> <code>{runState.apply_bundle_ref}</code></div>}
+          {runState.rollback_bundle_ref && <div style={{ marginBottom: "4px" }}><strong>Rollback bundle:</strong> <code>{runState.rollback_bundle_ref}</code></div>}
+          {runState.verify_probe_ref && <div style={{ marginBottom: "4px" }}><strong>Verify probe:</strong> <code>{runState.verify_probe_ref}</code></div>}
+        </div>
+      )}
+
+      {/* critic */}
+      {node.id === "critic" && (
+        <div>
+          {runState.critic_verdict && <div style={{ marginBottom: "4px" }}><strong>Verdict:</strong> <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{runState.critic_verdict}</span></div>}
+          {runState.critic_history && Array.isArray(runState.critic_history) && runState.critic_history.length > 0 && (
+            <div style={{ marginBottom: "8px" }}>
+              <strong>Latest critique:</strong>
+              <pre style={{ fontSize: "11px", whiteSpace: "pre-wrap", background: "#f8fafc", padding: "8px", borderRadius: "4px", marginTop: "4px" }}>
+                {typeof runState.critic_history[runState.critic_history.length - 1] === "string"
+                  ? runState.critic_history[runState.critic_history.length - 1]
+                  : JSON.stringify(runState.critic_history[runState.critic_history.length - 1], null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* judge_safety */}
+      {node.id === "judge_safety" && runState.judge_safety_verdict && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Safety Verdict:</strong> <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{runState.judge_safety_verdict}</span>
+        </div>
+      )}
+
+      {/* extract_* */}
+      {node.id.startsWith("extract_") && runState.extract != null && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Extract:</strong>
+          <pre style={{ fontSize: "11px", whiteSpace: "pre-wrap", background: "#f8fafc", padding: "8px", borderRadius: "4px", marginTop: "4px" }}>
+            {typeof runState.extract === "string" ? runState.extract : JSON.stringify(runState.extract, null, 2)}
+          </pre>
+        </div>
+      )}
+
+      {/* injection_classify */}
+      {node.id === "injection_classify" && runState.injection_class != null && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Injection Class:</strong> <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{runState.injection_class}</span>
+        </div>
+      )}
+
+      {/* done_empty fallback */}
+      {status === "done" && !delta && <p>{emptyCopy("llm", "done_empty")}</p>}
+    </div>
+  );
+}
+
+// ─── AuditFamilyPanel (FR-F6) ────────────────────────────────────────────
+
+function AuditFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("default", lifecycle)}</p></div>;
+  }
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* FR-F6.1: audit written bool */}
+      <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+        <strong>Audit written:</strong>
+        <span style={{
+          display: "inline-block", width: "12px", height: "12px", borderRadius: "50%",
+          background: runState.source_audit_written === true ? "#22c55e" : "#94a3b8",
+        }} />
+        <span>{runState.source_audit_written === true ? "yes" : "no"}</span>
+      </div>
+
+      {/* FR-F6.2: context fields */}
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", marginBottom: "8px" }}>
+        <tbody>
+          {runState.source_trust != null && (
+            <tr><td style={{ padding: "4px 8px", fontWeight: "500" }}>Source Trust</td><td style={{ padding: "4px 8px" }}>{String(runState.source_trust)}</td></tr>
+          )}
+          {runState.source_class != null && (
+            <tr><td style={{ padding: "4px 8px", fontWeight: "500" }}>Source Class</td><td style={{ padding: "4px 8px" }}>{String(runState.source_class)}</td></tr>
+          )}
+          {runState.source_classifier_ran != null && (
+            <tr><td style={{ padding: "4px 8px", fontWeight: "500" }}>Classifier Ran</td><td style={{ padding: "4px 8px" }}>{String(runState.source_classifier_ran)}</td></tr>
+          )}
+          {runState.source_trust_violation != null && (
+            <tr><td style={{ padding: "4px 8px", fontWeight: "500" }}>Trust Violation</td><td style={{ padding: "4px 8px" }}>{String(runState.source_trust_violation)}</td></tr>
+          )}
+        </tbody>
+      </table>
+
+      {/* FR-F6.3: error banner */}
+      {runState.last_source_audit_error && (
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginBottom: "8px" }}>
+          {runState.last_source_audit_error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ArtifactFamilyPanel (FR-F7) ─────────────────────────────────────────
+
+const ARTIFACT_REF_FIELDS = {
+  emit_quarantine_artifact: "quarantine_artifact_ref",
+  emit_remediation_bundle: "remediation_bundle_artifact_ref",
+  emit_evidence_bundle: "evidence_bundle_artifact_ref",
+  emit_retro_payload: "retro_payload_artifact_ref",
+  emit_docx_archive: "docx_artifact_ref",
+  emit_proof_report: "proof_report_artifact_ref",
+};
+
+function ArtifactFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("artifact", lifecycle)}</p></div>;
+  }
+
+  // FR-F7.1: per-node ref field lookup
+  const refField = ARTIFACT_REF_FIELDS[node.id];
+  const refValue = refField ? runState[refField] : null;
+
+  // FR-F7.2: artifact_written events
+  const artifactEvents = events.filter(e => e.type === "artifact_written");
+
+  if (!refValue && artifactEvents.length === 0) {
+    return <div data-panel-id={node.id}><p>{emptyCopy("artifact", "done_empty")}</p></div>;
+  }
+
+  return (
+    <div data-panel-id={node.id}>
+      {refValue && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Artifact ref:</strong> <code>{refValue}</code>
+        </div>
+      )}
+
+      {artifactEvents.length > 0 && (
+        <div style={{ marginBottom: "12px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Artifacts Written</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Hash</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Size</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>MIME</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Provenance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {artifactEvents.map((e, i) => (
+                <tr key={i}>
+                  <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: "11px" }}>{e.hash || ""}</td>
+                  <td style={{ padding: "4px 8px" }}>{e.size || ""}</td>
+                  <td style={{ padding: "4px 8px" }}>{e.mime || e.content_type || ""}</td>
+                  <td style={{ padding: "4px 8px" }}>{e.provenance || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── HitlFamilyPanel (FR-F8) ─────────────────────────────────────────────
+
+function HitlFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed" && lifecycle !== "running_empty") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("hitl", lifecycle)}</p></div>;
+  }
+
+  // FR-F8.1: waiting_for_input event
+  const waitingEvent = events.find(e => e.type === "waiting_for_input");
+  const gateName = waitingEvent ? (waitingEvent.gate || waitingEvent.name || node.id) : node.id;
+  const prompt = waitingEvent && waitingEvent.payload ? waitingEvent.payload.prompt : null;
+  const requestedCapability = waitingEvent ? (waitingEvent.requested_capability || (waitingEvent.payload && waitingEvent.payload.requested_capability)) : null;
+
+  // FR-F8.3: decision from response
+  const response = runState.response || {};
+  const responseDecision = response.decision;
+  const responseActor = response.actor;
+  const responseAt = response.at;
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* Gate name + waiting status */}
+      <div style={{ marginBottom: "8px" }}>
+        <strong>Gate:</strong> {gateName}
+        {waitingEvent && !responseDecision && (
+          <span style={{ marginLeft: "8px", background: "#fef3c7", borderRadius: "4px", padding: "2px 8px", fontSize: "12px", color: "#92400e" }}>waiting for input</span>
+        )}
+      </div>
+
+      {/* FR-F8.2: prompt text */}
+      {prompt && (
+        <div style={{ marginBottom: "8px", padding: "8px", background: "#f8fafc", borderRadius: "4px" }}>
+          <strong>Prompt:</strong> {prompt}
+        </div>
+      )}
+
+      {/* Requested capability */}
+      {requestedCapability && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Requested capability:</strong> {requestedCapability}
+        </div>
+      )}
+
+      {/* FR-F8.3: decision */}
+      {responseDecision && (
+        <div style={{ marginBottom: "8px" }}>
+          <span style={{ background: "#d1fae5", borderRadius: "4px", padding: "2px 8px", fontSize: "13px", color: "#065f46" }}>{responseDecision}</span>
+          {responseActor && <span style={{ marginLeft: "8px", fontSize: "12px", color: "#64748b" }}>by {responseActor}</span>}
+          {responseAt && <span style={{ marginLeft: "8px", fontSize: "12px", color: "#64748b" }}>at {responseAt}</span>}
+        </div>
+      )}
+
+      {/* FR-F8.4: blocked_at */}
+      {runState.hitl_blocked_at && (
+        <div style={{ marginBottom: "8px", color: "#92400e" }}>
+          <strong>Blocked at:</strong> {runState.hitl_blocked_at}
+        </div>
+      )}
+
+      {/* HITL running_empty shows waiting copy */}
+      {lifecycle === "running_empty" && !waitingEvent && (
+        <p>{emptyCopy("hitl", "running_empty")}</p>
+      )}
+    </div>
+  );
+}
+
+// ─── BranchFamilyPanel (FR-F9) ───────────────────────────────────────────
+
+function BranchFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("branch", lifecycle)}</p></div>;
+  }
+
+  // FR-F9.1: route from transition event
+  const transitionEvent = events.find(e => e.type === "transition");
+  const toNode = transitionEvent ? transitionEvent.to_node : null;
+
+  // FR-F9.2: routing input from NODE_PROFILE outputs
+  const nodeProfile = window.NODE_PROFILE && window.NODE_PROFILE[node.id];
+  const outputsDoc = nodeProfile && nodeProfile.outputs ? nodeProfile.outputs : null;
+
+  if (!toNode && !delta) {
+    return <div data-panel-id={node.id}><p>{emptyCopy("branch", "done_empty")}</p></div>;
+  }
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* Route taken */}
+      {toNode && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Route:</strong> <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{toNode}</span>
+        </div>
+      )}
+
+      {/* Routing input doc */}
+      {outputsDoc && (
+        <div style={{ marginBottom: "8px", fontSize: "12px", color: "#64748b" }}>
+          <strong>Routing outputs:</strong> {typeof outputsDoc === "string" ? outputsDoc : JSON.stringify(outputsDoc)}
+        </div>
+      )}
+
+      {/* Delta fields if any */}
+      {delta && delta.fields && Object.keys(delta.fields).length > 0 && (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <tbody>
+            {Object.entries(delta.fields).filter(([, v]) => v != null).map(([k, v]) => (
+              <tr key={k}>
+                <td style={{ padding: "4px 8px", fontWeight: "500" }}>{k}</td>
+                <td style={{ padding: "4px 8px" }}>{typeof v === "object" ? JSON.stringify(v) : String(v)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ─── AgentFamilyPanel (FR-F10) ───────────────────────────────────────────
+
+function AgentFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+  const Collapsible = window.Collapsible;
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("default", lifecycle)}</p></div>;
+  }
+
+  if (node.id === "planner") {
+    const agentTrace = runState.planner_agent_trace || [];
+    const verifierFindings = runState.planner_verifier_findings || [];
+    const ragSources = runState.planner_rag_sources || [];
+
+    return (
+      <div data-panel-id={node.id}>
+        {/* FR-F10.1: agent trace */}
+        {agentTrace.length > 0 && (
+          <Collapsible title={"Agent Trace (" + agentTrace.length + " steps)"}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+              <tbody>
+                {agentTrace.map((row, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: "4px 8px", fontWeight: "500", width: "15%", verticalAlign: "top" }}>{row.role || ""}</td>
+                    <td style={{ padding: "4px 8px" }}>{typeof row.content === "string" ? (row.content.length > 200 ? row.content.slice(0, 200) + "..." : row.content) : JSON.stringify(row.content)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Collapsible>
+        )}
+
+        {/* FR-F10.2: verifier findings + pass pill */}
+        <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <strong>Verifier:</strong>
+          <span style={{
+            background: runState.planner_verifier_passed === true ? "#d1fae5" : runState.planner_verifier_passed === false ? "#fee2e2" : "#f1f5f9",
+            color: runState.planner_verifier_passed === true ? "#065f46" : runState.planner_verifier_passed === false ? "#991b1b" : "#475569",
+            borderRadius: "4px", padding: "2px 8px", fontSize: "13px",
+          }}>{runState.planner_verifier_passed === true ? "passed" : runState.planner_verifier_passed === false ? "failed" : "pending"}</span>
+        </div>
+        {verifierFindings.length > 0 && (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", marginBottom: "8px" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Finding</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Severity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {verifierFindings.map((f, i) => (
+                <tr key={i}>
+                  <td style={{ padding: "4px 8px" }}>{f.finding || f.message || JSON.stringify(f)}</td>
+                  <td style={{ padding: "4px 8px" }}>{f.severity || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* FR-F10.3: RAG sources */}
+        {ragSources.length > 0 && (
+          <div style={{ marginBottom: "8px" }}>
+            <strong style={{ display: "block", marginBottom: "4px" }}>RAG Sources</strong>
+            <ul style={{ margin: "0 0 0 16px", padding: 0, fontSize: "13px" }}>
+              {ragSources.map((s, i) => <li key={i}>{typeof s === "string" ? s : JSON.stringify(s)}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {/* FR-F10.4: quality metrics */}
+        <div style={{ display: "flex", gap: "16px", marginBottom: "8px", flexWrap: "wrap", fontSize: "13px" }}>
+          {runState.planner_latency_ms != null && <div><strong>Latency:</strong> {runState.planner_latency_ms}ms</div>}
+          {runState.planner_schema_retries != null && <div><strong>Schema retries:</strong> {runState.planner_schema_retries}</div>}
+          {runState.plan_quality_score_bp != null && <div><strong>Quality:</strong> {(runState.plan_quality_score_bp / 100).toFixed(0)}%</div>}
+        </div>
+
+        {/* FR-F10.7: error */}
+        {runState.last_planner_error && (
+          <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginBottom: "8px" }}>
+            {runState.last_planner_error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (node.id === "remediation_discovery") {
+    const actions = runState.recommended_actions || [];
+    const provenance = runState.recommendation_provenance || {};
+
+    return (
+      <div data-panel-id={node.id}>
+        {/* FR-F10.5: recommended actions table */}
+        {actions.length > 0 && (
+          <div style={{ marginBottom: "12px" }}>
+            <strong style={{ display: "block", marginBottom: "4px" }}>Recommended Actions</strong>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Action</th>
+                  <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Type</th>
+                  <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                {actions.map((a, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: "4px 8px" }}>{a.action || a.description || JSON.stringify(a)}</td>
+                    <td style={{ padding: "4px 8px" }}>{a.type || ""}</td>
+                    <td style={{ padding: "4px 8px" }}>{a.priority || ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* FR-F10.6: provenance */}
+        {Object.keys(provenance).length > 0 && (
+          <div style={{ marginBottom: "8px" }}>
+            <strong style={{ display: "block", marginBottom: "4px" }}>Provenance</strong>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <tbody>
+                {Object.entries(provenance).filter(([k]) => k !== "last_error").map(([k, v]) => (
+                  <tr key={k}>
+                    <td style={{ padding: "4px 8px", fontWeight: "500" }}>{k}</td>
+                    <td style={{ padding: "4px 8px" }}>{typeof v === "object" ? JSON.stringify(v) : String(v)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* FR-F10.7: error */}
+        {provenance.last_error && (
+          <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginBottom: "8px" }}>
+            {provenance.last_error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback for unknown agent nodes
+  return <div data-panel-id={node.id}><p>{emptyCopy("default", "done_empty")}</p></div>;
+}
+
+// ─── KgFamilyPanel (FR-F12) ──────────────────────────────────────────────
+
+function KgFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("kg", lifecycle)}</p></div>;
+  }
+
+  // FR-F12.1: per-node retrieval status
+  const statusFields = {
+    vec_search_retros: { status: "prior_retro_retrieval_status", mode: "prior_retro_retrieval_mode" },
+    graph_prior_remediations: { status: "graph_prior_retrieval_status" },
+    framework_mapping: { status: "framework_mapping_status" },
+    plan_template_lookup: { hit: "template_lookup_hit", miss: "template_lookup_miss_reason" },
+  };
+  const sf = statusFields[node.id];
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* Retrieval status pill */}
+      {sf && (
+        <div style={{ marginBottom: "8px" }}>
+          {sf.status && runState[sf.status] != null && (
+            <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px", marginRight: "8px" }}>{runState[sf.status]}</span>
+          )}
+          {sf.mode && runState[sf.mode] != null && (
+            <span style={{ fontSize: "12px", color: "#64748b" }}>mode: {runState[sf.mode]}</span>
+          )}
+          {sf.hit != null && runState[sf.hit] != null && (
+            <span style={{ background: runState[sf.hit] ? "#d1fae5" : "#fee2e2", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{runState[sf.hit] ? "hit" : "miss"}</span>
+          )}
+          {sf.miss && runState[sf.miss] && (
+            <span style={{ marginLeft: "8px", fontSize: "12px", color: "#64748b" }}>{runState[sf.miss]}</span>
+          )}
+        </div>
+      )}
+
+      {/* FR-F12.2: vec_search_retros → prior_retro_suggestions table */}
+      {node.id === "vec_search_retros" && runState.prior_retro_suggestions && runState.prior_retro_suggestions.length > 0 && (
+        <div style={{ marginBottom: "12px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Prior Retro Suggestions</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <tbody>
+              {runState.prior_retro_suggestions.map((s, i) => (
+                <tr key={i}>
+                  <td style={{ padding: "4px 8px" }}>{typeof s === "string" ? s : JSON.stringify(s)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* FR-F12.3: graph_prior_remediations → graph_prior_actions table */}
+      {node.id === "graph_prior_remediations" && runState.graph_prior_actions && runState.graph_prior_actions.length > 0 && (
+        <div style={{ marginBottom: "12px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Prior Remediation Actions</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <tbody>
+              {runState.graph_prior_actions.map((a, i) => (
+                <tr key={i}>
+                  <td style={{ padding: "4px 8px" }}>{typeof a === "string" ? a : JSON.stringify(a)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* FR-F12.4: graph_blast_radius */}
+      {node.id === "graph_blast_radius" && runState.correlated && runState.correlated.blast_radius_node_count != null && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Blast radius node count:</strong> {runState.correlated.blast_radius_node_count}
+        </div>
+      )}
+
+      {/* FR-F12.5: framework_mapping → framework_controls + attack_patterns */}
+      {node.id === "framework_mapping" && (
+        <div>
+          {runState.framework_controls && runState.framework_controls.length > 0 && (
+            <div style={{ marginBottom: "12px" }}>
+              <strong style={{ display: "block", marginBottom: "4px" }}>Framework Controls</strong>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <tbody>
+                  {runState.framework_controls.map((c, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: "4px 8px" }}>{typeof c === "string" ? c : (c.id || "")} {c.name || ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {runState.attack_patterns && runState.attack_patterns.length > 0 && (
+            <div style={{ marginBottom: "12px" }}>
+              <strong style={{ display: "block", marginBottom: "4px" }}>Attack Patterns</strong>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <tbody>
+                  {runState.attack_patterns.map((p, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: "4px 8px" }}>{typeof p === "string" ? p : (p.id || "")} {p.name || ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FR-F12.6: kg_run_writeback */}
+      {node.id === "kg_run_writeback" && (
+        <div style={{ marginBottom: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <strong>KG writeback:</strong>
+            <span style={{
+              display: "inline-block", width: "12px", height: "12px", borderRadius: "50%",
+              background: runState.kg_run_written === true ? "#22c55e" : "#94a3b8",
+            }} />
+          </div>
+          {runState.kg_run_nodes_written != null && <div style={{ fontSize: "13px" }}>Nodes written: {runState.kg_run_nodes_written}</div>}
+          {runState.kg_run_edges_written != null && <div style={{ fontSize: "13px" }}>Edges written: {runState.kg_run_edges_written}</div>}
+        </div>
+      )}
+
+      {/* FR-F12.7: plan_kg_writeback */}
+      {node.id === "plan_kg_writeback" && (
+        <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <strong>Plan KG writeback:</strong>
+          <span style={{
+            display: "inline-block", width: "12px", height: "12px", borderRadius: "50%",
+            background: runState.plan_kg_writeback_done === true ? "#22c55e" : "#94a3b8",
+          }} />
+          <span>{runState.plan_kg_writeback_done === true ? "done" : "pending"}</span>
+        </div>
+      )}
+
+      {/* FR-F12.8: error banners */}
+      {runState.last_graph_prior_error && (
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginBottom: "8px" }}>
+          {runState.last_graph_prior_error}
+        </div>
+      )}
+      {runState.last_framework_mapping_error && (
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginBottom: "8px" }}>
+          {runState.last_framework_mapping_error}
+        </div>
+      )}
+      {runState.last_kg_run_error && (
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "4px", padding: "8px", color: "#991b1b", marginBottom: "8px" }}>
+          {runState.last_kg_run_error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ToolFamilyPanel (FR-F13) ────────────────────────────────────────────
+
+// FR-F13.3: per-node state field lookup table (DRY)
+const TOOL_NODE_FIELDS = {
+  attach_all_artifacts: [
+    { key: "attachment_sys_ids", label: "Attachment Sys IDs" },
+    { key: "attachment_count", label: "Attachment Count" },
+    { key: "attachment_manifest", label: "Attachment Manifest" },
+    { key: "last_attachment_error", label: "Error", danger: true },
+  ],
+  progressive_execute: [
+    { key: "canary_passed", label: "Canary Passed" },
+    { key: "stage_passed", label: "Stage Passed" },
+    { key: "fleet_passed", label: "Fleet Passed" },
+    { key: "per_host_apply_results", label: "Per-Host Apply Results" },
+    { key: "execution_ledger", label: "Execution Ledger" },
+  ],
+  verify_immediate: [
+    { key: "verify_outcome", label: "Verify Outcome" },
+    { key: "per_host_verify_results", label: "Per-Host Verify Results" },
+    { key: "verify_probe_method", label: "Probe Method" },
+  ],
+  partial_apply_rollback: [
+    { key: "rollback_triggered", label: "Rollback Triggered" },
+  ],
+  judge_lint: [
+    { key: "judge_lint_verdict", label: "Lint Verdict" },
+  ],
+  publish_docplus: [
+    { key: "docplus_published", label: "DocPlus Published" },
+    { key: "doc_sys_id", label: "Doc Sys ID" },
+    { key: "attachment_sys_id", label: "Attachment Sys ID" },
+    { key: "last_docplus_table_error", label: "Error", danger: true },
+  ],
+  run_outcome_persist: [
+    { key: "run_outcome_written", label: "Outcome Written" },
+    { key: "last_run_outcome_error", label: "Error", danger: true },
+  ],
+  cr_self_validate: [
+    { key: "cr_self_validation_passed", label: "Validation Passed" },
+    { key: "cr_self_validation_findings", label: "Findings" },
+    { key: "observed_field_lengths", label: "Observed Field Lengths" },
+    { key: "observed_attachment_count", label: "Observed Attachment Count" },
+    { key: "observed_journal_count", label: "Observed Journal Count" },
+  ],
+  render_docx: [
+    { key: "docx_artifact_ref", label: "DOCX Artifact Ref" },
+    { key: "last_docx_emit_error", label: "Error", danger: true },
+  ],
+};
+
+function ToolFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("default", lifecycle)}</p></div>;
+  }
+
+  // FR-F13.1: tool-call events
+  const toolCallEvents = events.filter(e => e.type === "tool_call");
+  // FR-F13.2: tool-result events
+  const toolResultEvents = events.filter(e => e.type === "tool_result");
+
+  // FR-F13.3: per-node state fields from lookup table
+  const nodeFields = TOOL_NODE_FIELDS[node.id] || [];
+
+  return (
+    <div data-panel-id={node.id}>
+      {/* FR-F13.1: tool calls */}
+      {toolCallEvents.length > 0 && (
+        <div style={{ marginBottom: "12px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Tool Calls</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Tool</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Namespace</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Args</th>
+              </tr>
+            </thead>
+            <tbody>
+              {toolCallEvents.map((e, i) => (
+                <tr key={i}>
+                  <td style={{ padding: "4px 8px" }}>{e.tool || e.name || ""}</td>
+                  <td style={{ padding: "4px 8px" }}>{e.namespace || ""}</td>
+                  <td style={{ padding: "4px 8px", fontSize: "11px" }}>{e.args ? (typeof e.args === "string" ? e.args.slice(0, 80) : JSON.stringify(e.args).slice(0, 80)) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* FR-F13.2: tool results */}
+      {toolResultEvents.length > 0 && (
+        <div style={{ marginBottom: "12px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Tool Results</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Call ID</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>OK</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {toolResultEvents.map((e, i) => (
+                <tr key={i}>
+                  <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: "11px" }}>{e.call_id || ""}</td>
+                  <td style={{ padding: "4px 8px" }}>{e.ok != null ? (e.ok ? "yes" : "no") : ""}</td>
+                  <td style={{ padding: "4px 8px", fontSize: "11px" }}>{e.error || (e.result ? (typeof e.result === "string" ? e.result.slice(0, 80) : JSON.stringify(e.result).slice(0, 80)) : "")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* FR-F13.3: per-node state fields */}
+      {nodeFields.length > 0 && (
+        <div style={{ marginBottom: "12px" }}>
+          <strong style={{ display: "block", marginBottom: "4px" }}>State</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <tbody>
+              {nodeFields.filter(f => runState[f.key] != null).map(f => {
+                const val = runState[f.key];
+                const strVal = typeof val === "object" ? JSON.stringify(val) : String(val);
+                return (
+                  <tr key={f.key}>
+                    <td style={{ padding: "4px 8px", fontWeight: "500", width: "40%" }}>{f.label}</td>
+                    <td style={{ padding: "4px 8px", color: f.danger ? "#991b1b" : undefined }}>{strVal.length > 120 ? strVal.slice(0, 120) + "..." : strVal}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── SandboxFamilyPanel (FR-F14) ─────────────────────────────────────────
+
+function SandboxFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("sandbox", lifecycle)}</p></div>;
+  }
+
+  const sandbox = runState.sandbox || {};
+
+  return (
+    <div data-panel-id={node.id}>
+      {runState.skip_sandbox != null && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Skip sandbox:</strong> <span style={{ background: runState.skip_sandbox ? "#fef3c7" : "#d1fae5", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{String(runState.skip_sandbox)}</span>
+        </div>
+      )}
+      {sandbox.skip_reason && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Skip reason:</strong> {sandbox.skip_reason}
+        </div>
+      )}
+      {sandbox.force_hitl != null && (
+        <div style={{ marginBottom: "8px" }}>
+          <strong>Force HITL:</strong> {String(sandbox.force_hitl)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── JoinFamilyPanel (FR-F15) ────────────────────────────────────────────
+
+function JoinFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : (status === "done" && !delta) ? "done_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("default", lifecycle)}</p></div>;
+  }
+
+  if (node.id === "validate_plan_join") {
+    return (
+      <div data-panel-id={node.id}>
+        {runState.validation_passed != null && (
+          <div style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <strong>Validation:</strong>
+            <span style={{
+              background: runState.validation_passed ? "#d1fae5" : "#fee2e2",
+              color: runState.validation_passed ? "#065f46" : "#991b1b",
+              borderRadius: "4px", padding: "2px 8px", fontSize: "13px",
+            }}>{runState.validation_passed ? "passed" : "failed"}</span>
+          </div>
+        )}
+        {runState.judge_safety_verdict && (
+          <div style={{ marginBottom: "4px" }}><strong>Safety verdict:</strong> {runState.judge_safety_verdict}</div>
+        )}
+        {runState.judge_lint_verdict && (
+          <div style={{ marginBottom: "4px" }}><strong>Lint verdict:</strong> {runState.judge_lint_verdict}</div>
+        )}
+      </div>
+    );
+  }
+
+  if (node.id === "retro_join") {
+    const transitionEvent = events.find(e => e.type === "transition");
+    return (
+      <div data-panel-id={node.id}>
+        {transitionEvent ? (
+          <div style={{ marginBottom: "8px" }}>
+            <strong>Downstream:</strong> <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{transitionEvent.to_node || "transition recorded"}</span>
+          </div>
+        ) : (
+          <p style={{ color: "#64748b", fontStyle: "italic" }}>awaiting upstream completion</p>
+        )}
+      </div>
+    );
+  }
+
+  return <div data-panel-id={node.id}><p>{emptyCopy("default", "done_empty")}</p></div>;
+}
+
+// ─── TerminalFamilyPanel (FR-F16) ────────────────────────────────────────
+
+function TerminalFamilyPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
+
+  const lifecycle = status === "pending" ? "pending"
+    : (status === "running" && !delta) ? "running_empty"
+    : status === "failed" ? "failed" : null;
+  if (lifecycle && lifecycle !== "failed") {
+    return <div data-panel-id={node.id}><p>{emptyCopy("terminal", lifecycle)}</p></div>;
+  }
+
+  // FR-F16.1: per-id static text
+  const TERMINAL_TEXT = {
+    tier_terminal_track: "track (re-evaluate at +7d)",
+    tier_terminal_defer: "deferred",
+    action_done: "run complete",
+  };
+
+  const text = TERMINAL_TEXT[node.id] || "terminal";
+
+  // FR-F16.2: run_duration_ms from result event for action_done
+  const resultEvent = events.find(e => e.type === "result");
+  const durationMs = resultEvent ? resultEvent.run_duration_ms : null;
+
+  return (
+    <div data-panel-id={node.id}>
+      <div style={{ marginBottom: "8px" }}>
+        <span style={{ background: "#d1fae5", borderRadius: "4px", padding: "2px 8px", fontSize: "13px", color: "#065f46" }}>{text}</span>
+      </div>
+      {node.id === "action_done" && durationMs != null && (
+        <div style={{ fontSize: "13px", color: "#64748b" }}>
+          <strong>Run duration:</strong> {durationMs}ms
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Panel registries (stubs — filled by later tasks) ─────────────────────
 
 const PRIORITY_PANEL = {};
@@ -1123,6 +2284,23 @@ PRIORITY_PANEL.write_retrospective = WriteRetrospectivePanel;
 PRIORITY_PANEL.krakntrust_attest = KrakntrustAttestPanel;
 PRIORITY_PANEL.drift_watch_spawn = DriftWatchSpawnPanel;
 
+// ─── Family panel registration ──────────────────────────────────────────
+
+FAMILY_PANEL.gate = GateFamilyPanel;
+FAMILY_PANEL.decision = DecisionFamilyPanel;
+FAMILY_PANEL.transform = TransformFamilyPanel;
+FAMILY_PANEL.llm = LlmFamilyPanel;
+FAMILY_PANEL.audit = AuditFamilyPanel;
+FAMILY_PANEL.artifact = ArtifactFamilyPanel;
+FAMILY_PANEL.hitl = HitlFamilyPanel;
+FAMILY_PANEL.branch = BranchFamilyPanel;
+FAMILY_PANEL.agent = AgentFamilyPanel;
+FAMILY_PANEL.kg = KgFamilyPanel;
+FAMILY_PANEL.tool = ToolFamilyPanel;
+FAMILY_PANEL.sandbox = SandboxFamilyPanel;
+FAMILY_PANEL.join = JoinFamilyPanel;
+FAMILY_PANEL.terminal = TerminalFamilyPanel;
+
 // ─── Event filtering helper ──────────────────────────────────────────────
 
 // reuses existing nodeEvents map dedupe; NFR-10
@@ -1146,6 +2324,23 @@ window.KrakntrustAttestPanel = KrakntrustAttestPanel;
 window.DriftWatchSpawnPanel = DriftWatchSpawnPanel;
 window.CargonetFamilyPanel = CargonetFamilyPanel;
 window.CARGONET_DIAGNOSTIC_FIELDS_FULL = CARGONET_DIAGNOSTIC_FIELDS_FULL;
+window.GateFamilyPanel = GateFamilyPanel;
+window.DecisionFamilyPanel = DecisionFamilyPanel;
+window.TransformFamilyPanel = TransformFamilyPanel;
+window.LlmFamilyPanel = LlmFamilyPanel;
+window.StreamingTokenBlock = StreamingTokenBlock;
+window.AuditFamilyPanel = AuditFamilyPanel;
+window.ArtifactFamilyPanel = ArtifactFamilyPanel;
+window.HitlFamilyPanel = HitlFamilyPanel;
+window.BranchFamilyPanel = BranchFamilyPanel;
+window.AgentFamilyPanel = AgentFamilyPanel;
+window.KgFamilyPanel = KgFamilyPanel;
+window.ToolFamilyPanel = ToolFamilyPanel;
+window.TOOL_NODE_FIELDS = TOOL_NODE_FIELDS;
+window.SandboxFamilyPanel = SandboxFamilyPanel;
+window.JoinFamilyPanel = JoinFamilyPanel;
+window.TerminalFamilyPanel = TerminalFamilyPanel;
+window.ARTIFACT_REF_FIELDS = ARTIFACT_REF_FIELDS;
 window.PRIORITY_IDS = PRIORITY_IDS;
 window.CARGONET_IDS = CARGONET_IDS;
 window.UnimplementedPanel = UnimplementedPanel;
