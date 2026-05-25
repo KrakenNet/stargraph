@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# phase headers parsed by watcher/node-panels.jsx::parseHarborYamlPhases — do not reword without updating PHASE_NAME_TO_KEY
 #
 # CVE Remediation Pipeline — main parent graph (v6, P0+P1+P2+P3 applied)
 # See ../cve-rem-graph.md for design.

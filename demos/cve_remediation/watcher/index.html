@@ -1051,7 +1051,33 @@
   .launcher-foot a { color: var(--accent); text-decoration: none; }
   .launcher-foot a:hover { text-decoration: underline; }
 
-  /* ─── scrollbars ──────────────────────────────────────────────────────── */
+  /* ─── Summary card ────────────────────────────────────────────────────── */
+
+  .is-summary { background: var(--bg-accent, #1c2d4a); border-left: 3px solid var(--accent, #58a6ff); }
+
+  /* ─── Header Gantt ────────────────────────────────────────────────────── */
+
+  .hg-strip { position: relative; height: 28px; background: var(--bg-surface, #1a1a2e); border-bottom: 1px solid var(--border, #333); overflow: hidden; }
+  .hg-bar { position: absolute; top: 4px; height: 20px; border-radius: 3px; min-width: 2px; cursor: pointer; border: none; padding: 0; }
+  .hg-bar.is-done { background: var(--status-done, #2ea043); }
+  .hg-bar.is-running { background: var(--status-running, #5b8def); animation: hg-pulse 1s infinite; border-right: 2px dotted currentColor; }
+  .hg-bar.is-failed { background: var(--status-failed, #da3633); }
+  .hg-bar.is-selected { outline: 2px solid var(--accent, #58a6ff); outline-offset: 1px; z-index: 1; }
+  @keyframes hg-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  /* ─── Bottom bus ──────────────────────────────────────────────────────── */
+
+  .bb { position: fixed; bottom: 0; left: 0; right: 0; min-height: 48px; z-index: 50; background: var(--bg-surface, #1a1a2e); border-top: 1px solid var(--border, #333); display: flex; gap: 2px; align-items: center; padding: 4px 8px; overflow-x: auto; }
+  .bb-phase { display: flex; gap: 1px; align-items: center; }
+  .bb-label { font-size: 10px; color: var(--text-muted); padding: 0 4px; white-space: nowrap; }
+  .bb-seg { width: 8px; height: 24px; border-radius: 2px; cursor: pointer; border: none; padding: 0; background: var(--bg-muted, #2a2a3e); }
+  .bb-seg.is-current { background: var(--status-running, #5b8def); }
+  .bb-seg.is-done { background: var(--status-done, #2ea043); }
+  .bb-seg.is-failed { background: var(--status-failed, #da3633); }
+  .bb-seg.is-selected { outline: 2px solid var(--accent, #58a6ff); outline-offset: 1px; }
+  body { padding-bottom: 56px; }
+
+  /* ─── scrollbars ───────────────────────────��──────────────────────────── */
   .view, .gp-scroll, .codepane-text, .panel-b, .thought-list, .loglist {
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,.12) transparent;
@@ -1077,6 +1103,8 @@
 <script type="text/babel" src="node-profiles.jsx"></script>
 <script type="text/babel" src="summary-panel.jsx"></script>
 <script type="text/babel" src="node-panels.jsx"></script>
+<script type="text/babel" src="bottom-bus.jsx"></script>
+<script type="text/babel" src="header-gantt.jsx"></script>
 <script type="text/babel" src="live-app.jsx"></script>
 <script type="text/babel" src="app.jsx"></script>
 </body>

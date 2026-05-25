@@ -426,13 +426,7 @@ function LiveGraphPanel({ topo, nodeStatus, nodeEvents, selectedId, onSelect, cu
           <span className="gp-sep">·</span>
           <span>{total - doneCount - runningCount} queued</span>
         </div>
-        <RunMiniMap
-          order={topo.order}
-          byId={topo.byId}
-          nodeStatus={nodeStatus}
-          selectedId={selectedId}
-          onSelect={onSelect}
-        />
+        {/* RunMiniMap removed — replaced by BottomBus (Phase 4) */}
       </header>
 
       <div className="gp-scroll" ref={scrollRef} style={{ position: "relative" }}>
@@ -482,6 +476,12 @@ function LiveGraphPanel({ topo, nodeStatus, nodeEvents, selectedId, onSelect, cu
               </React.Fragment>
             );
           })}
+          {(runStatus === "done" || runStatus === "failed" || runStatus === "cancelled") && (
+            <button className={"sc-card is-summary" + (selectedId === "__summary__" ? " is-selected" : "")} data-node-id="__summary__" onClick={() => onSelect("__summary__")} type="button" style={{ marginTop: 8 }}>
+              <span className="sc-name">Run summary</span>
+              <span className="sc-type">Final summary</span>
+            </button>
+          )}
         </div>
       </div>
     </aside>
@@ -1494,6 +1494,18 @@ function LiveApp({ runId }) {
   // Terminal flag — true once the run can no longer produce new events.
   const runTerminal = runStatus === "done" || runStatus === "failed" || runStatus === "cancelled";
 
+  // Auto-switch to __summary__ on terminal transition (fires once on false→true).
+  const prevRunTerminal = useRefL(false);
+  useEffectL(() => {
+    if (runTerminal && !prevRunTerminal.current) setSelectedId("__summary__");
+    prevRunTerminal.current = runTerminal;
+  }, [runTerminal]);
+
+  // Dev-time coverage assertion (localhost only).
+  useEffectL(() => {
+    if (window.location.hostname === "localhost") window.assertNodeCoverage(topo);
+  }, []);
+
   // Total elapsed for the run = first transition ts → last transition ts (or now).
   const runElapsedMs = useMemoL(() => {
     const firstTs = allEvents.length ? allEvents[0].ts : null;
@@ -1666,6 +1678,7 @@ function LiveApp({ runId }) {
         wsFrames={wsFrames}
         onShare={() => { try { navigator.clipboard.writeText(window.location.href); } catch {} }}
       />
+      <HeaderGantt topo={topo} nodeTimings={timingByNode} runStartTs={allEvents.length ? allEvents[0].ts : null} nodeStatus={nodeStatus} selectedId={selectedId} onSelect={setSelectedId} />
       <main className="main" data-side="left">
         <LiveGraphPanel
           topo={topo}
@@ -1679,21 +1692,25 @@ function LiveApp({ runId }) {
           runStatus={runStatus}
           runElapsedMs={runElapsedMs}
         />
-        <section className="view" data-screen-label={"node " + visibleNode.id}>
-          <LiveNodeView
-            node={visibleNode}
-            status={visibleStatus}
-            events={visibleEvents}
-            topo={topo}
-            allEvents={allEvents}
-            runStatus={runStatus}
-            delta={stateDeltaByNode.get(visibleNode.id) || null}
-            timing={timingByNode.get(visibleNode.id) || null}
-            runState={runState}
-            runTerminal={runTerminal}
-          />
+        <section className="view" data-screen-label={selectedId === "__summary__" ? "summary" : "node " + visibleNode.id}>
+          {selectedId === "__summary__"
+            ? <FinalSummaryPanel runState={runState} events={allEvents} runTerminal={runTerminal} />
+            : <LiveNodeView
+                node={visibleNode}
+                status={visibleStatus}
+                events={visibleEvents}
+                topo={topo}
+                allEvents={allEvents}
+                runStatus={runStatus}
+                delta={stateDeltaByNode.get(visibleNode.id) || null}
+                timing={timingByNode.get(visibleNode.id) || null}
+                runState={runState}
+                runTerminal={runTerminal}
+              />
+          }
         </section>
       </main>
+      <BottomBus topo={topo} nodeStatus={nodeStatus} selectedId={selectedId} onSelect={setSelectedId} />
     </div>
   );
 }

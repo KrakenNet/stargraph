@@ -2184,9 +2184,73 @@ const FAMILY_PANEL = {};
 
 // ─── Phase / copy skeletons ───────────────────────────────────────────────
 
-// Populated by usePhaseMap in a later task.
-const PHASE_ORDER = [];
-const PHASE_LABEL = {};
+const PHASE_ORDER = ["intake", "correlate", "plan_sandbox", "cr_execute", "retro"];
+const PHASE_LABEL = {
+  intake: "Phase 1: Intake",
+  correlate: "Phase 2: Correlate + Tier",
+  plan_sandbox: "Phase 3: Plan + Sandbox",
+  cr_execute: "Phase 4: CR + Execute",
+  retro: "Phase 5: Retro + Learn",
+};
+
+// ─── harbor.yaml phase parser ────────────────────────────────────────────
+
+const PHASE_HEADER_RE = /^#\s*-{5,}\s*(?:Phase\s+\d+:\s*)?([^-]+?)\s*-{5,}/;
+const ID_LINE_RE = /^\s*-\s+id:\s*([a-z0-9_]+)/;
+
+const PHASE_NAME_TO_KEY = {
+  "pre-flight gates": "intake",
+  "intake": "intake",
+  "correlate + tier": "correlate",
+  "plan + sandbox": "plan_sandbox",
+  "cr + execute + verify": "cr_execute",
+  "retro + learn": "retro",
+  "terminal": "retro",
+};
+
+function parseHarborYamlPhases(yamlText) {
+  const lines = yamlText.split("\n");
+  const phaseFor = new Map();
+  let currentPhase = null;
+  for (const line of lines) {
+    const hm = line.match(PHASE_HEADER_RE);
+    if (hm) {
+      const raw = hm[1].trim().toLowerCase();
+      currentPhase = PHASE_NAME_TO_KEY[raw] || null;
+      continue;
+    }
+    const im = line.match(ID_LINE_RE);
+    if (im && currentPhase) {
+      phaseFor.set(im[1], currentPhase);
+    }
+  }
+  return { phaseFor };
+}
+
+let _phaseMapCache = null;
+let _phaseMapPromise = null;
+
+function usePhaseMap() {
+  const [map, setMap] = React.useState(_phaseMapCache);
+  React.useEffect(() => {
+    if (_phaseMapCache) { setMap(_phaseMapCache); return; }
+    if (!_phaseMapPromise) {
+      _phaseMapPromise = fetch("/watch/harbor.yaml")
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(text => {
+          _phaseMapCache = parseHarborYamlPhases(text);
+          return _phaseMapCache;
+        })
+        .catch(err => {
+          console.warn("[usePhaseMap] fetch failed:", err);
+          _phaseMapCache = { phaseFor: new Map() };
+          return _phaseMapCache;
+        });
+    }
+    _phaseMapPromise.then(m => setMap(m));
+  }, []);
+  return map;
+}
 
 // single grep-target for all 4×~10 empty-state cells per D3
 const EMPTY_COPY = {
@@ -2225,6 +2289,13 @@ const CARGONET_DIAGNOSTIC_FIELDS = [
   "last_cargonet_error",
   "cargonet_writeback_done",
 ];
+
+// ─── ErrorBanner ──────────────────────────────────────────────────────────
+
+function ErrorBanner({ field, value }) {
+  if (!value) return null;
+  return <div className="err-banner" role="alert"><strong>{field}:</strong> {value}</div>;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -2301,6 +2372,19 @@ FAMILY_PANEL.sandbox = SandboxFamilyPanel;
 FAMILY_PANEL.join = JoinFamilyPanel;
 FAMILY_PANEL.terminal = TerminalFamilyPanel;
 
+// ─── Coverage assertion ──────────────────────────────────────────────────
+
+function assertNodeCoverage(topo) {
+  if (!topo || !topo.order) return;
+  for (const entry of topo.order) {
+    const id = entry.id || entry;
+    const panel = panelForNode({ id });
+    if (panel === (window.OutcomePanel || UnimplementedPanel)) {
+      console.warn(`[assertNodeCoverage] node "${id}" falls through to OutcomePanel — no bespoke/family panel mapped`);
+    }
+  }
+}
+
 // ─── Event filtering helper ──────────────────────────────────────────────
 
 // reuses existing nodeEvents map dedupe; NFR-10
@@ -2346,9 +2430,15 @@ window.CARGONET_IDS = CARGONET_IDS;
 window.UnimplementedPanel = UnimplementedPanel;
 window.PHASE_ORDER = PHASE_ORDER;
 window.PHASE_LABEL = PHASE_LABEL;
+window.PHASE_HEADER_RE = PHASE_HEADER_RE;
+window.PHASE_NAME_TO_KEY = PHASE_NAME_TO_KEY;
+window.parseHarborYamlPhases = parseHarborYamlPhases;
+window.usePhaseMap = usePhaseMap;
 window.EMPTY_COPY = EMPTY_COPY;
 window.emptyCopy = emptyCopy;
 window.CARGONET_DIAGNOSTIC_FIELDS = CARGONET_DIAGNOSTIC_FIELDS;
 window.panelDataNodeId = panelDataNodeId;
 window.eventsForNode = eventsForNode;
+window.ErrorBanner = ErrorBanner;
+window.assertNodeCoverage = assertNodeCoverage;
 window.usePanelMountMark = usePanelMountMark;
