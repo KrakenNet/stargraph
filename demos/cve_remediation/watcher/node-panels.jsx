@@ -80,6 +80,9 @@ function IntakeFetchPanel({ node, profile, status, delta, runState, timing, even
     { key: "osv_package_name", label: "OSV Package Name" },
   ];
 
+  // CPE URIs field name in state is advisory_cpe_uris
+  const cpeUris = runState.advisory_cpe_uris || runState.cpe_uris || [];
+
   return (
     <div data-panel-id="intake_fetch">
       {headerRow}
@@ -98,7 +101,7 @@ function IntakeFetchPanel({ node, profile, status, delta, runState, timing, even
           {advisoryFields
             .filter(f => runState[f.key] != null && runState[f.key] !== "")
             .map(f => (
-              <tr key={f.key}>
+              <tr key={f.key} data-field={f.key}>
                 <td style={{ padding: "4px 8px", fontWeight: "500", width: "50%" }}>{f.label}</td>
                 <td style={{ padding: "4px 8px" }}>{runState[f.key]}</td>
               </tr>
@@ -159,12 +162,12 @@ function IntakeFetchPanel({ node, profile, status, delta, runState, timing, even
       )}
 
       {/* FR-P1.6: CPE URIs */}
-      {runState.cpe_uris && runState.cpe_uris.length > 0 && (
-        <div style={{ marginBottom: "12px" }}>
+      {cpeUris.length > 0 && (
+        <div data-field="cpe_uris" style={{ marginBottom: "12px" }}>
           <strong style={{ display: "block", marginBottom: "4px" }}>CPE URIs</strong>
-          <pre style={{ fontFamily: "monospace", fontSize: "12px", background: "#f8fafc", padding: "8px", borderRadius: "4px", overflowX: "auto", margin: 0 }}>
-            {runState.cpe_uris.join("\n")}
-          </pre>
+          <ul style={{ margin: "0 0 0 16px", padding: 0, fontFamily: "monospace", fontSize: "12px" }}>
+            {cpeUris.map((uri, i) => <li key={i}>{uri}</li>)}
+          </ul>
         </div>
       )}
 

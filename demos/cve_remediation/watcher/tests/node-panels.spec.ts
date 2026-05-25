@@ -37,7 +37,8 @@ test.describe.serial("cve-rem-node-ui journey", () => {
     await expect(panel).toBeVisible({ timeout: 5_000 });
     // FR-PW8: table contains a row with cve_vendor value (non-empty); CPE URI list >=1 entry
     await expect(panel.locator('[data-field="cve_vendor"]')).not.toBeEmpty();
-    await expect(panel.locator('[data-field="cpe_uris"] li')).toHaveCount(1, { timeout: 5_000 });
+    const cpeItems = panel.locator('[data-field="cpe_uris"] li');
+    await expect(cpeItems.first()).toBeVisible({ timeout: 5_000 });
   });
 
   test("renders correlate_assets panel", async ({ page }) => {

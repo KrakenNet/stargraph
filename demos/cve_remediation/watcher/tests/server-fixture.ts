@@ -45,6 +45,21 @@ export async function startServer(): Promise<{ port: number; baseUrl: string }> 
     {
       cwd: process.env.HARBOR_ROOT || process.cwd().replace(/\/demos\/.*/, ""),
       stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        // Stub env vars required by nautilus.yaml so the broker boots without
+        // real external services.
+        SERVICENOW_BASE_URL: process.env.SERVICENOW_BASE_URL || "http://stub",
+        SERVICENOW_USERNAME: process.env.SERVICENOW_USERNAME || "stub",
+        SERVICENOW_PASSWORD: process.env.SERVICENOW_PASSWORD || "stub",
+        PGVECTOR_DSN: process.env.PGVECTOR_DSN || "postgresql://stub:stub@localhost/stub",
+        RYUGRAPH_URL: process.env.RYUGRAPH_URL || "bolt://stub:7687",
+        RYUGRAPH_USERNAME: process.env.RYUGRAPH_USERNAME || "neo4j",
+        RYUGRAPH_PASSWORD: process.env.RYUGRAPH_PASSWORD || "stub",
+        POSTGRES_DSN: process.env.POSTGRES_DSN || "postgresql://stub:stub@localhost/stub",
+        NAUTILUS_API_KEY: process.env.NAUTILUS_API_KEY || "stub-key",
+        NAUTILUS_AUDIT_PATH: process.env.NAUTILUS_AUDIT_PATH || "/tmp/nautilus-audit.jsonl",
+      },
     }
   );
 
@@ -99,7 +114,10 @@ export async function postRun(
   const res = await fetch(`${url}/v1/runs`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ cve_id: cveId }),
+    body: JSON.stringify({
+      graph_id: "graph:cve-rem-pipeline",
+      params: { cve_id: cveId },
+    }),
   });
   if (!res.ok) {
     throw new Error(`POST /v1/runs failed: ${res.status} ${await res.text()}`);
@@ -200,24 +218,40 @@ export async function waitForNodeReady(
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${url}/watch/api/run/${runId}/checkpoints`);
-      if (res.ok) {
-        const checkpoints: Array<{ state?: Record<string, unknown> }> =
-          await res.json();
+      // Strategy 1: check checkpoints — `last_node` is a top-level field
+      // per checkpoint row (not inside state).
+      const cres = await fetch(`${url}/watch/api/run/${encodeURIComponent(runId)}/checkpoints`);
+      if (cres.ok) {
+        const body = await cres.json();
+        const checkpoints: Array<{ last_node?: string; state?: Record<string, unknown> }> =
+          body.checkpoints || body;
+        // If any checkpoint has last_node === nodeId, the node has run
+        if (checkpoints.some((c) => c.last_node === nodeId)) return;
+        // Terminal: last checkpoint shows run done
         if (checkpoints.length > 0) {
           const latest = checkpoints[checkpoints.length - 1];
           const state = latest.state || {};
-          if (state.last_node === nodeId) return;
-          // Check if a downstream node checkpoint appeared (node already passed)
-          const nodeKeys = Object.keys(state);
-          if (nodeKeys.some((k) => k === `${nodeId}_done` || k === `${nodeId}_status`)) {
-            return;
-          }
-          // Terminal result means all nodes done
-          if (state.run_status === "done" || state.run_status === "failed") {
-            return;
-          }
+          if (state.run_status === "done" || state.run_status === "failed") return;
         }
+      }
+
+      // Strategy 2: check events — transition with from_node === nodeId means
+      // the node completed and the run moved on.
+      const eres = await fetch(`${url}/watch/api/run/${encodeURIComponent(runId)}/events`);
+      if (eres.ok) {
+        const ebody = await eres.json();
+        const events: Array<{ type?: string; from_node?: string }> =
+          ebody.events || ebody;
+        if (events.some((e) => e.type === "transition" && e.from_node === nodeId)) return;
+        // Terminal event
+        if (events.some((e) => e.type === "result")) return;
+      }
+
+      // Strategy 3: check run status (terminal means all nodes done)
+      const rres = await fetch(`${url}/v1/runs/${encodeURIComponent(runId)}`);
+      if (rres.ok) {
+        const rbody = await rres.json();
+        if (rbody.status === "done" || rbody.status === "failed") return;
       }
     } catch {
       // not ready
