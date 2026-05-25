@@ -257,7 +257,7 @@ function CorrelateAssetsPanel({ node, profile, status, delta, runState, timing, 
       <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "12px" }}>
         <tbody>
           {cmdbFields.filter(f => runState[f.key] != null && runState[f.key] !== "").map(f => (
-            <tr key={f.key}>
+            <tr key={f.key} data-field={f.key}>
               <td style={{ padding: "4px 8px", fontWeight: "500", width: "50%" }}>{f.label}</td>
               <td style={{ padding: "4px 8px" }}>{String(runState[f.key])}</td>
             </tr>
@@ -266,7 +266,7 @@ function CorrelateAssetsPanel({ node, profile, status, delta, runState, timing, 
       </table>
 
       {/* FR-P2.3: Affected hosts table */}
-      <div style={{ marginBottom: "12px" }}>
+      <div data-field="affected_hosts" style={{ marginBottom: "12px" }}>
         <strong style={{ display: "block", marginBottom: "4px" }}>Affected Hosts</strong>
         {hosts.length > 0 ? (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -282,7 +282,7 @@ function CorrelateAssetsPanel({ node, profile, status, delta, runState, timing, 
             </tbody>
           </table>
         ) : (
-          <EmptyState text="no hosts matched" />
+          <p data-empty="no-hosts" className="empty-state">no hosts matched</p>
         )}
       </div>
 
@@ -373,7 +373,7 @@ function SandboxRunPanel({ node, profile, status, delta, runState, timing, event
       </div>
 
       {/* FR-P3.2: 4-row probe table */}
-      <div style={{ marginBottom: "12px" }}>
+      <div data-field="probe_steps" style={{ marginBottom: "12px" }}>
         <strong style={{ display: "block", marginBottom: "4px" }}>Probe Steps</strong>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
           <thead>
@@ -387,13 +387,13 @@ function SandboxRunPanel({ node, profile, status, delta, runState, timing, event
             {probePhases.map(phase => {
               const step = probeSteps[phase];
               if (!step) return (
-                <tr key={phase}>
+                <tr key={phase} data-phase={phase} data-empty="probe-not-run">
                   <td style={{ padding: "4px 6px" }}>{phase}</td>
                   <td colSpan={7} style={{ padding: "4px 6px", color: "#64748b", fontStyle: "italic" }}>probe not yet run</td>
                 </tr>
               );
               return (
-                <tr key={phase}>
+                <tr key={phase} data-phase={phase}>
                   <td style={{ padding: "4px 6px" }}>{phase}</td>
                   <td style={{ padding: "4px 6px" }}>{step.status || ""}</td>
                   <td style={{ padding: "4px 6px" }}>{step.observed_version || ""}</td>
@@ -490,8 +490,8 @@ function CreateChangeRequestPanel({ node, profile, status, delta, runState, timi
     <div data-panel-id="create_change_request">
       {/* FR-P4.1: CR header */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "center" }}>
-        {runState.cr_correlation_id && <code style={{ fontSize: "13px" }}>{runState.cr_correlation_id}</code>}
-        {runState.cr_status && <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{runState.cr_status}</span>}
+        {runState.cr_correlation_id && <code data-field="cr_correlation_id" style={{ fontSize: "13px" }}>{runState.cr_correlation_id}</code>}
+        {runState.cr_status && <span data-field="cr_status" style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{runState.cr_status}</span>}
       </div>
 
       {/* FR-P4.2: Posted body fields table */}
@@ -583,7 +583,7 @@ function WriteRetrospectivePanel({ node, profile, status, delta, runState, timin
     <div data-panel-id="write_retrospective">
       {/* FR-P5.1: Retro header */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "center" }}>
-        {runState.retro_id && <code style={{ fontSize: "13px" }}>{runState.retro_id}</code>}
+        {runState.retro_id && <code data-field="retro_id" style={{ fontSize: "13px" }}>{runState.retro_id}</code>}
         {runState.retro_outcome && <span style={{ background: "#e0e7ff", borderRadius: "4px", padding: "2px 8px", fontSize: "13px" }}>{runState.retro_outcome}</span>}
       </div>
 
@@ -596,7 +596,7 @@ function WriteRetrospectivePanel({ node, profile, status, delta, runState, timin
 
       {/* FR-P5.3: Failure signals table */}
       {failureSignals.length > 0 && (
-        <div style={{ marginBottom: "12px" }}>
+        <div data-table="failure_signals" style={{ marginBottom: "12px" }}>
           <strong style={{ display: "block", marginBottom: "4px" }}>Failure Signals</strong>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
@@ -621,7 +621,7 @@ function WriteRetrospectivePanel({ node, profile, status, delta, runState, timin
 
       {/* FR-P5.4: Prevention suggestions table */}
       {preventionSuggestions.length > 0 && (
-        <div style={{ marginBottom: "12px" }}>
+        <div data-table="prevention_suggestions" style={{ marginBottom: "12px" }}>
           <strong style={{ display: "block", marginBottom: "4px" }}>Prevention Suggestions</strong>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
@@ -707,14 +707,14 @@ function KrakntrustAttestPanel({ node, profile, status, delta, runState, timing,
       {/* FR-P6.1: Trust chain */}
       <div style={{ marginBottom: "12px" }}>
         <strong style={{ display: "block", marginBottom: "4px" }}>Trust Chain</strong>
-        {runState.krakntrust_key_id && <div><span style={{ fontWeight: "500" }}>Key ID:</span> <code>{runState.krakntrust_key_id}</code></div>}
+        {runState.krakntrust_key_id && <div data-field="krakntrust_key_id"><span style={{ fontWeight: "500" }}>Key ID:</span> <code>{runState.krakntrust_key_id}</code></div>}
         {runState.boot_session_id && <div><span style={{ fontWeight: "500" }}>Boot Session:</span> <code>{runState.boot_session_id}</code></div>}
         {runState.prompt_artifact_id && <div><span style={{ fontWeight: "500" }}>Prompt Artifact:</span> <code>{runState.prompt_artifact_id}</code></div>}
       </div>
 
       {/* FR-P6.2: JWS block — truncated, copy only */}
       {jws && (
-        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+        <div data-field="jws_block" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
           <strong>JWS:</strong>
           <code style={{ fontSize: "12px", fontFamily: "monospace" }}>{jwsTruncated}</code>
           <CopyButton value={runState.run_attestation_jws} />
@@ -773,11 +773,11 @@ function DriftWatchSpawnPanel({ node, profile, status, delta, runState, timing, 
       <div style={{ marginBottom: "12px" }}>
         <strong>Child Run:</strong>{" "}
         {runState.drift_child_run_id ? (
-          <a href={`/watch/?run=${runState.drift_child_run_id}`} target="_blank" rel="noopener noreferrer">
+          <a data-field="drift_child_run_id" href={`/watch/?run=${runState.drift_child_run_id}`} target="_blank" rel="noopener noreferrer">
             {runState.drift_child_run_id}
           </a>
         ) : (
-          <span style={{ color: "#64748b", fontStyle: "italic" }}>not spawned</span>
+          <span data-empty="drift-not-spawned" style={{ color: "#64748b", fontStyle: "italic" }}>drift spawn not yet executed</span>
         )}
       </div>
 
@@ -863,7 +863,7 @@ function CargonetFamilyPanel({ node, profile, status, delta, runState, timing, e
           <div data-panel-id={node.id}>
             {headerRow}
             {deltaFields.length > 0 && (
-              <div style={{ marginBottom: "12px" }}>
+              <div data-field="per_host_verify" style={{ marginBottom: "12px" }}>
                 <strong style={{ display: "block", marginBottom: "4px" }}>Delta Fields</strong>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <tbody>
@@ -911,7 +911,7 @@ function CargonetFamilyPanel({ node, profile, status, delta, runState, timing, e
           return (
             <div data-panel-id={node.id}>
               {headerRow}
-              <EmptyState text="cargonet broker unreached — no telemetry, no proxy refs" />
+              <p data-empty="no-telemetry" className="empty-state">no lab telemetry returned</p>
             </div>
           );
         }
@@ -944,7 +944,7 @@ function CargonetFamilyPanel({ node, profile, status, delta, runState, timing, e
         <div data-panel-id={node.id}>
           {headerRow}
           {artifactRef && (
-            <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div data-field="sandbox_evidence_artifact_ref" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
               <strong>Evidence artifact:</strong> <code>{artifactRef}</code>
               <CopyButton value={artifactRef} />
             </div>
@@ -986,13 +986,13 @@ function CargonetFamilyPanel({ node, profile, status, delta, runState, timing, e
       return (
         <div data-panel-id={node.id}>
           {headerRow}
-          <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div data-field="writeback_status" style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
             <strong>Writeback:</strong>
             <span style={{
               display: "inline-block", width: "12px", height: "12px", borderRadius: "50%",
               background: done === true ? "#22c55e" : "#94a3b8",
             }} />
-            <span>{done === true ? "complete" : "pending"}</span>
+            <span>{done === true ? "done" : "pending"}</span>
           </div>
           {runState.cargonet_lab_ref && (
             <div style={{ marginBottom: "12px" }}>
@@ -2326,7 +2326,7 @@ function panelForNode(node) {
   }
 
   // Dev guard: warn on unmapped priority ids (D2 assertion)
-  if (process?.env?.NODE_ENV !== "production" && PRIORITY_IDS.has(node.id) && !PRIORITY_PANEL[node.id]) {
+  if (typeof process !== "undefined" && process?.env?.NODE_ENV !== "production" && PRIORITY_IDS.has(node.id) && !PRIORITY_PANEL[node.id]) {
     console.warn(`[node-panels] priority id "${node.id}" has no mapped panel in PRIORITY_PANEL`);
   }
 
