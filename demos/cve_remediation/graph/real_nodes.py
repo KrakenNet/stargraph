@@ -13657,8 +13657,16 @@ class DriftWatchSpawnNode(NodeBase):
                 last_spawn_error = f"scheduler: {type(exc).__name__}: {exc}"
 
         # Approach 2: HTTP POST to harbor server if live broker mode.
+        # Default to :9001 because the cve-rem demo runs ``harbor serve``
+        # on that port (see scripts/score_run.py); ``HARBOR_SERVE_BASE``
+        # is the env var the rest of the demo already exports, so accept
+        # it as an alias for ``HARBOR_SERVER_URL`` to avoid a second knob.
         if not child_run_id and _live_broker_enabled():
-            harbor_url = os.environ.get("HARBOR_SERVER_URL", "http://localhost:9000").strip()
+            harbor_url = (
+                os.environ.get("HARBOR_SERVER_URL")
+                or os.environ.get("HARBOR_SERVE_BASE")
+                or "http://localhost:9001"
+            ).strip()
             try:
                 import httpx
 
