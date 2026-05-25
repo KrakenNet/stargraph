@@ -1260,6 +1260,55 @@ function fmtTs(iso) {
   try { return new Date(iso).toISOString().slice(11, 23); } catch { return String(iso); }
 }
 
+// ─── URL-driven node selection ────────────────────────────────────────────
+// Owns the ?node= query param. replaceState only (NFR-12) — no back-button
+// stack pollution. Validates against topoOrder + sentinel __summary__.
+
+function useUrlNodeSelection(topoOrder) {
+  const validSet = useMemoL(() => {
+    const s = new Set(topoOrder);
+    s.add("__summary__");
+    return s;
+  }, [topoOrder]);
+
+  const readFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("node");
+    if (raw && validSet.has(raw)) return raw;
+    return null;
+  };
+
+  const [selectedId, setSelectedIdRaw] = useStateL(readFromUrl);
+
+  const setSelectedId = (id) => {
+    const safeId = (id && validSet.has(id)) ? id : null;
+    setSelectedIdRaw(safeId);
+    const params = new URLSearchParams(window.location.search);
+    if (safeId) {
+      params.set("node", safeId);
+    } else {
+      params.delete("node");
+    }
+    history.replaceState(null, "", "?" + params.toString());
+  };
+
+  useEffectL(() => {
+    const onPop = () => {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("node");
+      if (raw && validSet.has(raw)) {
+        setSelectedIdRaw(raw);
+      } else {
+        setSelectedIdRaw(null);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [validSet]);
+
+  return [selectedId, setSelectedId];
+}
+
 // ─── LiveApp root ──────────────────────────────────────────────────────────
 
 function LiveApp({ runId }) {
@@ -1268,7 +1317,7 @@ function LiveApp({ runId }) {
   const [nodeEvents, setNodeEvents] = useStateL(new Map());
   const [allEvents, setAllEvents] = useStateL([]);
   const [runStatus, setRunStatus] = useStateL("pending");
-  const [selectedId, setSelectedId] = useStateL(null);
+  const [selectedId, setSelectedId] = useUrlNodeSelection(topo ? topo.order : []);
   const [err, setErr] = useStateL("");
   const [checkpoints, setCheckpoints] = useStateL([]);
 
@@ -1634,4 +1683,4 @@ function LiveApp({ runId }) {
   );
 }
 
-Object.assign(window, { LiveApp });
+Object.assign(window, { LiveApp, OutcomePanel });
