@@ -29,9 +29,27 @@ function UnimplementedPanel({ node }) {
   return <div data-panel-id={node.id}>panel for {node.id} not yet wired</div>;
 }
 
+// ─── NFR-4 perf instrumentation ───────────────────────────────────────────
+
+// Playwright reads via performance.getEntriesByName for NFR-4 <100ms swap budget
+function usePanelMountMark(node) {
+  const { useEffect } = window.React;
+  useEffect(() => { performance.mark(`panel.${node.id}.mounted`); }, []);
+}
+
 // ─── IntakeFetchPanel (FR-P1) ─────────────────────────────────────────────
 
+/**
+ * IntakeFetchPanel — bespoke panel for the intake_fetch priority node.
+ *
+ * Receives the uniform 7-prop shape per D2:
+ *   {node, profile, status, delta, events, timing, runState, runTerminal}
+ *
+ * Renders advisory source data (GET url, fields, candidate products,
+ * affected versions, refs, CPE URIs, error banner, raw advisory toggle).
+ */
 function IntakeFetchPanel({ node, profile, status, delta, runState, timing, events, runTerminal }) {
+  usePanelMountMark(node);
   const React = window.React;
   const { useState } = React;
   const [rawOpen, setRawOpen] = useState(false);
@@ -259,7 +277,8 @@ function panelDataNodeId(node) {
 /**
  * panelForNode(node) — 3-tier panel dispatcher per D1.
  *
- * Precedence:
+ * Precedence (D1): priority-id → cargonet-id → family → OutcomePanel fallback.
+ *
  *   1. PRIORITY_PANEL[node.id]  — bespoke panels for high-value nodes
  *   2. CARGONET_IDS.has(node.id) → CargonetFamilyPanel (when wired)
  *   3. FAMILY_PANEL[profile.family] — family-shaped fallback
@@ -272,6 +291,11 @@ function panelForNode(node) {
   // 1. Priority lookup
   if (PRIORITY_IDS.has(node.id) && PRIORITY_PANEL[node.id]) {
     return PRIORITY_PANEL[node.id];
+  }
+
+  // Dev guard: warn on unmapped priority ids (D2 assertion)
+  if (process?.env?.NODE_ENV !== "production" && PRIORITY_IDS.has(node.id) && !PRIORITY_PANEL[node.id]) {
+    console.warn(`[node-panels] priority id "${node.id}" has no mapped panel in PRIORITY_PANEL`);
   }
 
   // 2. Cargonet lookup
@@ -293,6 +317,15 @@ function panelForNode(node) {
 
 PRIORITY_PANEL.intake_fetch = IntakeFetchPanel;
 
+// ─── Event filtering helper ──────────────────────────────────────────────
+
+// reuses existing nodeEvents map dedupe; NFR-10
+function eventsForNode(allEvents, id, delta) {
+  return allEvents.filter(
+    e => e.from_node === id || e.to_node === id || (delta && e.step === delta.step)
+  );
+}
+
 // ─── Window exports ───────────────────────────────────────────────────────
 
 window.panelForNode = panelForNode;
@@ -308,3 +341,5 @@ window.EMPTY_COPY = EMPTY_COPY;
 window.emptyCopy = emptyCopy;
 window.CARGONET_DIAGNOSTIC_FIELDS = CARGONET_DIAGNOSTIC_FIELDS;
 window.panelDataNodeId = panelDataNodeId;
+window.eventsForNode = eventsForNode;
+window.usePanelMountMark = usePanelMountMark;
