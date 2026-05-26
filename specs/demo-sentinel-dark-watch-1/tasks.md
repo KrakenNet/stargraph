@@ -45,13 +45,13 @@ total_tasks: 83
   - _Requirements: FR-13, AC-1.1_
   - _Design: Docker Compose Design_
 
-- [ ] 1.4 [VERIFY] Quality checkpoint: import check
+- [x] 1.4 [VERIFY] Quality checkpoint: import check
   - **Do**: Verify module imports and docker-compose validates
   - **Verify**: `uv run --no-project python -c "import demos.sentinel_dark_watch" && docker compose -f demos/sentinel_dark_watch/docker-compose.yml config --quiet && echo PASS`
   - **Done when**: Both commands exit 0
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 1.5 Create state models (`graph/state.py`)
+- [x] 1.5 Create state models (`graph/state.py`)
   - **Do**:
     1. Create `demos/sentinel_dark_watch/graph/state.py` with all classes from design: `RiskLevel`, `AnalystDecision` (StrEnum), `Detection`, `TileMetadata`, `RunMetrics`, `ModelMetrics` (BaseModel), `SdwState`, `RetrainState` (BaseModel)
     2. All fields with defaults per design spec
