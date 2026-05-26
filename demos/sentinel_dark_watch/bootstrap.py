@@ -67,12 +67,16 @@ def _wait_tcp(host: str, port: int, timeout_seconds: int = 60) -> None:
 
 
 def _wait_http_health(url: str, timeout_seconds: int = 60) -> None:
+    """Try *url* first; if it 404s, fall back to the root (ollama compat)."""
+    base = url.rsplit("/health", 1)[0] or url
+    urls = [url, base + "/", base]
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
-        with contextlib.suppress(Exception):
-            with urllib.request.urlopen(url, timeout=2) as resp:  # noqa: S310
-                if resp.status == 200:
-                    return
+        for u in urls:
+            with contextlib.suppress(Exception):
+                with urllib.request.urlopen(u, timeout=2) as resp:  # noqa: S310
+                    if resp.status == 200:
+                        return
         time.sleep(1)
     raise RuntimeError(f"timeout waiting for {url}")
 

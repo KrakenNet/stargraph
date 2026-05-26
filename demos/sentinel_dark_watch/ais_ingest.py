@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import pathlib
+from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ async def _mock_ingest(dsn: str) -> None:
         await conn.executemany(
             """
             INSERT INTO ais_positions (mmsi, lat, lon, speed_kn, heading, ts, ship_name, flag_state, vessel_type)
-            VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT DO NOTHING
             """,
             [
@@ -47,7 +48,9 @@ async def _mock_ingest(dsn: str) -> None:
                     r["lon"],
                     r["speed_kn"],
                     r["heading"],
-                    r["ts"],
+                    datetime.fromisoformat(r["ts"].replace("Z", "+00:00"))
+                    if isinstance(r["ts"], str)
+                    else r["ts"],
                     r.get("ship_name", ""),
                     r.get("flag_state", ""),
                     r.get("vessel_type", ""),

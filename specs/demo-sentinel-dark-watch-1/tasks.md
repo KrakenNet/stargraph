@@ -525,7 +525,7 @@ total_tasks: 83
   - **Verify**: `grep -q "sentinel_dark_watch" .gitignore && echo PASS`
   - **Commit**: `chore(sdw): gitignore .env and data directory`
 
-- [ ] 1.51 [VERIFY] Quality checkpoint: full module structure
+- [x] 1.51 [VERIFY] Quality checkpoint: full module structure
   - **Do**: Verify complete module can be imported and all key files exist
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.state import SdwState, RetrainState; from demos.sentinel_dark_watch.graph.nodes import PassthroughNode, SARIngestNode; from demos.sentinel_dark_watch import bootstrap, ais_ingest, serve_sdw, capabilities; print('ALL MODULES OK')" && test -f demos/sentinel_dark_watch/Justfile && test -f demos/sentinel_dark_watch/docker-compose.yml && echo PASS`
   - **Done when**: All imports and file checks succeed
@@ -533,7 +533,7 @@ total_tasks: 83
 
 ### POC Checkpoint
 
-- [ ] 1.52 POC Checkpoint: end-to-end pipeline verification
+- [x] 1.52 POC Checkpoint: end-to-end pipeline verification
   - **Do**:
     1. Start Docker services: `docker compose -f demos/sentinel_dark_watch/docker-compose.yml up -d`
     2. Wait for health: `curl -sf http://localhost:41001/health`
