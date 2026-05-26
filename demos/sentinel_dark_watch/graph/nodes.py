@@ -857,3 +857,87 @@ class GeoContextNode(NodeBase):
             )
 
         return {"detections": detections, "pipeline_phase": "geo_context"}
+
+
+# ---------------------------------------------------------------------------
+# Risk Scoring — configurable weights + risk levels
+# ---------------------------------------------------------------------------
+
+# Sensitive EEZs default; overridable via SENSITIVE_EEZS env var (comma-separated)
+_DEFAULT_SENSITIVE_EEZS = {"Iranian", "North Korean", "Syrian", "Venezuelan"}
+
+
+def _load_sensitive_eezs() -> set[str]:
+    raw = os.environ.get("SENSITIVE_EEZS", "")
+    if raw.strip():
+        return {s.strip() for s in raw.split(",") if s.strip()}
+    return set(_DEFAULT_SENSITIVE_EEZS)
+
+
+class RiskScoringNode(NodeBase):
+    """Apply configurable risk scoring formula to each detection.
+
+    Scoring weights come from state fields (``risk_weight_*``),
+    allowing per-run or env-var overrides (AC-6.4).
+
+    Risk levels:
+        Critical  80-100
+        High      60-79
+        Medium    40-59
+        Low        0-39
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        from demos.sentinel_dark_watch.graph.state import RiskLevel
+
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        if not detections:
+            return {"detections": [], "pipeline_phase": "risk_scoring"}
+
+        sensitive_eezs = _load_sensitive_eezs()
+
+        w_dark = state.risk_weight_dark_vessel  # type: ignore[attr-defined]
+        w_eez = state.risk_weight_sensitive_eez  # type: ignore[attr-defined]
+        w_port = state.risk_weight_far_from_port  # type: ignore[attr-defined]
+        w_vessel = state.risk_weight_large_vessel  # type: ignore[attr-defined]
+        w_conf_max = state.risk_weight_confidence_max  # type: ignore[attr-defined]
+        low_conf_threshold: float = state.low_conf_threshold  # type: ignore[attr-defined]
+
+        has_low_conf = False
+
+        for det in detections:
+            score = 0
+            if det.dark_vessel:
+                score += w_dark
+            if det.eez_name in sensitive_eezs:
+                score += w_eez
+            if det.distance_to_port_nm > 50:
+                score += w_port
+            if det.vessel_length_m > 100:
+                score += w_vessel
+            score += int(det.confidence * w_conf_max)
+            score = min(score, 100)
+
+            det.risk_score = score
+
+            if score >= 80:
+                det.risk_level = RiskLevel.CRITICAL
+            elif score >= 60:
+                det.risk_level = RiskLevel.HIGH
+            elif score >= 40:
+                det.risk_level = RiskLevel.MEDIUM
+            else:
+                det.risk_level = RiskLevel.LOW
+
+            if det.confidence < low_conf_threshold:
+                has_low_conf = True
+
+        return {
+            "detections": detections,
+            "has_low_confidence_detections": has_low_conf,
+            "pipeline_phase": "risk_scoring",
+        }
