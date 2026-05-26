@@ -238,6 +238,34 @@ def main(argv: list[str] | None = None) -> int:
     async def _health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.post("/sdw/scan")
+    async def _scan() -> dict[str, Any]:
+        """Trigger a pipeline run over all sar_tiles in PostGIS."""
+        import asyncpg
+
+        from demos.sentinel_dark_watch.db import get_pg_dsn
+
+        conn = await asyncpg.connect(get_pg_dsn())
+        try:
+            rows = await conn.fetch("SELECT tile_id FROM sar_tiles ORDER BY tile_id")
+        finally:
+            await conn.close()
+        tile_ids = [r["tile_id"] for r in rows]
+        if not tile_ids:
+            return {"error": "no sar_tiles in database — run bootstrap first"}
+
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"http://localhost:{args.port}/v1/runs",
+                json={
+                    "graph_id": "graph:sdw-pipeline",
+                    "state": {"tile_queue": tile_ids, "run_id": f"scan-{int(__import__('time').time())}"},
+                },
+            )
+            return resp.json()
+
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0
 

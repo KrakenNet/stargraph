@@ -236,6 +236,56 @@ def _seed_geo_fixtures() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Seed SAR tiles from xView3 imagery
+# ---------------------------------------------------------------------------
+
+
+def _seed_sar_tiles() -> None:
+    imagery_dir = _DEMO_DIR / "data" / "xview3" / "imagery"
+    if not imagery_dir.exists():
+        print("[5/5] Skipping sar_tiles — no xView3 imagery downloaded")
+        return
+
+    print("[5/5] Seeding sar_tiles from xView3 scenes…")
+    import psycopg
+
+    try:
+        import rasterio
+        from rasterio.warp import transform_bounds
+    except ImportError:
+        print("      rasterio not installed — skipping sar_tiles seeding")
+        return
+
+    scenes = sorted(
+        p for p in imagery_dir.iterdir()
+        if p.is_dir() and (p / "VH_dB.tif").exists()
+    )
+    with psycopg.connect(os.environ["POSTGRES_DSN"]) as conn, conn.cursor() as cur:
+        for scene_dir in scenes:
+            scene_id = scene_dir.name
+            vh_path = scene_dir / "VH_dB.tif"
+
+            with rasterio.open(vh_path) as src:
+                west, south, east, north = transform_bounds(
+                    src.crs, "EPSG:4326", *src.bounds
+                )
+
+            bounds_wkt = (
+                f"POLYGON(({west} {south}, {east} {south}, "
+                f"{east} {north}, {west} {north}, {west} {south}))"
+            )
+            cur.execute(
+                """
+                INSERT INTO sar_tiles (tile_id, scene_id, file_path, acquired_at, bounds)
+                VALUES (%s, %s, %s, NOW(), ST_GeomFromText(%s, 4326))
+                ON CONFLICT (tile_id) DO NOTHING
+                """,
+                (scene_id, scene_id, str(scene_dir), bounds_wkt),
+            )
+    print(f"      seeded {len(scenes)} SAR tiles")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -252,6 +302,7 @@ def main() -> int:
     _provision_postgis()
     _seed_ais_positions()
     _seed_geo_fixtures()
+    _seed_sar_tiles()
     print("Bootstrap complete. Next: run `python -m demos.sentinel_dark_watch.serve_sdw`.")
     return 0
 

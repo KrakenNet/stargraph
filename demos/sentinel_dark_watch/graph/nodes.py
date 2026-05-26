@@ -222,8 +222,46 @@ def _decode_obb(
     return detections
 
 
+def _load_dual_band(scene_dir: Path) -> tuple[Any, Any]:
+    """Load VH_dB + VV_dB from a scene directory, return (img_3ch, affine).
+
+    Composes a 3-channel (H, W, 3) uint8 image matching training preprocess:
+    channel 0 = VH normalised, channel 1 = VV normalised, channel 2 = VH-VV ratio.
+    """
+    import numpy as np
+    import rasterio  # type: ignore[import-untyped]
+
+    vh_path = scene_dir / "VH_dB.tif"
+    vv_path = scene_dir / "VV_dB.tif"
+    if not vh_path.exists():
+        raise FileNotFoundError(f"Missing VH_dB.tif in {scene_dir}")
+
+    with rasterio.open(vh_path) as src:
+        vh = src.read(1).astype(np.float32)
+        affine = src.transform
+
+    if vv_path.exists():
+        with rasterio.open(vv_path) as src:
+            vv = src.read(1).astype(np.float32)
+    else:
+        vv = vh.copy()
+
+    ratio = vh - vv
+
+    def _norm(arr: np.ndarray) -> np.ndarray:
+        mn, mx = np.nanmin(arr), np.nanmax(arr)
+        if mx > mn:
+            arr = (arr - mn) / (mx - mn) * 255
+        else:
+            arr = np.zeros_like(arr)
+        return np.nan_to_num(arr, nan=0).astype(np.uint8)
+
+    img = np.stack([_norm(vh), _norm(vv), _norm(ratio)], axis=-1)  # (H, W, 3)
+    return img, affine
+
+
 class YOLOInferenceNode(NodeBase):
-    """Load GeoTIFF, tile into patches, run ONNX OBB inference, geo-transform."""
+    """Load VH+VV GeoTIFFs, tile into patches, run ONNX OBB inference, geo-transform."""
 
     async def execute(
         self,
@@ -231,35 +269,37 @@ class YOLOInferenceNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
+            import numpy as np
+
             tile = state.current_tile  # type: ignore[attr-defined]
 
-            # Guard: rasterio / onnxruntime may not be installed (POC)
-            try:
-                import numpy as np
-                import rasterio
-            except ImportError:
-                logger.warning("rasterio/numpy not installed — returning empty detections")
-                return {"raw_detections": [], "pipeline_phase": "detection"}
-
             file_path = tile.file_path
-            if not file_path or not Path(file_path).exists():  # noqa: ASYNC240
-                logger.warning("Tile file not found: %s — returning empty detections", file_path)
-                return {"raw_detections": [], "pipeline_phase": "detection"}
+            if not file_path:
+                return {"raw_detections": [], "pipeline_phase": "detection",
+                        "last_error": "YOLOInferenceNode: no file_path"}
 
-            # 1. Load GeoTIFF and extract affine transform
-            with rasterio.open(file_path) as src:
-                img = src.read()  # (C, H, W)
-                affine = src.transform
+            scene_dir = Path(file_path)  # noqa: ASYNC240
+            if scene_dir.is_file():
+                scene_dir = scene_dir.parent
+            if not scene_dir.exists() or not (scene_dir / "VH_dB.tif").exists():
+                logger.warning("Scene dir missing VH_dB.tif: %s", scene_dir)
+                return {"raw_detections": [], "pipeline_phase": "detection",
+                        "last_error": f"YOLOInferenceNode: no VH_dB.tif in {scene_dir}"}
 
-            # 2. Tile into 640x640 patches with 10% overlap
+            img, affine = await asyncio.to_thread(_load_dual_band, scene_dir)
+
             patches = _tile_image(img, _PATCH_SIZE, _OVERLAP_FRAC)
+            logger.info("Scene %s: %dx%d → %d patches", tile.tile_id, img.shape[1], img.shape[0], len(patches))
 
-            # 3. Two-step ONNX session acquisition via ModelRegistry
             try:
                 from harbor.ml.loaders import get_onnx_session
                 from harbor.ml.registry import ModelRegistry
 
-                registry = ModelRegistry()
+                registry_path = os.environ.get(
+                    "SDW_REGISTRY_DB", "data/model_registry.db"
+                )
+                registry = ModelRegistry(registry_path)
+                await registry.bootstrap()
                 entry = await registry.load_alias("sdw-detector", "production")
                 session = get_onnx_session(
                     model_id=entry.model_id,
@@ -267,48 +307,36 @@ class YOLOInferenceNode(NodeBase):
                     file_uri=entry.file_uri,
                 )
             except Exception as exc:
-                logger.warning("ONNX session error: %s — returning empty detections", exc)
-                return {
-                    "raw_detections": [],
-                    "last_error": f"YOLOInferenceNode ONNX: {exc}",
-                    "pipeline_phase": "detection",
-                }
+                logger.warning("ONNX session error: %s", exc)
+                return {"raw_detections": [], "pipeline_phase": "detection",
+                        "last_error": f"YOLOInferenceNode ONNX: {exc}"}
 
-            # 4. Run inference per patch (offloaded to thread)
             input_name = session.get_inputs()[0].name
             all_detections: list[dict[str, Any]] = []
 
             for patch, r_off, c_off in patches:
-                # Ensure (1, 3, H, W) float32
-                if patch.ndim == 2:
-                    patch = np.stack([patch] * 3, axis=-1)
-                if patch.shape[-1] <= 4:
-                    # (H, W, C) → (C, H, W)
-                    patch = patch.transpose(2, 0, 1)
-                blob = np.expand_dims(patch.astype(np.float32) / 255.0, axis=0)
-
+                # (H, W, 3) → (3, H, W) → (1, 3, H, W) float32 normalised
+                blob = np.expand_dims(
+                    patch.transpose(2, 0, 1).astype(np.float32) / 255.0, axis=0
+                )
                 raw = await asyncio.to_thread(session.run, None, {input_name: blob})
 
-                # 5-6. Decode OBB + transform to geo-coords
                 if raw and len(raw) > 0:
                     dets = _decode_obb(raw[0], r_off, c_off, affine)
                     for d in dets:
                         d["tile_id"] = tile.tile_id
                     all_detections.extend(dets)
 
-            # 7. Build Detection objects
             from demos.sentinel_dark_watch.graph.state import Detection
 
             detections = [Detection(**d) for d in all_detections]
+            logger.info("YOLOInferenceNode: %d detections from %d patches", len(detections), len(patches))
 
             return {"raw_detections": detections, "pipeline_phase": "detection"}
         except Exception as exc:
             logger.exception("YOLOInferenceNode failed: %s", exc)
-            return {
-                "raw_detections": [],
-                "last_error": f"YOLOInferenceNode: {exc}",
-                "pipeline_phase": "detection",
-            }
+            return {"raw_detections": [], "pipeline_phase": "detection",
+                    "last_error": f"YOLOInferenceNode: {exc}"}
 
 
 # ---------------------------------------------------------------------------

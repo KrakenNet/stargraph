@@ -18,10 +18,16 @@ teardown:
     pkill -f "streamlit" || true
 
 prepare-data:
-    uv run --no-project python -m demos.sentinel_dark_watch.scripts.prepare_dataset
+    uv run python -m demos.sentinel_dark_watch.scripts.prepare_dataset \
+        --imagery-dir demos/sentinel_dark_watch/data/xview3/imagery \
+        --train-csv demos/sentinel_dark_watch/data/xview3/labels/train.csv \
+        --val-csv demos/sentinel_dark_watch/data/xview3/labels/validation.csv \
+        --output-dir demos/sentinel_dark_watch/data/prepared
 
 train:
-    uv run --no-project python -m demos.sentinel_dark_watch.scripts.train_detector
+    uv run python -m demos.sentinel_dark_watch.scripts.train_detector \
+        --data demos/sentinel_dark_watch/data/prepared/data.yaml \
+        --epochs 50 --batch 16 --device 0
 
 retrain:
     curl -X POST http://localhost:9001/v1/runs \
