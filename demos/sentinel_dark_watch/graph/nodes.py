@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING, Any
 
 from harbor.nodes.base import ExecutionContext, NodeBase
 
+from demos.sentinel_dark_watch.db import get_pg_dsn
+
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
@@ -55,11 +57,7 @@ class SARIngestNode(NodeBase):
         try:
             import asyncpg  # noqa: F811
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
             try:
                 row = await conn.fetchrow(
                     "SELECT scene_id, file_path, acquired_at, "
@@ -479,11 +477,7 @@ class LandMaskFilterNode(NodeBase):
         try:
             import asyncpg
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
         except Exception:
             log.warning("PostGIS unavailable — skipping land-mask filter")
             return {"pipeline_phase": "land_filter"}
@@ -578,11 +572,7 @@ class AISCorrelationNode(NodeBase):
         try:
             import asyncpg
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
         except Exception:
             log.warning("PostGIS unavailable — marking all detections as dark vessels")
             for det in detections:
@@ -743,11 +733,7 @@ class GeoContextNode(NodeBase):
         try:
             import asyncpg
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
         except Exception:
             log.warning("PostGIS unavailable — skipping geo-context enrichment")
 
@@ -1267,11 +1253,7 @@ class AnalystReviewNode(NodeBase):
         try:
             import asyncpg
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
         except Exception:
             log.warning("PostGIS unavailable — cannot persist analyst corrections")
             return
@@ -1375,11 +1357,7 @@ class MetricsCollectorNode(NodeBase):
         try:
             import asyncpg
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
         except Exception:
             log.warning("PostGIS unavailable — cannot persist run metrics")
             return
@@ -1477,11 +1455,7 @@ class RetrainCollectNode(NodeBase):
         try:
             import asyncpg
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
         except Exception:
             log.warning("PostGIS unavailable — cannot collect corrections")
             return {"corrections_count": 0, "merged_training_samples": original_samples}
@@ -1732,11 +1706,7 @@ class RetrainMetricsNode(NodeBase):
         try:
             import asyncpg
 
-            dsn = os.environ.get(
-                "POSTGRES_DSN",
-                "postgresql://harbor:harbor@localhost:5441/sdw",
-            )
-            conn = await asyncpg.connect(dsn)
+            conn = await asyncpg.connect(get_pg_dsn())
         except Exception:
             log.warning("PostGIS unavailable — cannot persist model metrics")
             return {"retrain_metrics": metrics}
