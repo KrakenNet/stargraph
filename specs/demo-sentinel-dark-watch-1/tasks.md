@@ -23,7 +23,7 @@ total_tasks: 83
   - _Requirements: FR-12, FR-13_
   - _Design: File Structure_
 
-- [ ] 1.2 Create `.env.example` and copy existing `.env`
+- [x] 1.2 Create `.env.example` and copy existing `.env`
   - **Do**:
     1. Create `.env.example` with all env vars and sensible defaults (POSTGRES_USER=harbor, POSTGRES_PASSWORD=harbor, POSTGRES_DB=sdw, POSTGRES_PORT=5441, REDIS_PORT=6391, LLM_PORT=41001, POSTGRES_DSN, AIS_STREAM_API_KEY placeholder, AIS_MODE=mock, LLM_BASE_URL=http://localhost:41001/v1)
     2. Move/update existing `.env` from `demos/sentinel-dark-watch/.env` into new location preserving API key
