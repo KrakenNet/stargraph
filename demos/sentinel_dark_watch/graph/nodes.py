@@ -475,7 +475,7 @@ class NMSDeduplicationNode(NodeBase):
 class LandMaskFilterNode(NodeBase):
     """Filter out detections whose centroid falls on land.
 
-    Queries PostGIS ``coastlines`` table with ``ST_Contains``.  If PostGIS
+    Uses :func:`demos.sentinel_dark_watch.geo.point_on_land`.  If PostGIS
     is unreachable the filter is skipped (all detections kept) with a
     warning — we never discard valid detections due to infra failure.
     """
@@ -486,6 +486,8 @@ class LandMaskFilterNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
+            from demos.sentinel_dark_watch.geo import point_on_land
+
             detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
             if not detections:
                 return {"detections": [], "detection_count": 0, "pipeline_phase": "land_filter"}
@@ -502,17 +504,7 @@ class LandMaskFilterNode(NodeBase):
                 water_detections: list[Any] = []
                 for det in detections:
                     try:
-                        on_land = await conn.fetchval(
-                            "SELECT EXISTS("
-                            "  SELECT 1 FROM coastlines"
-                            "  WHERE ST_Contains("
-                            "    geom,"
-                            "    ST_SetSRID(ST_MakePoint($1, $2), 4326)"
-                            "  )"
-                            ")",
-                            det.geo_lon,
-                            det.geo_lat,
-                        )
+                        on_land = await point_on_land(conn, det.geo_lat, det.geo_lon)
                         if not on_land:
                             water_detections.append(det)
                     except Exception:
@@ -639,11 +631,12 @@ class AISCorrelationNode(NodeBase):
                 await conn.close()
 
             # Compute predicted positions for each AIS report
+            from demos.sentinel_dark_watch.geo import predicted_ais_position
+
             ais_predicted: list[dict[str, Any]] = []
             for row in rows:
                 speed_kn = float(row["speed_kn"]) if row["speed_kn"] else 0.0
                 heading_deg = float(row["heading"]) if row["heading"] else 0.0
-                heading_rad = math.radians(heading_deg)
 
                 # Time delta in hours
                 dt_hours = 0.0
@@ -669,16 +662,17 @@ class AISCorrelationNode(NodeBase):
 
                 lat = float(row["lat"])
                 lon = float(row["lon"])
-                predicted_lat = lat + speed_kn * math.cos(heading_rad) * dt_hours / 60.0
-                predicted_lon = lon + speed_kn * math.sin(heading_rad) * dt_hours / 60.0
+                pred_lat, pred_lon = predicted_ais_position(
+                    lat, lon, speed_kn, heading_deg, dt_hours,
+                )
 
                 ais_predicted.append({
                     "mmsi": str(row["mmsi"]),
                     "ship_name": row["ship_name"] or "",
                     "flag_state": row["flag_state"] or "",
                     "vessel_type": row["vessel_type"] or "",
-                    "predicted_lat": predicted_lat,
-                    "predicted_lon": predicted_lon,
+                    "predicted_lat": pred_lat,
+                    "predicted_lon": pred_lon,
                 })
 
             # Match detections to AIS by minimum distance within radius
@@ -745,6 +739,11 @@ class GeoContextNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
+            from demos.sentinel_dark_watch.geo import (
+                nearest_coast_distance_m,
+                nearest_port,
+                point_in_eez,
+            )
             from demos.sentinel_dark_watch.graph.signatures import (
                 DSPY_AVAILABLE,
                 FALLBACK_TEMPLATES,
@@ -766,46 +765,17 @@ class GeoContextNode(NodeBase):
             for det in detections:
                 if conn is not None:
                     try:
-                        # EEZ lookup via ST_Contains
-                        eez_row = await conn.fetchrow(
-                            "SELECT name FROM eez_boundaries"
-                            " WHERE ST_Contains("
-                            "   geom, ST_SetSRID(ST_MakePoint($1, $2), 4326)"
-                            " ) LIMIT 1",
-                            det.geo_lon,
-                            det.geo_lat,
-                        )
-                        if eez_row:
-                            det.eez_name = eez_row["name"]
+                        eez_name = await point_in_eez(conn, det.geo_lat, det.geo_lon)
+                        if eez_name:
+                            det.eez_name = eez_name
 
-                        # Nearest port distance (metres → nautical miles)
-                        port_row = await conn.fetchrow(
-                            "SELECT name,"
-                            "  ST_Distance("
-                            "    geom::geography,"
-                            "    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography"
-                            "  ) AS dist_m"
-                            " FROM ports ORDER BY geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)"
-                            " LIMIT 1",
-                            det.geo_lon,
-                            det.geo_lat,
-                        )
-                        if port_row:
-                            det.distance_to_port_nm = float(port_row["dist_m"]) / 1852.0
+                        _port_name, port_dist_m = await nearest_port(conn, det.geo_lat, det.geo_lon)
+                        if port_dist_m:
+                            det.distance_to_port_nm = port_dist_m / 1852.0
 
-                        # Nearest coastline distance (metres → nautical miles)
-                        coast_row = await conn.fetchval(
-                            "SELECT ST_Distance("
-                            "  geom::geography,"
-                            "  ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography"
-                            ") FROM coastlines"
-                            " ORDER BY geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)"
-                            " LIMIT 1",
-                            det.geo_lon,
-                            det.geo_lat,
-                        )
-                        if coast_row is not None:
-                            det.distance_to_coast_nm = float(coast_row) / 1852.0
+                        coast_dist_m = await nearest_coast_distance_m(conn, det.geo_lat, det.geo_lon)
+                        if coast_dist_m is not None:
+                            det.distance_to_coast_nm = coast_dist_m / 1852.0
 
                     except Exception:
                         logger.warning(
