@@ -288,7 +288,7 @@ total_tasks: 83
   - _Requirements: FR-9, AC-8.4, AC-8.5_
   - _Design: AnalystReviewNode_
 
-- [ ] 1.28 Implement MetricsCollectorNode
+- [x] 1.28 Implement MetricsCollectorNode
   - **Do**:
     1. Add `MetricsCollectorNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Compute RunMetrics from state (detection counts, dark vessels, AIS matches, FP from corrections, processing time). Write to Postgres `run_metrics` table.

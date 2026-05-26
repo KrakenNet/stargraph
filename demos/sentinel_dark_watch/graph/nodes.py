@@ -1296,3 +1296,114 @@ class AnalystReviewNode(NodeBase):
             log.warning("Failed to write corrections to Postgres")
         finally:
             await conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Metrics Collector — run-level metrics
+# ---------------------------------------------------------------------------
+
+
+class MetricsCollectorNode(NodeBase):
+    """Compute and persist run-level metrics.
+
+    Aggregates detection counts, dark vessels, AIS matches, false
+    positives (from ``corrections`` where ``decision='reject'``), and
+    processing time (``now - run_started_at``).  Writes to the Postgres
+    ``run_metrics`` table via asyncpg.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        from datetime import datetime, timezone
+
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        detection_count = len(detections)
+        dark_vessel_count = sum(1 for d in detections if getattr(d, "dark_vessel", False))
+        ais_match_count = detection_count - dark_vessel_count
+
+        # False positives from corrections
+        corrections = getattr(state, "analyst_corrections", []) or []
+        false_positive_count = 0
+        for corr in corrections:
+            decision = corr.get("decision", "") if isinstance(corr, dict) else getattr(corr, "decision", "")
+            if decision == "reject":
+                false_positive_count += 1
+
+        # Processing time
+        run_started_at = getattr(state, "run_started_at", None)
+        now = datetime.now(timezone.utc)
+        if run_started_at:
+            if isinstance(run_started_at, str):
+                try:
+                    run_started_at = datetime.fromisoformat(run_started_at)
+                except Exception:
+                    run_started_at = None
+            if run_started_at:
+                if run_started_at.tzinfo is None:
+                    run_started_at = run_started_at.replace(tzinfo=timezone.utc)
+                processing_secs = (now - run_started_at).total_seconds()
+            else:
+                processing_secs = 0.0
+        else:
+            processing_secs = 0.0
+
+        # Build RunMetrics
+        from demos.sentinel_dark_watch.graph.state import RunMetrics
+
+        metrics = RunMetrics(
+            detection_count=detection_count,
+            dark_vessel_count=dark_vessel_count,
+            ais_match_count=ais_match_count,
+            false_positive_count=false_positive_count,
+            processing_secs=processing_secs,
+        )
+
+        # Write to Postgres
+        run_id = str(getattr(state, "run_id", ""))
+        await self._write_metrics(run_id, metrics)
+
+        return {
+            "run_metrics": metrics,
+            "pipeline_phase": "metrics",
+        }
+
+    async def _write_metrics(self, run_id: str, metrics: Any) -> None:
+        """Persist run metrics to the ``run_metrics`` table."""
+        try:
+            import asyncpg
+
+            dsn = os.environ.get(
+                "POSTGRES_DSN",
+                "postgresql://harbor:harbor@localhost:5441/sdw",
+            )
+            conn = await asyncpg.connect(dsn)
+        except Exception:
+            log.warning("PostGIS unavailable — cannot persist run metrics")
+            return
+
+        try:
+            await conn.execute(
+                "INSERT INTO run_metrics"
+                " (run_id, detection_count, dark_vessel_count,"
+                "  ais_match_count, false_positive_count, processing_secs)"
+                " VALUES ($1, $2, $3, $4, $5, $6)"
+                " ON CONFLICT (run_id) DO UPDATE SET"
+                "   detection_count = EXCLUDED.detection_count,"
+                "   dark_vessel_count = EXCLUDED.dark_vessel_count,"
+                "   ais_match_count = EXCLUDED.ais_match_count,"
+                "   false_positive_count = EXCLUDED.false_positive_count,"
+                "   processing_secs = EXCLUDED.processing_secs",
+                run_id,
+                metrics.detection_count,
+                metrics.dark_vessel_count,
+                metrics.ais_match_count,
+                metrics.false_positive_count,
+                metrics.processing_secs,
+            )
+        except Exception:
+            log.warning("Failed to write run metrics to Postgres")
+        finally:
+            await conn.close()
