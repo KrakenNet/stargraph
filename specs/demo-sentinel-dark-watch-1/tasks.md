@@ -277,7 +277,7 @@ total_tasks: 83
   - _Requirements: FR-8, AC-7.2, AC-7.3_
   - _Design: EmitSARChipsNode_
 
-- [ ] 1.27 Implement AnalystReviewNode
+- [x] 1.27 Implement AnalystReviewNode
   - **Do**:
     1. Add `AnalystReviewNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Raise `_HitInterrupt` with prompt listing detection count and tile ID. On resume (after `POST /respond`), populate `analyst_corrections` and `response_decision`. Write corrections to Postgres `corrections` table.

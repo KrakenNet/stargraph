@@ -1191,3 +1191,108 @@ class EmitSARChipsNode(NodeBase):
             src.close()
 
         return {"detections": detections, "pipeline_phase": "emit_chips"}
+
+
+# ---------------------------------------------------------------------------
+# Analyst Review — HITL interrupt gate
+# ---------------------------------------------------------------------------
+
+
+class AnalystReviewNode(NodeBase):
+    """HITL interrupt gate — pause for analyst review.
+
+    First dispatch: raises :class:`_HitInterrupt` with a prompt listing
+    detection count and tile ID.  The loop transitions to
+    ``awaiting-input`` and emits a :class:`WaitingForInputEvent`.
+
+    On resume (after ``POST /runs/{id}/respond``): the response payload
+    has been asserted as a Fathom fact.  A separate passthrough node
+    (``branch_resp_review``) routes the graph forward.  Corrections
+    from the analyst response are written to the Postgres ``corrections``
+    table.
+
+    Matches the :class:`harbor.nodes.interrupt.InterruptNode` pattern
+    from CVE-rem exactly: raise ``_HitInterrupt(InterruptAction(...))``.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        # Check if this is a resume (response already populated)
+        response_decision = getattr(state, "response_decision", None)
+        if response_decision:
+            # Resume path: response was delivered via GraphRun.respond().
+            # Write corrections to Postgres and return.
+            corrections = getattr(state, "analyst_corrections", []) or []
+            if corrections:
+                await self._write_corrections(corrections, state)
+            return {"pipeline_phase": "analyst_review"}
+
+        # First dispatch: build prompt and raise interrupt
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        tile_id = getattr(state, "current_tile_id", "unknown")
+        detection_count = len(detections)
+        dark_count = sum(1 for d in detections if getattr(d, "dark_vessel", False))
+
+        prompt = (
+            f"Analyst review required: {detection_count} detection(s) "
+            f"({dark_count} dark vessel(s)) from tile {tile_id}.\n"
+            f"Please review detections and provide corrections.\n"
+            f"Actions: confirm, reject (false positive), flag_for_review, override_risk."
+        )
+
+        payload = {
+            "tile_id": tile_id,
+            "detection_count": detection_count,
+            "dark_vessel_count": dark_count,
+            "detection_ids": [d.detection_id for d in detections],
+        }
+
+        from harbor.graph.loop import _HitInterrupt  # pyright: ignore[reportPrivateUsage]
+        from harbor.ir._models import InterruptAction
+
+        action = InterruptAction(
+            prompt=prompt,
+            interrupt_payload=payload,
+            requested_capability="sdw.analyst_review",
+            timeout=None,
+            on_timeout="halt",
+        )
+        raise _HitInterrupt(action)
+
+    async def _write_corrections(self, corrections: list[Any], state: BaseModel) -> None:
+        """Persist analyst corrections to the Postgres ``corrections`` table."""
+        try:
+            import asyncpg
+
+            dsn = os.environ.get(
+                "POSTGRES_DSN",
+                "postgresql://harbor:harbor@localhost:5441/sdw",
+            )
+            conn = await asyncpg.connect(dsn)
+        except Exception:
+            log.warning("PostGIS unavailable — cannot persist analyst corrections")
+            return
+
+        try:
+            run_id = str(getattr(state, "run_id", ""))
+            for corr in corrections:
+                detection_id = corr.get("detection_id", "") if isinstance(corr, dict) else getattr(corr, "detection_id", "")
+                decision = corr.get("decision", "") if isinstance(corr, dict) else getattr(corr, "decision", "")
+                note = corr.get("note", "") if isinstance(corr, dict) else getattr(corr, "note", "")
+
+                await conn.execute(
+                    "INSERT INTO corrections (detection_id, run_id, decision, note)"
+                    " VALUES ($1, $2, $3, $4)"
+                    " ON CONFLICT DO NOTHING",
+                    detection_id,
+                    run_id,
+                    decision,
+                    note,
+                )
+        except Exception:
+            log.warning("Failed to write corrections to Postgres")
+        finally:
+            await conn.close()
