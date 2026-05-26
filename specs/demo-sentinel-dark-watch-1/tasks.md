@@ -137,7 +137,7 @@ total_tasks: 83
   - _Requirements: FR-12, AC-2.3, AC-5.2, AC-5.3_
   - _Design: Database Schema, bootstrap.py_
 
-- [ ] 1.13 [VERIFY] Quality checkpoint: bootstrap importable
+- [x] 1.13 [VERIFY] Quality checkpoint: bootstrap importable
   - **Do**: Verify bootstrap module imports cleanly
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch import bootstrap; print('OK')"`
   - **Done when**: Import succeeds
@@ -145,7 +145,7 @@ total_tasks: 83
 
 ### Node Implementations (main pipeline)
 
-- [ ] 1.14 Create PassthroughNode + base imports in `graph/nodes.py`
+- [x] 1.14 Create PassthroughNode + base imports in `graph/nodes.py`
   - **Do**:
     1. Create `demos/sentinel_dark_watch/graph/nodes.py` with imports for `NodeBase`, `BaseModel`, `ExecutionContext`
     2. Implement `PassthroughNode(NodeBase)` — `execute()` returns empty dict (used for branch_resp_review and action_done)
