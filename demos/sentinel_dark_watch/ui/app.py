@@ -188,6 +188,287 @@ def main() -> None:
     with tab_review:
         _render_detection_review()
 
+    # ------------------------------------------------------------------
+    # Tab 3: Metrics Dashboard
+    # ------------------------------------------------------------------
+    with tab_metrics:
+        _render_metrics_dashboard()
+
+    # ------------------------------------------------------------------
+    # Tab 4: Pipeline Status
+    # ------------------------------------------------------------------
+    with tab_pipeline:
+        _render_pipeline_status()
+
+
+def _render_metrics_dashboard() -> None:
+    """Metrics Dashboard — Plotly charts from run_metrics + model_metrics (AC-10.x)."""
+    st.subheader("Metrics Dashboard")
+
+    if go is None:
+        st.warning("Plotly not installed — charts unavailable. Install: pip install plotly")
+        return
+
+    # Fetch metrics from Postgres
+    run_metrics = _pg_query(
+        "SELECT * FROM run_metrics ORDER BY created_at DESC LIMIT 50"
+    )
+    model_metrics = _pg_query(
+        "SELECT * FROM model_metrics ORDER BY trained_at DESC LIMIT 20"
+    )
+
+    if not run_metrics and not model_metrics:
+        st.info("No metrics data available yet. Run the pipeline to generate metrics.")
+        return
+
+    # --- mAP over model versions (line chart, AC-10.1) ---
+    if model_metrics:
+        st.markdown("#### Model Performance (mAP)")
+        versions = [m.get("version", "") for m in model_metrics]
+        map50_vals = [m.get("map50", 0) for m in model_metrics]
+        map50_95_vals = [m.get("map50_95", 0) for m in model_metrics]
+
+        fig_map = go.Figure()
+        fig_map.add_trace(go.Scatter(
+            x=versions, y=map50_vals,
+            mode="lines+markers", name="mAP@50",
+            line=dict(color="blue"),
+        ))
+        fig_map.add_trace(go.Scatter(
+            x=versions, y=map50_95_vals,
+            mode="lines+markers", name="mAP@50-95",
+            line=dict(color="orange", dash="dash"),
+        ))
+        fig_map.update_layout(
+            xaxis_title="Model Version",
+            yaxis_title="mAP Score",
+            yaxis=dict(range=[0, 1]),
+            height=350,
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
+
+        # Before/after comparison card (when retrained model exists)
+        if len(model_metrics) >= 2:
+            latest = model_metrics[0]
+            previous = model_metrics[1]
+            st.markdown("#### Champion vs Challenger")
+            cc1, cc2, cc3 = st.columns(3)
+            with cc1:
+                delta_map = latest.get("map50", 0) - previous.get("map50", 0)
+                st.metric(
+                    f"mAP@50 ({latest.get('version', '?')})",
+                    f"{latest.get('map50', 0):.3f}",
+                    delta=f"{delta_map:+.3f}",
+                )
+            with cc2:
+                st.metric(
+                    "Training Samples",
+                    latest.get("training_samples", 0),
+                    delta=latest.get("training_samples", 0) - previous.get("training_samples", 0),
+                )
+            with cc3:
+                st.metric(
+                    "Precision",
+                    f"{latest.get('precision', 0):.3f}",
+                    delta=f"{latest.get('precision', 0) - previous.get('precision', 0):+.3f}",
+                )
+
+    # --- Dark vessel count per run (bar chart, AC-10.2) ---
+    if run_metrics:
+        st.markdown("#### Dark Vessels per Run")
+        run_ids = [r.get("run_id", f"run_{i}") for i, r in enumerate(run_metrics)]
+        dark_counts = [r.get("dark_vessels_flagged", 0) for r in run_metrics]
+
+        fig_dark = go.Figure()
+        fig_dark.add_trace(go.Bar(
+            x=run_ids, y=dark_counts,
+            marker_color="crimson",
+            name="Dark Vessels",
+        ))
+        fig_dark.update_layout(
+            xaxis_title="Run ID",
+            yaxis_title="Dark Vessel Count",
+            height=300,
+        )
+        st.plotly_chart(fig_dark, use_container_width=True)
+
+    # --- FP rate trend (line chart) ---
+    if run_metrics:
+        st.markdown("#### False Positive Rate Trend")
+        fp_rates = []
+        run_labels = []
+        for i, r in enumerate(run_metrics):
+            total = r.get("total_detections", 0)
+            fp = r.get("false_positives_rejected", 0)
+            rate = (fp / total * 100) if total > 0 else 0
+            fp_rates.append(rate)
+            run_labels.append(r.get("run_id", f"run_{i}"))
+
+        fig_fp = go.Figure()
+        fig_fp.add_trace(go.Scatter(
+            x=run_labels, y=fp_rates,
+            mode="lines+markers", name="FP Rate (%)",
+            line=dict(color="orange"),
+            fill="tozeroy",
+        ))
+        fig_fp.update_layout(
+            xaxis_title="Run ID",
+            yaxis_title="False Positive Rate (%)",
+            yaxis=dict(range=[0, 100]),
+            height=300,
+        )
+        st.plotly_chart(fig_fp, use_container_width=True)
+
+    # --- Tiles/hour gauge ---
+    if run_metrics:
+        st.markdown("#### Processing Throughput")
+        latest_run = run_metrics[0]
+        tiles = latest_run.get("tiles_processed", 0)
+        secs = latest_run.get("processing_time_seconds", 1)
+        tiles_per_hour = (tiles / secs * 3600) if secs > 0 else 0
+
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=tiles_per_hour,
+            title={"text": "Tiles / Hour (latest run)"},
+            gauge={
+                "axis": {"range": [0, max(tiles_per_hour * 2, 100)]},
+                "bar": {"color": "darkblue"},
+                "steps": [
+                    {"range": [0, tiles_per_hour * 0.5], "color": "lightgray"},
+                    {"range": [tiles_per_hour * 0.5, tiles_per_hour * 1.5], "color": "lightskyblue"},
+                ],
+            },
+        ))
+        fig_gauge.update_layout(height=250)
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+
+def _render_pipeline_status() -> None:
+    """Pipeline Status tab — live node progress + JSONL audit viewer (AC-11.x)."""
+    st.subheader("Pipeline Status")
+
+    run_id = st.text_input("Run ID", placeholder="Enter run ID", key="pipeline_run_id")
+    if not run_id:
+        st.info("Enter a run ID to view pipeline status.")
+        return
+
+    col_status, col_log = st.columns([1, 1])
+
+    with col_status:
+        st.markdown("#### Node Progress")
+
+        # Fetch run state for current node + pipeline phase
+        if requests is not None:
+            try:
+                resp = requests.get(f"{HARBOR_URL}/v1/runs/{run_id}", timeout=10)
+                resp.raise_for_status()
+                run_data = resp.json()
+                state = run_data.get("state", {})
+                status = run_data.get("status", "unknown")
+
+                st.markdown(f"**Status:** `{status}`")
+                st.markdown(f"**Phase:** `{state.get('pipeline_phase', 'unknown')}`")
+                st.markdown(f"**Model version:** `{state.get('model_version', '?')}`")
+
+                if state.get("last_error"):
+                    st.error(f"Error: {state['last_error']}")
+
+                # Pipeline nodes and progress
+                pipeline_nodes = [
+                    "sar_ingest", "yolo_inference", "nms_dedup", "land_mask",
+                    "ais_correlation", "geo_context", "risk_scoring", "reporting",
+                    "emit_sar_chips", "analyst_review", "metrics_collector",
+                    "retrain_trigger", "action_done",
+                ]
+                phase = state.get("pipeline_phase", "ingest")
+
+                # Estimate progress from pipeline phase
+                phase_map = {
+                    "ingest": 1, "inference": 2, "nms": 3, "land_mask": 4,
+                    "ais_correlation": 5, "geo_context": 6, "risk_scoring": 7,
+                    "reporting": 8, "chips": 9, "review": 10, "metrics": 11,
+                    "retrain": 12, "done": 13,
+                }
+                current_step = phase_map.get(phase, 0)
+                total_steps = len(pipeline_nodes)
+                progress = min(current_step / total_steps, 1.0) if total_steps > 0 else 0
+
+                st.progress(progress, text=f"Step {current_step}/{total_steps}")
+
+                # Per-node timing (if available in events)
+                events = run_data.get("events", [])
+                if events:
+                    st.markdown("**Node Timing:**")
+                    for evt in events[-15:]:  # last 15 events
+                        node_id = evt.get("node_id", "?")
+                        dur = evt.get("duration_ms", 0)
+                        evt_type = evt.get("type", "?")
+                        st.text(f"  {node_id}: {dur}ms ({evt_type})")
+
+            except Exception as exc:
+                st.error(f"Failed to fetch run data: {exc}")
+        else:
+            st.warning("requests not installed")
+
+    with col_log:
+        st.markdown("#### Audit Log (JSONL)")
+
+        # WebSocket streaming not available in Streamlit natively;
+        # fall back to polling the audit log endpoint
+        if requests is not None:
+            try:
+                resp = requests.get(
+                    f"{HARBOR_URL}/v1/runs/{run_id}/events",
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                events = resp.json()
+
+                if not events:
+                    st.info("No audit events yet.")
+                else:
+                    # Render as scrollable log
+                    log_lines = []
+                    for evt in events:
+                        ts = evt.get("ts", evt.get("timestamp", ""))
+                        node = evt.get("node_id", "")
+                        etype = evt.get("type", evt.get("event", ""))
+                        dur = evt.get("duration_ms", "")
+                        line = f"[{ts}] {node}: {etype}"
+                        if dur:
+                            line += f" ({dur}ms)"
+                        log_lines.append(line)
+
+                    st.text_area(
+                        "Event Stream",
+                        value="\n".join(log_lines),
+                        height=400,
+                        disabled=True,
+                        key="audit_log_area",
+                    )
+
+                    # Download JSONL button
+                    jsonl_data = "\n".join(json.dumps(e) for e in events)
+                    st.download_button(
+                        "Download JSONL",
+                        data=jsonl_data,
+                        file_name=f"audit_{run_id}.jsonl",
+                        mime="application/jsonl",
+                    )
+            except Exception as exc:
+                st.error(f"Failed to fetch events: {exc}")
+        else:
+            st.warning("requests not installed")
+
+        # Auto-refresh toggle
+        auto_refresh = st.checkbox("Auto-refresh (5s)", key="auto_refresh")
+        if auto_refresh:
+            st.markdown("*Page will rerun every 5 seconds.*")
+            import time
+            time.sleep(5)
+            st.rerun()
+
 
 def _render_detection_review() -> None:
     """Detection Review tab — analyst HITL review of detections (AC-6.3, AC-7.4, AC-8.x)."""
