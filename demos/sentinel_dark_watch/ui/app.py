@@ -182,6 +182,159 @@ def main() -> None:
     with tab_map:
         _render_live_map()
 
+    # ------------------------------------------------------------------
+    # Tab 2: Detection Review (HITL)
+    # ------------------------------------------------------------------
+    with tab_review:
+        _render_detection_review()
+
+
+def _render_detection_review() -> None:
+    """Detection Review tab — analyst HITL review of detections (AC-6.3, AC-7.4, AC-8.x)."""
+    st.subheader("Detection Review")
+
+    run_id = st.text_input("Run ID", placeholder="Enter run ID", key="review_run_id")
+    if not run_id:
+        st.info("Enter a run ID to load detections for review.")
+        return
+
+    detections = get_detections(run_id)
+    if not detections:
+        st.warning("No detections found for this run.")
+        return
+
+    # Sort by risk score descending (AC-6.3)
+    detections.sort(key=lambda d: d.get("risk_score", 0), reverse=True)
+
+    st.markdown(f"**{len(detections)} detections** — sorted by risk score (highest first)")
+
+    # Track corrections for batch submission
+    if "corrections" not in st.session_state:
+        st.session_state.corrections = {}
+
+    for idx, det in enumerate(detections):
+        det_id = det.get("detection_id", f"det_{idx}")
+        risk = det.get("risk_level", "low").lower()
+        risk_color = RISK_COLORS.get(risk, "gray")
+
+        with st.expander(
+            f"{det_id} | Risk: {risk.upper()} ({det.get('risk_score', 0)}) "
+            f"| Conf: {det.get('confidence', 0):.2f}",
+            expanded=(idx < 3),
+        ):
+            col_img, col_details = st.columns([1, 2])
+
+            # SAR chip image
+            with col_img:
+                chip_ref = det.get("chip_artifact_ref", "")
+                if chip_ref:
+                    st.image(
+                        f"{HARBOR_URL}/v1/artifacts/{chip_ref}",
+                        caption=f"SAR Chip — {det_id}",
+                        use_container_width=True,
+                    )
+                else:
+                    st.markdown("*No SAR chip available*")
+
+            with col_details:
+                # Confidence bar
+                confidence = det.get("confidence", 0)
+                st.progress(min(confidence, 1.0), text=f"Confidence: {confidence:.1%}")
+
+                # AIS status badge
+                if det.get("dark_vessel", False):
+                    st.markdown(":red[**DARK VESSEL** — No AIS correlation]")
+                else:
+                    mmsi = det.get("ais_mmsi", "unknown")
+                    name = det.get("ais_vessel_name", "unknown")
+                    flag = det.get("ais_flag_state", "unknown")
+                    vtype = det.get("ais_vessel_type", "unknown")
+                    st.markdown(
+                        f":green[**AIS MATCHED**] — {name} (MMSI: {mmsi}, "
+                        f"Flag: {flag}, Type: {vtype})"
+                    )
+
+                # Geo-summary
+                st.markdown(
+                    f"**Location:** {det.get('geo_lat', 0):.4f}, {det.get('geo_lon', 0):.4f} | "
+                    f"**EEZ:** {det.get('eez_name', 'unknown')} | "
+                    f"**Port dist:** {det.get('distance_to_port_nm', 0):.1f} nm | "
+                    f"**Coast dist:** {det.get('distance_to_coast_nm', 0):.1f} nm"
+                )
+                if det.get("fishing_zone"):
+                    st.markdown(":orange[Fishing zone]")
+
+                # Risk level badge
+                st.markdown(
+                    f"**Risk Level:** :{risk_color}[**{risk.upper()}**] "
+                    f"(score: {det.get('risk_score', 0)})"
+                )
+
+            # Draft report text — editable (AC-7.4)
+            report_key = f"report_{det_id}"
+            edited_report = st.text_area(
+                "Draft Report",
+                value=det.get("report_text", ""),
+                height=120,
+                key=report_key,
+                help="Edit the draft report before submission.",
+            )
+
+            # Action buttons
+            bcol1, bcol2, bcol3, bcol4 = st.columns(4)
+            with bcol1:
+                if st.button("Confirm Vessel", key=f"confirm_{det_id}"):
+                    st.session_state.corrections[det_id] = {
+                        "detection_id": det_id,
+                        "decision": "confirm",
+                        "report_text": edited_report,
+                    }
+                    st.success("Marked: Confirm")
+            with bcol2:
+                if st.button("Reject (FP)", key=f"reject_{det_id}"):
+                    st.session_state.corrections[det_id] = {
+                        "detection_id": det_id,
+                        "decision": "reject",
+                        "report_text": edited_report,
+                    }
+                    st.warning("Marked: Reject (False Positive)")
+            with bcol3:
+                if st.button("Flag for Review", key=f"flag_{det_id}"):
+                    st.session_state.corrections[det_id] = {
+                        "detection_id": det_id,
+                        "decision": "flag",
+                        "report_text": edited_report,
+                    }
+                    st.info("Marked: Flag for Review")
+            with bcol4:
+                override_risk = st.selectbox(
+                    "Override Risk",
+                    options=["", "critical", "high", "medium", "low"],
+                    key=f"override_{det_id}",
+                )
+                if override_risk:
+                    if det_id not in st.session_state.corrections:
+                        st.session_state.corrections[det_id] = {
+                            "detection_id": det_id,
+                            "decision": "confirm",
+                            "report_text": edited_report,
+                        }
+                    st.session_state.corrections[det_id]["override_risk"] = override_risk
+
+    # Batch submission
+    st.divider()
+    corrections_list = list(st.session_state.corrections.values())
+    st.markdown(f"**{len(corrections_list)} corrections** pending submission")
+
+    if st.button("Submit All Corrections", type="primary", disabled=len(corrections_list) == 0):
+        result = submit_review(run_id, corrections_list)
+        if "error" in result:
+            st.error(f"Submission failed: {result['error']}")
+        else:
+            st.success("Corrections submitted successfully.")
+            st.session_state.corrections = {}
+            st.rerun()
+
 
 def _render_live_map() -> None:
     """Live Map tab — Folium map with detection markers + AIS tracks."""
