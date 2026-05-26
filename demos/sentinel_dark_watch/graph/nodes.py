@@ -1616,3 +1616,152 @@ class RetrainTrainNode(NodeBase):
             "challenger_version": version,
             "challenger_map50": map50,
         }
+
+
+# ---------------------------------------------------------------------------
+# Retrain Sub-Graph — Champion / Challenger Comparison
+# ---------------------------------------------------------------------------
+
+
+class ChampionChallengerNode(NodeBase):
+    """Compare champion (production alias) vs. challenger model on mAP.
+
+    Loads both models' metadata from :class:`ModelRegistry`, compares
+    ``map50``.  If the challenger wins, it is promoted to the
+    ``production`` alias via ``registry.alias()``.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        challenger_version: str = getattr(state, "challenger_version", "")
+        challenger_map50: float = getattr(state, "challenger_map50", 0.0)
+
+        # Load champion info from ModelRegistry
+        champion_version = ""
+        champion_map50 = 0.0
+
+        try:
+            from harbor.ml.registry import ModelRegistry
+
+            registry = ModelRegistry()
+            entry = await registry.load_alias("sdw-detector", "production")
+            champion_version = entry.version
+            # mAP stored in registry metadata if available; fallback to state
+            champion_map50 = getattr(entry, "map50", 0.0) or getattr(state, "champion_map50", 0.0)
+        except Exception:
+            log.warning(
+                "ModelRegistry unavailable — using state champion_map50 (%.3f)",
+                getattr(state, "champion_map50", 0.0),
+            )
+            champion_version = getattr(state, "champion_version", "")
+            champion_map50 = getattr(state, "champion_map50", 0.0)
+
+        wins = challenger_map50 > champion_map50
+        promoted = False
+
+        if wins and challenger_version:
+            log.info(
+                "Challenger %s (mAP=%.3f) beats champion %s (mAP=%.3f) — promoting",
+                challenger_version,
+                challenger_map50,
+                champion_version,
+                champion_map50,
+            )
+            try:
+                from harbor.ml.registry import ModelRegistry as _MR
+
+                reg = _MR()
+                await reg.alias("sdw-detector", challenger_version, "production")
+                promoted = True
+            except Exception:
+                log.warning("Failed to promote challenger via ModelRegistry.alias()")
+        else:
+            log.info(
+                "Champion %s (mAP=%.3f) retains — challenger %s (mAP=%.3f) did not win",
+                champion_version,
+                champion_map50,
+                challenger_version,
+                challenger_map50,
+            )
+
+        return {
+            "champion_version": champion_version,
+            "champion_map50": champion_map50,
+            "challenger_wins": wins,
+            "promoted": promoted,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Retrain Sub-Graph — Persist Model Metrics
+# ---------------------------------------------------------------------------
+
+
+class RetrainMetricsNode(NodeBase):
+    """Write :class:`ModelMetrics` to the Postgres ``model_metrics`` table.
+
+    Records version, mAP, precision, recall, training samples, and
+    whether the model was promoted to production.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        from datetime import datetime, timezone
+
+        from demos.sentinel_dark_watch.graph.state import ModelMetrics
+
+        challenger_version: str = getattr(state, "challenger_version", "")
+        challenger_map50: float = getattr(state, "challenger_map50", 0.0)
+        merged_samples: int = getattr(state, "merged_training_samples", 0)
+        promoted: bool = getattr(state, "promoted", False)
+
+        metrics = ModelMetrics(
+            version=challenger_version,
+            map50=challenger_map50,
+            training_samples=merged_samples,
+            trained_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+        # Persist to Postgres
+        try:
+            import asyncpg
+
+            dsn = os.environ.get(
+                "POSTGRES_DSN",
+                "postgresql://harbor:harbor@localhost:5441/sdw",
+            )
+            conn = await asyncpg.connect(dsn)
+        except Exception:
+            log.warning("PostGIS unavailable — cannot persist model metrics")
+            return {"retrain_metrics": metrics}
+
+        try:
+            await conn.execute(
+                "INSERT INTO model_metrics"
+                " (version, map50, precision_val, recall_val,"
+                "  training_samples, promoted)"
+                " VALUES ($1, $2, $3, $4, $5, $6)"
+                " ON CONFLICT (version) DO UPDATE SET"
+                "   map50 = EXCLUDED.map50,"
+                "   training_samples = EXCLUDED.training_samples,"
+                "   promoted = EXCLUDED.promoted",
+                metrics.version,
+                metrics.map50,
+                metrics.precision,
+                metrics.recall,
+                metrics.training_samples,
+                promoted,
+            )
+            log.info("Persisted model metrics for version %s", metrics.version)
+        except Exception:
+            log.warning("Failed to write model metrics to Postgres")
+        finally:
+            await conn.close()
+
+        return {"retrain_metrics": metrics}

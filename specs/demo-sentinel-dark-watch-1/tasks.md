@@ -338,7 +338,7 @@ total_tasks: 83
   - **Commit**: `feat(sdw): RetrainTrainNode model fine-tuning`
   - _Requirements: FR-10, AC-9.1_
 
-- [ ] 1.33 [P] Implement ChampionChallengerNode + RetrainMetricsNode
+- [x] 1.33 [P] Implement ChampionChallengerNode + RetrainMetricsNode
   - **Do**:
     1. Add `ChampionChallengerNode(NodeBase)`: Load champion + challenger from ModelRegistry, compare mAP on holdout, set `challenger_wins`, promote if wins
     2. Add `RetrainMetricsNode(NodeBase)`: Write ModelMetrics to Postgres `model_metrics` table
