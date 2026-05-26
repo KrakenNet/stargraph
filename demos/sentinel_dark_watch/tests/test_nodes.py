@@ -15,8 +15,10 @@ from demos.sentinel_dark_watch.graph.state import (
 )
 from demos.sentinel_dark_watch.graph.nodes import (
     AISCorrelationNode,
+    GeoContextNode,
     LandMaskFilterNode,
     NMSDeduplicationNode,
+    ReportingNode,
     RiskScoringNode,
     SARIngestNode,
 )
@@ -459,3 +461,160 @@ async def test_landmask_db_failure_skip() -> None:
     # On DB failure, filter is skipped — detections NOT removed from state
     assert "last_error" in result
     assert result["pipeline_phase"] == "land_filter"
+
+
+# ---------------------------------------------------------------------------
+# GeoContextNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_geo_context_populates_fields() -> None:
+    """Mock PostGIS + mock DSPy → eez_name, distance_to_port_nm populated."""
+    det = Detection(
+        detection_id="geo-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+    )
+    state = SdwState(detections=[det])
+
+    mock_conn = AsyncMock()
+
+    with (
+        patch("asyncpg.connect", AsyncMock(return_value=mock_conn)),
+        patch(
+            "demos.sentinel_dark_watch.geo.point_in_eez",
+            AsyncMock(return_value="Iranian"),
+        ),
+        patch(
+            "demos.sentinel_dark_watch.geo.nearest_port",
+            AsyncMock(return_value=("Bandar Abbas", 50_000.0)),
+        ),
+        patch(
+            "demos.sentinel_dark_watch.geo.nearest_coast_distance_m",
+            AsyncMock(return_value=20_000.0),
+        ),
+        # Force DSPy unavailable → templated fallback
+        patch(
+            "demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE",
+            False,
+        ),
+    ):
+        node = GeoContextNode()
+        result = await node.execute(state, _MockCtx())
+
+    enriched = result["detections"]
+    assert len(enriched) == 1
+    assert enriched[0].eez_name == "Iranian"
+    assert enriched[0].distance_to_port_nm == pytest.approx(50_000.0 / 1852.0, rel=0.01)
+    assert enriched[0].distance_to_coast_nm == pytest.approx(20_000.0 / 1852.0, rel=0.01)
+    assert enriched[0].geo_summary  # non-empty templated fallback
+
+
+async def test_geo_context_llm_fallback() -> None:
+    """Mock DSPy failure → templated geo_summary used."""
+    det = Detection(
+        detection_id="geo-det-2",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        eez_name="Iranian",
+        distance_to_port_nm=27.0,
+    )
+    state = SdwState(detections=[det])
+
+    # DB unavailable (skip PostGIS enrichment) + DSPy unavailable → templated fallback
+    with (
+        patch("asyncpg.connect", AsyncMock(side_effect=ConnectionError("DB down"))),
+        patch(
+            "demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE",
+            False,
+        ),
+    ):
+        node = GeoContextNode()
+        result = await node.execute(state, _MockCtx())
+
+    enriched = result["detections"]
+    assert len(enriched) == 1
+    # Templated fallback should contain the lat/lon and EEZ
+    assert "26.55" in enriched[0].geo_summary
+    assert "Iranian" in enriched[0].geo_summary
+
+
+# ---------------------------------------------------------------------------
+# ReportingNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_reporting_generates_report() -> None:
+    """Mock DSPy → report_text has content."""
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    det = Detection(
+        detection_id="rpt-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        dark_vessel=True,
+        eez_name="Iranian",
+        distance_to_port_nm=85.0,
+        risk_score=85,
+        risk_level=RiskLevel.CRITICAL,
+        geo_summary="Test geo summary.",
+    )
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-rpt-001", scene_id="S1A_TEST"),
+    )
+
+    # Simulate DSPy producing a report (ChainOfThought is called synchronously)
+    from unittest.mock import MagicMock
+
+    mock_cot_instance = MagicMock()
+    mock_call_result = MagicMock()
+    mock_call_result.report = "Maritime Intel Report: Critical dark vessel detected."
+    mock_cot_instance.return_value = mock_call_result
+
+    with (
+        patch("demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE", True),
+        patch("dspy.ChainOfThought", return_value=mock_cot_instance),
+    ):
+        node = ReportingNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert len(result["detections"]) == 1
+    assert "Maritime Intel Report" in result["detections"][0].report_text
+
+
+async def test_reporting_fallback_template() -> None:
+    """Mock DSPy failure → templated report with required sections."""
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    det = Detection(
+        detection_id="rpt-det-2",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        dark_vessel=True,
+        eez_name="Iranian",
+        distance_to_port_nm=85.0,
+        risk_score=85,
+        risk_level=RiskLevel.CRITICAL,
+        geo_summary="Test geo summary.",
+    )
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-rpt-002", scene_id="S1A_TEST"),
+    )
+
+    with patch("demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE", False):
+        node = ReportingNode()
+        result = await node.execute(state, _MockCtx())
+
+    report = result["detections"][0].report_text
+    assert report  # non-empty
+    # Templated fallback includes these sections
+    assert "Detection Summary" in report
+    assert "AIS Correlation" in report
+    assert "Risk Assessment" in report
+    assert "Recommended Actions" in report

@@ -710,7 +710,7 @@ total_tasks: 83
   - **Commit**: `test(sdw): unit tests for SARIngestNode + LandMaskFilterNode`
   - _Requirements: AC-2.4, FR-19_
 
-- [ ] 3.7 Unit tests for GeoContextNode + ReportingNode
+- [x] 3.7 Unit tests for GeoContextNode + ReportingNode
   - **Do**:
     1. GeoContextNode: mock PostGIS + mock DSPy; verify EEZ/port fields populated; LLM fallback produces templated summary
     2. ReportingNode: mock DSPy; verify report_text has required sections; LLM fallback produces structured report
