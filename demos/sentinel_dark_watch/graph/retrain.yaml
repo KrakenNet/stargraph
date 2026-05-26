@@ -1,0 +1,36 @@
+ir_version: "1.0.0"
+id: "graph:sdw-retrain"
+
+nodes:
+  - id: collect_corrections
+    kind: "demos.sentinel_dark_watch.graph.nodes:RetrainCollectNode"
+  - id: retrain_model
+    kind: "demos.sentinel_dark_watch.graph.nodes:RetrainTrainNode"
+  - id: champion_challenger
+    kind: "demos.sentinel_dark_watch.graph.nodes:ChampionChallengerNode"
+  - id: retrain_metrics
+    kind: "demos.sentinel_dark_watch.graph.nodes:RetrainMetricsNode"
+  - id: retrain_done
+    kind: "demos.sentinel_dark_watch.graph.nodes:PassthroughNode"
+
+state_class: "demos.sentinel_dark_watch.graph.state:RetrainState"
+
+rules:
+  - id: r-collect-to-train
+    when: "?n <- (node-id (id collect_corrections))"
+    then: [{ kind: goto, target: retrain_model }]
+  - id: r-train-to-eval
+    when: "?n <- (node-id (id retrain_model))"
+    then: [{ kind: goto, target: champion_challenger }]
+  - id: r-eval-promote
+    when: "?n <- (node-id (id champion_challenger)) (state (challenger_wins true))"
+    then: [{ kind: goto, target: retrain_metrics }]
+  - id: r-eval-reject
+    when: "?n <- (node-id (id champion_challenger)) (state (challenger_wins false))"
+    then: [{ kind: goto, target: retrain_metrics }]
+  - id: r-metrics-done
+    when: "?n <- (node-id (id retrain_metrics))"
+    then: [{ kind: goto, target: retrain_done }]
+  - id: r-retrain-halt
+    when: "?n <- (node-id (id retrain_done))"
+    then: [{ kind: halt, reason: "Retrain cycle complete" }]
