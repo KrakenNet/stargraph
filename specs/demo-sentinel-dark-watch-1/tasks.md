@@ -746,7 +746,7 @@ total_tasks: 83
   - **Commit**: `test(sdw): bootstrap idempotency test`
   - _Requirements: FR-12_
 
-- [ ] 3.11 [VERIFY] Quality checkpoint: all tests green
+- [x] 3.11 [VERIFY] Quality checkpoint: all tests green
   - **Do**: Run full test suite including integration
   - **Verify**: `uv run --no-project pytest demos/sentinel_dark_watch/tests/ -v --tb=short`
   - **Done when**: All tests pass (unit + integration)
@@ -754,19 +754,19 @@ total_tasks: 83
 
 ## Phase 4: Quality Gates
 
-- [ ] V4 [VERIFY] Full local CI: lint + typecheck + tests
+- [x] V4 [VERIFY] Full local CI: lint + typecheck + tests
   - **Do**: Run complete local CI suite
   - **Verify**: `uv run ruff check demos/sentinel_dark_watch/ && uv run ruff format --check demos/sentinel_dark_watch/ && uv run --no-project pytest demos/sentinel_dark_watch/tests/ -v --tb=short && echo "LOCAL CI PASS"`
   - **Done when**: Lint clean, format clean, all tests pass
   - **Commit**: `chore(sdw): pass local CI` (if fixes needed)
 
-- [ ] V5 [VERIFY] CI pipeline passes
+- [x] V5 [VERIFY] CI pipeline passes
   - **Do**: Push branch and verify CI
   - **Verify**: `git push -u origin fix/cve-rem-doctrine-extractor 2>/dev/null; gh pr checks 2>/dev/null || echo "CI check pending — verify after PR creation"`
   - **Done when**: CI pipeline passes (or PR not yet created)
   - **Commit**: None
 
-- [ ] V6 [VERIFY] AC checklist
+- [x] V6 [VERIFY] AC checklist
   - **Do**: Programmatically verify each acceptance criterion
     1. AC-1.1: `grep -q "demo:" demos/sentinel_dark_watch/Justfile` (one-command launch)
     2. AC-1.4: `grep -q "demo-offline:" demos/sentinel_dark_watch/Justfile` (offline mode)
@@ -781,7 +781,7 @@ total_tasks: 83
   - **Done when**: All acceptance criteria confirmed via automated checks
   - **Commit**: None
 
-- [ ] VE1 [VERIFY] E2E startup: docker compose + bootstrap + harbor serve
+- [x] VE1 [VERIFY] E2E startup: docker compose + bootstrap + harbor serve
   - **Do**:
     1. Start Docker: `docker compose -f demos/sentinel_dark_watch/docker-compose.yml up -d`
     2. Record compose PID context: `echo "sdw-docker" > /tmp/ve-pids.txt`
@@ -794,7 +794,7 @@ total_tasks: 83
   - **Done when**: Docker running, bootstrap complete, harbor serve responding on 9001
   - **Commit**: None
 
-- [ ] VE2 [VERIFY] E2E check: pipeline health + streamlit loads
+- [x] VE2 [VERIFY] E2E check: pipeline health + streamlit loads
   - **Do**:
     1. Verify harbor serve health: `curl -sf http://localhost:9001/health`
     2. Start Streamlit in background: `uv run --no-project streamlit run demos/sentinel_dark_watch/ui/app.py --server.port 8501 --server.headless true & echo $! >> /tmp/ve-pids.txt`
@@ -804,7 +804,7 @@ total_tasks: 83
   - **Done when**: Both harbor serve and Streamlit responding
   - **Commit**: None
 
-- [ ] VE3 [VERIFY] E2E cleanup: stop all services and free ports
+- [x] VE3 [VERIFY] E2E cleanup: stop all services and free ports
   - **Do**:
     1. Kill PIDs: `cat /tmp/ve-pids.txt 2>/dev/null | grep -v sdw-docker | xargs -r kill 2>/dev/null; sleep 2; cat /tmp/ve-pids.txt 2>/dev/null | grep -v sdw-docker | xargs -r kill -9 2>/dev/null || true`
     2. Kill by port (serve): `lsof -ti :9001 | xargs -r kill 2>/dev/null || true`

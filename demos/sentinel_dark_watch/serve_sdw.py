@@ -233,6 +233,11 @@ def main(argv: list[str] | None = None) -> int:
             await checkpointer.close()
 
     app = create_app(selected, deps=deps, lifespan=_lifespan)
+
+    @app.get("/health")
+    async def _health() -> dict[str, str]:
+        return {"status": "ok"}
+
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0
 

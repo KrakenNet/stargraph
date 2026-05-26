@@ -37,3 +37,4 @@ rules:
   user_rules_dirs: []
 
 analysis:
+  mode: pattern
