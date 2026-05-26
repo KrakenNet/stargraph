@@ -100,11 +100,14 @@ class SdwState(BaseModel):
     last_error: str = ""
     pipeline_phase: str = "ingest"
     # Configurable risk scoring weights (AC-6.4)
+    # Configurable risk scoring weights (AC-6.4)
     risk_weight_dark_vessel: int = 40
     risk_weight_sensitive_eez: int = 20
     risk_weight_far_from_port: int = 10
     risk_weight_large_vessel: int = 10
     risk_weight_confidence_max: int = 20
+    # Per-node performance timing (AC-1.3)
+    perf_marks: dict[str, float] = Field(default_factory=dict)
 
 
 class RetrainState(BaseModel):

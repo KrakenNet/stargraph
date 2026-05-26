@@ -1326,9 +1326,10 @@ class MetricsCollectorNode(NodeBase):
                 if decision == "reject":
                     false_positive_count += 1
 
-            # Processing time
+            # Processing time — compute from run_started_at
             run_started_at = getattr(state, "run_started_at", None)
             now = datetime.now(timezone.utc)
+            processing_secs = 0.0
             if run_started_at:
                 if isinstance(run_started_at, str):
                     try:
@@ -1339,10 +1340,17 @@ class MetricsCollectorNode(NodeBase):
                     if run_started_at.tzinfo is None:
                         run_started_at = run_started_at.replace(tzinfo=timezone.utc)
                     processing_secs = (now - run_started_at).total_seconds()
-                else:
-                    processing_secs = 0.0
+
+            # Also sum perf_marks for per-node breakdown
+            perf_marks: dict[str, float] = getattr(state, "perf_marks", {}) or {}
+            if perf_marks:
+                logger.info(
+                    "Per-node timing: %s  |  total pipeline: %.2fs",
+                    ", ".join(f"{k}={v:.2f}s" for k, v in perf_marks.items()),
+                    processing_secs,
+                )
             else:
-                processing_secs = 0.0
+                logger.info("Total pipeline processing time: %.2fs", processing_secs)
 
             # Build RunMetrics
             from demos.sentinel_dark_watch.graph.state import RunMetrics
