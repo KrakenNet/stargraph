@@ -737,7 +737,7 @@ total_tasks: 83
   - **Commit**: `test(sdw): integration test for full pipeline mock run`
   - _Design: Test Strategy (Integration Tests)_
 
-- [ ] 3.10 Bootstrap idempotency test
+- [x] 3.10 Bootstrap idempotency test
   - **Do**:
     1. Add test to `test_pipeline.py` or new file: mock Postgres connection, call bootstrap DDL twice, assert no errors on second run (CREATE TABLE IF NOT EXISTS, INSERT ON CONFLICT DO NOTHING)
   - **Files**: demos/sentinel_dark_watch/tests/test_pipeline.py
