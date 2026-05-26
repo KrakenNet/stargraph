@@ -1452,3 +1452,65 @@ class RetrainTriggerNode(NodeBase):
             _RETRAIN_CORRECTION_THRESHOLD,
         )
         return {}
+
+
+# ---------------------------------------------------------------------------
+# Retrain Sub-Graph — Collect Corrections
+# ---------------------------------------------------------------------------
+
+
+class RetrainCollectNode(NodeBase):
+    """Query unconsumed corrections and prepare merged training data.
+
+    Reads from the Postgres ``corrections`` table where ``consumed=false``,
+    counts them, sets ``corrections_count`` and ``merged_training_samples``
+    on the retrain state, then marks the rows as consumed.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        original_samples: int = getattr(state, "original_training_samples", 0)
+
+        try:
+            import asyncpg
+
+            dsn = os.environ.get(
+                "POSTGRES_DSN",
+                "postgresql://harbor:harbor@localhost:5441/sdw",
+            )
+            conn = await asyncpg.connect(dsn)
+        except Exception:
+            log.warning("PostGIS unavailable — cannot collect corrections")
+            return {"corrections_count": 0, "merged_training_samples": original_samples}
+
+        try:
+            # Fetch unconsumed corrections
+            rows = await conn.fetch(
+                "SELECT id FROM corrections WHERE consumed = false",
+            )
+            count = len(rows)
+
+            if count > 0:
+                # Mark consumed
+                ids = [r["id"] for r in rows]
+                await conn.execute(
+                    "UPDATE corrections SET consumed = true WHERE id = ANY($1::int[])",
+                    ids,
+                )
+                log.info("Collected %d unconsumed corrections", count)
+            else:
+                log.info("No unconsumed corrections found")
+
+        except Exception:
+            log.warning("Failed to query/update corrections — returning zero")
+            count = 0
+        finally:
+            await conn.close()
+
+        return {
+            "corrections_count": count,
+            "merged_training_samples": original_samples + count,
+        }

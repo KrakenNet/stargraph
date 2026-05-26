@@ -310,7 +310,7 @@ total_tasks: 83
   - _Requirements: FR-10, AC-9.4_
   - _Design: RetrainTriggerNode_
 
-- [ ] 1.30 [VERIFY] Quality checkpoint: all main pipeline nodes
+- [x] 1.30 [VERIFY] Quality checkpoint: all main pipeline nodes
   - **Do**: Verify all 12 main pipeline node classes import
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.nodes import PassthroughNode, SARIngestNode, YOLOInferenceNode, NMSDeduplicationNode, LandMaskFilterNode, AISCorrelationNode, GeoContextNode, RiskScoringNode, ReportingNode, EmitSARChipsNode, AnalystReviewNode, MetricsCollectorNode, RetrainTriggerNode; print('ALL 13 nodes OK')"`
   - **Done when**: All 13 node classes import
@@ -318,7 +318,7 @@ total_tasks: 83
 
 ### Retrain Sub-Graph Nodes
 
-- [ ] 1.31 [P] Implement RetrainCollectNode
+- [x] 1.31 [P] Implement RetrainCollectNode
   - **Do**:
     1. Add `RetrainCollectNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Query `corrections` table for unconsumed corrections (`consumed=false`). Count and merge with original training labels concept. Set `corrections_count`, `merged_training_samples`.
