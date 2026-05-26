@@ -685,13 +685,13 @@ total_tasks: 83
   - **Commit**: `test(sdw): unit tests for NMSDeduplicationNode`
   - _Requirements: FR-18, AC-3.4_
 
-- [ ] 3.4 [VERIFY] Quality checkpoint: test runner works
+- [x] 3.4 [VERIFY] Quality checkpoint: test runner works
   - **Do**: Run all existing tests
   - **Verify**: `uv run --no-project pytest demos/sentinel_dark_watch/tests/ -v --tb=short`
   - **Done when**: All tests pass
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 3.5 Unit tests for AISCorrelationNode
+- [x] 3.5 Unit tests for AISCorrelationNode
   - **Do**:
     1. Add tests: known AIS position near detection → matched (dark_vessel=False, MMSI set); no AIS → dark_vessel=True; broker failure → conservative marking; predicted-position matching accuracy
   - **Files**: demos/sentinel_dark_watch/tests/test_nodes.py

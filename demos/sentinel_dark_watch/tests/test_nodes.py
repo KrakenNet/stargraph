@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -13,6 +14,7 @@ from demos.sentinel_dark_watch.graph.state import (
     SdwState,
 )
 from demos.sentinel_dark_watch.graph.nodes import (
+    AISCorrelationNode,
     NMSDeduplicationNode,
     RiskScoringNode,
 )
@@ -178,3 +180,134 @@ async def test_nms_empty_list() -> None:
 
     assert result["detections"] == []
     assert result["detection_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# AISCorrelationNode tests
+# ---------------------------------------------------------------------------
+
+
+def _make_ais_row(
+    mmsi: str = "211000001",
+    ship_name: str = "MV TEST",
+    flag_state: str = "DE",
+    vessel_type: str = "cargo",
+    lat: float = 26.55,
+    lon: float = 56.30,
+    speed_kn: float = 0.0,
+    heading: float = 0.0,
+    timestamp: str = "2024-01-15T01:45:00Z",
+) -> dict[str, Any]:
+    """Build a dict that behaves like an asyncpg Record for AIS queries."""
+    data = {
+        "mmsi": mmsi,
+        "ship_name": ship_name,
+        "flag_state": flag_state,
+        "vessel_type": vessel_type,
+        "lat": lat,
+        "lon": lon,
+        "speed_kn": speed_kn,
+        "heading": heading,
+        "timestamp": timestamp,
+    }
+    return data
+
+
+class _FakeRecord(dict):
+    """Dict subclass supporting key-based access (like asyncpg Record)."""
+
+    def __getitem__(self, key: str) -> Any:
+        return super().__getitem__(key)
+
+
+def _row_to_record(row: dict[str, Any]) -> _FakeRecord:
+    return _FakeRecord(row)
+
+
+async def test_ais_known_position_matched() -> None:
+    """Detection near a known AIS position → dark_vessel=False, MMSI populated."""
+    det = Detection(
+        detection_id="ais-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        obb_corners=[[56.29, 26.54], [56.31, 26.54], [56.31, 26.56], [56.29, 26.56]],
+    )
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-001", timestamp="2024-01-15T01:45:00Z"),
+        ais_match_radius_m=5000,
+    )
+
+    # AIS position right at the detection location (speed 0 → predicted position = same)
+    ais_rows = [_row_to_record(_make_ais_row(lat=26.55, lon=56.30, speed_kn=0.0))]
+
+    mock_conn = AsyncMock()
+    mock_conn.fetch = AsyncMock(return_value=ais_rows)
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = AISCorrelationNode()
+        result = await node.execute(state, _MockCtx())
+
+    matched = result["detections"]
+    assert len(matched) == 1
+    assert matched[0].dark_vessel is False
+    assert matched[0].ais_mmsi == "211000001"
+    assert matched[0].ais_vessel_name == "MV TEST"
+
+
+async def test_ais_no_match_dark_vessel() -> None:
+    """Detection with no nearby AIS → dark_vessel=True."""
+    det = Detection(
+        detection_id="ais-det-2",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        obb_corners=[[56.29, 26.54], [56.31, 26.54], [56.31, 26.56], [56.29, 26.56]],
+    )
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-001", timestamp="2024-01-15T01:45:00Z"),
+        ais_match_radius_m=500,
+    )
+
+    mock_conn = AsyncMock()
+    mock_conn.fetch = AsyncMock(return_value=[])
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = AISCorrelationNode()
+        result = await node.execute(state, _MockCtx())
+
+    matched = result["detections"]
+    assert len(matched) == 1
+    assert matched[0].dark_vessel is True
+
+
+async def test_ais_broker_failure_conservative() -> None:
+    """Mock DB failure → all detections marked dark_vessel=True."""
+    det = Detection(
+        detection_id="ais-det-3",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        obb_corners=[[56.29, 26.54], [56.31, 26.54], [56.31, 26.56], [56.29, 26.56]],
+    )
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-001", timestamp="2024-01-15T01:45:00Z"),
+    )
+
+    with patch("asyncpg.connect", AsyncMock(side_effect=ConnectionError("DB down"))):
+        node = AISCorrelationNode()
+        result = await node.execute(state, _MockCtx())
+
+    matched = result["detections"]
+    assert len(matched) == 1
+    assert matched[0].dark_vessel is True
+    assert "last_error" in result
