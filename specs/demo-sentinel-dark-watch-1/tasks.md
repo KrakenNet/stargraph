@@ -62,7 +62,7 @@ total_tasks: 83
   - _Requirements: FR-2_
   - _Design: State Model_
 
-- [ ] 1.6 [P] Create main pipeline graph IR (`graph/harbor.yaml`)
+- [x] 1.6 [P] Create main pipeline graph IR (`graph/harbor.yaml`)
   - **Do**:
     1. Create `demos/sentinel_dark_watch/graph/harbor.yaml` with all 14 nodes, state_class, tools, governance mounts, and all rules exactly per design spec
     2. Include conditional rules for FR-17 active learning routing
@@ -73,7 +73,7 @@ total_tasks: 83
   - _Requirements: FR-1, FR-17_
   - _Design: Main Pipeline Graph_
 
-- [ ] 1.7 [P] Create retrain sub-graph IR (`graph/retrain.yaml`)
+- [x] 1.7 [P] Create retrain sub-graph IR (`graph/retrain.yaml`)
   - **Do**:
     1. Create `demos/sentinel_dark_watch/graph/retrain.yaml` with 5 nodes: collect_corrections, retrain_model, champion_challenger, retrain_metrics, retrain_done
     2. Include state_class pointing to RetrainState, all rules per design
