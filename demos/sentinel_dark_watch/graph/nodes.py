@@ -1072,3 +1072,122 @@ class ReportingNode(NodeBase):
             det.report_text = report_text
 
         return {"detections": detections, "pipeline_phase": "reporting"}
+
+
+# ---------------------------------------------------------------------------
+# SAR Chip Extraction — crop 128x128 around detection centroid
+# ---------------------------------------------------------------------------
+
+
+class EmitSARChipsNode(NodeBase):
+    """Crop 128x128 SAR chip around each detection centroid.
+
+    Saves chips as PNG via rasterio/Pillow.  If geo dependencies are
+    missing the chip step is silently skipped per-detection (POC
+    graceful-degrade).  A failure on one detection does not block
+    subsequent detections.
+    """
+
+    _CHIP_SIZE = 128
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        if not detections:
+            return {"detections": [], "pipeline_phase": "emit_chips"}
+
+        tile = state.current_tile  # type: ignore[attr-defined]
+        file_path = tile.file_path if tile else ""
+
+        # Guard: rasterio + Pillow may not be installed
+        try:
+            import numpy as np
+            import rasterio  # noqa: F811
+        except ImportError:
+            log.warning("rasterio/numpy not installed — skipping SAR chip extraction")
+            return {"detections": detections, "pipeline_phase": "emit_chips"}
+
+        try:
+            from PIL import Image  # noqa: F811
+        except ImportError:
+            log.warning("Pillow not installed — skipping SAR chip extraction")
+            return {"detections": detections, "pipeline_phase": "emit_chips"}
+
+        if not file_path or not Path(file_path).exists():
+            log.warning("Tile file not found: %s — skipping chip extraction", file_path)
+            return {"detections": detections, "pipeline_phase": "emit_chips"}
+
+        # Open source GeoTIFF once, crop per-detection
+        try:
+            src = rasterio.open(file_path)
+        except Exception:
+            log.warning("Failed to open GeoTIFF %s — skipping chips", file_path)
+            return {"detections": detections, "pipeline_phase": "emit_chips"}
+
+        try:
+            img = src.read()  # (C, H, W)
+            transform = src.transform
+            _, h, w = img.shape
+
+            # Ensure (H, W, C) for Pillow
+            if img.ndim == 3:
+                img_hwc = img.transpose(1, 2, 0)
+            else:
+                img_hwc = img
+
+            half = self._CHIP_SIZE // 2
+            chip_dir = Path(file_path).parent / "chips"
+            chip_dir.mkdir(parents=True, exist_ok=True)
+
+            for det in detections:
+                try:
+                    # Geo-coords → pixel coords via inverse affine
+                    inv = ~transform
+                    px_x, px_y = inv * (det.geo_lon, det.geo_lat)
+                    px_x, px_y = int(round(px_x)), int(round(px_y))
+
+                    # Crop bounds (clamped to image)
+                    r0 = max(0, px_y - half)
+                    r1 = min(h, px_y + half)
+                    c0 = max(0, px_x - half)
+                    c1 = min(w, px_x + half)
+
+                    if r1 - r0 < 2 or c1 - c0 < 2:
+                        log.warning("Chip too small for detection %s — skipping", det.detection_id)
+                        continue
+
+                    chip_arr = img_hwc[r0:r1, c0:c1]
+
+                    # Normalize to uint8 for PNG
+                    if chip_arr.dtype != np.uint8:
+                        cmin, cmax = chip_arr.min(), chip_arr.max()
+                        if cmax > cmin:
+                            chip_arr = ((chip_arr - cmin) / (cmax - cmin) * 255).astype(np.uint8)
+                        else:
+                            chip_arr = np.zeros_like(chip_arr, dtype=np.uint8)
+
+                    # Save as PNG
+                    if chip_arr.ndim == 3 and chip_arr.shape[2] == 1:
+                        chip_img = Image.fromarray(chip_arr[:, :, 0], mode="L")
+                    elif chip_arr.ndim == 2:
+                        chip_img = Image.fromarray(chip_arr, mode="L")
+                    else:
+                        chip_img = Image.fromarray(chip_arr)
+
+                    chip_path = chip_dir / f"{det.detection_id}.png"
+                    chip_img.save(str(chip_path))
+                    det.chip_artifact_ref = str(chip_path)
+
+                except Exception:
+                    log.warning(
+                        "Failed to extract chip for detection %s — continuing",
+                        det.detection_id,
+                    )
+                    continue
+        finally:
+            src.close()
+
+        return {"detections": detections, "pipeline_phase": "emit_chips"}

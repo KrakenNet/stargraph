@@ -260,13 +260,13 @@ total_tasks: 83
   - _Requirements: FR-8, AC-7.1_
   - _Design: ReportingNode_
 
-- [ ] 1.25 [VERIFY] Quality checkpoint: enrichment + scoring + reporting nodes
+- [x] 1.25 [VERIFY] Quality checkpoint: enrichment + scoring + reporting nodes
   - **Do**: Verify all enrichment pipeline nodes import
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.nodes import GeoContextNode, RiskScoringNode, ReportingNode; print('OK')"`
   - **Done when**: All imports succeed
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 1.26 Implement EmitSARChipsNode
+- [x] 1.26 Implement EmitSARChipsNode
   - **Do**:
     1. Add `EmitSARChipsNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: For each detection, crop 128x128 region around centroid from source GeoTIFF, save as PNG via rasterio/Pillow, persist via `FilesystemArtifactStore.put()`, store ref in `chip_artifact_ref`. On failure, log and continue.
