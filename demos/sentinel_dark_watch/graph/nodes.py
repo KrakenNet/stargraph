@@ -706,3 +706,154 @@ class AISCorrelationNode(NodeBase):
                 det.dark_vessel = True
 
         return {"detections": detections, "pipeline_phase": "ais_correlation"}
+
+
+# ---------------------------------------------------------------------------
+# Geo-Context Enrichment — PostGIS + DSPy synthesis
+# ---------------------------------------------------------------------------
+
+_GEO_FALLBACK_TEMPLATE = (
+    "Vessel detected at ({lat}N, {lon}E) in {eez_name}, "
+    "{distance_to_port_nm:.0f}nm from nearest port. "
+    "AIS status: {ais_status}."
+)
+
+
+class GeoContextNode(NodeBase):
+    """Enrich detections with EEZ, port/coast distance via PostGIS.
+
+    Step 1: Spatial queries — ``ST_Contains`` for EEZ point-in-polygon,
+    ``ST_Distance`` for nearest port and coastline distances.
+    Step 2: DSPy ``ChainOfThought`` synthesis for a human-readable
+    ``geo_summary``.  If DSPy or the LLM is unavailable, a templated
+    fallback populates the field instead.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        if not detections:
+            return {"detections": [], "pipeline_phase": "geo_context"}
+
+        # Step 1 — PostGIS enrichment
+        conn = None
+        try:
+            import asyncpg
+
+            dsn = os.environ.get(
+                "POSTGRES_DSN",
+                "postgresql://harbor:harbor@localhost:5441/sdw",
+            )
+            conn = await asyncpg.connect(dsn)
+        except Exception:
+            log.warning("PostGIS unavailable — skipping geo-context enrichment")
+
+        for det in detections:
+            if conn is not None:
+                try:
+                    # EEZ lookup via ST_Contains
+                    eez_row = await conn.fetchrow(
+                        "SELECT name FROM eez_boundaries"
+                        " WHERE ST_Contains("
+                        "   geom, ST_SetSRID(ST_MakePoint($1, $2), 4326)"
+                        " ) LIMIT 1",
+                        det.geo_lon,
+                        det.geo_lat,
+                    )
+                    if eez_row:
+                        det.eez_name = eez_row["name"]
+
+                    # Nearest port distance (metres → nautical miles)
+                    port_row = await conn.fetchrow(
+                        "SELECT name,"
+                        "  ST_Distance("
+                        "    geom::geography,"
+                        "    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography"
+                        "  ) AS dist_m"
+                        " FROM ports ORDER BY geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)"
+                        " LIMIT 1",
+                        det.geo_lon,
+                        det.geo_lat,
+                    )
+                    if port_row:
+                        det.distance_to_port_nm = float(port_row["dist_m"]) / 1852.0
+
+                    # Nearest coastline distance (metres → nautical miles)
+                    coast_row = await conn.fetchval(
+                        "SELECT ST_Distance("
+                        "  geom::geography,"
+                        "  ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography"
+                        ") FROM coastlines"
+                        " ORDER BY geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)"
+                        " LIMIT 1",
+                        det.geo_lon,
+                        det.geo_lat,
+                    )
+                    if coast_row is not None:
+                        det.distance_to_coast_nm = float(coast_row) / 1852.0
+
+                except Exception:
+                    log.warning(
+                        "Geo query failed for detection %s — using defaults",
+                        det.detection_id,
+                    )
+
+        if conn is not None:
+            await conn.close()
+
+        # Step 2 — DSPy ChainOfThought synthesis for geo_summary
+        dspy_available = False
+        try:
+            import dspy
+
+            class GeoContextSignature(dspy.Signature):
+                """Synthesize a concise geographic context summary for a maritime detection."""
+
+                detection_lat: float = dspy.InputField(desc="Detection latitude")
+                detection_lon: float = dspy.InputField(desc="Detection longitude")
+                dark_vessel: bool = dspy.InputField(desc="Whether vessel is dark (no AIS)")
+                eez_name: str = dspy.InputField(desc="Exclusive Economic Zone name")
+                distance_to_port_nm: float = dspy.InputField(desc="Distance to nearest port in NM")
+                nearest_port_name: str = dspy.InputField(desc="Name of nearest port")
+                distance_to_coast_nm: float = dspy.InputField(desc="Distance to coast in NM")
+                ais_status: str = dspy.InputField(desc="AIS correlation status")
+                geo_summary: str = dspy.OutputField(desc="Human-readable geographic context summary")
+
+            cot = dspy.ChainOfThought(GeoContextSignature)
+            dspy_available = True
+        except ImportError:
+            log.info("DSPy not available — using templated fallback for geo_summary")
+
+        for det in detections:
+            ais_status = "dark (no AIS)" if det.dark_vessel else f"AIS matched ({det.ais_mmsi or 'unknown'})"
+
+            if dspy_available:
+                try:
+                    result = cot(
+                        detection_lat=det.geo_lat,
+                        detection_lon=det.geo_lon,
+                        dark_vessel=det.dark_vessel,
+                        eez_name=det.eez_name or "Unknown",
+                        distance_to_port_nm=det.distance_to_port_nm,
+                        nearest_port_name="",  # populated by PostGIS if available
+                        distance_to_coast_nm=det.distance_to_coast_nm,
+                        ais_status=ais_status,
+                    )
+                    det.geo_summary = result.geo_summary
+                    continue
+                except Exception:
+                    log.warning("DSPy geo-context call failed — using fallback")
+
+            # Templated fallback
+            det.geo_summary = _GEO_FALLBACK_TEMPLATE.format(
+                lat=det.geo_lat,
+                lon=det.geo_lon,
+                eez_name=det.eez_name or "Unknown EEZ",
+                distance_to_port_nm=det.distance_to_port_nm,
+                ais_status=ais_status,
+            )
+
+        return {"detections": detections, "pipeline_phase": "geo_context"}
