@@ -74,6 +74,21 @@ stores = [
     "ryugraph>=25.9.2,<26",
     "pyarrow>=15",
 ]
+sdw = [
+    "ultralytics>=8.3",  # 8.3+ includes YOLO11 model architecture despite 8.x version numbering
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "rasterio>=1.3",
+    "geopandas>=0.14",
+    "shapely>=2.0",
+    "streamlit>=1.30",
+    "streamlit-folium>=0.20",
+    "folium>=0.15",
+    "websockets>=12.0",
+    "Pillow>=10.0",
+    "asyncpg>=0.29",
+    "plotly>=5.18",
+]
 skills-rag = [
     "sentence-transformers>=5.0,<6",
     "huggingface_hub>=0.25",
