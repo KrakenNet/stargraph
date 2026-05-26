@@ -84,7 +84,7 @@ total_tasks: 83
   - _Requirements: FR-10, AC-9.1_
   - _Design: Retrain Sub-Graph_
 
-- [ ] 1.8 [VERIFY] Quality checkpoint: state + graph IR
+- [x] 1.8 [VERIFY] Quality checkpoint: state + graph IR
   - **Do**: Verify state models instantiate and graph YAMLs parse
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.state import SdwState, RetrainState; import yaml; yaml.safe_load(open('demos/sentinel_dark_watch/graph/harbor.yaml')); yaml.safe_load(open('demos/sentinel_dark_watch/graph/retrain.yaml')); print('ALL OK')"`
   - **Done when**: All imports and parses succeed
@@ -92,7 +92,7 @@ total_tasks: 83
 
 ### LLM Mock + Fixtures
 
-- [ ] 1.9 [P] Create LLM shim mock server
+- [x] 1.9 [P] Create LLM shim mock server
   - **Do**:
     1. Create `demos/sentinel_dark_watch/mocks/llm-shim/app.py` — FastAPI OpenAI-compatible server. Routes: `POST /v1/chat/completions` (keyword-match on "geo_context"/"situational summary" → maritime geo template; "intel report"/"reporting" → structured report; default → generic ack), `GET /health` → `{"status": "ok"}`
     2. Create `demos/sentinel_dark_watch/mocks/llm-shim/Dockerfile` — python:3.12-slim, pip install fastapi uvicorn pydantic, EXPOSE 41001, healthcheck
