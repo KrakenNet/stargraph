@@ -441,7 +441,7 @@ total_tasks: 83
   - _Requirements: FR-16, AC-3.2, AC-3.6_
   - _Design: scripts/train_detector.py_
 
-- [ ] 1.43 [VERIFY] Quality checkpoint: scripts
+- [x] 1.43 [VERIFY] Quality checkpoint: scripts
   - **Do**: Verify both scripts import
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.scripts import prepare_dataset, train_detector; print('OK')"`
   - **Done when**: Imports succeed
@@ -449,7 +449,7 @@ total_tasks: 83
 
 ### Streamlit UI
 
-- [ ] 1.44 Create Streamlit `ui/app.py` — tab structure + map view
+- [x] 1.44 Create Streamlit `ui/app.py` — tab structure + map view
   - **Do**:
     1. Create `demos/sentinel_dark_watch/ui/app.py` with Streamlit tab layout: "Live Map", "Detection Review", "Metrics Dashboard", "Pipeline Status"
     2. Tab 1 (Live Map): Folium map centered on Strait of Hormuz (lat ~26.5, lon ~56.2). Query detections from Harbor API, render markers color-coded by risk level (red=Critical, orange=High, yellow=Medium, green=Low). Show AIS tracks as polylines.
@@ -462,7 +462,7 @@ total_tasks: 83
   - _Requirements: AC-8.1_
   - _Design: Streamlit UI Design_
 
-- [ ] 1.45 Add Detection Review tab to Streamlit
+- [x] 1.45 Add Detection Review tab to Streamlit
   - **Do**:
     1. Extend `ui/app.py` Tab 2: Detection Review — table sorted by risk score descending (AC-6.3), SAR chip image, confidence bar, AIS status, geo-summary, risk badge, draft report
     2. Editable report text area per detection — analyst can edit draft report before submission (AC-7.4)
@@ -475,7 +475,7 @@ total_tasks: 83
   - _Requirements: AC-6.3, AC-7.4, AC-8.2, AC-8.3, AC-8.4, AC-8.6_
   - _Design: Streamlit UI Design (Tab 2)_
 
-- [ ] 1.46 Add Metrics Dashboard + Pipeline Status tabs to Streamlit
+- [x] 1.46 Add Metrics Dashboard + Pipeline Status tabs to Streamlit
   - **Do**:
     1. Tab 3 (Metrics): Plotly charts — mAP over model versions (line), dark vessel count per run (bar), FP rate trend (line). Before/after comparison card. Data from `run_metrics` + `model_metrics` tables via Postgres.
     2. Tab 4 (Pipeline Status): WebSocket connection to `GET /v1/runs/{id}/stream`, show current node + progress bar + JSONL audit viewer
