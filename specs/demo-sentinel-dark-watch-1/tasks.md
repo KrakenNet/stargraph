@@ -220,13 +220,13 @@ total_tasks: 83
   - _Requirements: FR-5, AC-4.3, AC-4.4, AC-4.5_
   - _Design: AISCorrelationNode_
 
-- [ ] 1.21 [VERIFY] Quality checkpoint: detection pipeline nodes
+- [x] 1.21 [VERIFY] Quality checkpoint: detection pipeline nodes
   - **Do**: Verify all Phase 1-2 nodes import
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.nodes import NMSDeduplicationNode, LandMaskFilterNode, AISCorrelationNode; print('OK')"`
   - **Done when**: All imports succeed
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 1.22 Implement GeoContextNode
+- [x] 1.22 Implement GeoContextNode
   - **Do**:
     1. Add `GeoContextNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Step 1 — PostGIS queries: `ST_Contains` for EEZ lookup, `ST_Distance` for port/coast distances. Populate `eez_name`, `distance_to_port_nm`, `distance_to_coast_nm`, `fishing_zone`. Step 2 — DSPy ChainOfThought call internally (import dspy, create `GeoContextSignature`, call module). LLM failure → templated fallback.
@@ -237,7 +237,7 @@ total_tasks: 83
   - _Requirements: FR-6, AC-5.1, AC-5.4_
   - _Design: GeoContextNode_
 
-- [ ] 1.23 Implement RiskScoringNode
+- [x] 1.23 Implement RiskScoringNode
   - **Do**:
     1. Add `RiskScoringNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Apply scoring formula from design (dark_vessel + sensitive_eez + far_from_port + large_vessel + confidence). Read weights from state fields. Classify risk levels: Critical 80-100, High 60-79, Medium 40-59, Low 0-39.
@@ -249,7 +249,7 @@ total_tasks: 83
   - _Requirements: FR-7, AC-6.1, AC-6.2, AC-6.4_
   - _Design: RiskScoringNode_
 
-- [ ] 1.24 Implement ReportingNode
+- [x] 1.24 Implement ReportingNode
   - **Do**:
     1. Add `ReportingNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Assemble structured report sections (Detection Summary, Imagery Reference, AIS Correlation, Geo-Context, Risk Assessment, Recommended Actions) from detection fields. Then call DSPy ChainOfThought for narrative synthesis. LLM failure → templated fallback.
