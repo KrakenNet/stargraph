@@ -349,7 +349,7 @@ total_tasks: 83
   - _Requirements: FR-10, AC-9.2, AC-9.3_
   - _Design: Retrain Sub-Graph Nodes_
 
-- [ ] 1.34 [VERIFY] Quality checkpoint: all nodes complete
+- [x] 1.34 [VERIFY] Quality checkpoint: all nodes complete
   - **Do**: Verify all node classes import (17 total: 13 main + 4 retrain)
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.nodes import RetrainCollectNode, RetrainTrainNode, ChampionChallengerNode, RetrainMetricsNode; print('ALL retrain nodes OK')"`
   - **Done when**: All imports succeed
@@ -357,7 +357,7 @@ total_tasks: 83
 
 ### Integration Layer (nautilus, ais, serve, capabilities, scripts, UI)
 
-- [ ] 1.35 Create `nautilus.yaml`
+- [x] 1.35 Create `nautilus.yaml`
   - **Do**:
     1. Create `demos/sentinel_dark_watch/nautilus.yaml` per design spec — 3 sources: `ais_buffer` (postgres, ais_positions), `geo_data` (postgres, eez_boundaries), `detection_store` (postgres, detections). Agent `sdw-pipeline` with `clearance: unclassified`.
   - **Files**: demos/sentinel_dark_watch/nautilus.yaml
@@ -367,7 +367,7 @@ total_tasks: 83
   - _Requirements: FR-11, AC-4.6_
   - _Design: Nautilus Configuration_
 
-- [ ] 1.36 Create `ais_ingest.py` daemon
+- [x] 1.36 Create `ais_ingest.py` daemon
   - **Do**:
     1. Create `demos/sentinel_dark_watch/ais_ingest.py` — standalone asyncio daemon
     2. Mock mode: load `fixtures/ais_positions.json`, bulk-insert into `ais_positions` table, exit
