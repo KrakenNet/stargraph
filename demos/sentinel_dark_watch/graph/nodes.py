@@ -941,3 +941,134 @@ class RiskScoringNode(NodeBase):
             "has_low_confidence_detections": has_low_conf,
             "pipeline_phase": "risk_scoring",
         }
+
+
+# ---------------------------------------------------------------------------
+# Reporting — DSPy narrative synthesis with templated fallback
+# ---------------------------------------------------------------------------
+
+_REPORT_FALLBACK_TEMPLATE = """## Detection Summary
+{detection_count} vessel detection(s) from tile {tile_id}. {dark_count} dark vessel(s) identified.
+
+## Imagery Reference
+Source tile: {tile_id} | Scene: {scene_id}
+
+## AIS Correlation
+{ais_matched} detection(s) matched to AIS transponders. {dark_count} unmatched (dark).
+
+## Geo-Context
+{geo_summary}
+
+## Risk Assessment
+Overall risk: {risk_level} (score {risk_score}/100).
+
+## Recommended Actions
+{actions}"""
+
+
+class ReportingNode(NodeBase):
+    """Assemble structured report sections and synthesize narrative.
+
+    Sections: Detection Summary, Imagery Reference, AIS Correlation,
+    Geo-Context, Risk Assessment, Recommended Actions.
+
+    Uses DSPy ``ChainOfThought`` for narrative synthesis when available.
+    Falls back to a templated report if DSPy or the LLM is unavailable.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        if not detections:
+            return {"detections": [], "pipeline_phase": "reporting"}
+
+        tile = state.current_tile  # type: ignore[attr-defined]
+
+        dark_count = sum(1 for d in detections if d.dark_vessel)
+        ais_matched = len(detections) - dark_count
+
+        # Determine highest risk for overall summary
+        risk_scores = [d.risk_score for d in detections]
+        max_risk_score = max(risk_scores) if risk_scores else 0
+        max_risk_det = max(detections, key=lambda d: d.risk_score)
+        overall_risk_level = str(max_risk_det.risk_level).upper() if detections else "LOW"
+
+        # Aggregate geo summaries
+        geo_parts = [d.geo_summary for d in detections if d.geo_summary]
+        combined_geo = " ".join(geo_parts) if geo_parts else "No geo-context available."
+
+        # Recommended actions based on risk
+        actions_list: list[str] = []
+        if max_risk_score >= 80:
+            actions_list.append("- IMMEDIATE: Alert maritime authorities and initiate tracking.")
+        if dark_count > 0:
+            actions_list.append("- Flag dark vessel(s) for enhanced monitoring.")
+        if any(d.distance_to_port_nm > 50 for d in detections):
+            actions_list.append("- Monitor vessels operating far from port.")
+        if any(d.confidence < 0.5 for d in detections):
+            actions_list.append("- Review low-confidence detections manually.")
+        if not actions_list:
+            actions_list.append("- Continue routine monitoring.")
+        actions_text = "\n".join(actions_list)
+
+        # Try DSPy narrative synthesis
+        dspy_ok = False
+        try:
+            import dspy
+
+            class ReportingSignature(dspy.Signature):
+                """Synthesize a concise maritime intelligence report from detection data."""
+
+                detection_count: int = dspy.InputField(desc="Number of detections")
+                dark_vessel_count: int = dspy.InputField(desc="Number of dark vessels")
+                ais_matched_count: int = dspy.InputField(desc="Number of AIS-matched detections")
+                overall_risk_level: str = dspy.InputField(desc="Highest risk level")
+                max_risk_score: int = dspy.InputField(desc="Highest risk score (0-100)")
+                geo_summary: str = dspy.InputField(desc="Combined geo-context summaries")
+                tile_id: str = dspy.InputField(desc="Source tile identifier")
+                recommended_actions: str = dspy.InputField(desc="Recommended actions list")
+                report: str = dspy.OutputField(desc="Full structured maritime intelligence report")
+
+            cot = dspy.ChainOfThought(ReportingSignature)
+            dspy_ok = True
+        except ImportError:
+            log.info("DSPy not available — using templated fallback for report")
+
+        if dspy_ok:
+            try:
+                result = cot(
+                    detection_count=len(detections),
+                    dark_vessel_count=dark_count,
+                    ais_matched_count=ais_matched,
+                    overall_risk_level=overall_risk_level,
+                    max_risk_score=max_risk_score,
+                    geo_summary=combined_geo,
+                    tile_id=tile.tile_id,
+                    recommended_actions=actions_text,
+                )
+                report_text = result.report
+            except Exception:
+                log.warning("DSPy reporting call failed — using fallback")
+                dspy_ok = False
+
+        if not dspy_ok:
+            report_text = _REPORT_FALLBACK_TEMPLATE.format(
+                detection_count=len(detections),
+                tile_id=tile.tile_id,
+                scene_id=tile.scene_id,
+                dark_count=dark_count,
+                ais_matched=ais_matched,
+                geo_summary=combined_geo,
+                risk_level=overall_risk_level,
+                risk_score=max_risk_score,
+                actions=actions_text,
+            )
+
+        # Assign report to each detection
+        for det in detections:
+            det.report_text = report_text
+
+        return {"detections": detections, "pipeline_phase": "reporting"}
