@@ -299,7 +299,7 @@ total_tasks: 83
   - _Requirements: AC-10.3_
   - _Design: MetricsCollectorNode_
 
-- [ ] 1.29 Implement RetrainTriggerNode
+- [x] 1.29 Implement RetrainTriggerNode
   - **Do**:
     1. Add `RetrainTriggerNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Check if corrections_count >= 10 threshold. If so and triggered, dispatch retrain sub-graph. Otherwise proceed to action_done.

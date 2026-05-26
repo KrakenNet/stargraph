@@ -1407,3 +1407,48 @@ class MetricsCollectorNode(NodeBase):
             log.warning("Failed to write run metrics to Postgres")
         finally:
             await conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Retrain Trigger — correction-threshold gate
+# ---------------------------------------------------------------------------
+
+_RETRAIN_CORRECTION_THRESHOLD = 10
+
+
+class RetrainTriggerNode(NodeBase):
+    """Check if accumulated corrections exceed the retrain threshold.
+
+    If ``corrections_count >= 10``: log that a retrain sub-graph dispatch
+    would be triggered (POC — actual :class:`SubGraphNode` dispatch is
+    deferred to Phase 2).
+
+    Otherwise: proceed (return empty dict so the graph continues to
+    ``action_done``).
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        corrections_count: int = getattr(state, "corrections_count", 0) or 0
+
+        if corrections_count >= _RETRAIN_CORRECTION_THRESHOLD:
+            log.info(
+                "Retrain threshold reached (%d >= %d) — "
+                "retrain sub-graph dispatch would be triggered (POC deferred)",
+                corrections_count,
+                _RETRAIN_CORRECTION_THRESHOLD,
+            )
+            return {
+                "retrain_triggered": True,
+                "pipeline_phase": "retrain_trigger",
+            }
+
+        log.info(
+            "Corrections below retrain threshold (%d < %d) — skipping retrain",
+            corrections_count,
+            _RETRAIN_CORRECTION_THRESHOLD,
+        )
+        return {}
