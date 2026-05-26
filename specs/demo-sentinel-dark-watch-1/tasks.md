@@ -411,13 +411,13 @@ total_tasks: 83
   - _Requirements: FR-14, AC-9.1_
   - _Design: serve_sdw.py, Nightly Retrain Cron_
 
-- [ ] 1.40 [VERIFY] Quality checkpoint: serve + capabilities
+- [x] 1.40 [VERIFY] Quality checkpoint: serve + capabilities
   - **Do**: Verify both modules import
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.capabilities import build_sdw_capabilities; from demos.sentinel_dark_watch import serve_sdw; print('OK')"`
   - **Done when**: Imports succeed
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 1.41 [P] Create `scripts/prepare_dataset.py`
+- [x] 1.41 [P] Create `scripts/prepare_dataset.py`
   - **Do**:
     1. Create `demos/sentinel_dark_watch/scripts/__init__.py`
     2. Create `demos/sentinel_dark_watch/scripts/prepare_dataset.py` — load xView3 scenes via rasterio, tile into 640x640 patches with 10% overlap, convert CSV point labels to YOLO OBB format (synthesize OBB from vessel_length_m + 1:4 w:l ratio), generate `data.yaml` config
@@ -429,7 +429,7 @@ total_tasks: 83
   - _Requirements: FR-15, AC-2.1, AC-2.2, AC-3.1, AC-3.2_
   - _Design: scripts/prepare_dataset.py_
 
-- [ ] 1.42 [P] Create `scripts/train_detector.py`
+- [x] 1.42 [P] Create `scripts/train_detector.py`
   - **Do**:
     1. Create `demos/sentinel_dark_watch/scripts/train_detector.py` — fine-tune YOLO11-OBB on prepared data, export to ONNX, compute SHA-256, register in ModelRegistry with `production` alias
     2. Argparse: `--data`, `--epochs` (default 50), `--model` (default yolo11s-obb.pt)
