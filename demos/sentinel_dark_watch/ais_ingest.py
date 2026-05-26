@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import pathlib
-from datetime import datetime, timezone
+from datetime import datetime
 
 log = logging.getLogger(__name__)
 
@@ -22,10 +22,11 @@ _BACKOFF_BASE = 2  # seconds
 # Mock mode — load fixtures, bulk-insert, exit
 # ---------------------------------------------------------------------------
 
+
 async def _mock_ingest(dsn: str) -> None:
     """Load fixture AIS data and bulk-insert into ais_positions table."""
     try:
-        import asyncpg  # noqa: F811
+        import asyncpg
     except ImportError:
         log.error("asyncpg required for mock ingest — pip install asyncpg")
         return
@@ -37,7 +38,9 @@ async def _mock_ingest(dsn: str) -> None:
     try:
         await conn.executemany(
             """
-            INSERT INTO ais_positions (mmsi, lat, lon, speed_kn, heading, ts, ship_name, flag_state, vessel_type)
+            INSERT INTO ais_positions
+                (mmsi, lat, lon, speed_kn, heading, ts,
+                 ship_name, flag_state, vessel_type)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT DO NOTHING
             """,
@@ -67,6 +70,7 @@ async def _mock_ingest(dsn: str) -> None:
 # Live mode — AISStream.io WebSocket
 # ---------------------------------------------------------------------------
 
+
 async def _live_ingest(dsn: str, api_key: str) -> None:
     """Connect to AISStream.io WebSocket, parse PositionReport, write to PG."""
     try:
@@ -78,21 +82,21 @@ async def _live_ingest(dsn: str, api_key: str) -> None:
 
     pool = await asyncpg.create_pool(dsn, min_size=1, max_size=4)
 
-    subscribe_msg = json.dumps({
-        "APIKey": api_key,
-        "BoundingBoxes": [
-            [[25.0, 54.0], [27.5, 57.5]],  # Strait of Hormuz AOI
-        ],
-        "FiltersShipMMSI": [],
-        "FilterMessageTypes": ["PositionReport"],
-    })
+    subscribe_msg = json.dumps(
+        {
+            "APIKey": api_key,
+            "BoundingBoxes": [
+                [[25.0, 54.0], [27.5, 57.5]],  # Strait of Hormuz AOI
+            ],
+            "FiltersShipMMSI": [],
+            "FilterMessageTypes": ["PositionReport"],
+        }
+    )
 
     retries = 0
     while retries < _MAX_RETRIES:
         try:
-            async with websockets.connect(
-                "wss://stream.aisstream.io/v0/stream"
-            ) as ws:
+            async with websockets.connect("wss://stream.aisstream.io/v0/stream") as ws:
                 await ws.send(subscribe_msg)
                 log.info("Connected to AISStream.io (attempt %d)", retries + 1)
                 retries = 0  # reset on successful connect
@@ -108,27 +112,29 @@ async def _live_ingest(dsn: str, api_key: str) -> None:
                         await conn.execute(
                             """
                             INSERT INTO ais_positions
-                                (mmsi, lat, lon, speed_kn, heading, ts, ship_name, flag_state, vessel_type)
+                                (mmsi, lat, lon, speed_kn, heading,
+                                 ts, ship_name, flag_state, vessel_type)
                             VALUES ($1, $2, $3, $4, $5, now(), $6, '', '')
                             ON CONFLICT DO NOTHING
                             """,
                             str(meta.get("MMSI", "")),
                             pos.get("Latitude", 0.0),
                             pos.get("Longitude", 0.0),
-                            pos.get("Sog", 0.0),      # speed over ground
+                            pos.get("Sog", 0.0),  # speed over ground
                             pos.get("TrueHeading", 0),
                             meta.get("ShipName", ""),
                         )
         except (ConnectionError, OSError) as exc:
             retries += 1
-            delay = _BACKOFF_BASE ** retries
-            log.warning("WebSocket disconnected (%s), retry %d/%d in %ds",
-                        exc, retries, _MAX_RETRIES, delay)
+            delay = _BACKOFF_BASE**retries
+            log.warning(
+                "WebSocket disconnected (%s), retry %d/%d in %ds", exc, retries, _MAX_RETRIES, delay
+            )
             await asyncio.sleep(delay)
         except Exception:
             log.exception("Unexpected error in live ingest")
             retries += 1
-            delay = _BACKOFF_BASE ** retries
+            delay = _BACKOFF_BASE**retries
             await asyncio.sleep(delay)
 
     log.error("Exhausted %d retries — exiting live ingest", _MAX_RETRIES)
@@ -138,6 +144,7 @@ async def _live_ingest(dsn: str, api_key: str) -> None:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     logging.basicConfig(

@@ -55,7 +55,7 @@ async def _register(
     version: str,
 ) -> None:
     """Register trained model and set ``production`` alias."""
-    from harbor.ml.registry import ModelRegistry  # noqa: PLC0415
+    from harbor.ml.registry import ModelRegistry
 
     registry = ModelRegistry(db_path)
     await registry.bootstrap()
@@ -64,7 +64,7 @@ async def _register(
             model_id="sdw-detector",
             version=version,
             runtime="onnx",
-            file_uri=f"file://{onnx_path.resolve()}",
+            file_uri=f"file://{onnx_path.resolve()}",  # noqa: ASYNC240
             content_hash=content_hash,
             framework="ultralytics-yolo11",
         )
@@ -83,7 +83,7 @@ def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
 
     try:
-        from ultralytics import YOLO  # noqa: PLC0415
+        from ultralytics import YOLO
     except ImportError:
         log.warning("ultralytics not installed — cannot train. pip install ultralytics")
         sys.exit(1)

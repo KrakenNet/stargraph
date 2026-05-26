@@ -8,7 +8,6 @@ import pytest
 
 from demos.sentinel_dark_watch.graph.state import (
     Detection,
-    RiskLevel,
     SdwState,
     TileMetadata,
 )

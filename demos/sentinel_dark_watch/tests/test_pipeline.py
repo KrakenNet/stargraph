@@ -12,7 +12,6 @@ from demos.sentinel_dark_watch.graph.state import (
     Detection,
     RiskLevel,
     SdwState,
-    TileMetadata,
 )
 
 
@@ -113,8 +112,12 @@ async def test_pipeline_mock_run(
 
     # --- 1. SARIngestNode ---------------------------------------------------
     # Mock DB returning tile metadata; use __file__ as existing file_path
-    tile_row = {"scene_id": "S1A_TEST", "file_path": __file__,
-                "acquired_at": "2024-01-15T01:45:00Z", "bounds_wkt": None}
+    tile_row = {
+        "scene_id": "S1A_TEST",
+        "file_path": __file__,
+        "acquired_at": "2024-01-15T01:45:00Z",
+        "bounds_wkt": None,
+    }
 
     class _FakeRecord(dict):
         def __getitem__(self, key: str) -> Any:
@@ -158,17 +161,19 @@ async def test_pipeline_mock_run(
 
     # --- 4. AISCorrelationNode ---------------------------------------------
     # Mock: one AIS match near det-003, rest are dark vessels
-    ais_row = _FakeRecord({
-        "mmsi": "211999888",
-        "ship_name": "MV INTEG TEST",
-        "flag_state": "DE",
-        "vessel_type": "cargo",
-        "lat": 25.40,
-        "lon": 55.30,
-        "speed_kn": 0.0,
-        "heading": 0.0,
-        "timestamp": "2024-01-15T01:45:00Z",
-    })
+    ais_row = _FakeRecord(
+        {
+            "mmsi": "211999888",
+            "ship_name": "MV INTEG TEST",
+            "flag_state": "DE",
+            "vessel_type": "cargo",
+            "lat": 25.40,
+            "lon": 55.30,
+            "speed_kn": 0.0,
+            "heading": 0.0,
+            "timestamp": "2024-01-15T01:45:00Z",
+        }
+    )
 
     mock_ais_conn = AsyncMock()
     mock_ais_conn.fetch = AsyncMock(return_value=[ais_row])
@@ -222,7 +227,12 @@ async def test_pipeline_mock_run(
     assert state.pipeline_phase == "risk_scoring"
     for det in state.detections:
         assert det.risk_score > 0
-        assert det.risk_level in (RiskLevel.CRITICAL, RiskLevel.HIGH, RiskLevel.MEDIUM, RiskLevel.LOW)
+        assert det.risk_level in (
+            RiskLevel.CRITICAL,
+            RiskLevel.HIGH,
+            RiskLevel.MEDIUM,
+            RiskLevel.LOW,
+        )
 
     # Dark vessels in Iranian EEZ with high confidence → Critical or High
     dark_dets = [d for d in state.detections if d.dark_vessel]
@@ -284,19 +294,13 @@ def test_bootstrap_idempotent() -> None:
     assert len(create_lines) > 0, "schema.sql should have CREATE statements"
 
     for line in create_lines:
-        assert "IF NOT EXISTS" in line.upper(), (
-            f"Missing IF NOT EXISTS in: {line[:80]}"
-        )
+        assert "IF NOT EXISTS" in line.upper(), f"Missing IF NOT EXISTS in: {line[:80]}"
 
     # --- bootstrap.py: all INSERT seed data must use ON CONFLICT DO NOTHING ---
     bootstrap_src = bootstrap_path.read_text(encoding="utf-8")
 
-    # Find all INSERT statements in bootstrap.py
-    insert_lines = [
-        line.strip()
-        for line in bootstrap_src.splitlines()
-        if "INSERT INTO" in line.upper()
-    ]
+    # Find all INSERT statements in bootstrap.py (coverage check via regex below)
+    _ = [line.strip() for line in bootstrap_src.splitlines() if "INSERT INTO" in line.upper()]
     # Each INSERT block should have a corresponding ON CONFLICT DO NOTHING
     # Check the full source — every INSERT INTO block must end with ON CONFLICT
     import re

@@ -22,7 +22,7 @@ async def get_pg_pool() -> Any:
 
     Creates the pool on first call; subsequent calls return the same pool.
     """
-    global _pool  # noqa: PLW0603
+    global _pool
     if _pool is not None:
         return _pool
 

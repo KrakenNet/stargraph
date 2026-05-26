@@ -12,8 +12,6 @@ import argparse
 import csv
 import logging
 import math
-import random
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -107,9 +105,7 @@ def _normalise_corners(
     return [(x / patch_size, y / patch_size) for x, y in corners]
 
 
-def _obb_to_yolo_line(
-    class_id: int, corners: list[tuple[float, float]]
-) -> str:
+def _obb_to_yolo_line(class_id: int, corners: list[tuple[float, float]]) -> str:
     """Format a single YOLO OBB annotation line.
 
     Format: ``class x1 y1 x2 y2 x3 y3 x4 y4``
@@ -232,14 +228,10 @@ def prepare_dataset(
     """
     if rasterio is None:
         raise ImportError(
-            "rasterio is required for scene tiling. "
-            "Install with: pip install rasterio"
+            "rasterio is required for scene tiling. Install with: pip install rasterio"
         )
     if np is None:
-        raise ImportError(
-            "numpy is required for scene tiling. "
-            "Install with: pip install numpy"
-        )
+        raise ImportError("numpy is required for scene tiling. Install with: pip install numpy")
 
     tiles_dir = output_dir / "tiles"
     train_img = tiles_dir / "train" / "images"
@@ -274,13 +266,17 @@ def prepare_dataset(
             origins = _compute_patch_origins(scene_h, scene_w, patch_size, overlap)
             logger.info(
                 "  Scene %dx%d -> %d patches (%.1fm/px)",
-                scene_w, scene_h, len(origins), pixel_res,
+                scene_w,
+                scene_h,
+                len(origins),
+                pixel_res,
             )
 
             for idx, (row_off, col_off) in enumerate(origins):
                 # Read patch
                 window = rasterio.windows.Window(
-                    col_off=col_off, row_off=row_off,
+                    col_off=col_off,
+                    row_off=row_off,
                     width=min(patch_size, scene_w - col_off),
                     height=min(patch_size, scene_h - row_off),
                 )
@@ -292,7 +288,7 @@ def prepare_dataset(
                         (patch_data.shape[0], patch_size, patch_size),
                         dtype=patch_data.dtype,
                     )
-                    padded[:, :patch_data.shape[1], :patch_data.shape[2]] = patch_data
+                    padded[:, : patch_data.shape[1], : patch_data.shape[2]] = patch_data
                     patch_data = padded
 
                 patch_id = f"{scene_path.stem}_p{idx:05d}"
@@ -313,8 +309,7 @@ def prepare_dataset(
                     norm_corners = _normalise_corners(corners, patch_size)
                     # Clamp to [0, 1]
                     norm_corners = [
-                        (max(0.0, min(1.0, x)), max(0.0, min(1.0, y)))
-                        for x, y in norm_corners
+                        (max(0.0, min(1.0, x)), max(0.0, min(1.0, y))) for x, y in norm_corners
                     ]
                     ann_lines.append(_obb_to_yolo_line(VESSEL_CLASS_ID, norm_corners))
 
@@ -372,12 +367,7 @@ def _save_patch_png(patch_data, out_path: Path) -> None:
 def _write_data_yaml(output_dir: Path, tiles_dir: Path) -> Path:
     """Generate Ultralytics data.yaml."""
     yaml_path = output_dir / "data.yaml"
-    content = (
-        f"train: {tiles_dir / 'train'}\n"
-        f"val: {tiles_dir / 'val'}\n"
-        f"names:\n"
-        f"  0: vessel\n"
-    )
+    content = f"train: {tiles_dir / 'train'}\nval: {tiles_dir / 'val'}\nnames:\n  0: vessel\n"
     yaml_path.write_text(content)
     logger.info("Wrote %s", yaml_path)
     return yaml_path

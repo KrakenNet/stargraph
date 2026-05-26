@@ -8,11 +8,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from demos.sentinel_dark_watch.graph.state import (
-    Detection,
-    RiskLevel,
-    SdwState,
-)
 from demos.sentinel_dark_watch.graph.nodes import (
     AISCorrelationNode,
     GeoContextNode,
@@ -22,11 +17,17 @@ from demos.sentinel_dark_watch.graph.nodes import (
     RiskScoringNode,
     SARIngestNode,
 )
+from demos.sentinel_dark_watch.graph.state import (
+    Detection,
+    RiskLevel,
+    SdwState,
+)
 
 
 @dataclass
 class _MockCtx:
     """Minimal ExecutionContext stand-in."""
+
     run_id: str = "test-run"
 
 
@@ -324,14 +325,15 @@ async def test_ais_broker_failure_conservative() -> None:
 
 async def test_ingest_valid_tile() -> None:
     """Mock DB with tile metadata → populates current_tile."""
-    from demos.sentinel_dark_watch.graph.state import TileMetadata
 
-    tile_row = _FakeRecord({
-        "scene_id": "S1A_IW_20240115",
-        "file_path": __file__,  # use this test file as a real existing path
-        "acquired_at": "2024-01-15T01:45:00Z",
-        "bounds_wkt": "POLYGON((56 26,57 26,57 27,56 27,56 26))",
-    })
+    tile_row = _FakeRecord(
+        {
+            "scene_id": "S1A_IW_20240115",
+            "file_path": __file__,  # use this test file as a real existing path
+            "acquired_at": "2024-01-15T01:45:00Z",
+            "bounds_wkt": "POLYGON((56 26,57 26,57 27,56 27,56 26))",
+        }
+    )
 
     mock_conn = AsyncMock()
     mock_conn.fetchrow = AsyncMock(return_value=tile_row)
@@ -362,12 +364,14 @@ async def test_ingest_missing_tile() -> None:
 async def test_ingest_failure_threshold() -> None:
     """tiles_failed >= failure_threshold → last_error set."""
     # Tile exists in DB but file_path does not exist on disk
-    tile_row = _FakeRecord({
-        "scene_id": "S1A_IW_20240115",
-        "file_path": "/nonexistent/tile.tif",
-        "acquired_at": "2024-01-15T01:45:00Z",
-        "bounds_wkt": None,
-    })
+    tile_row = _FakeRecord(
+        {
+            "scene_id": "S1A_IW_20240115",
+            "file_path": "/nonexistent/tile.tif",
+            "acquired_at": "2024-01-15T01:45:00Z",
+            "bounds_wkt": None,
+        }
+    )
 
     mock_conn = AsyncMock()
     mock_conn.fetchrow = AsyncMock(return_value=tile_row)

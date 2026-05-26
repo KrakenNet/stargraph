@@ -12,12 +12,12 @@ import logging
 import math
 import os
 import uuid
+from datetime import UTC
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from harbor.nodes.base import ExecutionContext, NodeBase
-
 from demos.sentinel_dark_watch.db import get_pg_dsn
+from harbor.nodes.base import ExecutionContext, NodeBase
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -56,7 +56,7 @@ class SARIngestNode(NodeBase):
 
             # Query PostGIS sar_tiles table for tile metadata
             try:
-                import asyncpg  # noqa: F811
+                import asyncpg
 
                 conn = await asyncpg.connect(get_pg_dsn())
                 try:
@@ -74,9 +74,14 @@ class SARIngestNode(NodeBase):
 
             if row is not None:
                 file_path = row["file_path"]
-                if not Path(file_path).exists():
+                if not Path(file_path).exists():  # noqa: ASYNC240
                     tiles_failed += 1
-                    logger.warning("Tile file missing: %s (failed %d/%d)", file_path, tiles_failed, failure_threshold)
+                    logger.warning(
+                        "Tile file missing: %s (failed %d/%d)",
+                        file_path,
+                        tiles_failed,
+                        failure_threshold,
+                    )
                     patch: dict[str, Any] = {
                         "tile_queue": tile_queue,
                         "tiles_failed": tiles_failed,
@@ -204,14 +209,16 @@ def _decode_obb(
             gx, gy = _pixel_to_geo(img_x + rx, img_y + ry, affine)
             geo_corners.append([gx, gy])
 
-        detections.append({
-            "detection_id": str(uuid.uuid4()),
-            "geo_lat": geo_lat,
-            "geo_lon": geo_lon,
-            "confidence": float(conf),
-            "obb_corners": geo_corners,
-            "vessel_length_m": float(max(w, h)),  # rough proxy
-        })
+        detections.append(
+            {
+                "detection_id": str(uuid.uuid4()),
+                "geo_lat": geo_lat,
+                "geo_lon": geo_lon,
+                "confidence": float(conf),
+                "obb_corners": geo_corners,
+                "vessel_length_m": float(max(w, h)),  # rough proxy
+            }
+        )
     return detections
 
 
@@ -229,13 +236,13 @@ class YOLOInferenceNode(NodeBase):
             # Guard: rasterio / onnxruntime may not be installed (POC)
             try:
                 import numpy as np
-                import rasterio  # noqa: F811
+                import rasterio
             except ImportError:
                 logger.warning("rasterio/numpy not installed — returning empty detections")
                 return {"raw_detections": [], "pipeline_phase": "detection"}
 
             file_path = tile.file_path
-            if not file_path or not Path(file_path).exists():
+            if not file_path or not Path(file_path).exists():  # noqa: ASYNC240
                 logger.warning("Tile file not found: %s — returning empty detections", file_path)
                 return {"raw_detections": [], "pipeline_phase": "detection"}
 
@@ -261,7 +268,11 @@ class YOLOInferenceNode(NodeBase):
                 )
             except Exception as exc:
                 logger.warning("ONNX session error: %s — returning empty detections", exc)
-                return {"raw_detections": [], "last_error": f"YOLOInferenceNode ONNX: {exc}", "pipeline_phase": "detection"}
+                return {
+                    "raw_detections": [],
+                    "last_error": f"YOLOInferenceNode ONNX: {exc}",
+                    "pipeline_phase": "detection",
+                }
 
             # 4. Run inference per patch (offloaded to thread)
             input_name = session.get_inputs()[0].name
@@ -293,7 +304,11 @@ class YOLOInferenceNode(NodeBase):
             return {"raw_detections": detections, "pipeline_phase": "detection"}
         except Exception as exc:
             logger.exception("YOLOInferenceNode failed: %s", exc)
-            return {"raw_detections": [], "last_error": f"YOLOInferenceNode: {exc}", "pipeline_phase": "detection"}
+            return {
+                "raw_detections": [],
+                "last_error": f"YOLOInferenceNode: {exc}",
+                "pipeline_phase": "detection",
+            }
 
 
 # ---------------------------------------------------------------------------
@@ -379,8 +394,12 @@ def _polygon_intersection_area(
         for j in range(len(inp)):
             cur = inp[j]
             nxt = inp[(j + 1) % len(inp)]
-            cur_side = (edge_e[0] - edge_s[0]) * (cur[1] - edge_s[1]) - (edge_e[1] - edge_s[1]) * (cur[0] - edge_s[0])
-            nxt_side = (edge_e[0] - edge_s[0]) * (nxt[1] - edge_s[1]) - (edge_e[1] - edge_s[1]) * (nxt[0] - edge_s[0])
+            cur_side = (edge_e[0] - edge_s[0]) * (cur[1] - edge_s[1]) - (edge_e[1] - edge_s[1]) * (
+                cur[0] - edge_s[0]
+            )
+            nxt_side = (edge_e[0] - edge_s[0]) * (nxt[1] - edge_s[1]) - (edge_e[1] - edge_s[1]) * (
+                nxt[0] - edge_s[0]
+            )
             if cur_side >= 0:
                 output.append(cur)
                 if nxt_side < 0:
@@ -393,7 +412,7 @@ def _polygon_intersection_area(
                     output.append(ix)
     if len(output) < 3:
         return 0.0
-    closed = output + [output[0]]
+    closed = [*output, output[0]]
     return _shoelace_area(closed)
 
 
@@ -464,7 +483,12 @@ class NMSDeduplicationNode(NodeBase):
             logger.exception("NMSDeduplicationNode failed: %s", exc)
             # Pass through raw detections unfiltered on failure
             raw_fallback = list(getattr(state, "raw_detections", []))
-            return {"detections": raw_fallback, "detection_count": len(raw_fallback), "last_error": f"NMSDeduplicationNode: {exc}", "pipeline_phase": "nms"}
+            return {
+                "detections": raw_fallback,
+                "detection_count": len(raw_fallback),
+                "last_error": f"NMSDeduplicationNode: {exc}",
+                "pipeline_phase": "nms",
+            }
 
 
 # ---------------------------------------------------------------------------
@@ -497,8 +521,13 @@ class LandMaskFilterNode(NodeBase):
 
                 conn = await asyncpg.connect(get_pg_dsn())
             except Exception:
-                logger.warning("PostGIS unavailable — skipping land-mask filter, keeping all detections")
-                return {"last_error": "LandMaskFilterNode: PostGIS unavailable", "pipeline_phase": "land_filter"}
+                logger.warning(
+                    "PostGIS unavailable — skipping land-mask filter, keeping all detections",
+                )
+                return {
+                    "last_error": "LandMaskFilterNode: PostGIS unavailable",
+                    "pipeline_phase": "land_filter",
+                }
 
             try:
                 water_detections: list[Any] = []
@@ -534,12 +563,12 @@ class LandMaskFilterNode(NodeBase):
 
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance in metres between two WGS-84 points."""
-    R = 6_371_000.0  # Earth radius in metres
+    earth_r = 6_371_000.0  # Earth radius in metres
     rlat1, rlat2 = math.radians(lat1), math.radians(lat2)
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
     a = math.sin(dlat / 2) ** 2 + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlon / 2) ** 2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return earth_r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 class AISCorrelationNode(NodeBase):
@@ -586,10 +615,16 @@ class AISCorrelationNode(NodeBase):
 
                 conn = await asyncpg.connect(get_pg_dsn())
             except Exception:
-                logger.warning("PostGIS/broker unavailable — marking all detections as dark vessels (conservative)")
+                logger.warning(
+                    "PostGIS/broker unavailable — marking all as dark vessels (conservative)",
+                )
                 for det in detections:
                     det.dark_vessel = True
-                return {"detections": detections, "last_error": "AISCorrelationNode: DB unavailable", "pipeline_phase": "ais_correlation"}
+                return {
+                    "detections": detections,
+                    "last_error": "AISCorrelationNode: DB unavailable",
+                    "pipeline_phase": "ais_correlation",
+                }
 
             try:
                 # Query AIS positions in bounding box + time window
@@ -623,10 +658,16 @@ class AISCorrelationNode(NodeBase):
                         max_lon,
                     )
             except Exception:
-                logger.warning("AIS query failed — marking all detections as dark vessels (conservative)")
+                logger.warning(
+                    "AIS query failed — marking all as dark vessels (conservative)",
+                )
                 for det in detections:
                     det.dark_vessel = True
-                return {"detections": detections, "last_error": "AISCorrelationNode: query failed", "pipeline_phase": "ais_correlation"}
+                return {
+                    "detections": detections,
+                    "last_error": "AISCorrelationNode: query failed",
+                    "pipeline_phase": "ais_correlation",
+                }
             finally:
                 await conn.close()
 
@@ -642,7 +683,7 @@ class AISCorrelationNode(NodeBase):
                 dt_hours = 0.0
                 if acq_ts and row["timestamp"]:
                     try:
-                        from datetime import datetime, timezone
+                        from datetime import datetime
 
                         ais_time = row["timestamp"]
                         if isinstance(ais_time, str):
@@ -653,9 +694,9 @@ class AISCorrelationNode(NodeBase):
                             acq_dt = acq_ts
                         # Ensure timezone-aware
                         if ais_time.tzinfo is None:
-                            ais_time = ais_time.replace(tzinfo=timezone.utc)
+                            ais_time = ais_time.replace(tzinfo=UTC)
                         if acq_dt.tzinfo is None:
-                            acq_dt = acq_dt.replace(tzinfo=timezone.utc)
+                            acq_dt = acq_dt.replace(tzinfo=UTC)
                         dt_hours = (acq_dt - ais_time).total_seconds() / 3600.0
                     except Exception:
                         dt_hours = 0.0
@@ -663,17 +704,23 @@ class AISCorrelationNode(NodeBase):
                 lat = float(row["lat"])
                 lon = float(row["lon"])
                 pred_lat, pred_lon = predicted_ais_position(
-                    lat, lon, speed_kn, heading_deg, dt_hours,
+                    lat,
+                    lon,
+                    speed_kn,
+                    heading_deg,
+                    dt_hours,
                 )
 
-                ais_predicted.append({
-                    "mmsi": str(row["mmsi"]),
-                    "ship_name": row["ship_name"] or "",
-                    "flag_state": row["flag_state"] or "",
-                    "vessel_type": row["vessel_type"] or "",
-                    "predicted_lat": pred_lat,
-                    "predicted_lon": pred_lon,
-                })
+                ais_predicted.append(
+                    {
+                        "mmsi": str(row["mmsi"]),
+                        "ship_name": row["ship_name"] or "",
+                        "flag_state": row["flag_state"] or "",
+                        "vessel_type": row["vessel_type"] or "",
+                        "predicted_lat": pred_lat,
+                        "predicted_lon": pred_lon,
+                    }
+                )
 
             # Match detections to AIS by minimum distance within radius
             matched_det_indices: set[int] = set()
@@ -684,14 +731,16 @@ class AISCorrelationNode(NodeBase):
             for di, det in enumerate(detections):
                 for ai, ais in enumerate(ais_predicted):
                     dist = _haversine_m(
-                        det.geo_lat, det.geo_lon,
-                        ais["predicted_lat"], ais["predicted_lon"],
+                        det.geo_lat,
+                        det.geo_lon,
+                        ais["predicted_lat"],
+                        ais["predicted_lon"],
                     )
                     if dist <= match_radius_m:
                         pairs.append((dist, di, ai))
 
             pairs.sort(key=lambda x: x[0])
-            for dist, di, ai in pairs:
+            for _dist, di, ai in pairs:
                 if di in matched_det_indices or ai in matched_ais_indices:
                     continue
                 matched_det_indices.add(di)
@@ -716,12 +765,17 @@ class AISCorrelationNode(NodeBase):
             fallback_dets = list(getattr(state, "detections", []))
             for det in fallback_dets:
                 det.dark_vessel = True
-            return {"detections": fallback_dets, "last_error": f"AISCorrelationNode: {exc}", "pipeline_phase": "ais_correlation"}
+            return {
+                "detections": fallback_dets,
+                "last_error": f"AISCorrelationNode: {exc}",
+                "pipeline_phase": "ais_correlation",
+            }
 
 
 # ---------------------------------------------------------------------------
 # Geo-Context Enrichment — PostGIS + DSPy synthesis
 # ---------------------------------------------------------------------------
+
 
 class GeoContextNode(NodeBase):
     """Enrich detections with EEZ, port/coast distance via PostGIS.
@@ -773,7 +827,11 @@ class GeoContextNode(NodeBase):
                         if port_dist_m:
                             det.distance_to_port_nm = port_dist_m / 1852.0
 
-                        coast_dist_m = await nearest_coast_distance_m(conn, det.geo_lat, det.geo_lon)
+                        coast_dist_m = await nearest_coast_distance_m(
+                            conn,
+                            det.geo_lat,
+                            det.geo_lon,
+                        )
                         if coast_dist_m is not None:
                             det.distance_to_coast_nm = coast_dist_m / 1852.0
 
@@ -799,7 +857,11 @@ class GeoContextNode(NodeBase):
                     logger.info("DSPy available but ChainOfThought init failed — using fallback")
 
             for det in detections:
-                ais_status = "dark (no AIS)" if det.dark_vessel else f"AIS matched ({det.ais_mmsi or 'unknown'})"
+                ais_status = (
+                    "dark (no AIS)"
+                    if det.dark_vessel
+                    else f"AIS matched ({det.ais_mmsi or 'unknown'})"
+                )
 
                 if cot is not None:
                     try:
@@ -903,12 +965,16 @@ class RiskScoringNode(NodeBase):
             sensitive_eezs = _load_sensitive_eezs()
 
             # Weights: env var overrides state field defaults
-            w_dark = _env_int("RISK_WEIGHT_DARK_VESSEL", state.risk_weight_dark_vessel)  # type: ignore[attr-defined]
-            w_eez = _env_int("RISK_WEIGHT_SENSITIVE_EEZ", state.risk_weight_sensitive_eez)  # type: ignore[attr-defined]
-            w_port = _env_int("RISK_WEIGHT_FAR_FROM_PORT", state.risk_weight_far_from_port)  # type: ignore[attr-defined]
-            w_vessel = _env_int("RISK_WEIGHT_LARGE_VESSEL", state.risk_weight_large_vessel)  # type: ignore[attr-defined]
-            w_conf_max = _env_int("RISK_WEIGHT_CONFIDENCE_MAX", state.risk_weight_confidence_max)  # type: ignore[attr-defined]
-            low_conf_threshold: float = _env_float("LOW_CONF_THRESHOLD", state.low_conf_threshold)  # type: ignore[attr-defined]
+            s = state  # type: ignore[attr-defined]
+            w_dark = _env_int("RISK_WEIGHT_DARK_VESSEL", s.risk_weight_dark_vessel)
+            w_eez = _env_int("RISK_WEIGHT_SENSITIVE_EEZ", s.risk_weight_sensitive_eez)
+            w_port = _env_int("RISK_WEIGHT_FAR_FROM_PORT", s.risk_weight_far_from_port)
+            w_vessel = _env_int("RISK_WEIGHT_LARGE_VESSEL", s.risk_weight_large_vessel)
+            w_conf_max = _env_int("RISK_WEIGHT_CONFIDENCE_MAX", s.risk_weight_confidence_max)
+            low_conf_threshold: float = _env_float(
+                "LOW_CONF_THRESHOLD",
+                s.low_conf_threshold,
+            )
 
             has_low_conf = False
 
@@ -953,6 +1019,7 @@ class RiskScoringNode(NodeBase):
 # Reporting — DSPy narrative synthesis with templated fallback
 # ---------------------------------------------------------------------------
 
+
 class ReportingNode(NodeBase):
     """Assemble structured report sections and synthesize narrative.
 
@@ -996,7 +1063,9 @@ class ReportingNode(NodeBase):
             # Recommended actions based on risk
             actions_list: list[str] = []
             if max_risk_score >= 80:
-                actions_list.append("- IMMEDIATE: Alert maritime authorities and initiate tracking.")
+                actions_list.append(
+                    "- IMMEDIATE: Alert maritime authorities and initiate tracking.",
+                )
             if dark_count > 0:
                 actions_list.append("- Flag dark vessel(s) for enhanced monitoring.")
             if any(d.distance_to_port_nm > 50 for d in detections):
@@ -1091,18 +1160,18 @@ class EmitSARChipsNode(NodeBase):
             # Guard: rasterio + Pillow may not be installed
             try:
                 import numpy as np
-                import rasterio  # noqa: F811
+                import rasterio
             except ImportError:
                 logger.warning("rasterio/numpy not installed — skipping SAR chip extraction")
                 return {"detections": detections, "pipeline_phase": "emit_chips"}
 
             try:
-                from PIL import Image  # noqa: F811
+                from PIL import Image
             except ImportError:
                 logger.warning("Pillow not installed — skipping SAR chip extraction")
                 return {"detections": detections, "pipeline_phase": "emit_chips"}
 
-            if not file_path or not Path(file_path).exists():
+            if not file_path or not Path(file_path).exists():  # noqa: ASYNC240
                 logger.warning("Tile file not found: %s — skipping chip extraction", file_path)
                 return {"detections": detections, "pipeline_phase": "emit_chips"}
 
@@ -1119,10 +1188,7 @@ class EmitSARChipsNode(NodeBase):
                 _, h, w = img.shape
 
                 # Ensure (H, W, C) for Pillow
-                if img.ndim == 3:
-                    img_hwc = img.transpose(1, 2, 0)
-                else:
-                    img_hwc = img
+                img_hwc = img.transpose(1, 2, 0) if img.ndim == 3 else img
 
                 half = self._CHIP_SIZE // 2
                 chip_dir = Path(file_path).parent / "chips"
@@ -1133,7 +1199,7 @@ class EmitSARChipsNode(NodeBase):
                         # Geo-coords → pixel coords via inverse affine
                         inv = ~transform
                         px_x, px_y = inv * (det.geo_lon, det.geo_lat)
-                        px_x, px_y = int(round(px_x)), int(round(px_y))
+                        px_x, px_y = round(px_x), round(px_y)
 
                         # Crop bounds (clamped to image)
                         r0 = max(0, px_y - half)
@@ -1142,7 +1208,10 @@ class EmitSARChipsNode(NodeBase):
                         c1 = min(w, px_x + half)
 
                         if r1 - r0 < 2 or c1 - c0 < 2:
-                            logger.warning("Chip too small for detection %s — skipping", det.detection_id)
+                            logger.warning(
+                                "Chip too small for detection %s — skipping",
+                                det.detection_id,
+                            )
                             continue
 
                         chip_arr = img_hwc[r0:r1, c0:c1]
@@ -1151,7 +1220,8 @@ class EmitSARChipsNode(NodeBase):
                         if chip_arr.dtype != np.uint8:
                             cmin, cmax = chip_arr.min(), chip_arr.max()
                             if cmax > cmin:
-                                chip_arr = ((chip_arr - cmin) / (cmax - cmin) * 255).astype(np.uint8)
+                                normed = (chip_arr - cmin) / (cmax - cmin) * 255
+                                chip_arr = normed.astype(np.uint8)
                             else:
                                 chip_arr = np.zeros_like(chip_arr, dtype=np.uint8)
 
@@ -1254,6 +1324,7 @@ class AnalystReviewNode(NodeBase):
         except Exception as exc:
             # Re-raise _HitInterrupt — it's not an error
             from harbor.graph.loop import _HitInterrupt  # pyright: ignore[reportPrivateUsage]
+
             if isinstance(exc, _HitInterrupt):
                 raise
             logger.exception("AnalystReviewNode failed: %s", exc)
@@ -1272,9 +1343,12 @@ class AnalystReviewNode(NodeBase):
         try:
             run_id = str(getattr(state, "run_id", ""))
             for corr in corrections:
-                detection_id = corr.get("detection_id", "") if isinstance(corr, dict) else getattr(corr, "detection_id", "")
-                decision = corr.get("decision", "") if isinstance(corr, dict) else getattr(corr, "decision", "")
-                note = corr.get("note", "") if isinstance(corr, dict) else getattr(corr, "note", "")
+                _is_dict = isinstance(corr, dict)
+                detection_id = (
+                    corr.get("detection_id", "") if _is_dict else getattr(corr, "detection_id", "")
+                )
+                decision = corr.get("decision", "") if _is_dict else getattr(corr, "decision", "")
+                note = corr.get("note", "") if _is_dict else getattr(corr, "note", "")
 
                 await conn.execute(
                     "INSERT INTO corrections (detection_id, run_id, decision, note)"
@@ -1311,7 +1385,7 @@ class MetricsCollectorNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
             detection_count = len(detections)
@@ -1322,13 +1396,14 @@ class MetricsCollectorNode(NodeBase):
             corrections = getattr(state, "analyst_corrections", []) or []
             false_positive_count = 0
             for corr in corrections:
-                decision = corr.get("decision", "") if isinstance(corr, dict) else getattr(corr, "decision", "")
+                _is_dict = isinstance(corr, dict)
+                decision = corr.get("decision", "") if _is_dict else getattr(corr, "decision", "")
                 if decision == "reject":
                     false_positive_count += 1
 
             # Processing time — compute from run_started_at
             run_started_at = getattr(state, "run_started_at", None)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             processing_secs = 0.0
             if run_started_at:
                 if isinstance(run_started_at, str):
@@ -1338,7 +1413,7 @@ class MetricsCollectorNode(NodeBase):
                         run_started_at = None
                 if run_started_at:
                     if run_started_at.tzinfo is None:
-                        run_started_at = run_started_at.replace(tzinfo=timezone.utc)
+                        run_started_at = run_started_at.replace(tzinfo=UTC)
                     processing_secs = (now - run_started_at).total_seconds()
 
             # Also sum perf_marks for per-node breakdown
@@ -1549,7 +1624,7 @@ class RetrainTrainNode(NodeBase):
             merged_samples: int = getattr(state, "merged_training_samples", 0)
 
             # Locate train script relative to this module
-            script = Path(__file__).resolve().parent.parent / "scripts" / "train_detector.py"
+            script = Path(__file__).resolve().parent.parent / "scripts" / "train_detector.py"  # noqa: ASYNC240
 
             if not script.exists():
                 logger.warning(
@@ -1625,7 +1700,11 @@ class RetrainTrainNode(NodeBase):
             }
         except Exception as exc:
             logger.exception("RetrainTrainNode failed: %s", exc)
-            return {"challenger_version": "error", "challenger_map50": 0.0, "last_error": f"RetrainTrainNode: {exc}"}
+            return {
+                "challenger_version": "error",
+                "challenger_map50": 0.0,
+                "last_error": f"RetrainTrainNode: {exc}",
+            }
 
 
 # ---------------------------------------------------------------------------
@@ -1661,7 +1740,9 @@ class ChampionChallengerNode(NodeBase):
                 entry = await registry.load_alias("sdw-detector", "production")
                 champion_version = entry.version
                 # mAP stored in registry metadata if available; fallback to state
-                champion_map50 = getattr(entry, "map50", 0.0) or getattr(state, "champion_map50", 0.0)
+                champion_map50 = getattr(entry, "map50", 0.0) or getattr(
+                    state, "champion_map50", 0.0
+                )
             except Exception:
                 logger.warning(
                     "ModelRegistry unavailable — using state champion_map50 (%.3f)",
@@ -1682,9 +1763,9 @@ class ChampionChallengerNode(NodeBase):
                     champion_map50,
                 )
                 try:
-                    from harbor.ml.registry import ModelRegistry as _MR
+                    from harbor.ml.registry import ModelRegistry as _ModelReg
 
-                    reg = _MR()
+                    reg = _ModelReg()
                     await reg.alias("sdw-detector", challenger_version, "production")
                     promoted = True
                 except Exception:
@@ -1727,7 +1808,7 @@ class RetrainMetricsNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             from demos.sentinel_dark_watch.graph.state import ModelMetrics
 
@@ -1740,7 +1821,7 @@ class RetrainMetricsNode(NodeBase):
                 version=challenger_version,
                 map50=challenger_map50,
                 training_samples=merged_samples,
-                trained_at=datetime.now(timezone.utc).isoformat(),
+                trained_at=datetime.now(UTC).isoformat(),
             )
 
             # Persist to Postgres

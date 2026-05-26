@@ -21,12 +21,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from demos.sentinel_dark_watch.capabilities import build_sdw_capabilities
-
 
 # ---------------------------------------------------------------------------
 # JSONL audit log writer
@@ -53,7 +52,7 @@ def write_audit_event(
     """
     _ensure_audit_dir()
     record = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "run_id": run_id,
         "node_id": node_id,
         "event": event,
@@ -94,24 +93,23 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    import asyncio
     import os
     import tempfile
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator  # noqa: TC003
     from contextlib import asynccontextmanager
 
     import uvicorn
-    from fastapi import FastAPI
+    from fastapi import FastAPI  # noqa: TC002
 
     from harbor.artifacts.fs import FilesystemArtifactStore
     from harbor.checkpoint.sqlite import SQLiteCheckpointer
     from harbor.errors import HarborRuntimeError
+    from harbor.registry import StoreRegistry, ToolRegistry
     from harbor.serve.api import create_app
     from harbor.serve.history import RunHistory
     from harbor.serve.lifecycle import broker_lifespan
     from harbor.serve.profiles import select_profile
     from harbor.serve.scheduler import Scheduler
-    from harbor.registry import StoreRegistry, ToolRegistry
 
     os.environ["HARBOR_PROFILE"] = args.profile
     selected = select_profile()
@@ -137,10 +135,11 @@ def main(argv: list[str] | None = None) -> int:
     scheduler = Scheduler()
 
     # Load + register graphs.
+    import yaml as _yaml
+
     from harbor.cli.run import _build_node_registry
     from harbor.graph.definition import Graph
     from harbor.ir._models import IRDocument
-    import yaml as _yaml
 
     graph_dir = Path(__file__).parent / "graph"
     default_graphs = [
@@ -155,7 +154,8 @@ def main(argv: list[str] | None = None) -> int:
         graph_obj = Graph(ir=ir_doc)
         graphs[ir_doc.id] = graph_obj
         node_registries[ir_doc.id] = _build_node_registry(
-            ir_doc.nodes, ir_dir=path.parent.resolve(),
+            ir_doc.nodes,
+            ir_dir=path.parent.resolve(),
         )
         print(
             f"[serve_sdw] loaded graph {ir_doc.id!r} "

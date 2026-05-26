@@ -3,6 +3,7 @@
 Four-tab interface: Live Map, Detection Review, Metrics Dashboard, Pipeline Status.
 Communicates with Harbor serve API (REST + WebSocket) — no direct graph imports.
 """
+
 from __future__ import annotations
 
 import json
@@ -91,9 +92,7 @@ def get_detections(run_id: str) -> list[dict[str, Any]]:
         return []
 
 
-def submit_review(
-    run_id: str, corrections: list[dict[str, Any]]
-) -> dict[str, Any]:
+def submit_review(run_id: str, corrections: list[dict[str, Any]]) -> dict[str, Any]:
     """POST /v1/runs/{run_id}/respond — submit analyst corrections."""
     if requests is None:
         return {"error": "requests not installed"}
@@ -148,10 +147,14 @@ def _pg_query(sql: str) -> list[dict[str, Any]]:
         import psycopg2
         import psycopg2.extras
 
-        with psycopg2.connect(POSTGRES_DSN) as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(sql)
-                return [dict(r) for r in cur.fetchall()]
+        with (
+            psycopg2.connect(POSTGRES_DSN) as conn,
+            conn.cursor(
+                cursor_factory=psycopg2.extras.RealDictCursor,
+            ) as cur,
+        ):
+            cur.execute(sql)
+            return [dict(r) for r in cur.fetchall()]
     except Exception:
         return []
 
@@ -210,12 +213,8 @@ def _render_metrics_dashboard() -> None:
         return
 
     # Fetch metrics from Postgres
-    run_metrics = _pg_query(
-        "SELECT * FROM run_metrics ORDER BY created_at DESC LIMIT 50"
-    )
-    model_metrics = _pg_query(
-        "SELECT * FROM model_metrics ORDER BY trained_at DESC LIMIT 20"
-    )
+    run_metrics = _pg_query("SELECT * FROM run_metrics ORDER BY created_at DESC LIMIT 50")
+    model_metrics = _pg_query("SELECT * FROM model_metrics ORDER BY trained_at DESC LIMIT 20")
 
     if not run_metrics and not model_metrics:
         st.info("No metrics data available yet. Run the pipeline to generate metrics.")
@@ -229,16 +228,24 @@ def _render_metrics_dashboard() -> None:
         map50_95_vals = [m.get("map50_95", 0) for m in model_metrics]
 
         fig_map = go.Figure()
-        fig_map.add_trace(go.Scatter(
-            x=versions, y=map50_vals,
-            mode="lines+markers", name="mAP@50",
-            line=dict(color="blue"),
-        ))
-        fig_map.add_trace(go.Scatter(
-            x=versions, y=map50_95_vals,
-            mode="lines+markers", name="mAP@50-95",
-            line=dict(color="orange", dash="dash"),
-        ))
+        fig_map.add_trace(
+            go.Scatter(
+                x=versions,
+                y=map50_vals,
+                mode="lines+markers",
+                name="mAP@50",
+                line=dict(color="blue"),
+            )
+        )
+        fig_map.add_trace(
+            go.Scatter(
+                x=versions,
+                y=map50_95_vals,
+                mode="lines+markers",
+                name="mAP@50-95",
+                line=dict(color="orange", dash="dash"),
+            )
+        )
         fig_map.update_layout(
             xaxis_title="Model Version",
             yaxis_title="mAP Score",
@@ -280,11 +287,14 @@ def _render_metrics_dashboard() -> None:
         dark_counts = [r.get("dark_vessels_flagged", 0) for r in run_metrics]
 
         fig_dark = go.Figure()
-        fig_dark.add_trace(go.Bar(
-            x=run_ids, y=dark_counts,
-            marker_color="crimson",
-            name="Dark Vessels",
-        ))
+        fig_dark.add_trace(
+            go.Bar(
+                x=run_ids,
+                y=dark_counts,
+                marker_color="crimson",
+                name="Dark Vessels",
+            )
+        )
         fig_dark.update_layout(
             xaxis_title="Run ID",
             yaxis_title="Dark Vessel Count",
@@ -305,12 +315,16 @@ def _render_metrics_dashboard() -> None:
             run_labels.append(r.get("run_id", f"run_{i}"))
 
         fig_fp = go.Figure()
-        fig_fp.add_trace(go.Scatter(
-            x=run_labels, y=fp_rates,
-            mode="lines+markers", name="FP Rate (%)",
-            line=dict(color="orange"),
-            fill="tozeroy",
-        ))
+        fig_fp.add_trace(
+            go.Scatter(
+                x=run_labels,
+                y=fp_rates,
+                mode="lines+markers",
+                name="FP Rate (%)",
+                line=dict(color="orange"),
+                fill="tozeroy",
+            )
+        )
         fig_fp.update_layout(
             xaxis_title="Run ID",
             yaxis_title="False Positive Rate (%)",
@@ -327,19 +341,24 @@ def _render_metrics_dashboard() -> None:
         secs = latest_run.get("processing_time_seconds", 1)
         tiles_per_hour = (tiles / secs * 3600) if secs > 0 else 0
 
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=tiles_per_hour,
-            title={"text": "Tiles / Hour (latest run)"},
-            gauge={
-                "axis": {"range": [0, max(tiles_per_hour * 2, 100)]},
-                "bar": {"color": "darkblue"},
-                "steps": [
-                    {"range": [0, tiles_per_hour * 0.5], "color": "lightgray"},
-                    {"range": [tiles_per_hour * 0.5, tiles_per_hour * 1.5], "color": "lightskyblue"},
-                ],
-            },
-        ))
+        fig_gauge = go.Figure(
+            go.Indicator(
+                mode="gauge+number",
+                value=tiles_per_hour,
+                title={"text": "Tiles / Hour (latest run)"},
+                gauge={
+                    "axis": {"range": [0, max(tiles_per_hour * 2, 100)]},
+                    "bar": {"color": "darkblue"},
+                    "steps": [
+                        {"range": [0, tiles_per_hour * 0.5], "color": "lightgray"},
+                        {
+                            "range": [tiles_per_hour * 0.5, tiles_per_hour * 1.5],
+                            "color": "lightskyblue",
+                        },
+                    ],
+                },
+            )
+        )
         fig_gauge.update_layout(height=250)
         st.plotly_chart(fig_gauge, use_container_width=True)
 
@@ -376,19 +395,37 @@ def _render_pipeline_status() -> None:
 
                 # Pipeline nodes and progress
                 pipeline_nodes = [
-                    "sar_ingest", "yolo_inference", "nms_dedup", "land_mask",
-                    "ais_correlation", "geo_context", "risk_scoring", "reporting",
-                    "emit_sar_chips", "analyst_review", "metrics_collector",
-                    "retrain_trigger", "action_done",
+                    "sar_ingest",
+                    "yolo_inference",
+                    "nms_dedup",
+                    "land_mask",
+                    "ais_correlation",
+                    "geo_context",
+                    "risk_scoring",
+                    "reporting",
+                    "emit_sar_chips",
+                    "analyst_review",
+                    "metrics_collector",
+                    "retrain_trigger",
+                    "action_done",
                 ]
                 phase = state.get("pipeline_phase", "ingest")
 
                 # Estimate progress from pipeline phase
                 phase_map = {
-                    "ingest": 1, "inference": 2, "nms": 3, "land_mask": 4,
-                    "ais_correlation": 5, "geo_context": 6, "risk_scoring": 7,
-                    "reporting": 8, "chips": 9, "review": 10, "metrics": 11,
-                    "retrain": 12, "done": 13,
+                    "ingest": 1,
+                    "inference": 2,
+                    "nms": 3,
+                    "land_mask": 4,
+                    "ais_correlation": 5,
+                    "geo_context": 6,
+                    "risk_scoring": 7,
+                    "reporting": 8,
+                    "chips": 9,
+                    "review": 10,
+                    "metrics": 11,
+                    "retrain": 12,
+                    "done": 13,
                 }
                 current_step = phase_map.get(phase, 0)
                 total_steps = len(pipeline_nodes)
@@ -466,6 +503,7 @@ def _render_pipeline_status() -> None:
         if auto_refresh:
             st.markdown("*Page will rerun every 5 seconds.*")
             import time
+
             time.sleep(5)
             st.rerun()
 
@@ -645,7 +683,7 @@ def _render_live_map() -> None:
         run_id = st.text_input("Run ID", placeholder="Enter run ID to view detections")
     with col_refresh:
         st.write("")  # spacer
-        refresh = st.button("Refresh", key="map_refresh")
+        st.button("Refresh", key="map_refresh")
 
     # Fetch detections
     detections: list[dict[str, Any]] = []
@@ -653,7 +691,10 @@ def _render_live_map() -> None:
         detections = get_detections(run_id)
 
     if folium is None or st_folium is None:
-        st.warning("Folium not installed — map view unavailable. Install: pip install folium streamlit-folium")
+        st.warning(
+            "Folium not installed — map view unavailable. "
+            "Install: pip install folium streamlit-folium"
+        )
         if detections:
             st.json(detections[:5])
         return

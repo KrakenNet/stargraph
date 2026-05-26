@@ -59,9 +59,8 @@ _load_env(_DEMO_DIR / ".env.example")  # fallback for unset keys
 def _wait_tcp(host: str, port: int, timeout_seconds: int = 60) -> None:
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
-        with contextlib.suppress(OSError):
-            with socket.create_connection((host, port), timeout=1):
-                return
+        with contextlib.suppress(OSError), socket.create_connection((host, port), timeout=1):
+            return
         time.sleep(1)
     raise RuntimeError(f"timeout waiting for {host}:{port}")
 
@@ -73,10 +72,9 @@ def _wait_http_health(url: str, timeout_seconds: int = 60) -> None:
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
         for u in urls:
-            with contextlib.suppress(Exception):
-                with urllib.request.urlopen(u, timeout=2) as resp:  # noqa: S310
-                    if resp.status == 200:
-                        return
+            with contextlib.suppress(Exception), urllib.request.urlopen(u, timeout=2) as resp:
+                if resp.status == 200:
+                    return
         time.sleep(1)
     raise RuntimeError(f"timeout waiting for {url}")
 
@@ -158,10 +156,7 @@ _EEZ_FIXTURES = [
         "geoname": "Omani Exclusive Economic Zone",
         "sovereign": "Oman",
         "wkt": (
-            "MULTIPOLYGON((("
-            "56.0 24.0, 56.0 26.0, 57.5 26.0, 58.0 25.0, "
-            "57.5 24.0, 56.0 24.0"
-            ")))"
+            "MULTIPOLYGON(((56.0 24.0, 56.0 26.0, 57.5 26.0, 58.0 25.0, 57.5 24.0, 56.0 24.0)))"
         ),
     },
     {
@@ -169,10 +164,7 @@ _EEZ_FIXTURES = [
         "geoname": "UAE Exclusive Economic Zone",
         "sovereign": "United Arab Emirates",
         "wkt": (
-            "MULTIPOLYGON((("
-            "54.0 24.0, 54.0 25.5, 56.0 25.5, 56.0 24.5, "
-            "55.5 24.0, 54.0 24.0"
-            ")))"
+            "MULTIPOLYGON(((54.0 24.0, 54.0 25.5, 56.0 25.5, 56.0 24.5, 55.5 24.0, 54.0 24.0)))"
         ),
     },
 ]

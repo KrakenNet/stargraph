@@ -14,9 +14,11 @@ app = FastAPI(title="LLM Shim Mock")
 # Request / response models (OpenAI chat-completion shape)
 # ---------------------------------------------------------------------------
 
+
 class ChatMessage(BaseModel):
     role: str
     content: str
+
 
 class ChatCompletionRequest(BaseModel):
     model: str = "mock-maritime"
@@ -24,15 +26,18 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 512
 
+
 class Choice(BaseModel):
     index: int = 0
     message: ChatMessage
     finish_reason: str = "stop"
 
+
 class Usage(BaseModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+
 
 class ChatCompletionResponse(BaseModel):
     id: str
@@ -41,6 +46,7 @@ class ChatCompletionResponse(BaseModel):
     model: str
     choices: list[Choice]
     usage: Usage = Usage()
+
 
 # ---------------------------------------------------------------------------
 # Canned response templates
@@ -79,6 +85,7 @@ GENERIC_ACK = "Acknowledged. Processing complete — no additional context requi
 # Keyword routing
 # ---------------------------------------------------------------------------
 
+
 def _route_response(messages: list[ChatMessage]) -> str:
     """Pick a canned response based on keywords in the message content."""
     combined = " ".join(m.content.lower() for m in messages)
@@ -88,9 +95,11 @@ def _route_response(messages: list[ChatMessage]) -> str:
         return INTEL_REPORT_RESPONSE
     return GENERIC_ACK
 
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
 
 @app.get("/health")
 async def health():
