@@ -729,13 +729,6 @@ class AISCorrelationNode(NodeBase):
 # Geo-Context Enrichment — PostGIS + DSPy synthesis
 # ---------------------------------------------------------------------------
 
-_GEO_FALLBACK_TEMPLATE = (
-    "Vessel detected at ({lat}N, {lon}E) in {eez_name}, "
-    "{distance_to_port_nm:.0f}nm from nearest port. "
-    "AIS status: {ais_status}."
-)
-
-
 class GeoContextNode(NodeBase):
     """Enrich detections with EEZ, port/coast distance via PostGIS.
 
@@ -752,6 +745,11 @@ class GeoContextNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
+            from demos.sentinel_dark_watch.graph.signatures import (
+                DSPY_AVAILABLE,
+                FALLBACK_TEMPLATES,
+            )
+
             detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
             if not detections:
                 return {"detections": [], "pipeline_phase": "geo_context"}
@@ -819,32 +817,21 @@ class GeoContextNode(NodeBase):
                 await conn.close()
 
             # Step 2 — DSPy ChainOfThought synthesis for geo_summary
-            dspy_available = False
-            try:
-                import dspy
+            cot = None
+            if DSPY_AVAILABLE:
+                try:
+                    import dspy
 
-                class GeoContextSignature(dspy.Signature):
-                    """Synthesize a concise geographic context summary for a maritime detection."""
+                    from demos.sentinel_dark_watch.graph.signatures import GeoContextSignature
 
-                    detection_lat: float = dspy.InputField(desc="Detection latitude")
-                    detection_lon: float = dspy.InputField(desc="Detection longitude")
-                    dark_vessel: bool = dspy.InputField(desc="Whether vessel is dark (no AIS)")
-                    eez_name: str = dspy.InputField(desc="Exclusive Economic Zone name")
-                    distance_to_port_nm: float = dspy.InputField(desc="Distance to nearest port in NM")
-                    nearest_port_name: str = dspy.InputField(desc="Name of nearest port")
-                    distance_to_coast_nm: float = dspy.InputField(desc="Distance to coast in NM")
-                    ais_status: str = dspy.InputField(desc="AIS correlation status")
-                    geo_summary: str = dspy.OutputField(desc="Human-readable geographic context summary")
-
-                cot = dspy.ChainOfThought(GeoContextSignature)
-                dspy_available = True
-            except ImportError:
-                logger.info("DSPy not available — using templated fallback for geo_summary")
+                    cot = dspy.ChainOfThought(GeoContextSignature)
+                except Exception:
+                    logger.info("DSPy available but ChainOfThought init failed — using fallback")
 
             for det in detections:
                 ais_status = "dark (no AIS)" if det.dark_vessel else f"AIS matched ({det.ais_mmsi or 'unknown'})"
 
-                if dspy_available:
+                if cot is not None:
                     try:
                         result = cot(
                             detection_lat=det.geo_lat,
@@ -862,7 +849,7 @@ class GeoContextNode(NodeBase):
                         logger.warning("LLM unavailable for geo-context — using templated fallback")
 
                 # Templated fallback
-                det.geo_summary = _GEO_FALLBACK_TEMPLATE.format(
+                det.geo_summary = FALLBACK_TEMPLATES["geo_context"].format(
                     lat=det.geo_lat,
                     lon=det.geo_lon,
                     eez_name=det.eez_name or "Unknown EEZ",
@@ -996,25 +983,6 @@ class RiskScoringNode(NodeBase):
 # Reporting — DSPy narrative synthesis with templated fallback
 # ---------------------------------------------------------------------------
 
-_REPORT_FALLBACK_TEMPLATE = """## Detection Summary
-{detection_count} vessel detection(s) from tile {tile_id}. {dark_count} dark vessel(s) identified.
-
-## Imagery Reference
-Source tile: {tile_id} | Scene: {scene_id}
-
-## AIS Correlation
-{ais_matched} detection(s) matched to AIS transponders. {dark_count} unmatched (dark).
-
-## Geo-Context
-{geo_summary}
-
-## Risk Assessment
-Overall risk: {risk_level} (score {risk_score}/100).
-
-## Recommended Actions
-{actions}"""
-
-
 class ReportingNode(NodeBase):
     """Assemble structured report sections and synthesize narrative.
 
@@ -1031,6 +999,11 @@ class ReportingNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
+            from demos.sentinel_dark_watch.graph.signatures import (
+                DSPY_AVAILABLE,
+                FALLBACK_TEMPLATES,
+            )
+
             detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
             if not detections:
                 return {"detections": [], "pipeline_phase": "reporting"}
@@ -1065,29 +1038,19 @@ class ReportingNode(NodeBase):
             actions_text = "\n".join(actions_list)
 
             # Try DSPy narrative synthesis
-            dspy_ok = False
-            try:
-                import dspy
+            cot = None
+            if DSPY_AVAILABLE:
+                try:
+                    import dspy
 
-                class ReportingSignature(dspy.Signature):
-                    """Synthesize a concise maritime intelligence report from detection data."""
+                    from demos.sentinel_dark_watch.graph.signatures import ReportingSignature
 
-                    detection_count: int = dspy.InputField(desc="Number of detections")
-                    dark_vessel_count: int = dspy.InputField(desc="Number of dark vessels")
-                    ais_matched_count: int = dspy.InputField(desc="Number of AIS-matched detections")
-                    overall_risk_level: str = dspy.InputField(desc="Highest risk level")
-                    max_risk_score: int = dspy.InputField(desc="Highest risk score (0-100)")
-                    geo_summary: str = dspy.InputField(desc="Combined geo-context summaries")
-                    tile_id: str = dspy.InputField(desc="Source tile identifier")
-                    recommended_actions: str = dspy.InputField(desc="Recommended actions list")
-                    report: str = dspy.OutputField(desc="Full structured maritime intelligence report")
+                    cot = dspy.ChainOfThought(ReportingSignature)
+                except Exception:
+                    logger.info("DSPy available but ChainOfThought init failed — using fallback")
 
-                cot = dspy.ChainOfThought(ReportingSignature)
-                dspy_ok = True
-            except ImportError:
-                logger.info("DSPy not available — using templated fallback for report")
-
-            if dspy_ok:
+            report_text = ""
+            if cot is not None:
                 try:
                     result = cot(
                         detection_count=len(detections),
@@ -1102,10 +1065,9 @@ class ReportingNode(NodeBase):
                     report_text = result.report
                 except Exception:
                     logger.warning("LLM unavailable for reporting — using templated fallback")
-                    dspy_ok = False
 
-            if not dspy_ok:
-                report_text = _REPORT_FALLBACK_TEMPLATE.format(
+            if not report_text:
+                report_text = FALLBACK_TEMPLATES["reporting"].format(
                     detection_count=len(detections),
                     tile_id=tile.tile_id,
                     scene_id=tile.scene_id,
