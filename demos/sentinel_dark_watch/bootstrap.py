@@ -248,8 +248,14 @@ def _seed_geo_fixtures() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _ensure_data_dirs() -> None:
+    """Create data/ sub-directories (audit log, etc.) if they don't exist."""
+    (_DEMO_DIR / "data" / "audit").mkdir(parents=True, exist_ok=True)
+
+
 def main() -> int:
     print(f"sentinel_dark_watch bootstrap  ({_DEMO_DIR})")
+    _ensure_data_dirs()
     _wait_services()
     _provision_postgis()
     _seed_ais_positions()

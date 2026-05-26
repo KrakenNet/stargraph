@@ -19,10 +19,50 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from demos.sentinel_dark_watch.capabilities import build_sdw_capabilities
+
+
+# ---------------------------------------------------------------------------
+# JSONL audit log writer
+# ---------------------------------------------------------------------------
+
+_AUDIT_DIR = Path(__file__).resolve().parent / "data" / "audit"
+
+
+def _ensure_audit_dir() -> None:
+    """Create ``data/audit/`` if it does not exist."""
+    _AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def write_audit_event(
+    run_id: str,
+    node_id: str,
+    event: str,
+    duration_ms: float = 0.0,
+    **extra: Any,
+) -> None:
+    """Append a single JSONL audit line for *run_id*.
+
+    Each run gets its own file: ``data/audit/{run_id}.jsonl``.
+    """
+    _ensure_audit_dir()
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "run_id": run_id,
+        "node_id": node_id,
+        "event": event,
+        "duration_ms": round(duration_ms, 2),
+        **extra,
+    }
+    path = _AUDIT_DIR / f"{run_id}.jsonl"
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record, default=str) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
