@@ -155,7 +155,7 @@ total_tasks: 83
   - **Commit**: `feat(sdw): PassthroughNode base in graph/nodes.py`
   - _Requirements: FR-1_
 
-- [ ] 1.15 Implement SARIngestNode
+- [x] 1.15 Implement SARIngestNode
   - **Do**:
     1. Add `SARIngestNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Pop next tile_id from `state.tile_queue`, query PostGIS `sar_tiles` table for metadata, validate file exists, populate `current_tile` TileMetadata, set `current_tile_id` and `pipeline_phase="ingest"`
