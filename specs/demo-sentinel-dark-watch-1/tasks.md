@@ -549,7 +549,7 @@ total_tasks: 83
 
 ## Phase 2: Refactoring
 
-- [ ] 2.1 Extract DB connection helpers into shared module
+- [x] 2.1 Extract DB connection helpers into shared module
   - **Do**:
     1. Create `demos/sentinel_dark_watch/db.py` with `get_pg_pool()`, `get_pg_dsn()` helpers using asyncpg
     2. Refactor nodes that do direct Postgres queries to use shared pool helper
@@ -560,7 +560,7 @@ total_tasks: 83
   - **Commit**: `refactor(sdw): extract shared DB connection helpers`
   - _Design: Error Handling_
 
-- [ ] 2.2 Add error handling to all nodes
+- [x] 2.2 Add error handling to all nodes
   - **Do**:
     1. Add try/except with logging to every node's `execute()`
     2. SARIngestNode: handle missing tile file, increment tiles_failed
