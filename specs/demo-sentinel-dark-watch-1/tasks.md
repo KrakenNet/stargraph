@@ -114,7 +114,7 @@ total_tasks: 83
   - _Requirements: AC-4.2, NFR-5_
   - _Design: AIS Ingest Daemon (mock fallback)_
 
-- [ ] 1.11 [VERIFY] Quality checkpoint: fixtures + mock
+- [x] 1.11 [VERIFY] Quality checkpoint: fixtures + mock
   - **Do**: Verify fixture JSON and LLM shim structure
   - **Verify**: `uv run --no-project python -c "import json; json.load(open('demos/sentinel_dark_watch/fixtures/ais_positions.json')); json.load(open('demos/sentinel_dark_watch/fixtures/llm_responses.json')); print('OK')" && grep -q '/v1/chat/completions' demos/sentinel_dark_watch/mocks/llm-shim/app.py && echo PASS`
   - **Done when**: All checks pass
@@ -122,7 +122,7 @@ total_tasks: 83
 
 ### Bootstrap
 
-- [ ] 1.12 Create `bootstrap.py` — wait for Docker health + provision schemas
+- [x] 1.12 Create `bootstrap.py` — wait for Docker health + provision schemas
   - **Do**:
     1. Create `demos/sentinel_dark_watch/bootstrap.py` with `_load_env()`, `_wait_tcp()`, `_wait_http_health()` helpers (mirroring CVE-rem pattern)
     2. Phase 1: Wait for PostGIS (5441), Redis (6391), llm-shim (41001)

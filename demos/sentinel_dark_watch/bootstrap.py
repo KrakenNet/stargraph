@@ -1,0 +1,364 @@
+# SPDX-License-Identifier: Apache-2.0
+"""sentinel_dark_watch demo bootstrap.
+
+One-shot provisioning step. Idempotent — safe to re-run.
+
+Phases:
+  1. Wait for docker-compose services healthy (postgis, redis, llm-shim).
+  2. Provision PostGIS extension + all DDL (sar_tiles, ais_positions,
+     eez_boundaries, ports, coastlines, detections, corrections,
+     run_metrics, model_metrics).
+  3. Seed fixture AIS positions from fixtures/ais_positions.json.
+  4. Seed EEZ boundaries (Iranian + Omani EEZ), ports (5 near AOI),
+     and simplified coastline polygon for the Strait of Hormuz.
+
+Usage::
+
+    cp demos/sentinel_dark_watch/.env.example demos/sentinel_dark_watch/.env
+    docker compose -f demos/sentinel_dark_watch/docker-compose.yml up -d
+    uv run --no-project python -m demos.sentinel_dark_watch.bootstrap
+"""
+
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import socket
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# .env loader (no external dep — keeps bootstrap stand-alone)
+# ---------------------------------------------------------------------------
+
+
+def _load_env(env_path: Path) -> None:
+    if not env_path.is_file():
+        return
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        os.environ.setdefault(k.strip(), v.strip())
+
+
+_DEMO_DIR = Path(__file__).resolve().parent
+_load_env(_DEMO_DIR / ".env")
+_load_env(_DEMO_DIR / ".env.example")  # fallback for unset keys
+
+
+# ---------------------------------------------------------------------------
+# Health probes
+# ---------------------------------------------------------------------------
+
+
+def _wait_tcp(host: str, port: int, timeout_seconds: int = 60) -> None:
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        with contextlib.suppress(OSError):
+            with socket.create_connection((host, port), timeout=1):
+                return
+        time.sleep(1)
+    raise RuntimeError(f"timeout waiting for {host}:{port}")
+
+
+def _wait_http_health(url: str, timeout_seconds: int = 60) -> None:
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        with contextlib.suppress(Exception):
+            with urllib.request.urlopen(url, timeout=2) as resp:  # noqa: S310
+                if resp.status == 200:
+                    return
+        time.sleep(1)
+    raise RuntimeError(f"timeout waiting for {url}")
+
+
+def _wait_services() -> None:
+    print("[1/4] Waiting for docker-compose services…")
+    _wait_tcp("localhost", int(os.environ["POSTGRES_PORT"]))
+    print("      postgis  OK")
+    _wait_tcp("localhost", int(os.environ["REDIS_PORT"]))
+    print("      redis    OK")
+    _wait_http_health(
+        os.environ["LLM_BASE_URL"].rstrip("/").rsplit("/v1", 1)[0] + "/health",
+    )
+    print("      llm-shim OK")
+
+
+# ---------------------------------------------------------------------------
+# DDL — PostGIS extension + all tables + GIST indexes
+# ---------------------------------------------------------------------------
+
+_DDL = """\
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE TABLE IF NOT EXISTS sar_tiles (
+    tile_id       TEXT PRIMARY KEY,
+    scene_id      TEXT NOT NULL,
+    file_path     TEXT NOT NULL,
+    acquired_at   TIMESTAMPTZ NOT NULL,
+    bounds        GEOMETRY(POLYGON, 4326) NOT NULL,
+    patch_count   INTEGER DEFAULT 0,
+    ingested_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_sar_tiles_bounds ON sar_tiles USING GIST(bounds);
+
+CREATE TABLE IF NOT EXISTS ais_positions (
+    id            BIGSERIAL PRIMARY KEY,
+    mmsi          TEXT NOT NULL,
+    lat           DOUBLE PRECISION NOT NULL,
+    lon           DOUBLE PRECISION NOT NULL,
+    speed_kn      DOUBLE PRECISION,
+    heading       DOUBLE PRECISION,
+    ts            TIMESTAMPTZ NOT NULL,
+    ship_name     TEXT,
+    flag_state    TEXT,
+    vessel_type   TEXT,
+    geom          GEOMETRY(POINT, 4326) GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint(lon, lat), 4326)) STORED
+);
+CREATE INDEX IF NOT EXISTS idx_ais_positions_geom ON ais_positions USING GIST(geom);
+CREATE INDEX IF NOT EXISTS idx_ais_positions_ts ON ais_positions(ts);
+
+CREATE TABLE IF NOT EXISTS eez_boundaries (
+    gid           SERIAL PRIMARY KEY,
+    mrgid         INTEGER,
+    geoname       TEXT NOT NULL,
+    sovereign     TEXT,
+    geom          GEOMETRY(MULTIPOLYGON, 4326) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_eez_geom ON eez_boundaries USING GIST(geom);
+
+CREATE TABLE IF NOT EXISTS ports (
+    id            SERIAL PRIMARY KEY,
+    port_name     TEXT NOT NULL,
+    country       TEXT,
+    lat           DOUBLE PRECISION NOT NULL,
+    lon           DOUBLE PRECISION NOT NULL,
+    geom          GEOMETRY(POINT, 4326) GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint(lon, lat), 4326)) STORED
+);
+CREATE INDEX IF NOT EXISTS idx_ports_geom ON ports USING GIST(geom);
+
+CREATE TABLE IF NOT EXISTS coastlines (
+    gid           SERIAL PRIMARY KEY,
+    geom          GEOMETRY(MULTIPOLYGON, 4326) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_coastlines_geom ON coastlines USING GIST(geom);
+
+CREATE TABLE IF NOT EXISTS detections (
+    detection_id  TEXT PRIMARY KEY,
+    run_id        TEXT NOT NULL,
+    tile_id       TEXT NOT NULL,
+    geo_lat       DOUBLE PRECISION NOT NULL,
+    geo_lon       DOUBLE PRECISION NOT NULL,
+    confidence    DOUBLE PRECISION NOT NULL,
+    dark_vessel   BOOLEAN DEFAULT FALSE,
+    ais_mmsi      TEXT,
+    risk_score    INTEGER DEFAULT 0,
+    risk_level    TEXT DEFAULT 'low',
+    analyst_decision TEXT,
+    created_at    TIMESTAMPTZ DEFAULT NOW(),
+    geom          GEOMETRY(POINT, 4326) GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint(geo_lon, geo_lat), 4326)) STORED
+);
+CREATE INDEX IF NOT EXISTS idx_detections_geom ON detections USING GIST(geom);
+
+CREATE TABLE IF NOT EXISTS corrections (
+    id            SERIAL PRIMARY KEY,
+    detection_id  TEXT REFERENCES detections(detection_id),
+    run_id        TEXT NOT NULL,
+    decision      TEXT NOT NULL,
+    override_risk TEXT,
+    corrected_at  TIMESTAMPTZ DEFAULT NOW(),
+    consumed      BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS run_metrics (
+    id                SERIAL PRIMARY KEY,
+    run_id            TEXT NOT NULL,
+    tiles_processed   INTEGER DEFAULT 0,
+    total_detections  INTEGER DEFAULT 0,
+    dark_vessels      INTEGER DEFAULT 0,
+    ais_matched       INTEGER DEFAULT 0,
+    false_positives   INTEGER DEFAULT 0,
+    processing_secs   DOUBLE PRECISION DEFAULT 0,
+    model_version     TEXT,
+    created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS model_metrics (
+    id                SERIAL PRIMARY KEY,
+    version           TEXT NOT NULL,
+    map50             DOUBLE PRECISION,
+    map50_95          DOUBLE PRECISION,
+    precision_val     DOUBLE PRECISION,
+    recall_val        DOUBLE PRECISION,
+    training_samples  INTEGER,
+    holdout_samples   INTEGER,
+    promoted          BOOLEAN DEFAULT FALSE,
+    trained_at        TIMESTAMPTZ DEFAULT NOW()
+);
+"""
+
+
+def _provision_postgis() -> None:
+    print("[2/4] Provisioning PostGIS schemas…")
+    import psycopg
+
+    with psycopg.connect(os.environ["POSTGRES_DSN"]) as conn, conn.cursor() as cur:
+        cur.execute(_DDL)
+
+
+# ---------------------------------------------------------------------------
+# Seed AIS fixture data
+# ---------------------------------------------------------------------------
+
+
+def _seed_ais_positions() -> None:
+    print("[3/4] Seeding AIS fixture positions…")
+    import psycopg
+
+    fixture_path = _DEMO_DIR / "fixtures" / "ais_positions.json"
+    positions = json.loads(fixture_path.read_text(encoding="utf-8"))
+
+    with psycopg.connect(os.environ["POSTGRES_DSN"]) as conn, conn.cursor() as cur:
+        for pos in positions:
+            cur.execute(
+                """
+                INSERT INTO ais_positions (mmsi, lat, lon, speed_kn, heading, ts,
+                                           ship_name, flag_state, vessel_type)
+                VALUES (%(mmsi)s, %(lat)s, %(lon)s, %(speed_kn)s, %(heading)s,
+                        %(ts)s, %(ship_name)s, %(flag_state)s, %(vessel_type)s)
+                ON CONFLICT DO NOTHING
+                """,
+                pos,
+            )
+    print(f"      seeded {len(positions)} AIS positions")
+
+
+# ---------------------------------------------------------------------------
+# Seed geo fixtures — EEZ, ports, coastline
+# ---------------------------------------------------------------------------
+
+# Simplified EEZ polygons (Strait of Hormuz area)
+_EEZ_FIXTURES = [
+    {
+        "mrgid": 8377,
+        "geoname": "Iranian Exclusive Economic Zone",
+        "sovereign": "Iran",
+        "wkt": (
+            "MULTIPOLYGON((("
+            "54.0 25.5, 54.0 27.5, 57.0 27.5, 57.0 26.5, "
+            "56.5 26.0, 56.0 25.5, 54.0 25.5"
+            ")))"
+        ),
+    },
+    {
+        "mrgid": 8382,
+        "geoname": "Omani Exclusive Economic Zone",
+        "sovereign": "Oman",
+        "wkt": (
+            "MULTIPOLYGON((("
+            "56.0 24.0, 56.0 26.0, 57.5 26.0, 58.0 25.0, "
+            "57.5 24.0, 56.0 24.0"
+            ")))"
+        ),
+    },
+    {
+        "mrgid": 8371,
+        "geoname": "UAE Exclusive Economic Zone",
+        "sovereign": "United Arab Emirates",
+        "wkt": (
+            "MULTIPOLYGON((("
+            "54.0 24.0, 54.0 25.5, 56.0 25.5, 56.0 24.5, "
+            "55.5 24.0, 54.0 24.0"
+            ")))"
+        ),
+    },
+]
+
+# Ports near Strait of Hormuz AOI
+_PORT_FIXTURES = [
+    {"port_name": "Bandar Abbas", "country": "Iran", "lat": 27.1832, "lon": 56.2666},
+    {"port_name": "Fujairah", "country": "UAE", "lat": 25.1288, "lon": 56.3264},
+    {"port_name": "Muscat", "country": "Oman", "lat": 23.6100, "lon": 58.5400},
+    {"port_name": "Khasab", "country": "Oman", "lat": 26.1800, "lon": 56.2500},
+    {"port_name": "Jask", "country": "Iran", "lat": 25.6400, "lon": 57.7700},
+    {"port_name": "Sohar", "country": "Oman", "lat": 24.3600, "lon": 56.7300},
+    {"port_name": "Ras Al Khaimah", "country": "UAE", "lat": 25.7953, "lon": 55.9432},
+    {"port_name": "Chabahar", "country": "Iran", "lat": 25.2919, "lon": 60.6430},
+]
+
+# Simplified coastline polygon covering Iranian / Omani coast near Strait
+_COASTLINE_WKT = (
+    "MULTIPOLYGON((("
+    "54.0 25.4, 54.5 25.6, 55.0 25.8, 55.5 26.0, "
+    "56.0 26.2, 56.3 26.5, 56.5 26.8, 57.0 27.0, "
+    "57.5 26.5, 57.0 26.0, 56.5 25.5, 56.0 25.0, "
+    "55.5 24.5, 55.0 24.3, 54.5 24.5, 54.0 25.0, "
+    "54.0 25.4"
+    ")))"
+)
+
+
+def _seed_geo_fixtures() -> None:
+    print("[4/4] Seeding EEZ, port, and coastline fixtures…")
+    import psycopg
+
+    with psycopg.connect(os.environ["POSTGRES_DSN"]) as conn, conn.cursor() as cur:
+        # EEZ boundaries
+        for eez in _EEZ_FIXTURES:
+            cur.execute(
+                """
+                INSERT INTO eez_boundaries (mrgid, geoname, sovereign, geom)
+                VALUES (%(mrgid)s, %(geoname)s, %(sovereign)s,
+                        ST_GeomFromText(%(wkt)s, 4326))
+                ON CONFLICT DO NOTHING
+                """,
+                eez,
+            )
+        print(f"      seeded {len(_EEZ_FIXTURES)} EEZ boundaries")
+
+        # Ports
+        for port in _PORT_FIXTURES:
+            cur.execute(
+                """
+                INSERT INTO ports (port_name, country, lat, lon)
+                VALUES (%(port_name)s, %(country)s, %(lat)s, %(lon)s)
+                ON CONFLICT DO NOTHING
+                """,
+                port,
+            )
+        print(f"      seeded {len(_PORT_FIXTURES)} ports")
+
+        # Coastline
+        cur.execute(
+            """
+            INSERT INTO coastlines (gid, geom)
+            VALUES (1, ST_GeomFromText(%s, 4326))
+            ON CONFLICT DO NOTHING
+            """,
+            (_COASTLINE_WKT,),
+        )
+        print("      seeded 1 coastline polygon")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+
+def main() -> int:
+    print(f"sentinel_dark_watch bootstrap  ({_DEMO_DIR})")
+    _wait_services()
+    _provision_postgis()
+    _seed_ais_positions()
+    _seed_geo_fixtures()
+    print("Bootstrap complete. Next: run `python -m demos.sentinel_dark_watch.serve_sdw`.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
