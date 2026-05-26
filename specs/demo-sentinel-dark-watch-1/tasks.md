@@ -328,7 +328,7 @@ total_tasks: 83
   - **Commit**: `feat(sdw): RetrainCollectNode corrections collector`
   - _Requirements: FR-10, AC-9.1_
 
-- [ ] 1.32 [P] Implement RetrainTrainNode
+- [x] 1.32 [P] Implement RetrainTrainNode
   - **Do**:
     1. Add `RetrainTrainNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Shell out to `scripts/train_detector.py` with merged data. Capture new model path + mAP. Register in ModelRegistry.

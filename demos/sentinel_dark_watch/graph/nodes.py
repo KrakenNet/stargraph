@@ -1514,3 +1514,105 @@ class RetrainCollectNode(NodeBase):
             "corrections_count": count,
             "merged_training_samples": original_samples + count,
         }
+
+
+# ---------------------------------------------------------------------------
+# Retrain Sub-Graph — Train Model
+# ---------------------------------------------------------------------------
+
+
+class RetrainTrainNode(NodeBase):
+    """Shell out to ``scripts/train_detector.py`` to fine-tune the YOLO model.
+
+    Captures the new model path and mAP from stdout, then registers the
+    new version in :class:`harbor.ml.registry.ModelRegistry`.
+
+    If the train script is unavailable or fails, placeholder metrics are
+    set so the rest of the retrain sub-graph can still evaluate
+    champion vs. challenger.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        import json
+        import subprocess
+
+        merged_samples: int = getattr(state, "merged_training_samples", 0)
+
+        # Locate train script relative to this module
+        script = Path(__file__).resolve().parent.parent / "scripts" / "train_detector.py"
+
+        if not script.exists():
+            log.warning(
+                "train_detector.py not found at %s — using placeholder metrics",
+                script,
+            )
+            return {
+                "challenger_version": "placeholder-v0",
+                "challenger_map50": 0.0,
+            }
+
+        # Shell out to training script
+        cmd = [
+            "python",
+            str(script),
+            "--data",
+            "merged",
+            "--epochs",
+            "5",  # POC: minimal epochs
+        ]
+
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+        except Exception as exc:
+            log.warning("train_detector.py execution failed: %s — using placeholder", exc)
+            return {
+                "challenger_version": "placeholder-v0",
+                "challenger_map50": 0.0,
+            }
+
+        # Parse output — expect JSON line with model_path and map50
+        model_path = ""
+        map50 = 0.0
+        version = ""
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    data = json.loads(line)
+                    model_path = data.get("model_path", model_path)
+                    map50 = float(data.get("map50", map50))
+                    version = data.get("version", version)
+                except json.JSONDecodeError:
+                    continue
+
+        if not version:
+            version = f"retrain-{merged_samples}"
+
+        # Register in ModelRegistry
+        try:
+            from harbor.ml.registry import ModelRegistry
+
+            registry = ModelRegistry()
+            await registry.register(
+                model_id="sdw-detector",
+                version=version,
+                file_uri=model_path,
+            )
+            log.info("Registered challenger model %s (mAP=%.3f)", version, map50)
+        except Exception:
+            log.warning("ModelRegistry unavailable — challenger registered in state only")
+
+        return {
+            "challenger_version": version,
+            "challenger_map50": map50,
+        }
