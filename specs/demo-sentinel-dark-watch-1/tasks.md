@@ -574,13 +574,13 @@ total_tasks: 83
   - **Commit**: `refactor(sdw): add error handling to all node execute() methods`
   - _Design: Error Handling table_
 
-- [ ] 2.3 [VERIFY] Quality checkpoint: refactoring
+- [x] 2.3 [VERIFY] Quality checkpoint: refactoring
   - **Do**: Verify module imports after refactoring
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.db import get_pg_dsn; from demos.sentinel_dark_watch.graph.nodes import SARIngestNode, YOLOInferenceNode, AISCorrelationNode, GeoContextNode, RiskScoringNode; print('OK')"`
   - **Done when**: All imports succeed
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 2.4 Make scoring weights and thresholds configurable via env vars
+- [x] 2.4 Make scoring weights and thresholds configurable via env vars
   - **Do**:
     1. In `bootstrap.py` or a new `config.py`: read `RISK_WEIGHT_DARK_VESSEL`, `RISK_WEIGHT_SENSITIVE_EEZ`, etc. from env
     2. Pass through to initial state when creating runs
@@ -592,7 +592,7 @@ total_tasks: 83
   - **Commit**: `refactor(sdw): configurable scoring weights and thresholds via env`
   - _Requirements: AC-6.4_
 
-- [ ] 2.5 Clean up bootstrap.py — extract DDL into separate SQL file
+- [x] 2.5 Clean up bootstrap.py — extract DDL into separate SQL file
   - **Do**:
     1. Create `demos/sentinel_dark_watch/schema.sql` with all DDL from bootstrap
     2. Refactor `bootstrap.py` to read and execute SQL file
@@ -603,7 +603,7 @@ total_tasks: 83
   - **Commit**: `refactor(sdw): extract DDL into schema.sql`
   - _Design: Database Schema_
 
-- [ ] 2.6 Extract DSPy signatures into dedicated module
+- [x] 2.6 Extract DSPy signatures into dedicated module
   - **Do**:
     1. Create `demos/sentinel_dark_watch/graph/signatures.py` with `GeoContextSignature` and `ReportingSignature` classes
     2. Refactor `GeoContextNode` and `ReportingNode` to import from signatures module
@@ -614,7 +614,7 @@ total_tasks: 83
   - **Commit**: `refactor(sdw): extract DSPy signatures into dedicated module`
   - _Design: GeoContextNode, ReportingNode_
 
-- [ ] 2.7 Consolidate PostGIS query patterns across nodes
+- [x] 2.7 Consolidate PostGIS query patterns across nodes
   - **Do**:
     1. Create `demos/sentinel_dark_watch/geo.py` with shared spatial query helpers: `point_in_eez()`, `nearest_port()`, `point_on_land()`, `predicted_ais_position()`
     2. Refactor `LandMaskFilterNode`, `AISCorrelationNode`, `GeoContextNode` to use shared helpers
@@ -624,7 +624,7 @@ total_tasks: 83
   - **Commit**: `refactor(sdw): consolidate PostGIS queries into geo.py`
   - _Design: LandMaskFilterNode, AISCorrelationNode, GeoContextNode_
 
-- [ ] 2.8 Add JSONL audit log writing to serve_sdw.py
+- [x] 2.8 Add JSONL audit log writing to serve_sdw.py
   - **Do**:
     1. Wire audit event handler in `serve_sdw.py` that writes per-run JSONL files to `data/audit/`
     2. Each line: `{"ts": ..., "run_id": ..., "node_id": ..., "event": ..., "duration_ms": ...}`
@@ -636,7 +636,7 @@ total_tasks: 83
   - _Requirements: AC-11.3_
   - _Design: Pipeline Observability_
 
-- [ ] 2.9 Add performance timing to pipeline for AC-1.3 tracking
+- [x] 2.9 Add performance timing to pipeline for AC-1.3 tracking
   - **Do**:
     1. Add `perf_marks` dict to `SdwState` tracking per-node wall-clock time
     2. Emit timing in MetricsCollectorNode → `run_metrics.processing_secs`
