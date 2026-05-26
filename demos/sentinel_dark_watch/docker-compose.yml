@@ -1,0 +1,51 @@
+name: sdw-demo
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: sdw-postgis
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-harbor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harbor}
+      POSTGRES_DB: ${POSTGRES_DB:-sdw}
+    ports:
+      - "${POSTGRES_PORT:-5441}:5432"
+    volumes:
+      - postgis-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: sdw-redis
+    ports:
+      - "${REDIS_PORT:-6391}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  llm-shim:
+    build:
+      context: ./mocks/llm-shim
+      dockerfile: Dockerfile
+    container_name: sdw-llm
+    ports:
+      - "${LLM_PORT:-41001}:41001"
+    environment:
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-sdw-shim}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:41001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgis-data:
+  redis-data:

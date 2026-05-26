@@ -33,7 +33,7 @@ total_tasks: 83
   - **Commit**: `feat(sdw): add .env.example with all config vars`
   - _Requirements: AC-1.2_
 
-- [ ] 1.3 Create `docker-compose.yml` (PostGIS + Redis + llm-shim)
+- [x] 1.3 Create `docker-compose.yml` (PostGIS + Redis + llm-shim)
   - **Do**:
     1. Create `demos/sentinel_dark_watch/docker-compose.yml` with three services: postgis (postgis/postgis:16-3.4 on port 5441), redis (redis:7-alpine on port 6391), llm-shim (custom build from `./mocks/llm-shim` on port 41001)
     2. Include healthchecks for all services per design spec
