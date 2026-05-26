@@ -452,3 +452,71 @@ class NMSDeduplicationNode(NodeBase):
             "detection_count": len(keep),
             "pipeline_phase": "nms",
         }
+
+
+# ---------------------------------------------------------------------------
+# Land-Mask Filter
+# ---------------------------------------------------------------------------
+
+
+class LandMaskFilterNode(NodeBase):
+    """Filter out detections whose centroid falls on land.
+
+    Queries PostGIS ``coastlines`` table with ``ST_Contains``.  If PostGIS
+    is unreachable the filter is skipped (all detections kept) with a
+    warning — we never discard valid detections due to infra failure.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        if not detections:
+            return {"detections": [], "detection_count": 0, "pipeline_phase": "land_filter"}
+
+        try:
+            import asyncpg
+
+            dsn = os.environ.get(
+                "POSTGRES_DSN",
+                "postgresql://harbor:harbor@localhost:5441/sdw",
+            )
+            conn = await asyncpg.connect(dsn)
+        except Exception:
+            log.warning("PostGIS unavailable — skipping land-mask filter")
+            return {"pipeline_phase": "land_filter"}
+
+        try:
+            water_detections: list[Any] = []
+            for det in detections:
+                try:
+                    on_land = await conn.fetchval(
+                        "SELECT EXISTS("
+                        "  SELECT 1 FROM coastlines"
+                        "  WHERE ST_Contains("
+                        "    geom,"
+                        "    ST_SetSRID(ST_MakePoint($1, $2), 4326)"
+                        "  )"
+                        ")",
+                        det.geo_lon,
+                        det.geo_lat,
+                    )
+                    if not on_land:
+                        water_detections.append(det)
+                except Exception:
+                    # On per-detection query failure, keep the detection
+                    log.warning(
+                        "Land-mask query failed for detection %s — keeping",
+                        det.detection_id,
+                    )
+                    water_detections.append(det)
+        finally:
+            await conn.close()
+
+        return {
+            "detections": water_detections,
+            "detection_count": len(water_detections),
+            "pipeline_phase": "land_filter",
+        }

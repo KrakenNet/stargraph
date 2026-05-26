@@ -197,7 +197,7 @@ total_tasks: 83
   - _Requirements: FR-18, AC-3.4_
   - _Design: NMSDeduplicationNode_
 
-- [ ] 1.19 Implement LandMaskFilterNode
+- [x] 1.19 Implement LandMaskFilterNode
   - **Do**:
     1. Add `LandMaskFilterNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: For each detection centroid, query PostGIS `coastlines` table with `ST_Contains`. Remove detections on land. Update `detection_count`. If PostGIS fails, log warning and skip filter.
