@@ -15,8 +15,10 @@ from demos.sentinel_dark_watch.graph.state import (
 )
 from demos.sentinel_dark_watch.graph.nodes import (
     AISCorrelationNode,
+    LandMaskFilterNode,
     NMSDeduplicationNode,
     RiskScoringNode,
+    SARIngestNode,
 )
 
 
@@ -311,3 +313,149 @@ async def test_ais_broker_failure_conservative() -> None:
     assert len(matched) == 1
     assert matched[0].dark_vessel is True
     assert "last_error" in result
+
+
+# ---------------------------------------------------------------------------
+# SARIngestNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_ingest_valid_tile() -> None:
+    """Mock DB with tile metadata → populates current_tile."""
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    tile_row = _FakeRecord({
+        "scene_id": "S1A_IW_20240115",
+        "file_path": __file__,  # use this test file as a real existing path
+        "acquired_at": "2024-01-15T01:45:00Z",
+        "bounds_wkt": "POLYGON((56 26,57 26,57 27,56 27,56 26))",
+    })
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow = AsyncMock(return_value=tile_row)
+
+    state = SdwState(tile_queue=["tile-001"])
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = SARIngestNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert result["current_tile_id"] == "tile-001"
+    assert result["current_tile"].tile_id == "tile-001"
+    assert result["current_tile"].scene_id == "S1A_IW_20240115"
+    assert result["pipeline_phase"] == "ingest"
+
+
+async def test_ingest_missing_tile() -> None:
+    """Empty tile queue → handles gracefully."""
+    state = SdwState(tile_queue=[])
+
+    node = SARIngestNode()
+    result = await node.execute(state, _MockCtx())
+
+    assert result.get("last_error") == "tile_queue empty"
+    assert result["pipeline_phase"] == "ingest"
+
+
+async def test_ingest_failure_threshold() -> None:
+    """tiles_failed >= failure_threshold → last_error set."""
+    # Tile exists in DB but file_path does not exist on disk
+    tile_row = _FakeRecord({
+        "scene_id": "S1A_IW_20240115",
+        "file_path": "/nonexistent/tile.tif",
+        "acquired_at": "2024-01-15T01:45:00Z",
+        "bounds_wkt": None,
+    })
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow = AsyncMock(return_value=tile_row)
+
+    state = SdwState(
+        tile_queue=["tile-bad"],
+        tiles_failed=4,
+        failure_threshold=5,
+    )
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = SARIngestNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert result["tiles_failed"] == 5
+    assert "failure_threshold reached" in result.get("last_error", "")
+
+
+# ---------------------------------------------------------------------------
+# LandMaskFilterNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_landmask_detection_on_land() -> None:
+    """Mock PostGIS returning True for ST_Contains → detection removed."""
+    det = Detection(
+        detection_id="land-det-1",
+        geo_lat=26.10,
+        geo_lon=56.00,
+        confidence=0.60,
+    )
+    state = SdwState(detections=[det])
+
+    mock_conn = AsyncMock()
+
+    with (
+        patch("asyncpg.connect", AsyncMock(return_value=mock_conn)),
+        patch(
+            "demos.sentinel_dark_watch.geo.point_on_land",
+            AsyncMock(return_value=True),
+        ),
+    ):
+        node = LandMaskFilterNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert result["detections"] == []
+    assert result["detection_count"] == 0
+
+
+async def test_landmask_detection_at_sea() -> None:
+    """Mock PostGIS returning False → detection preserved."""
+    det = Detection(
+        detection_id="sea-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+    )
+    state = SdwState(detections=[det])
+
+    mock_conn = AsyncMock()
+
+    with (
+        patch("asyncpg.connect", AsyncMock(return_value=mock_conn)),
+        patch(
+            "demos.sentinel_dark_watch.geo.point_on_land",
+            AsyncMock(return_value=False),
+        ),
+    ):
+        node = LandMaskFilterNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert len(result["detections"]) == 1
+    assert result["detections"][0].detection_id == "sea-det-1"
+    assert result["detection_count"] == 1
+
+
+async def test_landmask_db_failure_skip() -> None:
+    """Mock DB exception → all detections preserved (skip filter)."""
+    det = Detection(
+        detection_id="skip-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+    )
+    state = SdwState(detections=[det])
+
+    with patch("asyncpg.connect", AsyncMock(side_effect=ConnectionError("DB down"))):
+        node = LandMaskFilterNode()
+        result = await node.execute(state, _MockCtx())
+
+    # On DB failure, filter is skipped — detections NOT removed from state
+    assert "last_error" in result
+    assert result["pipeline_phase"] == "land_filter"

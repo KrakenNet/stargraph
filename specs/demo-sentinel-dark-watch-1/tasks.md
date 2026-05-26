@@ -700,7 +700,7 @@ total_tasks: 83
   - **Commit**: `test(sdw): unit tests for AISCorrelationNode`
   - _Requirements: FR-5, AC-4.3, AC-4.4_
 
-- [ ] 3.6 Unit tests for SARIngestNode + LandMaskFilterNode
+- [x] 3.6 Unit tests for SARIngestNode + LandMaskFilterNode
   - **Do**:
     1. SARIngestNode tests: valid tile → populates current_tile; missing tile → increment tiles_failed; failure_threshold breach → last_error set
     2. LandMaskFilterNode tests: detection on land → removed; detection at sea → preserved; PostGIS failure → skip filter
