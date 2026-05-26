@@ -647,7 +647,7 @@ total_tasks: 83
   - **Commit**: `feat(sdw): pipeline performance timing for AC-1.3`
   - _Requirements: AC-1.3, NFR-1_
 
-- [ ] 2.10 [VERIFY] Quality checkpoint: post-refactoring full import
+- [x] 2.10 [VERIFY] Quality checkpoint: post-refactoring full import
   - **Do**: Verify full module after all refactoring
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.state import SdwState; from demos.sentinel_dark_watch.graph.nodes import SARIngestNode, RiskScoringNode; from demos.sentinel_dark_watch.graph.signatures import GeoContextSignature; from demos.sentinel_dark_watch.geo import point_in_eez; from demos.sentinel_dark_watch import bootstrap, serve_sdw, capabilities, ais_ingest; print('REFACTOR OK')"`
   - **Done when**: All modules import cleanly
@@ -655,7 +655,7 @@ total_tasks: 83
 
 ## Phase 3: Testing
 
-- [ ] 3.1 Create test conftest with fixtures
+- [x] 3.1 Create test conftest with fixtures
   - **Do**:
     1. Create `demos/sentinel_dark_watch/tests/__init__.py`
     2. Create `demos/sentinel_dark_watch/tests/conftest.py` with fixtures: `sample_state()` (SdwState with realistic defaults), `sample_detections()` (list of 5 Detection objects — mix of dark/matched/land), `sample_tile_metadata()`, `mock_pg_pool()` (asyncpg pool mock), `mock_onnx_session()`
@@ -665,7 +665,7 @@ total_tasks: 83
   - **Commit**: `test(sdw): conftest with sample state, detection, and mock fixtures`
   - _Design: Test Strategy_
 
-- [ ] 3.2 Unit tests for RiskScoringNode
+- [x] 3.2 Unit tests for RiskScoringNode
   - **Do**:
     1. Create `demos/sentinel_dark_watch/tests/test_nodes.py`
     2. Tests: dark vessel in sensitive EEZ → Critical (80+); AIS-matched near port → Low (<40); configurable weights change score; empty detections → pass-through; low-conf threshold sets `has_low_confidence_detections`
@@ -676,7 +676,7 @@ total_tasks: 83
   - _Requirements: AC-6.1, AC-6.2, AC-6.4_
   - _Design: Test Strategy (Unit Tests)_
 
-- [ ] 3.3 Unit tests for NMSDeduplicationNode
+- [x] 3.3 Unit tests for NMSDeduplicationNode
   - **Do**:
     1. Add tests to `test_nodes.py`: two overlapping detections (IoU > 0.5) → one output; non-overlapping → both preserved; empty list → empty list
   - **Files**: demos/sentinel_dark_watch/tests/test_nodes.py
