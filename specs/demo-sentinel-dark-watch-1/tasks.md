@@ -720,13 +720,13 @@ total_tasks: 83
   - **Commit**: `test(sdw): unit tests for GeoContextNode + ReportingNode`
   - _Requirements: FR-6, FR-8, AC-5.4, AC-7.1_
 
-- [ ] 3.8 [VERIFY] Quality checkpoint: all unit tests
+- [x] 3.8 [VERIFY] Quality checkpoint: all unit tests
   - **Do**: Run full test suite
   - **Verify**: `uv run --no-project pytest demos/sentinel_dark_watch/tests/ -v --tb=short`
   - **Done when**: All tests pass
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 3.9 Integration test for full pipeline (mock mode)
+- [x] 3.9 Integration test for full pipeline (mock mode)
   - **Do**:
     1. Create `demos/sentinel_dark_watch/tests/test_pipeline.py`
     2. Test: load SdwState with fixture tile queue, mock all external deps (Postgres, ONNX, DSPy), run nodes in sequence, verify: detections produced, AIS correlation attempted, risk scores assigned, metrics collected
