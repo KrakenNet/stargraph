@@ -167,7 +167,7 @@ total_tasks: 83
   - _Requirements: FR-3, AC-2.4, AC-2.5_
   - _Design: SARIngestNode_
 
-- [ ] 1.16 Implement YOLOInferenceNode
+- [x] 1.16 Implement YOLOInferenceNode
   - **Do**:
     1. Add `YOLOInferenceNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Load GeoTIFF via rasterio, tile into 640x640 patches, acquire ONNX session from ModelRegistry (`sdw-detector`/`production`), run inference per patch via `asyncio.to_thread`, decode OBB outputs, transform pixel coords to geo-coords via affine, build Detection objects
