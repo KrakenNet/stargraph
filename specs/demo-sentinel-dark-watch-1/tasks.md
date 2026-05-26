@@ -486,7 +486,7 @@ total_tasks: 83
   - _Requirements: AC-10.1, AC-10.2, AC-10.4, AC-11.1, AC-11.2, AC-11.3, AC-11.4_
   - _Design: Streamlit UI Design (Tabs 3-4)_
 
-- [ ] 1.47 [VERIFY] Quality checkpoint: UI syntax + full module imports
+- [x] 1.47 [VERIFY] Quality checkpoint: UI syntax + full module imports
   - **Do**: Verify all demo modules import and UI syntax is valid
   - **Verify**: `uv run --no-project python -c "import ast; ast.parse(open('demos/sentinel_dark_watch/ui/app.py').read()); from demos.sentinel_dark_watch.graph.nodes import PassthroughNode; from demos.sentinel_dark_watch.graph.state import SdwState; print('OK')"`
   - **Done when**: All checks pass
@@ -494,7 +494,7 @@ total_tasks: 83
 
 ### Justfile + pyproject.toml + .gitignore
 
-- [ ] 1.48 [P] Create `Justfile`
+- [x] 1.48 [P] Create `Justfile`
   - **Do**:
     1. Create `demos/sentinel_dark_watch/Justfile` with all commands from design: `demo`, `demo-offline`, `teardown`, `prepare-data`, `train`, `retrain`, `bootstrap`, `serve`, `ui`, `test`
     2. Set `set dotenv-load` at top
@@ -505,7 +505,7 @@ total_tasks: 83
   - _Requirements: AC-1.1, AC-1.4, AC-1.5, AC-9.4_
   - _Design: Justfile_
 
-- [ ] 1.49 [P] Add `[sdw]` extra to monorepo `pyproject.toml`
+- [x] 1.49 [P] Add `[sdw]` extra to monorepo `pyproject.toml`
   - **Do**:
     1. Add `sdw` optional dependency group to `/home/sean/leagues/harbor/pyproject.toml` under `[project.optional-dependencies]`
     2. Include: ultralytics>=8.3, torch>=2.0, torchvision>=0.15, rasterio>=1.3, geopandas>=0.14, shapely>=2.0, streamlit>=1.30, streamlit-folium>=0.20, folium>=0.15, websockets>=12.0, Pillow>=10.0, asyncpg>=0.29, plotly>=5.18
@@ -517,7 +517,7 @@ total_tasks: 83
   - _Requirements: NFR-1_
   - _Design: Dependencies_
 
-- [ ] 1.50 Update `.gitignore` for SDW
+- [x] 1.50 Update `.gitignore` for SDW
   - **Do**:
     1. Add entries to root `.gitignore`: `demos/sentinel_dark_watch/.env`, `demos/sentinel_dark_watch/data/`, `demos/sentinel_dark_watch/data/**`, `!demos/sentinel_dark_watch/data/.gitkeep`
   - **Files**: .gitignore
