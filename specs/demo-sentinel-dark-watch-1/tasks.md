@@ -380,13 +380,13 @@ total_tasks: 83
   - _Requirements: FR-4, AC-4.1, AC-4.2_
   - _Design: AIS Ingest Daemon_
 
-- [ ] 1.37 [VERIFY] Quality checkpoint: nautilus + ais_ingest
+- [x] 1.37 [VERIFY] Quality checkpoint: nautilus + ais_ingest
   - **Do**: Verify nautilus config and ais_ingest import
   - **Verify**: `uv run --no-project python -c "import yaml; yaml.safe_load(open('demos/sentinel_dark_watch/nautilus.yaml')); from demos.sentinel_dark_watch import ais_ingest; print('OK')"`
   - **Done when**: Both pass
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 1.38 Create `capabilities.py`
+- [x] 1.38 Create `capabilities.py`
   - **Do**:
     1. Create `demos/sentinel_dark_watch/capabilities.py` with `build_sdw_capabilities()` function
     2. Follow CVE-rem pattern: enumerate tool permissions (nautilus.broker_request), build `Capabilities(default_deny=True)` with granted set
@@ -397,7 +397,7 @@ total_tasks: 83
   - _Requirements: FR-14_
   - _Design: capabilities.py_
 
-- [ ] 1.39 Create `serve_sdw.py`
+- [x] 1.39 Create `serve_sdw.py`
   - **Do**:
     1. Create `demos/sentinel_dark_watch/serve_sdw.py` — harbor serve wrapper per CVE-rem pattern
     2. Argparse: `--host`, `--port` (default 9001), `--graph` (repeatable, default harbor.yaml + retrain.yaml)
