@@ -179,13 +179,13 @@ total_tasks: 83
   - _Requirements: FR-3, AC-3.3_
   - _Design: YOLOInferenceNode_
 
-- [ ] 1.17 [VERIFY] Quality checkpoint: ingest + inference nodes
+- [x] 1.17 [VERIFY] Quality checkpoint: ingest + inference nodes
   - **Do**: Verify all nodes so far import
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.nodes import PassthroughNode, SARIngestNode, YOLOInferenceNode; print('OK')"`
   - **Done when**: All imports succeed
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
-- [ ] 1.18 Implement NMSDeduplicationNode
+- [x] 1.18 Implement NMSDeduplicationNode
   - **Do**:
     1. Add `NMSDeduplicationNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Cross-tile NMS using rotated IoU on geo-coordinates. Configurable IoU threshold (default 0.5). Empty detections pass through unchanged.
