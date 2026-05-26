@@ -520,3 +520,189 @@ class LandMaskFilterNode(NodeBase):
             "detection_count": len(water_detections),
             "pipeline_phase": "land_filter",
         }
+
+
+# ---------------------------------------------------------------------------
+# AIS Correlation — predicted-position matching
+# ---------------------------------------------------------------------------
+
+
+def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in metres between two WGS-84 points."""
+    R = 6_371_000.0  # Earth radius in metres
+    rlat1, rlat2 = math.radians(lat1), math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+class AISCorrelationNode(NodeBase):
+    """Match SAR detections to AIS positions using predicted-position matching.
+
+    For each AIS report within the tile bounding box + time window, compute
+    predicted position at SAR acquisition time:
+        predicted_lat = lat + speed_kn * cos(heading_rad) * dt_hours / 60
+        predicted_lon = lon + speed_kn * sin(heading_rad) * dt_hours / 60
+
+    Match to nearest detection within ``ais_match_radius_m``.
+    Unmatched detections → ``dark_vessel=True``.
+    Matched detections → enriched with MMSI, name, flag_state, vessel_type.
+
+    If query fails → all detections marked ``dark_vessel=True`` (conservative).
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        detections: list[Any] = list(state.detections)  # type: ignore[attr-defined]
+        if not detections:
+            return {"detections": [], "pipeline_phase": "ais_correlation"}
+
+        tile = state.current_tile  # type: ignore[attr-defined]
+        time_window_min: int = state.ais_query_time_window_min  # type: ignore[attr-defined]
+        match_radius_m: int = state.ais_match_radius_m  # type: ignore[attr-defined]
+
+        # Compute bounding box from detections
+        lats = [d.geo_lat for d in detections]
+        lons = [d.geo_lon for d in detections]
+        margin = 0.1  # ~11km padding
+        min_lat, max_lat = min(lats) - margin, max(lats) + margin
+        min_lon, max_lon = min(lons) - margin, max(lons) + margin
+
+        # SAR acquisition timestamp
+        acq_ts = tile.timestamp if tile.timestamp else ""
+
+        try:
+            import asyncpg
+
+            dsn = os.environ.get(
+                "POSTGRES_DSN",
+                "postgresql://harbor:harbor@localhost:5441/sdw",
+            )
+            conn = await asyncpg.connect(dsn)
+        except Exception:
+            log.warning("PostGIS unavailable — marking all detections as dark vessels")
+            for det in detections:
+                det.dark_vessel = True
+            return {"detections": detections, "pipeline_phase": "ais_correlation"}
+
+        try:
+            # Query AIS positions in bounding box + time window
+            if acq_ts:
+                rows = await conn.fetch(
+                    "SELECT mmsi, ship_name, flag_state, vessel_type,"
+                    "       lat, lon, speed_kn, heading, timestamp"
+                    "  FROM ais_positions"
+                    " WHERE lat BETWEEN $1 AND $2"
+                    "   AND lon BETWEEN $3 AND $4"
+                    "   AND timestamp BETWEEN $5::timestamptz - ($6 || ' minutes')::interval"
+                    "                      AND $5::timestamptz + ($6 || ' minutes')::interval",
+                    min_lat,
+                    max_lat,
+                    min_lon,
+                    max_lon,
+                    acq_ts,
+                    str(time_window_min),
+                )
+            else:
+                # No acquisition time — get all AIS in bounding box
+                rows = await conn.fetch(
+                    "SELECT mmsi, ship_name, flag_state, vessel_type,"
+                    "       lat, lon, speed_kn, heading, timestamp"
+                    "  FROM ais_positions"
+                    " WHERE lat BETWEEN $1 AND $2"
+                    "   AND lon BETWEEN $3 AND $4",
+                    min_lat,
+                    max_lat,
+                    min_lon,
+                    max_lon,
+                )
+        except Exception:
+            log.warning("AIS query failed — marking all detections as dark vessels")
+            for det in detections:
+                det.dark_vessel = True
+            return {"detections": detections, "pipeline_phase": "ais_correlation"}
+        finally:
+            await conn.close()
+
+        # Compute predicted positions for each AIS report
+        ais_predicted: list[dict[str, Any]] = []
+        for row in rows:
+            speed_kn = float(row["speed_kn"]) if row["speed_kn"] else 0.0
+            heading_deg = float(row["heading"]) if row["heading"] else 0.0
+            heading_rad = math.radians(heading_deg)
+
+            # Time delta in hours
+            dt_hours = 0.0
+            if acq_ts and row["timestamp"]:
+                try:
+                    from datetime import datetime, timezone
+
+                    ais_time = row["timestamp"]
+                    if isinstance(ais_time, str):
+                        ais_time = datetime.fromisoformat(ais_time)
+                    if isinstance(acq_ts, str):
+                        acq_dt = datetime.fromisoformat(acq_ts)
+                    else:
+                        acq_dt = acq_ts
+                    # Ensure timezone-aware
+                    if ais_time.tzinfo is None:
+                        ais_time = ais_time.replace(tzinfo=timezone.utc)
+                    if acq_dt.tzinfo is None:
+                        acq_dt = acq_dt.replace(tzinfo=timezone.utc)
+                    dt_hours = (acq_dt - ais_time).total_seconds() / 3600.0
+                except Exception:
+                    dt_hours = 0.0
+
+            lat = float(row["lat"])
+            lon = float(row["lon"])
+            predicted_lat = lat + speed_kn * math.cos(heading_rad) * dt_hours / 60.0
+            predicted_lon = lon + speed_kn * math.sin(heading_rad) * dt_hours / 60.0
+
+            ais_predicted.append({
+                "mmsi": str(row["mmsi"]),
+                "ship_name": row["ship_name"] or "",
+                "flag_state": row["flag_state"] or "",
+                "vessel_type": row["vessel_type"] or "",
+                "predicted_lat": predicted_lat,
+                "predicted_lon": predicted_lon,
+            })
+
+        # Match detections to AIS by minimum distance within radius
+        matched_det_indices: set[int] = set()
+        matched_ais_indices: set[int] = set()
+
+        # Build distance matrix and greedily match closest pairs
+        pairs: list[tuple[float, int, int]] = []
+        for di, det in enumerate(detections):
+            for ai, ais in enumerate(ais_predicted):
+                dist = _haversine_m(
+                    det.geo_lat, det.geo_lon,
+                    ais["predicted_lat"], ais["predicted_lon"],
+                )
+                if dist <= match_radius_m:
+                    pairs.append((dist, di, ai))
+
+        pairs.sort(key=lambda x: x[0])
+        for dist, di, ai in pairs:
+            if di in matched_det_indices or ai in matched_ais_indices:
+                continue
+            matched_det_indices.add(di)
+            matched_ais_indices.add(ai)
+            det = detections[di]
+            ais = ais_predicted[ai]
+            det.dark_vessel = False
+            det.ais_mmsi = ais["mmsi"]
+            det.ais_vessel_name = ais["ship_name"]
+            det.ais_flag_state = ais["flag_state"]
+            det.ais_vessel_type = ais["vessel_type"]
+
+        # Unmatched detections → dark vessel
+        for di, det in enumerate(detections):
+            if di not in matched_det_indices:
+                det.dark_vessel = True
+
+        return {"detections": detections, "pipeline_phase": "ais_correlation"}

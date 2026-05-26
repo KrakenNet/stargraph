@@ -208,7 +208,7 @@ total_tasks: 83
   - _Requirements: FR-19, AC-3.5_
   - _Design: LandMaskFilterNode_
 
-- [ ] 1.20 Implement AISCorrelationNode
+- [x] 1.20 Implement AISCorrelationNode
   - **Do**:
     1. Add `AISCorrelationNode(NodeBase)` to `graph/nodes.py`
     2. `execute()`: Query `ais_positions` via Postgres (direct or BrokerNode). Predicted-position matching per AC-4.3: compute expected position from last AIS report. Apply spatial radius (`ais_match_radius_m`). Match detections. Unmatched → `dark_vessel=True`. Matched → enrich with MMSI, name, flag_state, vessel_type.
