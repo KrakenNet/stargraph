@@ -891,11 +891,38 @@ def _load_sensitive_eezs() -> set[str]:
     return set(_DEFAULT_SENSITIVE_EEZS)
 
 
+def _env_int(name: str, fallback: int) -> int:
+    """Read an integer from env, falling back to *fallback*."""
+    raw = os.environ.get(name, "")
+    if raw.strip():
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    return fallback
+
+
+def _env_float(name: str, fallback: float) -> float:
+    """Read a float from env, falling back to *fallback*."""
+    raw = os.environ.get(name, "")
+    if raw.strip():
+        try:
+            return float(raw)
+        except ValueError:
+            pass
+    return fallback
+
+
 class RiskScoringNode(NodeBase):
     """Apply configurable risk scoring formula to each detection.
 
     Scoring weights come from state fields (``risk_weight_*``),
-    allowing per-run or env-var overrides (AC-6.4).
+    with env-var overrides (AC-6.4): ``RISK_WEIGHT_DARK_VESSEL``,
+    ``RISK_WEIGHT_SENSITIVE_EEZ``, ``RISK_WEIGHT_FAR_FROM_PORT``,
+    ``RISK_WEIGHT_LARGE_VESSEL``, ``RISK_WEIGHT_CONFIDENCE_MAX``.
+
+    Thresholds overridable via ``FAILURE_THRESHOLD``,
+    ``LOW_CONF_THRESHOLD``, ``AIS_MATCH_RADIUS_M``.
 
     Risk levels:
         Critical  80-100
@@ -918,12 +945,13 @@ class RiskScoringNode(NodeBase):
 
             sensitive_eezs = _load_sensitive_eezs()
 
-            w_dark = state.risk_weight_dark_vessel  # type: ignore[attr-defined]
-            w_eez = state.risk_weight_sensitive_eez  # type: ignore[attr-defined]
-            w_port = state.risk_weight_far_from_port  # type: ignore[attr-defined]
-            w_vessel = state.risk_weight_large_vessel  # type: ignore[attr-defined]
-            w_conf_max = state.risk_weight_confidence_max  # type: ignore[attr-defined]
-            low_conf_threshold: float = state.low_conf_threshold  # type: ignore[attr-defined]
+            # Weights: env var overrides state field defaults
+            w_dark = _env_int("RISK_WEIGHT_DARK_VESSEL", state.risk_weight_dark_vessel)  # type: ignore[attr-defined]
+            w_eez = _env_int("RISK_WEIGHT_SENSITIVE_EEZ", state.risk_weight_sensitive_eez)  # type: ignore[attr-defined]
+            w_port = _env_int("RISK_WEIGHT_FAR_FROM_PORT", state.risk_weight_far_from_port)  # type: ignore[attr-defined]
+            w_vessel = _env_int("RISK_WEIGHT_LARGE_VESSEL", state.risk_weight_large_vessel)  # type: ignore[attr-defined]
+            w_conf_max = _env_int("RISK_WEIGHT_CONFIDENCE_MAX", state.risk_weight_confidence_max)  # type: ignore[attr-defined]
+            low_conf_threshold: float = _env_float("LOW_CONF_THRESHOLD", state.low_conf_threshold)  # type: ignore[attr-defined]
 
             has_low_conf = False
 
