@@ -1,0 +1,5 @@
+{
+  "geo_context": "Vessel detected 14nm inside Iranian EEZ, 52nm from Bandar Abbas port. Located outside established IOTC fishing zones in the Strait of Hormuz traffic separation scheme. No AIS correlation detected — assessed as potential dark vessel operating in a high-sensitivity maritime zone. Recommend priority ISR tasking.",
+  "reporting": "## Detection Summary\n\nSAR detection ID {detection_id} identified at coordinates ({geo_lat}N, {geo_lon}E) on tile {tile_id}.\n\n## AIS Correlation\n\nNo AIS transponder signal correlated within 500m spatial radius and ±30 minute temporal window. Classification: DARK VESSEL.\n\n## Geographic Context\n\n{geo_summary}\n\n## Risk Assessment\n\nRisk Score: {risk_score}/100 ({risk_level})\nPrimary risk factors: dark vessel flag, sensitive EEZ location.\n\n## Recommended Actions\n\n1. Task persistent ISR coverage for target tracking\n2. Cross-reference with historical vessel pattern database\n3. Alert maritime operations center for potential interdiction planning",
+  "default": "Acknowledged. Processing maritime surveillance data."
+}

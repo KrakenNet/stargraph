@@ -103,7 +103,7 @@ total_tasks: 83
   - _Requirements: AC-5.5, NFR-5_
   - _Design: LLM Mock Server_
 
-- [ ] 1.10 [P] Create fixture data files
+- [x] 1.10 [P] Create fixture data files
   - **Do**:
     1. Create `demos/sentinel_dark_watch/fixtures/ais_positions.json` — ~100 AIS positions in Strait of Hormuz AOI (lat ~25-27, lon ~55-57) with realistic MMSI, ship_name, speed_kn, heading, timestamps. Mix of identified vessels and gaps (no AIS coverage) for dark vessel correlation
     2. Create `demos/sentinel_dark_watch/fixtures/llm_responses.json` — keyed by prompt type (geo_context, reporting) with realistic maritime intel text
