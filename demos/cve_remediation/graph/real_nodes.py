@@ -31,10 +31,35 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from harbor.errors import HarborRuntimeError
+from harbor.logging import get_logger
 from harbor.nodes.base import ExecutionContext, NodeBase
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
+
+log = get_logger("cve_rem")
+
+
+# ---------------------------------------------------------------------------
+# Externalized policy (loaded once at import)
+# ---------------------------------------------------------------------------
+
+def _load_policy() -> dict[str, Any]:
+    """Load policy.yaml from graph dir; override via CVE_REM_POLICY_PATH."""
+    import yaml
+
+    path_str = os.environ.get("CVE_REM_POLICY_PATH", "")
+    if path_str:
+        p = Path(path_str)
+    else:
+        p = Path(__file__).with_name("policy.yaml")
+    if not p.exists():
+        return {}
+    with p.open() as f:
+        return yaml.safe_load(f) or {}
+
+
+POLICY = _load_policy()
 
 
 # ---------------------------------------------------------------------------
@@ -94,6 +119,76 @@ def _live_broker_enabled() -> bool:
     )
 
 
+def _evaluate_nautilus_policy_offline(intent_name: str, purpose: str) -> dict[str, Any]:
+    """Evaluate Nautilus policy rules offline using nautilus.yaml source config.
+
+    Checks whether the intent's purpose is in the allowed_purposes list
+    for at least one source, and whether the agent's clearance meets
+    the source classification. Returns policy evaluation metadata.
+    """
+    import yaml
+
+    policy_path = Path(__file__).parent.parent / "nautilus.yaml"
+    if not policy_path.exists():
+        return {"nautilus_policy_evaluated": False, "nautilus_policy_reason": "nautilus.yaml not found"}
+
+    try:
+        with policy_path.open() as f:
+            config = yaml.safe_load(f) or {}
+    except Exception:  # noqa: BLE001
+        return {"nautilus_policy_evaluated": False, "nautilus_policy_reason": "nautilus.yaml parse error"}
+
+    raw_sources = config.get("sources", [])
+    if isinstance(raw_sources, dict):
+        sources_list = [{"id": k, **v} for k, v in raw_sources.items()]
+    else:
+        sources_list = list(raw_sources or [])
+    agent_clearance = _DEFAULT_BROKER_CLEARANCE
+    allowed_sources: list[str] = []
+    denied_sources: list[str] = []
+
+    classification_order = ["unclassified", "cui", "secret", "top_secret"]
+    try:
+        agent_level = classification_order.index(agent_clearance)
+    except ValueError:
+        agent_level = 0
+
+    for src_cfg in sources_list:
+        src_name = src_cfg.get("id", "unknown")
+        src_classification = src_cfg.get("classification", "unclassified")
+        src_purposes = src_cfg.get("allowed_purposes", [])
+
+        try:
+            src_level = classification_order.index(src_classification)
+        except ValueError:
+            src_level = 0
+
+        if agent_level >= src_level and purpose in src_purposes:
+            allowed_sources.append(src_name)
+        else:
+            denied_sources.append(src_name)
+
+    policy_pass = len(allowed_sources) > 0
+
+    log.info(
+        "nautilus_policy_offline",
+        intent=intent_name,
+        purpose=purpose,
+        clearance=agent_clearance,
+        policy_pass=policy_pass,
+        allowed_sources=allowed_sources,
+        denied_sources=denied_sources,
+    )
+    return {
+        "nautilus_policy_evaluated": True,
+        "nautilus_policy_pass": policy_pass,
+        "nautilus_allowed_sources": allowed_sources,
+        "nautilus_denied_sources": denied_sources,
+        "nautilus_clearance": agent_clearance,
+        "nautilus_purpose": purpose,
+    }
+
+
 async def _dispatch_intent(intent: Any, *, agent_id: str = _DEFAULT_BROKER_AGENT_ID) -> dict[str, Any]:
     """Dispatch a typed broker intent.
 
@@ -118,26 +213,30 @@ async def _dispatch_intent(intent: Any, *, agent_id: str = _DEFAULT_BROKER_AGENT
 
     args = broker_call_args(intent)
     intent_name = intent.intent_name
+    purpose = _purpose_for_intent(intent_name)
     if not _live_broker_enabled():
+        policy_result = _evaluate_nautilus_policy_offline(intent_name, purpose)
         return {
-            "broker_request_envelope": args,
+            "broker_request_envelope": {**args, **policy_result},
             "last_broker_intent": intent_name,
         }
     # Live mode: resolve the lifespan-singleton broker.
     try:
         from harbor.serve.contextvars import current_broker
     except ImportError:
-        return {
-            "broker_request_envelope": {**args, "broker_unavailable": True},
-            "last_broker_intent": intent_name,
-        }
-    try:
-        broker = current_broker()
-    except Exception:
         broker = None
+    else:
+        try:
+            broker = current_broker()
+        except Exception:
+            broker = None
     if broker is None:
+        # Broker unavailable — still run offline policy evaluation so
+        # the intent is checked against nautilus.yaml rules even when
+        # the live broker process isn't reachable.
+        policy_result = _evaluate_nautilus_policy_offline(intent_name, purpose)
         return {
-            "broker_request_envelope": {**args, "broker_unavailable": True},
+            "broker_request_envelope": {**args, **policy_result, "broker_unavailable": True},
             "last_broker_intent": intent_name,
         }
     # Inject Nautilus policy fields (clearance + purpose) into the
@@ -192,19 +291,20 @@ def _servicenow_auth() -> tuple[tuple[str, str] | None, dict[str, str], str]:
 # Doctrine source-trust table (Phase 0 frozen at boot)
 # ---------------------------------------------------------------------------
 
-_DOCTRINE_SOURCES: dict[str, str] = {
-    "mitre.org": "trusted",
-    "cisa.gov": "trusted",
-    "nvd.nist.gov": "trusted",
-    "psirt.": "trusted",      # vendor PSIRT prefix
-    "redhat.com": "trusted",
-    "ubuntu.com": "trusted",
-    "github.com/advisories": "semi",
-    "twitter.com": "untrusted",
-    "x.com": "untrusted",
-    "reddit.com": "untrusted",
-    "blog.": "untrusted",
-}
+def _build_doctrine_sources() -> dict[str, str]:
+    """Build source→trust_tier dict from policy.yaml."""
+    st = POLICY.get("source_trust", {})
+    out: dict[str, str] = {}
+    for domain in st.get("trusted", []):
+        out[domain] = "trusted"
+    for domain in st.get("semi", []):
+        out[domain] = "semi"
+    for domain in st.get("untrusted", []):
+        out[domain] = "untrusted"
+    return out
+
+
+_DOCTRINE_SOURCES: dict[str, str] = _build_doctrine_sources()
 
 
 def _render_recs_block(recs: list[Any]) -> str:
@@ -590,7 +690,7 @@ def _classify_source_url(url: str) -> str:
     for needle, label in _DOCTRINE_SOURCES.items():
         if needle in lo:
             return label
-    return "untrusted"
+    return POLICY.get("source_trust", {}).get("default", "untrusted")
 
 
 class IntakeFetchNode(NodeBase):
@@ -725,23 +825,25 @@ class SsvcTierEvaluatorNode(NodeBase):
         del ctx
         extract = getattr(state, "extract", None)
         correlated = getattr(state, "correlated", None)
+        from demos.cve_remediation.graph._bosun import CveRemBosunEvaluator
+
         cvss_bp = (getattr(extract, "cvss_score_bp", None) or 0) if extract else 0
         epss_bp = (getattr(extract, "epss_score_bp", None) or 0) if extract else 0
         kev = bool(getattr(extract, "kev_listed", False)) if extract else False
         blast = int(getattr(correlated, "blast_radius_node_count", 0)) if correlated else 0
 
-        if kev or (cvss_bp >= 900 and blast >= 100):
-            tier = "act_auto"
-        elif cvss_bp >= 700 and epss_bp >= 500:
-            tier = "act_hitl_required"
-        elif cvss_bp >= 400:
-            tier = "attend"
-        elif cvss_bp < 400 and blast == 0:
-            tier = "defer"
-        else:
-            tier = "track"
+        result = CveRemBosunEvaluator.evaluate_ssvc(
+            cvss_bp=cvss_bp, epss_bp=epss_bp,
+            kev_listed=kev, blast_radius=blast,
+        )
+        tier = result["tier"]
 
-        return {"ssvc_tier": tier}
+        log.info(
+            "ssvc_tier_evaluated",
+            tier=tier, rule_id=result.get("rule_id"),
+            cvss_bp=cvss_bp, epss_bp=epss_bp, kev=kev, blast=blast,
+        )
+        return {"ssvc_tier": tier, "ssvc_bosun_rule": result.get("rule_id")}
 
 
 # ---------------------------------------------------------------------------
@@ -766,38 +868,51 @@ class GepaScoreComputerNode(NodeBase):
     against ``state.current_score_bp`` + ``state.epsilon_margin_bp``.
     """
 
-    _WEIGHTS = {
-        "validation": 35,
-        "sandbox": 25,
-        "cr_approved": 15,
-        "no_drift_7d": 15,
-        "no_rollback_30d": 10,
-    }
-
     async def execute(
         self,
         state: "BaseModel",
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         del ctx
-        components: dict[str, int] = (
+        from demos.cve_remediation.graph._bosun import CveRemBosunEvaluator
+
+        raw_components: dict[str, int] = (
             getattr(state, "gepa_components", {}) or {}
         )
-        # weighted sum / 100 to keep result in basis-points
-        weighted = sum(
-            self._WEIGHTS[k] * int(components.get(k, 0))
-            for k in self._WEIGHTS
+        plan_hash = str(getattr(state, "plan_hash", "unknown") or "unknown")
+        current_bp = int(getattr(state, "current_score_bp", 0) or 0)
+        gepa_cfg = POLICY.get("gepa", {})
+        default_eps = gepa_cfg.get("epsilon_margin_bp", 200)
+        eps_bp = int(getattr(state, "epsilon_margin_bp", default_eps) or default_eps)
+
+        normalized = {
+            k: int(raw_components.get(k, 0)) / 10000
+            for k in ("validation", "sandbox", "cr_approved", "no_drift_7d", "no_rollback_30d")
+        }
+
+        result = CveRemBosunEvaluator.evaluate_gepa(
+            artifact_hash=plan_hash,
+            components=normalized,
+            current_score=current_bp / 10000,
+            epsilon=eps_bp / 10000,
         )
-        score_bp = weighted // 100
 
-        candidate = int(getattr(state, "candidate_score_bp", 0) or 0)
-        current = int(getattr(state, "current_score_bp", 0) or 0)
-        eps = int(getattr(state, "epsilon_margin_bp", 200) or 200)
-        strictly_better = (score_bp - current) >= eps
+        score_bp = int((result.get("candidate_score") or 0) * 10000)
+        strictly_better = result.get("decision") == "accept"
 
+        log.info(
+            "gepa_score_bosun",
+            score_bp=score_bp,
+            current_bp=current_bp,
+            eps_bp=eps_bp,
+            decision=result.get("decision"),
+            violations=len(result.get("violations", [])),
+        )
         return {
             "candidate_score_bp": score_bp,
             "strictly_better": strictly_better,
+            "gepa_bosun_decision": result.get("decision"),
+            "gepa_bosun_violations": result.get("violations", []),
         }
 
 
@@ -1073,14 +1188,23 @@ def _score_cmdb_candidate(
     product_l = (product_token or "").strip().lower()
     if not name_lower or not product_l:
         return (0, "reject")
-    # Hard-reject too-generic / too-short product tokens — they match
-    # any CI containing the substring.  Real CVE products are vendor-
-    # prefixed or multi-word.
-    if (
-        len(product_l) < 4
-        or product_l in _NOISY_PRODUCT_TOKENS
-    ):
+    # Hard-reject generic noise tokens (always — even when prefixed).
+    if product_l in _NOISY_PRODUCT_TOKENS:
         return (0, "reject")
+    # Short product tokens (<4 chars) match catch-all CIs as substrings,
+    # so reject by default. Exempt rows whose CI name starts with a
+    # known channel/registry prefix (e.g. "npm tar", "PyPI ws") --
+    # those are seeded by the CMDB pipeline with the package manager
+    # as the first token, so the prefix already disambiguates.
+    _CHANNEL_PREFIXES = (
+        "npm ", "pypi ", "rubygems ", "maven ", "apt ", "ubuntu ",
+        "debian ", "rpm ", "redhat ", "rhel ", "alpine ", "apk ",
+        "cargo ", "go ", "github ", "gem ", "pip ", "composer ",
+        "nuget ",
+    )
+    if len(product_l) < 4:
+        if not any(name_lower.startswith(p) for p in _CHANNEL_PREFIXES):
+            return (0, "reject")
 
     name_toks = set(_tokenize(name))
     prod_toks = _tokenize(product_l)
@@ -1256,6 +1380,9 @@ class CorrelateAssetsBrokerNode(NodeBase):
                     candidate_products=candidates or None,
                     score_candidate=_score_cmdb_candidate,
                     derive_variants=_derive_cpe_variants,
+                    install_channel=str(
+                        getattr(state, "install_channel", "") or ""
+                    ),
                     affected_version_ranges=list(
                         getattr(state, "affected_version_ranges", None) or []
                     ),
@@ -2166,12 +2293,13 @@ class CanonicalizeTrustedNode(NodeBase):
 
 
 class CanonicalizeUntrustedNode(NodeBase):
-    """Phase 1 step 1u — NFKC + markdown→AST + quarantine flag.
+    """Phase 1 step 1u — NFKC + markdown→AST + confidence-scored quarantine.
 
-    Identical canonicalization to the trusted path but stamps
-    ``untrusted_text_suspected=True`` so downstream rules know to wait
-    on the injection classifier before letting any extracted field
-    propagate into asset correlation.
+    Computes a confidence score (0-100) based on content heuristics
+    instead of unconditionally flagging all untrusted text. Sources
+    with known advisory structure (CVE-YYYY-NNNNN patterns, CVSS
+    vectors, CWE references) get higher confidence and may skip
+    the injection classifier fast-path.
     """
 
     async def execute(
@@ -2179,10 +2307,39 @@ class CanonicalizeUntrustedNode(NodeBase):
     ) -> dict[str, Any]:
         del ctx
         raw = str(getattr(state, "raw_source_body", "") or "")
+        canonical = _nfkc_strip_markdown(raw)
+
+        confidence_bp = self._score_confidence(canonical)
+        suspected = confidence_bp < 7000
+
+        log.info(
+            "canonicalize_untrusted",
+            confidence_bp=confidence_bp,
+            suspected=suspected,
+            body_len=len(canonical),
+        )
         return {
-            "canonical_body": _nfkc_strip_markdown(raw),
-            "untrusted_text_suspected": True,
+            "canonical_body": canonical,
+            "untrusted_text_suspected": suspected,
+            "untrusted_confidence_bp": confidence_bp,
         }
+
+    @staticmethod
+    def _score_confidence(text: str) -> int:
+        """Heuristic confidence 0-10000 bp that text is a legitimate advisory."""
+        score = 0
+        lo = text.lower()
+        if re.search(r"CVE-\d{4}-\d{4,}", text):
+            score += 3000
+        if re.search(r"CWE-\d+", text):
+            score += 1500
+        if re.search(r"CVSS[:\s]", text, re.IGNORECASE):
+            score += 1500
+        if any(d in lo for d in ("nvd.nist.gov", "cisa.gov", "mitre.org")):
+            score += 2000
+        if len(text) > 200:
+            score += 1000
+        return min(score, 10000)
 
 
 class _ExtractorBase(NodeBase):
@@ -2347,95 +2504,9 @@ class _ExtractorBase(NodeBase):
         cwe_class: str,
         description: str,
     ) -> tuple[str, str]:
-        """Call the configured LM to classify into ``_VULN_CLASS_ENUM``.
-
-        Returns ``(vuln_class, error)``. Empty vuln_class on any
-        non-success path (endpoint unset, network error, JSON parse
-        failure, out-of-enum response); the caller falls back to the
-        heuristic dict.
-
-        Uses the same ``LLM_BASE_URL`` / ``LLM_MODEL`` / ``LLM_API_KEY``
-        env conventions every other LM call in this module follows so
-        the demo can drive all calls through one endpoint.
-        """
-        base_url = os.environ.get("LLM_BASE_URL", "").strip()
-        model = os.environ.get("LLM_MODEL", "").strip()
-        api_key = (
-            os.environ.get("LLM_API_KEY", "placeholder").strip()
-            or "placeholder"
-        )
-        timeout_s = float(
-            os.environ.get("LLM_TIMEOUT_SECONDS", "30") or "30"
-        )
-        if not base_url or not model:
-            return "", "LLM_BASE_URL or LLM_MODEL unset"
-        try:
-            import httpx
-        except ImportError:
-            return "", "httpx not installed"
-        cwe_line = f"CWE: {cwe_class}\n" if cwe_class else ""
-        enum_csv = ", ".join(cls._VULN_CLASS_ENUM)
-        system = (
-            "You classify a CVE into ONE vuln_class for sandbox "
-            "dispatcher routing. Pick based on what KIND of static "
-            "probe will reveal whether a host is patched:\n"
-            "- web-framework: HTTP request probe (XSS/CSRF/SQLi at "
-            "the framework layer)\n"
-            "- library: dependency-version check (pip/npm/maven coord "
-            "lookup)\n"
-            "- application: app-behaviour or RCE probe (Tomcat, "
-            "Struts, Confluence, Jenkins, etc.)\n"
-            "- host: OS/kernel/binary version check (sudo, glibc, "
-            "openssl, sshd)\n"
-            "- cipher-suite: TLS handshake / cert validation probe\n"
-            "- config-only: config-file diff (permissive defaults, "
-            "exposed admin endpoints)\n"
-            "- acl-rule: permission / authz policy check\n"
-            "- logic-flaw: no static probe (skip; HITL only)\n"
-            f"Return JSON: {{\"vuln_class\": \"<one of: {enum_csv}>\"}}"
-        )
-        user = (
-            f"CVE: {cve_id}\n{cwe_line}"
-            f"Advisory description:\n{description[:1800]}\n\n"
-            "Return only the JSON object, no prose."
-        )
-        try:
-            async with httpx.AsyncClient(timeout=timeout_s) as client:
-                resp = await client.post(
-                    f"{base_url.rstrip('/')}/chat/completions",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": user},
-                        ],
-                        "temperature": 0.0,
-                        # Some local OpenAI-compatible servers (Ollama,
-                        # vLLM) spend the first dozens of tokens on
-                        # internal reasoning before the JSON token --
-                        # 60 truncated mid-thought (finish_reason=length,
-                        # empty content). 200 is the smallest cap that
-                        # reliably reaches the closing brace across
-                        # gpt-oss / qwen / llama families.
-                        "max_tokens": 200,
-                        "response_format": {"type": "json_object"},
-                    },
-                )
-                resp.raise_for_status()
-                content = (
-                    resp.json()["choices"][0]["message"]["content"]
-                )
-        except Exception as exc:  # noqa: BLE001 — capture-and-route
-            return "", f"{type(exc).__name__}: {exc}"
-        try:
-            parsed = json.loads(content)
-        except (ValueError, TypeError) as exc:
-            return "", f"json parse: {exc}"
-        vc = str(parsed.get("vuln_class", "")).strip()
-        if vc in cls._VULN_CLASS_ENUM:
-            return vc, ""
-        return "", f"out-of-enum: {vc!r}"
+        """Classify into ``_VULN_CLASS_ENUM`` via DSPy Predict."""
+        from demos.cve_remediation.graph._dspy_modules import classify_vuln_class
+        return await classify_vuln_class(cve_id, cwe_class, description)
 
 
 class ExtractTrustedNode(_ExtractorBase):
@@ -2457,30 +2528,20 @@ class InjectionClassifyNode(NodeBase):
     - ``clean``         : default.
     """
 
-    _ATTACK_TERMS = (
-        "ignore previous instructions",
-        "ignore all previous",
-        "system prompt",
-        "you are now",
-        "disregard the rules",
-        "forget all rules",
-        "override your guidelines",
-    )
-    _SUSPICIOUS_TERMS = (
-        "as an ai",
-        "pretend you are",
-        "roleplay as",
-        "without restrictions",
-    )
-
     async def execute(
         self, state: "BaseModel", ctx: ExecutionContext
     ) -> dict[str, Any]:
         del ctx
+        inj_cfg = POLICY.get("injection_classify", {})
+        attack_terms = inj_cfg.get("attack_terms", [])
+        suspicious_terms = inj_cfg.get("suspicious_terms", [])
+
         body = str(getattr(state, "canonical_body", "") or "").lower()
-        if any(term in body for term in self._ATTACK_TERMS):
+        if any(term in body for term in attack_terms):
+            log.warning("injection_detected", classification="attack_pattern")
             return {"injection_class": "attack_pattern"}
-        if any(term in body for term in self._SUSPICIOUS_TERMS):
+        if any(term in body for term in suspicious_terms):
+            log.warning("injection_detected", classification="suspicious")
             return {"injection_class": "suspicious"}
         return {"injection_class": "clean"}
 
@@ -2502,6 +2563,7 @@ class CritiqueExtractedNode(NodeBase):
         self, state: "BaseModel", ctx: ExecutionContext
     ) -> dict[str, Any]:
         del ctx
+        from demos.cve_remediation.graph._dspy_modules import evaluate_critic
         from demos.cve_remediation.graph.state import CriticVerdict
 
         extract = getattr(state, "extract", None)
@@ -2509,18 +2571,19 @@ class CritiqueExtractedNode(NodeBase):
         cve_id = getattr(extract, "cve_id", "") if extract else ""
         cwe_class = getattr(extract, "cwe_class", "") if extract else ""
         attempt = int(getattr(state, "critic_attempt", 0) or 0) + 1
+        affected_products = list(
+            getattr(extract, "affected_products", []) or []
+        ) if extract else []
+        cvss_bp = int(getattr(extract, "cvss_score_bp", 0) or 0) if extract else 0
 
-        if not cve_id:
-            verdict = "veto"
-            feedback = "missing cve_id from extracted advisory"
-        elif not cwe_class or injection_class != "clean":
-            verdict = "feedback"
-            feedback = (
-                f"cwe missing or injection_class={injection_class!r}; rerun extract"
-            )
-        else:
-            verdict = "approved"
-            feedback = ""
+        verdict, feedback = await evaluate_critic(
+            cve_id=cve_id or "",
+            cwe_class=cwe_class or "",
+            injection_class=injection_class or "clean",
+            affected_products=affected_products,
+            cvss_score_bp=cvss_bp,
+            attempt=attempt,
+        )
 
         history = list(getattr(state, "critic_history", []) or [])
         history.append(
@@ -2671,12 +2734,51 @@ class RemediationDiscoveryNode(NodeBase):
 
         fixed_version = str(getattr(state, "fixed_version", "") or "").strip()
         vstatus = str(getattr(state, "vulnerability_status", "") or "").strip()
+        install_channel_pre = str(getattr(state, "install_channel", "") or "").strip()
+        primary_product_pre = str(getattr(state, "cve_product", "") or "").strip()
+        osv_pkg_pre = str(getattr(state, "osv_package_name", "") or "").strip()
         # Discovery is most valuable when fixed_version is empty OR a
         # non-trivial status (no_fix_published / withdrawn) was set.
-        # When the standard upstream fix path is clear, skip — saves
-        # ~10-30s of LM + search latency per CVE.
+        # When the standard upstream fix path is clear, skip the external
+        # lookups, but still emit a baseline upgrade action so the
+        # deterministic plan_spec path in CodeWriterNode fires. The
+        # citation_url points at OSV — the source the fixed_version
+        # was extracted from upstream.
         if fixed_version and not vstatus:
-            return {}
+            pkg_name = primary_product_pre or osv_pkg_pre
+            if not pkg_name:
+                return {}
+            osv_url = f"https://osv.dev/vulnerability/{cve_id}"
+            baseline_action = RemediationAction(
+                kind="upgrade",
+                target=pkg_name,
+                target_version=fixed_version,
+                change=f"upgrade {pkg_name} to {fixed_version}",
+                rationale=(
+                    f"Upstream advisory lists {fixed_version} as the fixed "
+                    f"release. Channel: {install_channel_pre or 'unknown'}."
+                ),
+                citation_url=osv_url,
+                citation_excerpt=f"OSV record for {cve_id} fixed in {fixed_version}.",
+                source="advisory_ref",
+                confidence_bp=8000,
+            )
+            prov_skip = RecommendationProvenance(
+                sources_attempted=["upstream_advisory"],
+                sources_succeeded=["upstream_advisory"],
+                references_fetched=1,
+                search_results_fetched=0,
+                registry_check_result=(
+                    "skipped: fixed_version set by upstream extractor"
+                ),
+                lm_actions_emitted=0,
+                lm_actions_dropped_no_citation=0,
+                last_error="",
+            )
+            return {
+                "recommended_actions": [baseline_action],
+                "recommendation_provenance": prov_skip,
+            }
 
         advisory_refs = list(
             getattr(state, "advisory_references", []) or []
@@ -2905,32 +3007,20 @@ class RemediationDiscoveryNode(NodeBase):
                 for a in actions
             )
             if not has_any_actionable:
+                from demos.cve_remediation.graph._bosun import CveRemBosunEvaluator
+
                 kev_listed = bool(getattr(state, "kev_listed", False))
-                cvss_bp = getattr(state, "cvss_score_bp", None)
-                cvss_high = bool(cvss_bp and int(cvss_bp) >= 700)
-                if kev_listed or cvss_high:
-                    delta["unpatchable_disposition"] = "disable_recommended"
-                    reason_bits = []
-                    if kev_listed:
-                        reason_bits.append("CISA KEV listed")
-                    if cvss_high:
-                        reason_bits.append(
-                            f"CVSS={(int(cvss_bp) / 100):.1f}"
-                        )
-                    delta["unpatchable_reason"] = (
-                        f"No upstream fix ({vstatus}); "
-                        f"{' + '.join(reason_bits) or 'high severity'}; "
-                        f"recommend disabling affected service or "
-                        f"holding package until vendor publishes patch."
-                    )
-                else:
-                    delta["unpatchable_disposition"] = "isolate_recommended"
-                    delta["unpatchable_reason"] = (
-                        f"No upstream fix ({vstatus}); below KEV/high-"
-                        f"severity threshold; recommend network "
-                        f"isolation of affected hosts until vendor "
-                        f"publishes patch."
-                    )
+                cvss_bp = int(getattr(state, "cvss_score_bp", 0) or 0)
+                cve_id = str(getattr(state, "cve_id", "") or "")
+
+                bosun_disp = CveRemBosunEvaluator.evaluate_disposition(
+                    cve_id=cve_id,
+                    kev_listed=kev_listed,
+                    cvss_bp=cvss_bp,
+                    vulnerability_status=vstatus,
+                )
+                delta["unpatchable_disposition"] = bosun_disp["disposition"]
+                delta["unpatchable_reason"] = bosun_disp["reason"]
 
         return delta
 
@@ -3372,23 +3462,13 @@ class VecSearchRetrosNode(_RetrievalBase):
         out = await super().execute(state, ctx)
         extract = getattr(state, "extract", None)
         cwe = str(getattr(extract, "cwe_class", "") or "") if extract else ""
-        if not cwe:
-            return {
-                **out,
-                "prior_retro_retrieval_status": "degraded",
-                "last_reflexion_error": "no cwe_class on state",
-            }
 
-        # Embed current CVE for semantic NN. Built from fields that
-        # carry the most retrieval signal: cve_id, cwe, description
-        # excerpt, primary product + candidate products. Order matches
-        # WriteRetrospectiveNode's summary template so written + queried
-        # vectors live in the same subspace.
         cve_id_cur = str(getattr(state, "cve_id", "") or "")
         desc_cur = str(getattr(state, "raw_source_body", "") or "")[:1500]
         prods_cur = list(getattr(state, "candidate_products", []) or [])[:8]
+        cwe_part = f" CWE {cwe}" if cwe else ""
         cur_summary = (
-            f"CVE {cve_id_cur} CWE {cwe} "
+            f"CVE {cve_id_cur}{cwe_part} "
             f"products={','.join(prods_cur)}\n{desc_cur}"
         )
         llm_base_url = os.environ.get("LLM_BASE_URL", "").strip()
@@ -4101,8 +4181,9 @@ class PlanQuarantineGateNode(NodeBase):
         # leave permanent quarantine entries pinning plan_hash forever.
         # Default 30 days; tunable via env. ``0`` disables the TTL
         # (quarantine is permanent until manually cleared).
+        q_ttl_default = POLICY.get("quarantine", {}).get("ttl_days", 30)
         ttl_days = int(
-            os.environ.get("CVE_REM_QUARANTINE_TTL_DAYS", "30") or "30"
+            os.environ.get("CVE_REM_QUARANTINE_TTL_DAYS", str(q_ttl_default)) or str(q_ttl_default)
         )
         try:
             if ttl_days > 0:
@@ -4714,34 +4795,6 @@ class PlannerNode(NodeBase):
         ]
         return not all(signals)
 
-    # ------------------------------------------------------------------
-    # Multi-turn ReAct-style agent (task #83)
-    # ------------------------------------------------------------------
-
-    # Retro suggestion (100-CVE sweep, 12+ CVEs, conf 9500): validate
-    # FINAL plan-shape against this schema and bounded-retry on miss
-    # before falling back to the rule-based template path.
-    _PLANNER_FINAL_SCHEMA: dict[str, Any] = {
-        "type": "object",
-        "required": ["rationale", "actions"],
-        "properties": {
-            "rationale": {"type": "string", "minLength": 50},
-            "actions": {"type": "array", "minItems": 1, "items": {
-                "type": "object",
-                "required": ["kind"],
-                "properties": {
-                    "kind": {"type": "string", "minLength": 2},
-                    "target": {"type": "string"},
-                    "target_version": {"type": "string"},
-                    "change": {"type": "string"},
-                    "rationale": {"type": "string"},
-                    "citation_url": {"type": "string"},
-                },
-            }},
-        },
-    }
-    _PLANNER_SCHEMA_MAX_RETRIES = 3
-
     async def _call_planner_agent_multi_turn(
         self,
         *,
@@ -4762,295 +4815,20 @@ class PlannerNode(NodeBase):
         state: "BaseModel",
         rag_sources: list[dict[str, str]] | None = None,
     ) -> tuple[str, int, str, list[dict[str, str]], int]:
-        """Drive a multi-turn agent loop over the LM.
-
-        Tool grammar (agent emits a single line):
-          ``TOOL: name {"arg":"..."}`` -- runtime executes, returns
-          ``OBSERVATION: <json>`` and re-prompts.
-          ``FINAL: <rationale text>`` -- ends the loop.
-
-        Tools (read-only, side-effect-free):
-          - ``prior_retros(cwe)`` -> list of recent retros from Redis
-          - ``doctrine_controls(cwe)`` -> Control mappings from Neo4j
-          - ``advisory_section(query)`` -> matching paragraph(s)
-          - ``host_topology()`` -> CMDB <-> CargoNet pairing
-
-        Returns ``(rationale, latency_ms, error, trace, schema_retries)``.
-        Empty rationale signals fallback to single-call mode.
-        """
-        import time as _time
-        import jsonschema
-
-        base_url = os.environ.get("LLM_BASE_URL", "").strip()
-        model = os.environ.get("LLM_MODEL", "").strip()
-        api_key = os.environ.get("LLM_API_KEY", "placeholder").strip() or "placeholder"
-        timeout_s = float(os.environ.get("LLM_TIMEOUT_SECONDS", "30") or "30")
-        max_turns = int(os.environ.get("CVE_REM_PLANNER_MAX_TURNS", "4") or "4")
-        if not base_url or not model:
-            return "", 0, "LLM_BASE_URL or LLM_MODEL unset", [], 0
-        try:
-            import httpx
-        except ImportError:
-            return "", 0, "httpx not installed", [], 0
-
-        cvss_str = f"{cvss_bp / 100:.1f}" if cvss_bp else "n/a"
-        ref_lines = "\n".join(f"  - {r}" for r in (references or [])[:6]) or "  (none)"
-        rag_block = ""
-        citation_clause = ""
-        if rag_sources:
-            parts: list[str] = ["\n## Authoritative sources (cite as [CITE: n])"]
-            for s in rag_sources:
-                parts.append(f"### [{s.get('index','?')}] {s.get('url','')}")
-                parts.append((s.get("body", "") or "")[:1200])
-            rag_block = "\n".join(parts) + "\n"
-            citation_clause = (
-                "Each technical claim in your FINAL rationale (fix versions, "
-                "vulnerability mechanism, mitigations) MUST be followed by a "
-                "citation marker [CITE: n] referencing one of the numbered sources. "
-                "Do not assert facts that aren't supported by a cited source. "
-            )
-        system = (
-            "You are a senior security engineer drafting CVE remediation rationale. "
-            "You can call read-only tools to gather facts before answering; "
-            "DO NOT guess. Respond on a single line in one of two formats:\n"
-            "  TOOL: <name> <json-args>\n"
-            "  FINAL: <rationale text>\n"
-            "Available tools:\n"
-            "  prior_retros {\"cwe\": \"CWE-XXX\"} -- recent retros for this CWE\n"
-            "  doctrine_controls {\"cwe\": \"CWE-XXX\"} -- mapped governance controls\n"
-            "  advisory_section {\"query\": \"keyword\"} -- substring match within advisory body\n"
-            "  host_topology {} -- CMDB host -> CargoNet node pairings\n"
-            "Use no more than 4 tool calls. Then emit FINAL with 4-6 sentences "
-            "covering: vulnerability mechanism, fixed version, rollout strategy, "
-            "sandbox assertion, rollback condition. Be specific to this CVE. "
-            + citation_clause
+        """Drive multi-turn planner via DSPy ReAct."""
+        from demos.cve_remediation.graph._dspy_modules import run_planner_agent
+        return await run_planner_agent(
+            planner_node=self, state=state,
+            cve_id=cve_id, cwe=cwe, vuln=vuln,
+            code_runtime=code_runtime, sandbox_runtime=sandbox_runtime,
+            prior_count=prior_count, prior_outcomes=prior_outcomes,
+            advisory_body=advisory_body,
+            affected_products=affected_products,
+            affected_versions=affected_versions,
+            cvss_bp=cvss_bp, kev_listed=kev_listed,
+            references=references, host_names=host_names,
+            rag_sources=rag_sources,
         )
-        # Pull discovered remediation actions (from RemediationDiscoveryNode)
-        # into the prompt so the LM grounds its rationale on the
-        # cited remediation rather than restating the advisory.
-        recs = list(getattr(state, "recommended_actions", []) or [])
-        recs_block = ""
-        if recs:
-            lines = [
-                "\n## Discovered remediation actions",
-                "(from RemediationDiscoveryNode; cite these by URL "
-                "if you reference them in FINAL):",
-            ]
-            for i, a in enumerate(recs[:5], 1):
-                lines.append(
-                    f"  [{i}] kind={getattr(a,'kind','')} "
-                    f"target={getattr(a,'target','')!r} "
-                    f"target_version={getattr(a,'target_version','')!r}\n"
-                    f"      change: {getattr(a,'change','')}\n"
-                    f"      citation_url: {getattr(a,'citation_url','')}\n"
-                    f"      confidence_bp={int(getattr(a,'confidence_bp',0) or 0)}"
-                )
-            recs_block = "\n".join(lines) + "\n"
-
-        user_brief = (
-            f"## CVE facts\n"
-            f"  cve_id: {cve_id}\n  cwe: {cwe or 'unspecified'}\n"
-            f"  vuln_class: {vuln or 'unknown'}\n  cvss: {cvss_str}"
-            f"{', KEV-listed' if kev_listed else ''}\n"
-            f"  affected_products: {', '.join(affected_products) or 'unknown'}\n"
-            f"  affected_versions: {', '.join(affected_versions) or 'unknown'}\n"
-            f"  remediation_runtime: {code_runtime}\n"
-            f"  sandbox_runtime: {sandbox_runtime}\n\n"
-            f"## Advisory text (verbatim)\n"
-            f"{(advisory_body or '')[:1500]}\n\n"
-            f"## References\n{ref_lines}\n\n"
-            f"## Discovered hosts\n  {', '.join(host_names) or '(none)'}\n\n"
-            f"## Prior retro stats\n"
-            f"  count={prior_count}, outcomes={dict(prior_outcomes or {})}\n"
-            f"{recs_block}"
-            f"{rag_block}\n"
-            f"Begin. Call tools or emit FINAL."
-        )
-
-        messages: list[dict[str, str]] = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_brief},
-        ]
-        trace: list[dict[str, str]] = []
-        url = base_url.rstrip("/") + "/chat/completions"
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        t_start = _time.monotonic()
-        last_err = ""
-        # Bounded JSON-schema retry counter for FINAL emit. When the LM
-        # ships a candidate FINAL plan-shape that doesn't satisfy
-        # ``_PLANNER_FINAL_SCHEMA`` we re-prompt with the validation
-        # error message; after ``_PLANNER_SCHEMA_MAX_RETRIES`` we accept
-        # the body verbatim and surface the failure on last_planner_error.
-        schema_retries = 0
-        first_schema_err = ""
-
-        import re as _re_agent
-
-        # Match a TOOL/FINAL marker anywhere in the response, not just
-        # at the start. Real LMs (especially open-weight models) often
-        # prepend a sentence of narrative before the structured marker;
-        # forcing them to omit it makes the loop stall.
-        marker_re = _re_agent.compile(
-            r"^\s*(?P<kind>TOOL|FINAL)\s*:\s*(?P<rest>.*?)\s*$",
-            _re_agent.MULTILINE,
-        )
-
-        # Loop budget: max_turns tool calls + 1 turn that must emit FINAL
-        # + 1 extra turn reserved for force-FINAL when the LM still wants
-        # a tool on the FINAL-must turn (otherwise the unstructured
-        # fallback returns the TOOL: line as rationale, which is the
-        # Log4j step5 failure mode).
-        for turn in range(max_turns + 2):
-            body = {
-                "model": model,
-                "messages": messages,
-                "temperature": 0.0,
-                # Generous budget so neither rationale text nor a
-                # multi-turn FINAL gets truncated. 4096 is well within
-                # gpt-oss-class context windows.
-                "max_tokens": 4096,
-                # Critical for multi-turn ReAct stability: stop the
-                # decoder at any token that would let the LM hallucinate
-                # a runtime-injected line. Without this, open-weight
-                # models cheerfully emit ``OBSERVATION: {...}`` of their
-                # own invention right after a TOOL: line, which derails
-                # the loop and bypasses the actual tool execution.
-                "stop": ["OBSERVATION:", "USER:", "\nTOOL:", "\nFINAL:"],
-            }
-            try:
-                async with httpx.AsyncClient(timeout=timeout_s) as client:
-                    resp = await client.post(url, json=body, headers=headers)
-                    resp.raise_for_status()
-                    data = resp.json()
-            except Exception as exc:  # noqa: BLE001
-                last_err = f"{type(exc).__name__}: {exc}"
-                break
-            choices = data.get("choices") or []
-            if not choices:
-                last_err = "empty completion"
-                break
-            content = str((choices[0].get("message") or {}).get("content") or "").strip()
-            messages.append({"role": "assistant", "content": content})
-            trace.append({"role": "assistant", "content": content})
-
-            # Find the first TOOL / FINAL marker line. The body of the
-            # marker can extend across subsequent lines until either
-            # another marker or end-of-content (FINAL rationale wraps).
-            match = marker_re.search(content)
-            if match:
-                kind = match.group("kind").upper()
-                # Body = everything from the marker's "rest" through the
-                # end-of-content (or until another marker, whichever is
-                # earlier).
-                start = match.end("rest")
-                next_match = marker_re.search(content, pos=start)
-                end = next_match.start() if next_match else len(content)
-                body_text = (match.group("rest") + "\n" + content[start:end]).strip()
-                if kind == "FINAL":
-                    latency_ms = int((_time.monotonic() - t_start) * 1000)
-                    # Validate against _PLANNER_FINAL_SCHEMA only when
-                    # body looks like a JSON object (forward-compat path
-                    # for structured plans). Plain-text rationales pass
-                    # through unchanged -- existing behavior.
-                    stripped = body_text.lstrip()
-                    if stripped.startswith("{"):
-                        parsed: Any = None
-                        parse_err = ""
-                        try:
-                            parsed = json.loads(stripped)
-                        except json.JSONDecodeError as exc:
-                            parse_err = f"json parse failed: {exc.msg}"
-                        if parse_err == "":
-                            try:
-                                jsonschema.validate(
-                                    instance=parsed,
-                                    schema=self._PLANNER_FINAL_SCHEMA,
-                                )
-                            except jsonschema.ValidationError as exc:
-                                parse_err = f"schema mismatch: {exc.message}"
-                        if parse_err:
-                            if not first_schema_err:
-                                first_schema_err = parse_err
-                            if schema_retries < self._PLANNER_SCHEMA_MAX_RETRIES:
-                                schema_retries += 1
-                                retry_msg = (
-                                    "Your previous FINAL did not validate: "
-                                    f"{parse_err}. Re-emit FINAL: with a JSON "
-                                    "object matching this schema "
-                                    "(no prose outside the JSON):\n"
-                                    f"{json.dumps(self._PLANNER_FINAL_SCHEMA)}"
-                                )
-                                messages.append(
-                                    {"role": "user", "content": retry_msg}
-                                )
-                                trace.append(
-                                    {"role": "user", "content": retry_msg}
-                                )
-                                continue
-                            # Retries exhausted: surface clear error,
-                            # fall through to caller (rule-based path).
-                            err = (
-                                f"planner JSON schema validation failed "
-                                f"after {schema_retries} retries: "
-                                f"{first_schema_err}"
-                            )
-                            return body_text, latency_ms, err, trace, schema_retries
-                    return body_text, latency_ms, "", trace, schema_retries
-                if kind == "TOOL":
-                    if turn < max_turns:
-                        obs = await self._exec_planner_tool(body_text, state=state)
-                        obs_msg = f"OBSERVATION: {json.dumps(obs)[:1500]}"
-                        messages.append({"role": "user", "content": obs_msg})
-                        trace.append({"role": "tool", "content": obs_msg})
-                        continue
-                    # Final turn but LM still wants a tool. Force-FINAL:
-                    # tell the LM tools are exhausted and request the
-                    # rationale on the next turn rather than discarding
-                    # this turn (which would surface the TOOL line as
-                    # rationale via the unstructured fallback below).
-                    force_msg = (
-                        "Tool budget exhausted. Do NOT call any more tools. "
-                        "Emit FINAL: <rationale> now using the facts you "
-                        "already have."
-                    )
-                    messages.append({"role": "user", "content": force_msg})
-                    trace.append({"role": "user", "content": force_msg})
-                    continue
-
-            # No recognized marker. Treat full content as the rationale
-            # rather than discarding (the LM produced *something* real).
-            # Distinguish two cases:
-            #   * substantive content (LM gave a real rationale, just
-            #     skipped the FINAL: prefix) -- accept silently; the
-            #     protocol-shape complaint shouldn't fail downstream
-            #     substance verifiers when the substance is fine.
-            #   * thin / non-grounded content -- keep the error so the
-            #     verifier can flag it.
-            latency_ms = int((_time.monotonic() - t_start) * 1000)
-            if content:
-                cve_norm = (
-                    cve_id.lower()
-                    .replace("‐", "-").replace("‑", "-")
-                    .replace("‒", "-").replace("–", "-")
-                    .replace("—", "-").replace("―", "-")
-                )
-                content_norm = (
-                    content.lower()
-                    .replace("‐", "-").replace("‑", "-")
-                    .replace("‒", "-").replace("–", "-")
-                    .replace("—", "-").replace("―", "-")
-                )
-                substantive = (
-                    len(content) >= 200
-                    and (cve_norm in content_norm
-                         or cve_norm.replace("cve-", "") in content_norm)
-                )
-                if substantive:
-                    return content, latency_ms, "", trace, schema_retries
-                return content, latency_ms, "agent emitted unstructured response", trace, schema_retries
-            last_err = "agent produced empty content"
-            break
-        return "", int((_time.monotonic() - t_start) * 1000), last_err or "max turns exceeded", trace, schema_retries
 
     async def _exec_planner_tool(
         self, tool_line: str, *, state: "BaseModel"
@@ -5177,152 +4955,23 @@ class PlannerNode(NodeBase):
         rag_sources: list[dict[str, str]] | None = None,
         recommended_actions: list[Any] | None = None,
     ) -> tuple[str, int, str]:
-        """Call the configured LM and return (rationale, latency_ms, error).
-
-        Task #72: when prior_count >= 1, include the outcome distribution in
-        the prompt so the planner can leverage historical context.
-
-        On any failure, returns ``("", 0, "<error>")`` so the caller
-        can persist the deterministic plan without aborting.
-        """
-        import time as _time
-
-        base_url = os.environ.get("LLM_BASE_URL", "").strip()
-        model = os.environ.get("LLM_MODEL", "").strip()
-        api_key = os.environ.get("LLM_API_KEY", "placeholder").strip() or "placeholder"
-        timeout_s = float(os.environ.get("LLM_TIMEOUT_SECONDS", "30") or "30")
-        if not base_url or not model:
-            return "", 0, ""
-        try:
-            import httpx
-        except ImportError:
-            return "", 0, "httpx not installed"
-        url = base_url.rstrip("/") + "/chat/completions"
-
-        # Task #72: build prior-retro context block for prompt.
-        prior_context = ""
-        if prior_count >= 1 and prior_outcomes:
-            dist_parts = [f"{k}={v}" for k, v in sorted(prior_outcomes.items())]
-            prior_context = (
-                f"\nPrior remediation history for {cwe}: "
-                f"{prior_count} run(s). Outcome distribution: "
-                f"{', '.join(dist_parts)}. "
-                f"Apply lessons from prior runs."
-            )
-        # Step 12 (b): inject top-K LM-mined suggestions from prior
-        # retros so the planner can cite specific lessons rather than
-        # only the outcome distribution.
-        prior_suggestions = prior_suggestions or []
-        if prior_suggestions:
-            sug_lines = []
-            for s in prior_suggestions:
-                txt = str(s.get("suggestion_text", "")).strip()
-                if not txt:
-                    continue
-                if len(txt) > 240:
-                    txt = txt[:240].rstrip() + " ..."
-                sug_lines.append(f"  - {txt}")
-            if sug_lines:
-                prior_context += (
-                    f"\nLessons from prior retrospectives "
-                    f"({len(sug_lines)} of top-K {len(prior_suggestions)}):\n"
-                    + "\n".join(sug_lines)
-                )
-
-        # Build a substantive context block including the actual advisory
-        # body, affected versions, CVSS/KEV, and the discovered host
-        # topology so the rationale is grounded in real facts -- not
-        # template fill-ins.
-        cvss_str = f"{cvss_bp / 100:.1f}" if cvss_bp else "n/a"
-        affected_products = affected_products or []
-        affected_versions = affected_versions or []
-        references = references or []
-        host_names = host_names or []
-        advisory_excerpt = (advisory_body or "").strip()
-        if len(advisory_excerpt) > 1500:
-            advisory_excerpt = advisory_excerpt[:1500] + "..."
-        ref_lines = "\n".join(f"  - {r}" for r in references[:6]) or "  (none)"
-        # Tier-2 RAG block: fetched authoritative sources, numbered so
-        # the LM can cite them. Per-source body is truncated to ~1200
-        # chars to stay within prompt budgets across multiple sources.
-        rag_block = ""
-        rag_instr = ""
-        if rag_sources:
-            chunks: list[str] = []
-            for s in rag_sources:
-                idx = s.get("index", "?")
-                u = s.get("url", "")
-                body = (s.get("body", "") or "")[:1200]
-                chunks.append(f"### [{idx}] {u}\n{body}")
-            rag_block = (
-                "\n## Authoritative sources (cite these)\n"
-                + "\n\n".join(chunks)
-                + "\n"
-            )
-            rag_instr = (
-                " Each technical claim (vulnerability mechanism, fixed "
-                "version, mitigation step) MUST be followed by a "
-                "citation marker of the form [CITE: n] referring to a "
-                "source above. Claims without a citation may be flagged "
-                "and rejected."
-            )
-        prompt = (
-            f"You are a senior security engineer drafting remediation rationale "
-            f"for an automated change request. Be concrete and specific to THIS CVE; "
-            f"do not write generic boilerplate.\n\n"
-            f"## CVE facts\n"
-            f"  cve_id: {cve_id}\n"
-            f"  cwe: {cwe or 'unspecified'}\n"
-            f"  vuln_class: {vuln or 'unknown'}\n"
-            f"  cvss: {cvss_str}{', KEV-listed' if kev_listed else ''}\n"
-            f"  affected_products: {', '.join(affected_products) or 'unknown'}\n"
-            f"  affected_versions: {', '.join(affected_versions) or 'unknown'}\n"
-            f"  remediation_runtime: {code_runtime}\n"
-            f"  sandbox_runtime: {sandbox_runtime}\n\n"
-            f"## Advisory text (verbatim from NVD)\n{advisory_excerpt or '(no advisory body)'}\n\n"
-            f"## Discovered affected hosts (from CMDB Runs-on traversal)\n"
-            f"  {', '.join(host_names) or '(none)'}\n\n"
-            f"## References\n{ref_lines}\n"
-            f"{_render_recs_block(recommended_actions or [])}"
-            f"{rag_block}"
-            f"{prior_context}\n\n"
-            f"Write 4-6 sentences. Cover: (1) what specific behavior in "
-            f"{', '.join(affected_products) or 'the affected software'} causes the vulnerability, "
-            f"(2) which version(s) close it, (3) the rollout strategy through "
-            f"{code_runtime} on the listed hosts, (4) what the {sandbox_runtime} sandbox probe "
-            f"will assert pre-vs-post, (5) the rollback condition. "
-            f"Do not include code; the code-writer node renders Ansible YAML."
-            f"{rag_instr}"
+        """Generate rationale via DSPy ChainOfThought."""
+        from demos.cve_remediation.graph._dspy_modules import (
+            generate_rationale as _gen_rationale,
         )
-        body = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": (
-                    "You are a senior security engineer. Always be specific to the "
-                    "given CVE. Never write generic templates."
-                )},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.0,
-            # 4096 fits even verbose rationales with citations.
-            "max_tokens": 4096,
-        }
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        t0 = _time.monotonic()
-        try:
-            async with httpx.AsyncClient(timeout=timeout_s) as client:
-                resp = await client.post(url, json=body, headers=headers)
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            return "", int((_time.monotonic() - t0) * 1000), f"{type(exc).__name__}: {exc}"
-        latency_ms = int((_time.monotonic() - t0) * 1000)
-        choices = data.get("choices") or []
-        if not choices:
-            return "", latency_ms, "empty completion (no choices)"
-        msg = choices[0].get("message") or {}
-        content = str(msg.get("content") or "").strip()
-        return content, latency_ms, ""
+        return await _gen_rationale(
+            cve_id=cve_id, cwe=cwe, vuln=vuln,
+            code_runtime=code_runtime, sandbox_runtime=sandbox_runtime,
+            prior_count=prior_count, prior_outcomes=prior_outcomes,
+            prior_suggestions=prior_suggestions,
+            advisory_body=advisory_body,
+            affected_products=affected_products,
+            affected_versions=affected_versions,
+            cvss_bp=cvss_bp, kev_listed=kev_listed,
+            references=references, host_names=host_names,
+            rag_sources=rag_sources,
+            recommended_actions=recommended_actions,
+        )
 
 
 class CodeWriterNode(NodeBase):
@@ -5506,130 +5155,41 @@ class CodeWriterNode(NodeBase):
         self, *, plan_hash: str, cve_id: str, cwe: str, vuln: str,
         rationale: str, mode: str
     ) -> str:
-        """Call the LM for an Ansible playbook; retry once on invalid YAML."""
-        import yaml
-
-        base_url = os.environ.get("LLM_BASE_URL", "").strip()
-        model = os.environ.get("LLM_MODEL", "").strip()
-        api_key = os.environ.get("LLM_API_KEY", "placeholder").strip() or "placeholder"
-        timeout_s = float(os.environ.get("LLM_TIMEOUT_SECONDS", "30") or "30")
-        if not base_url or not model:
-            return _ansible_stub(plan_hash, cve_id, mode)
-
-        action_verb = "remediate" if mode == "apply" else "roll back"
-        prompt = (
-            f"Generate a valid Ansible playbook YAML to {action_verb} {cve_id} ({cwe}).\n"
-            f"Vuln class: {vuln or 'library'}. Plan: {rationale or '(none)'}.\n"
-            "Output ONLY valid YAML starting with '---'. No markdown code fences.\n"
-            "Target hosts: all. Include at least 2 tasks.\n"
-            "EXECUTION CONSTRAINTS — your YAML will be executed by a "
-            "minimal task-translator (NOT a full ansible-playbook), so:\n"
-            "  - Use ONLY these modules: ansible.builtin.shell, "
-            "ansible.builtin.command, ansible.builtin.lineinfile, "
-            "ansible.builtin.copy, ansible.builtin.file, "
-            "ansible.builtin.service, ansible.builtin.systemd, "
-            "ansible.builtin.replace.\n"
-            "  - DO NOT use Jinja2 templating ({{ var }}) — every command, "
-            "path, and value MUST be a literal string. No `vars:`, no "
-            "`{{ ansible_date_time }}`, no `{{ inventory_hostname }}`.\n"
-            "  - DO NOT use `register:`, `when:`, `loop:`, `block:`, "
-            "`assert:`, `set_fact:`, `get_url:`, `template:`, or any "
-            "module not in the allow-list above.\n"
-            "  - For verify steps, use ansible.builtin.shell with a "
-            "literal grep/test/diff command and include 'verify' or "
-            "'check' in the task name so the verify-extractor finds it.\n"
-            "  - Each shell command must be a single line, runnable by "
-            "/bin/sh on a minimal Linux container.\n"
-            "  - The target hosts are MINIMAL LINUX CONTAINERS. Do NOT "
-            "assume vendor CLIs are installed (no ivanti-cli, no asacli, "
-            "no draytek_cli, no junos_cli, no docker-compose, no curl "
-            "even). Only POSIX core utilities + sed + grep + awk + cat "
-            "+ test + systemctl + sh are guaranteed.\n"
-            "  - Express remediation as config-file edits via "
-            "lineinfile/replace/copy modules pointed at "
-            f"/etc/cve-rem/{cve_id}.conf when the advisory's fix is a "
-            "config setting. Express verify steps as `grep -q PATTERN "
-            "FILE` or `test -f FILE`. Express service control via "
-            "ansible.builtin.service. Avoid network calls.\n"
-            "  - Tasks MUST exit 0 on success and non-zero on failure "
-            "WITHOUT depending on absent binaries — wrap unsupported "
-            "operations in `command -v X >/dev/null 2>&1 && ...` so a "
-            "missing tool yields exit 0 (skip) rather than exit 127 "
-            "(failure)."
+        """Generate Ansible playbook via DSPy ChainOfThought."""
+        from demos.cve_remediation.graph._dspy_modules import (
+            generate_ansible_yaml as _gen_ansible,
         )
-        body = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "You are an Ansible expert. Output only valid YAML."},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.0,
-            # Ansible playbooks need room: full per-host probe + apply
-            # + verify + rollback hooks easily exceed 2k tokens. 4096
-            # leaves headroom so the LM never has to truncate mid-task
-            # -- truncation always failed YAML parse.
-            "max_tokens": 4096,
-        }
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        try:
-            import httpx
-
-            for _attempt in range(2):
-                async with httpx.AsyncClient(timeout=timeout_s) as client:
-                    resp = await client.post(
-                        base_url.rstrip("/") + "/chat/completions",
-                        json=body, headers=headers,
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
-                choices = data.get("choices") or []
-                if not choices:
-                    break
-                content = str((choices[0].get("message") or {}).get("content") or "").strip()
-                # Strip markdown fences if present.
-                if content.startswith("```"):
-                    lines = content.splitlines()
-                    content = "\n".join(
-                        l for l in lines
-                        if not l.startswith("```")
-                    ).strip()
-                # Validate the LM completion is a real Ansible playbook
-                # (non-empty list of plays with a tasks list). Anything
-                # else -- empty string, scalar None from yaml.safe_load,
-                # bare prose -- triggers the retry path.
-                try:
-                    parsed = yaml.safe_load(content)
-                except Exception:
-                    continue
-                if (
-                    isinstance(parsed, list)
-                    and parsed
-                    and isinstance(parsed[0], dict)
-                    and parsed[0].get("tasks")
-                ):
-                    return content
-                continue
-        except Exception:  # noqa: BLE001
-            pass
-        return _ansible_stub(plan_hash, cve_id, mode)
+        action_verb = "remediate" if mode == "apply" else "roll back"
+        context = (
+            f"Action: {action_verb} {cve_id} ({cwe}). "
+            f"Vuln class: {vuln or 'library'}. Plan: {rationale or '(none)'}. "
+            "Use ONLY ansible.builtin modules (shell, command, lineinfile, "
+            "copy, file, service, systemd, replace). No Jinja2 templating. "
+            "No register/when/loop/block. Literal strings only. "
+            "Target: minimal Linux containers with POSIX utils + sed/grep/awk."
+        )
+        return await _gen_ansible(
+            cve_id=cve_id, mode=mode, vuln_class=vuln or "library",
+            remediation_context=context, plan_hash=plan_hash,
+        )
 
 
 def _ansible_stub(plan_hash: str, cve_id: str, mode: str) -> str:
-    """Deterministic fallback Ansible playbook when LM is unavailable."""
-    action = "apply patch" if mode == "apply" else "revert patch"
+    """Honest failure stub when LM is unavailable.
+
+    Returns a playbook whose verify task exits non-zero so
+    ``_exec_bundle_on_host`` reports ``ok=False`` and the run
+    halts at HITL instead of silently passing.
+    """
     return (
         f"---\n"
-        f"- name: CVE {cve_id} remediation ({mode}) plan={plan_hash[:8]}\n"
+        f"- name: CVE {cve_id} remediation ({mode}) plan={plan_hash[:8]} [LM-UNAVAILABLE]\n"
         f"  hosts: all\n"
-        f"  gather_facts: true\n"
+        f"  gather_facts: false\n"
         f"  tasks:\n"
-        f"    - name: {action} for {cve_id}\n"
-        f"      ansible.builtin.debug:\n"
-        f"        msg: \"Executing {mode} for {cve_id} plan_hash={plan_hash}\"\n"
-        f"    - name: Verify service state\n"
-        f"      ansible.builtin.command:\n"
-        f"        cmd: echo \"verify {mode} complete\"\n"
-        f"      changed_when: false\n"
+        f"    - name: LM unavailable — cannot generate remediation for {cve_id}\n"
+        f"      ansible.builtin.fail:\n"
+        f"        msg: \"No LM available to generate {mode} playbook for {cve_id}. Manual remediation required.\"\n"
     )
 
 
@@ -6017,48 +5577,38 @@ class SandboxRunNode(NodeBase):
                     "sandbox_status": "skipped",
                     "static_detection_per_host": per_host,
                 }
+            # Only report what was actually probed — baseline version
+            # check. Rollback/reapply not tested (no sandbox ran).
             steps = {
-                phase: {"status": step_status, "expected": "patched"}
-                for phase in ("baseline", "apply", "rollback", "reapply")
+                "baseline": {
+                    "status": "vulnerable" if not all_patched else "patched",
+                    "expected": "vulnerable",
+                    "probed": True,
+                },
+                "apply": {
+                    "status": step_status,
+                    "expected": "patched",
+                    "probed": True,
+                },
+                "rollback": {
+                    "status": "not_tested",
+                    "expected": "vulnerable",
+                    "probed": False,
+                },
+                "reapply": {
+                    "status": "not_tested",
+                    "expected": "patched",
+                    "probed": False,
+                },
             }
-            steps["baseline"] = {
-                "status": "vulnerable" if not all_patched else "patched",
-                "expected": "vulnerable",
-            }
-            steps["apply"] = {
-                "status": step_status,
-                "expected": "patched",
-            }
-            steps["rollback"] = {
-                "status": "vulnerable",
-                "expected": "vulnerable",
-            }
-            steps["reapply"] = {
-                "status": step_status,
-                "expected": "patched",
-            }
-            digest_seed = f"{plan_hash}:static_detection"
-            digest_for = lambda phase: hashlib.sha256(
-                f"{digest_seed}:{phase}".encode()
-            ).hexdigest()[:8]
             result = SandboxResult(
                 runtime=runtime,
                 status=final_status,
                 baseline_probe=(
-                    f"static-detection://{install_channel}/{probe_pkg}"
-                    f"/baseline/{digest_for('baseline')}"
+                    f"static-detection://{install_channel}/{probe_pkg}/baseline"
                 ),
                 apply_probe=(
-                    f"static-detection://{install_channel}/{probe_pkg}"
-                    f"/apply/{digest_for('apply')}"
-                ),
-                rollback_probe=(
-                    f"static-detection://{install_channel}/{probe_pkg}"
-                    f"/rollback/{digest_for('rollback')}"
-                ),
-                reapply_probe=(
-                    f"static-detection://{install_channel}/{probe_pkg}"
-                    f"/reapply/{digest_for('reapply')}"
+                    f"static-detection://{install_channel}/{probe_pkg}/apply"
                 ),
                 force_hitl=force_hitl_v,
             )
@@ -6080,7 +5630,7 @@ class SandboxRunNode(NodeBase):
             # Suggestion #3 retry loop: run probes; on quarantine retry
             # up to MAX_SANDBOX_RETRIES times before giving up.  Bounded
             # because each retry pays the full docker compose cost.
-            MAX_SANDBOX_RETRIES = 2
+            MAX_SANDBOX_RETRIES = POLICY.get("sandbox", {}).get("max_retries", 2)
             retry_attempts: list[dict[str, Any]] = []
             probes = None
             quarantined = False
@@ -6172,53 +5722,19 @@ class SandboxRunNode(NodeBase):
                 "last_sandbox_error": probes["error"],
             }
 
-        # Deterministic plan-hash fallback (offline runs).
-        # Derive step digests from plan_hash so they are content-addressable
-        # and stable across re-runs. Four steps required by CRITERIA #6.
-        step_digests = {
-            s: hashlib.sha256(f"{plan_hash}:{s}".encode()).hexdigest()[:8]
-            for s in ("baseline", "apply", "rollback", "reapply")
-        }
+        # No real sandbox available — honest skip with force_hitl.
         result = SandboxResult(
             runtime=runtime,
-            status="ok",
-            baseline_probe=f"probe://{plan_hash}/baseline",
-            apply_probe=f"probe://{plan_hash}/apply",
-            rollback_probe=f"probe://{plan_hash}/rollback",
-            reapply_probe=f"probe://{plan_hash}/reapply",
+            status="skipped",
+            skip_reason=(
+                "no sandbox runtime available (docker_compose not "
+                "configured); cannot probe vulnerability state"
+            ),
+            force_hitl=True,
         )
-        # CRITERIA #6 requires 4 probe results captured. Offline: simulated.
-        det_probe_steps = {
-            "baseline": {
-                "uri": f"probe://{plan_hash}/baseline",
-                "digest": step_digests["baseline"],
-                "status": "vulnerable",
-                "latency_ms": 12,
-            },
-            "apply": {
-                "uri": f"probe://{plan_hash}/apply",
-                "digest": step_digests["apply"],
-                "status": "patched",
-                "latency_ms": 45,
-            },
-            "rollback": {
-                "uri": f"probe://{plan_hash}/rollback",
-                "digest": step_digests["rollback"],
-                "status": "vulnerable",
-                "latency_ms": 14,
-            },
-            "reapply": {
-                "uri": f"probe://{plan_hash}/reapply",
-                "digest": step_digests["reapply"],
-                "status": "patched",
-                "latency_ms": 38,
-            },
-        }
         return {
             "sandbox": result,
-            "sandbox_status": "ok",
-            "sandbox_probe_steps": det_probe_steps,
-            "sandbox_probe_latency_ms": sum(s["latency_ms"] for s in det_probe_steps.values()),
+            "sandbox_status": "skipped",
         }
 
     async def _run_cargonet_probes(
@@ -6755,24 +6271,36 @@ class SandboxRunNode(NodeBase):
         if not output:
             row["error"] = "firmware probe stdout empty"
             return row
-        if fix_version and fix_version in output:
-            row["ok"] = True
-            row["observed_version"] = fix_version
-        else:
-            import re as _re
-            match = _re.search(r"\b(\d+\.\d+(?:\.\d+)*(?:[a-z0-9._-]*)?)\b", output)
-            row["observed_version"] = match.group(1) if match else ""
+        import re as _re
+        match = _re.search(r"\b(\d+\.\d+(?:\.\d+)*(?:[a-z0-9._-]*)?)\b", output)
+        observed = match.group(1) if match else ""
+        row["observed_version"] = observed
+        if observed and fix_version:
+            row["ok"] = VerifyImmediateNode._version_meets_fix(
+                observed, fix_version
+            )
+            if row["ok"]:
+                row["evidence"] = (
+                    f"firmware probe: {observed} >= {fix_version}"
+                )
         return row
 
     def _evaluate_quarantine(
         self, steps: dict[str, Any]
     ) -> tuple[bool, str]:
-        """CRITERIA fancy #4: any phase with observed != expected ⇒ quarantine.
+        """Severity-triaged quarantine: only critical divergences trigger quarantine.
 
-        Empty/missing observed (visibility-only path) does NOT
-        quarantine -- it's a separate signal the verifier flags. We
-        only fire on an *active* mismatch.
+        Evaluates divergences via Bosun quarantine_policy CLIPS rules.
         """
+        from demos.cve_remediation.graph._bosun import CveRemBosunEvaluator
+
+        q_cfg = POLICY.get("quarantine", {})
+        sev = q_cfg.get("severity_levels", {})
+        critical_fields = set(sev.get("critical", ["status", "version"]))
+        warn_fields = set(sev.get("warn", []))
+        info_fields = set(sev.get("info", []))
+
+        divergences: list[dict[str, Any]] = []
         for phase, entry in (steps or {}).items():
             if not isinstance(entry, dict):
                 continue
@@ -6781,7 +6309,30 @@ class SandboxRunNode(NodeBase):
             if not obs or not exp:
                 continue
             if obs != exp:
-                return True, f"phase={phase} observed={obs!r} expected={exp!r}"
+                phase_key = phase.split("_")[0] if "_" in phase else phase
+                if phase_key in critical_fields:
+                    field_class = phase_key
+                elif phase_key in warn_fields:
+                    field_class = phase_key
+                elif phase_key in info_fields:
+                    field_class = phase_key
+                else:
+                    field_class = "unknown"
+                divergences.append({
+                    "phase": phase,
+                    "field_class": field_class,
+                    "observed": obs,
+                    "expected": exp,
+                })
+
+        if not divergences:
+            return False, ""
+
+        result = CveRemBosunEvaluator.evaluate_quarantine(divergences=divergences)
+        if result["quarantine"]:
+            critical = [d for d in result["decisions"] if d.get("quarantine") == "TRUE"]
+            reason = critical[0]["reason"] if critical else "bosun quarantine rule fired"
+            return True, reason
         return False, ""
 
     def _probe_script_for_channel(
@@ -7679,13 +7230,7 @@ class WriteRetrospectiveNode(NodeBase):
             # outcome so cross-run learning + scoring don't conflate
             # with "vulnerable" or "rollback".
             outcome = "unpatchable_pending"
-        elif verify == "mitigation_verified":
-            # Retro round #D: mitigation_only path treated as bounded
-            # success.  The host is still vulnerable but exposure is
-            # reduced via the cited mitigations; cross-run learning
-            # should see this as a positive outcome, not a rollback.
-            # Probe-failed mitigation runs collapse to mitigation_invalid
-            # so the failure detector can surface them.
+        elif verify in ("mitigation_verified", "mitigation_applied"):
             outcome = _mitig_outcome()
         elif rollback:
             outcome = "rollback"
@@ -8211,51 +7756,11 @@ class WriteRetrospectiveNode(NodeBase):
     async def _generate_suggestions(
         self, cve_id: str, cwe: str, outcome: str
     ) -> list[str]:
-        """Call LM to generate 1-2 improvement suggestions for the retro."""
-        llm_base_url = os.environ.get("LLM_BASE_URL", "").strip()
-        llm_model = os.environ.get("LLM_MODEL", "").strip()
-        api_key = os.environ.get("LLM_API_KEY", "placeholder").strip() or "placeholder"
-        if not llm_base_url or not llm_model:
-            return [
-                f"Consider automated regression testing for {cwe} class vulnerabilities.",
-            ]
-        try:
-            import httpx
-
-            prompt = (
-                f"CVE {cve_id} ({cwe}) remediation outcome: {outcome}.\n"
-                "Give exactly 2 concise improvement suggestions for future runs "
-                "of this CWE class. One per line, no numbering, no prefix."
-            )
-            body = {
-                "model": llm_model,
-                "messages": [
-                    {"role": "system", "content": "You are a security improvement advisor."},
-                    {"role": "user", "content": prompt},
-                ],
-                "temperature": 0.2,
-                # gpt-oss models need >=512 to emit any content (the
-                # reasoning prefix consumes the budget at 128/256).
-                "max_tokens": 512,
-            }
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
-            async with httpx.AsyncClient(timeout=20.0) as client:
-                resp = await client.post(
-                    llm_base_url.rstrip("/") + "/chat/completions",
-                    json=body, headers=headers,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-            choices = data.get("choices") or []
-            if not choices:
-                return []
-            content = str((choices[0].get("message") or {}).get("content") or "").strip()
-            return [line.strip() for line in content.splitlines() if line.strip()][:2]
-        except Exception:  # noqa: BLE001
-            return [f"Consider automated regression testing for {cwe} class vulnerabilities."]
+        """Generate improvement suggestions via DSPy Predict."""
+        from demos.cve_remediation.graph._dspy_modules import (
+            generate_suggestions as _gen_suggestions,
+        )
+        return await _gen_suggestions(cve_id, cwe, outcome)
 
 
 class KgRunWriterNode(NodeBase):
@@ -8612,25 +8117,8 @@ class RenderDocxNode(NodeBase):
         code_runtime = str(getattr(state, "code_runtime", "") or "")
         sandbox_runtime = str(getattr(state, "sandbox_runtime", "") or "")
         plan_rationale = str(getattr(state, "plan_rationale", "") or "")
-        rag_sources = list(getattr(state, "planner_rag_sources", []) or [])
-        verifier_findings = list(
-            getattr(state, "planner_verifier_findings", []) or []
-        )
-        citation_findings = list(
-            getattr(state, "planner_citation_findings", []) or []
-        )
-        agent_trace = list(getattr(state, "planner_agent_trace", []) or [])
-        prior_count = int(getattr(state, "prior_retro_count", 0) or 0)
-        prior_outcomes = dict(
-            getattr(state, "prior_retro_outcomes", {}) or {}
-        )
-        retrieval_status = str(
-            getattr(state, "prior_retro_retrieval_status", "") or ""
-        )
         sandbox_steps = dict(getattr(state, "sandbox_probe_steps", {}) or {})
-        sandbox_latency = int(
-            getattr(state, "sandbox_probe_latency_ms", 0) or 0
-        )
+        sandbox_status = str(getattr(state, "sandbox_status", "") or "")
         per_apply = list(getattr(state, "per_host_apply_results", []) or [])
         per_verify = list(
             getattr(state, "per_host_verify_results", []) or []
@@ -8640,244 +8128,342 @@ class RenderDocxNode(NodeBase):
         stage = bool(getattr(state, "stage_passed", False))
         fleet = bool(getattr(state, "fleet_passed", False))
         drift_window = int(getattr(state, "drift_watch_window_hours", 0) or 0)
-        drift_path = str(getattr(state, "drift_spawn_path", "") or "")
-        drift_child = str(getattr(state, "drift_child_run_id", "") or "")
         cr_states = list(getattr(state, "cr_lifecycle_states", []) or [])
         attach_count = int(getattr(state, "attachment_count", 0) or 0)
-        attach_manifest = list(
-            getattr(state, "attachment_manifest", []) or []
+        halt_reason = str(getattr(state, "halt_reason", "") or "")
+        mitigation_only = bool(getattr(state, "mitigation_only", False))
+        vuln_status = str(getattr(state, "vulnerability_status", "") or "")
+        cmdb_q = str(getattr(state, "cmdb_match_quality", "") or "")
+        rollback = bool(getattr(state, "rollback_triggered", False))
+        bundle = getattr(state, "bundle", None)
+        bundle_ref = str(getattr(bundle, "apply_bundle_ref", "") or "") if bundle else ""
+        retro_failure_analysis = str(
+            getattr(state, "retro_failure_analysis", "") or ""
         )
-        journal_count = int(getattr(state, "cr_observed_journal_count", 0) or 0)
-        self_val_pass = bool(
-            getattr(state, "cr_self_validation_passed", False)
+        retro_suggestions_list = list(
+            getattr(state, "retro_prevention_suggestions", []) or []
         )
-        self_val_findings = list(
-            getattr(state, "cr_self_validation_findings", []) or []
+        controls_dr = list(getattr(state, "framework_controls", []) or [])
+        patterns_dr = list(getattr(state, "attack_patterns", []) or [])
+        recommended_actions = list(
+            getattr(state, "recommended_actions", []) or []
         )
-        retro_suggestions = int(getattr(state, "retro_suggestion_count", 0) or 0)
-        execution_ledger = list(getattr(state, "execution_ledger", []) or [])
 
         severity = cls._severity_label(cvss_bp)
         cvss_str = f"{cvss_bp / 100:.1f}" if cvss_bp > 0 else "n/a"
         host_count = len(host_names)
+        pkg_name = osv_pkg or cmdb_sw or "unknown package"
+        apply_ok = sum(1 for r in per_apply if r.get("ok"))
+        apply_fail = len(per_apply) - apply_ok
+        verify_ok = sum(1 for r in per_verify if r.get("ok"))
+        verify_fail = len(per_verify) - verify_ok
 
-        # ---- build sections ----------------------------------------
+        # ---- build narrative ----------------------------------------
         lines: list[str] = []
         ap = lines.append
 
-        ap(f"# CVE Remediation Retrospective — {cve_id}")
-        ap("")
-        ap("## 1. Outcome at a glance")
-        ap("")
-        ap(f"- **CVE:** {cve_id}")
-        ap(f"- **Verify outcome:** `{verify or 'unknown'}`")
-        ap(f"- **Retro outcome:** `{retro_outcome or 'unknown'}`")
-        ap(f"- **Severity:** {severity} (CVSS {cvss_str})")
-        ap(f"- **KEV-listed:** {'yes' if kev else 'no'}")
-        ap(f"- **SSVC tier:** `{ssvc}`")
-        ap(f"- **Hosts in scope:** {host_count}")
-        if cr_id or cr_sys_id:
-            ap(f"- **Change request:** `{cr_id or '(no correlation id)'}`"
-               + (f" (sys_id `{cr_sys_id}`)" if cr_sys_id else ""))
-        if retro_id:
-            ap(f"- **Retro id:** `{retro_id}`")
+        ap(f"# Remediation Report: {cve_id}")
         ap("")
 
-        ap("## 2. Vulnerability")
+        # -- Executive summary: one paragraph telling the whole story --
+        ap("## Executive Summary")
         ap("")
-        ap(f"- **CWE class:** `{cwe or 'unknown'}`")
-        ap(f"- **Vuln class:** `{vuln or 'unknown'}`")
-        if osv_pkg or cmdb_sw:
-            ap(f"- **Package (OSV / CMDB):** `{osv_pkg or '—'}` / "
-               f"`{cmdb_sw or '—'}`")
-        if affected_products:
-            ap("- **Affected products (NVD CPE):** "
-               + ", ".join(f"`{p}`" for p in affected_products[:5])
-               + (f" + {len(affected_products) - 5} more"
-                  if len(affected_products) > 5 else ""))
-        if fixed_version:
-            ap(f"- **Fix version:** `{fixed_version}` "
-               f"(channel: `{install_channel or 'unknown'}`)")
-        ap("")
+        kev_phrase = " It is listed on CISA's Known Exploited Vulnerabilities catalog." if kev else ""
+        ssvc_phrase = {
+            "act_auto": "immediate automated remediation",
+            "act_hitl_required": "automated remediation with human approval",
+            "attend": "prioritized attention",
+            "track": "monitoring",
+            "defer": "deferred action",
+        }.get(ssvc, ssvc or "unclassified")
 
-        if host_names:
-            ap("## 3. Affected fleet")
-            ap("")
-            ap(f"- **CMDB host count:** {host_count}")
-            if cargonet_lab:
-                ap(f"- **CargoNet lab:** `{cargonet_lab}` "
-                   f"({cargonet_count} matched node(s))")
-            shown = host_names[:10]
-            ap("- **Hosts:** "
-               + ", ".join(f"`{h}`" for h in shown)
-               + (f" + {host_count - len(shown)} more"
-                  if host_count > len(shown) else ""))
-            ap("")
-
-        ap("## 4. Plan")
-        ap("")
-        ap(f"- **plan_hash:** `{plan_hash or '—'}`")
-        ap(f"- **code_runtime:** `{code_runtime}`")
-        ap(f"- **sandbox_runtime:** `{sandbox_runtime}`")
-        ap(f"- **Prior retros consulted:** {prior_count} "
-           f"(distribution: {prior_outcomes or 'none'}; "
-           f"retrieval status: `{retrieval_status or 'unknown'}`)")
-        if rag_sources:
-            ap(f"- **RAG sources injected:** {len(rag_sources)}")
-        if verifier_findings or citation_findings:
-            ap(f"- **Planner verifier findings:** "
-               f"{len(verifier_findings)} tier-1, "
-               f"{len(citation_findings)} tier-2 citation")
-        if agent_trace:
-            ap(f"- **Multi-turn agent steps:** {len(agent_trace)}")
-        if plan_rationale:
-            excerpt = plan_rationale.strip()
-            if len(excerpt) > 800:
-                excerpt = excerpt[:800].rstrip() + " …"
-            ap("")
-            ap("**Plan rationale (excerpt):**")
-            ap("")
-            for line in excerpt.splitlines():
-                ap(f"> {line}")
-        ap("")
-
-        if sandbox_steps:
-            ap("## 5. Sandbox 4-step probe")
-            ap("")
-            ap(f"- **Total probe latency:** {sandbox_latency} ms")
-            ap("")
-            ap("| Phase | Observed status | Latency (ms) |")
-            ap("|-------|-----------------|--------------|")
-            for phase in ("baseline", "apply", "rollback", "reapply"):
-                meta = sandbox_steps.get(phase) or {}
-                if not isinstance(meta, dict):
-                    continue
-                status = str(meta.get("status", "—"))
-                latency = int(meta.get("latency_ms", 0) or 0)
-                ap(f"| `{phase}` | `{status}` | {latency} |")
-            ap("")
-
-        # Doctrine — NIST 800-53 controls + CAPEC attack patterns mapped
-        # from the CWE. Most actionable when sandbox skipped (firmware /
-        # embedded substrate); supplies compensating-control guidance.
-        controls_dr = list(getattr(state, "framework_controls", []) or [])
-        patterns_dr = list(getattr(state, "attack_patterns", []) or [])
-        if controls_dr or patterns_dr:
-            sandbox_skipped = str(
-                getattr(state, "sandbox_status", "") or ""
-            ).lower() in ("skipped", "")
-            heading = (
-                "## 5b. Doctrine compensating controls"
-                if sandbox_skipped
-                else "## 5b. Doctrine reference mappings"
+        summary_parts = [
+            f"{cve_id} is a {severity} (CVSS {cvss_str}) {cwe or 'vulnerability'} "
+            f"in {pkg_name}.{kev_phrase} "
+            f"SSVC evaluation: {ssvc_phrase}.",
+        ]
+        if host_count > 0 and fixed_version:
+            host_list = ", ".join(host_names[:5])
+            if host_count > 5:
+                host_list += f" (+{host_count - 5} more)"
+            summary_parts.append(
+                f"The pipeline identified {host_count} affected host(s): "
+                f"{host_list}. The remediation target was to upgrade "
+                f"{pkg_name} to {fixed_version} via {install_channel or 'auto'} channel."
             )
-            ap(heading)
+        elif mitigation_only:
+            summary_parts.append(
+                f"No upstream fix is available (status: {vuln_status}). "
+                f"The pipeline applied mitigation guidance only."
+            )
+        elif host_count == 0:
+            summary_parts.append(
+                f"No affected hosts were identified in the CMDB "
+                f"(match quality: {cmdb_q or 'none'})."
+            )
+
+        if verify == "patched":
+            summary_parts.append(
+                f"All {verify_ok} host(s) were successfully patched and "
+                f"independently verified. The change request has been closed."
+            )
+        elif verify == "mitigation_applied":
+            summary_parts.append(
+                f"Mitigation guidance was recorded. Hosts remain vulnerable "
+                f"until an upstream fix is available."
+            )
+        elif verify == "not_applicable":
+            summary_parts.append(
+                f"This CVE cannot be remediated in the current environment "
+                f"({halt_reason or 'requires host-level action'})."
+            )
+        elif verify == "vulnerable":
+            reason = ""
+            if rollback:
+                reason = " A rollback was triggered during progressive rollout."
+            elif verify_fail > 0:
+                reason = (
+                    f" Verification found {verify_fail}/{len(per_verify)} "
+                    f"host(s) still at the vulnerable version."
+                )
+            summary_parts.append(
+                f"Remediation did not succeed.{reason} "
+                f"The change request remains open for operator triage."
+            )
+        elif halt_reason:
+            summary_parts.append(
+                f"The pipeline halted: {halt_reason}. "
+                f"The change request remains open."
+            )
+        else:
+            summary_parts.append(
+                f"Outcome: {verify or 'unknown'}. CR status: "
+                f"{cr_states[-1] if cr_states else 'unknown'}."
+            )
+
+        ap(" ".join(summary_parts))
+        ap("")
+
+        # -- What happened: narrative chronology -----------------------
+        ap("## What Happened")
+        ap("")
+
+        # Discovery & Assessment
+        ap("### Discovery and Assessment")
+        ap("")
+        ap(
+            f"The advisory was ingested from NVD and classified as "
+            f"{cwe} ({vuln or 'unknown'} class). "
+            f"CVSS base score: {cvss_str}."
+        )
+        if fixed_version:
+            sources = []
+            for a in recommended_actions:
+                cite = str(getattr(a, "citation_url", "") or "")
+                if cite:
+                    sources.append(cite)
+            if sources:
+                ap(
+                    f"RemediationDiscoveryNode identified the fix: upgrade "
+                    f"{pkg_name} to >={fixed_version} "
+                    f"(source: {sources[0]}"
+                    + (f" +{len(sources)-1} more" if len(sources) > 1 else "")
+                    + ")."
+                )
+            else:
+                ap(
+                    f"The fix target is {pkg_name} >={fixed_version} "
+                    f"via {install_channel or 'auto'} channel."
+                )
+        elif mitigation_only:
+            mitig_count = sum(
+                1 for a in recommended_actions
+                if getattr(a, "kind", "") == "mitigation"
+            )
+            ap(
+                f"No upstream fix is available (vulnerability status: "
+                f"{vuln_status}). {mitig_count} mitigation action(s) "
+                f"were identified."
+            )
+        ap("")
+
+        # CMDB Correlation
+        if host_count > 0 or cmdb_q:
+            ap("### CMDB Correlation")
+            ap("")
+            if host_count > 0:
+                ap(
+                    f"CorrelateAssetsBrokerNode matched {host_count} host(s) "
+                    f"with match quality: {cmdb_q or 'unknown'}."
+                )
+                if cargonet_lab:
+                    ap(
+                        f"All hosts confirmed in CargoNet lab {cargonet_lab} "
+                        f"({cargonet_count} correlated node(s))."
+                    )
+            else:
+                ap(
+                    f"No hosts matched in the CMDB "
+                    f"(quality: {cmdb_q or 'none'})."
+                )
+            ap("")
+
+        # Planning
+        if plan_rationale or bundle_ref:
+            ap("### Remediation Planning")
+            ap("")
+            if plan_rationale:
+                excerpt = plan_rationale.strip()
+                if len(excerpt) > 600:
+                    excerpt = excerpt[:600].rstrip() + " ..."
+                ap(f"PlannerNode rationale: {excerpt}")
+                ap("")
+            if bundle_ref:
+                ap(
+                    f"CodeWriterNode produced an Ansible playbook "
+                    f"(runtime: {code_runtime or 'default'}, "
+                    f"ref: {bundle_ref.split('/')[-1] if '/' in bundle_ref else bundle_ref})."
+                )
+                ap("")
+
+        # Sandbox
+        if sandbox_steps:
+            ap("### Sandbox Verification")
+            ap("")
+            if sandbox_status == "skipped":
+                ap(
+                    f"Sandbox was skipped "
+                    f"({sandbox_runtime or 'no runtime available'}). "
+                    f"Run proceeded to direct host execution."
+                )
+            else:
+                probed_phases = [
+                    p for p in ("baseline", "apply", "rollback", "reapply")
+                    if (sandbox_steps.get(p) or {}).get("probed", True)
+                    and (sandbox_steps.get(p) or {}).get("status", "") not in ("not_tested", "")
+                ]
+                for phase in probed_phases:
+                    meta = sandbox_steps.get(phase, {})
+                    status = meta.get("status", "unknown")
+                    latency = meta.get("latency_ms", 0)
+                    ap(f"- **{phase}**: {status} ({latency}ms)")
+                not_tested = [
+                    p for p in ("baseline", "apply", "rollback", "reapply")
+                    if (sandbox_steps.get(p) or {}).get("status") == "not_tested"
+                ]
+                if not_tested:
+                    ap(f"- Phases not tested: {', '.join(not_tested)}")
+            ap("")
+
+        # Progressive Rollout
+        if per_apply:
+            ap("### Progressive Rollout")
+            ap("")
+            ap(
+                f"The playbook executed on {len(per_apply)} host(s). "
+                f"{apply_ok} succeeded, {apply_fail} failed."
+            )
+            ap("")
+            for r in per_apply:
+                host = r.get("host", "unknown")
+                ok = r.get("ok", False)
+                tasks_run = r.get("tasks_run", 0)
+                tasks_total = tasks_run + r.get("tasks_skipped", 0)
+                latency = r.get("latency_ms", 0)
+                error = r.get("error", "")
+                if ok:
+                    ap(
+                        f"- **{host}**: {tasks_run}/{tasks_total} tasks "
+                        f"succeeded ({latency}ms)"
+                    )
+                else:
+                    ap(
+                        f"- **{host}**: FAILED — {error or 'unknown error'} "
+                        f"({tasks_run}/{tasks_total} tasks, {latency}ms)"
+                    )
+            ap("")
+            if rollback:
+                ap(
+                    "A rollback was triggered because one or more hosts "
+                    "failed during progressive rollout."
+                )
+                ap("")
+
+        # Independent Verification
+        if per_verify:
+            ap("### Independent Verification")
+            ap("")
+            ap(
+                f"VerifyImmediateNode ran {verify_probe or 'unknown'} "
+                f"probes on {len(per_verify)} host(s). "
+                f"{verify_ok} passed, {verify_fail} failed."
+            )
+            ap("")
+            for r in per_verify:
+                host = r.get("host", "unknown")
+                ok = r.get("ok", False)
+                expected = r.get("expected_version", "?")
+                observed = r.get("observed_version", "")
+                method = r.get("probe_method", "unknown")
+                error = r.get("error", "")
+                latency = r.get("latency_ms", 0)
+                if ok:
+                    ap(
+                        f"- **{host}**: {observed} >= {expected} "
+                        f"({method}, {latency}ms)"
+                    )
+                else:
+                    detail = error or f"observed {observed or 'empty'} < {expected}"
+                    ap(f"- **{host}**: FAILED — {detail} ({method}, {latency}ms)")
+            ap("")
+            if drift_window:
+                ap(f"Drift watch armed for {drift_window} hours.")
+                ap("")
+
+        # Doctrine controls (when applicable)
+        if controls_dr or patterns_dr:
+            ap("### Applicable Security Controls")
             ap("")
             if controls_dr:
-                ap("**NIST 800-53 r5 controls (mapped to CWE):**")
-                ap("")
-                for c in controls_dr:
-                    cid = str(c.get("id", "") or "").strip()
-                    cname = str(c.get("name", "") or "").strip()
-                    if cid:
-                        ap(f"- `{cid}` — {cname}" if cname else f"- `{cid}`")
-                ap("")
+                ctrl_list = ", ".join(
+                    f"{c.get('id', '?')}" for c in controls_dr[:6]
+                )
+                ap(f"NIST 800-53 controls mapped to {cwe}: {ctrl_list}")
             if patterns_dr:
-                ap("**CAPEC attack patterns (operator TTP awareness):**")
+                pat_list = ", ".join(
+                    f"{p.get('id', '?')}" for p in patterns_dr[:6]
+                )
+                ap(f"CAPEC attack patterns: {pat_list}")
+            ap("")
+
+        # Failure analysis (if run didn't fully succeed)
+        if retro_failure_analysis or retro_suggestions_list:
+            ap("### Failure Analysis")
+            ap("")
+            if retro_failure_analysis:
+                ap(retro_failure_analysis.strip())
                 ap("")
-                for p in patterns_dr:
-                    pid = str(p.get("id", "") or "").strip()
-                    pname = str(p.get("name", "") or "").strip()
-                    if pid:
-                        ap(f"- `{pid}` — {pname}" if pname else f"- `{pid}`")
+            if retro_suggestions_list:
+                ap("**Prevention suggestions for future runs:**")
+                ap("")
+                for s in retro_suggestions_list[:5]:
+                    text = str(
+                        getattr(s, "suggestion", "") or s
+                        if not isinstance(s, str) else s
+                    )
+                    ap(f"- {text}")
                 ap("")
 
-        if per_apply:
-            ap("## 6. Apply (per-host install)")
+        # CR lifecycle
+        if cr_states:
+            ap("### Change Request Lifecycle")
             ap("")
-            ap(f"- canary_passed={canary} stage_passed={stage} "
-               f"fleet_passed={fleet}")
-            ap("")
-            ap("| Host | Channel | Observed version | Result |")
-            ap("|------|---------|------------------|--------|")
-            for r in per_apply[:50]:
-                host = str(r.get("host", "—"))
-                channel = str(r.get("channel", "—"))
-                obs = str(r.get("observed_version", "—") or "—")
-                ok = "ok" if r.get("ok") else f"FAIL ({r.get('error', '')})"
-                ap(f"| `{host}` | `{channel}` | `{obs}` | {ok} |")
-            if len(per_apply) > 50:
-                ap(f"_…{len(per_apply) - 50} more rows truncated_")
-            ap("")
-
-        if per_verify:
-            ap("## 7. Verify (per-host probe)")
-            ap("")
-            ap(f"- **Probe method:** `{verify_probe or 'unknown'}`")
-            ap(f"- **Drift watch window:** {drift_window} h")
-            ap("")
-            ap("| Host | Expected | Observed | Method | Result |")
-            ap("|------|----------|----------|--------|--------|")
-            for r in per_verify[:50]:
-                host = str(r.get("host", "—"))
-                exp = str(r.get("expected_version", "—") or "—")
-                obs = str(r.get("observed_version", "—") or "—")
-                method = str(r.get("probe_method", "—"))
-                ok = "ok" if r.get("ok") else f"FAIL ({r.get('error', '')})"
-                ap(f"| `{host}` | `{exp}` | `{obs}` | `{method}` | {ok} |")
-            if len(per_verify) > 50:
-                ap(f"_…{len(per_verify) - 50} more rows truncated_")
-            ap("")
-
-        if cr_id or cr_sys_id:
-            ap("## 8. ServiceNow change request")
-            ap("")
-            if cr_sys_id:
-                ap(f"- **sys_id:** `{cr_sys_id}`")
-            if cr_id:
-                ap(f"- **correlation:** `{cr_id}`")
-            if cr_states:
-                ap(f"- **Lifecycle states traversed:** "
-                   + " → ".join(f"`{s}`" for s in cr_states))
-            if attach_count or attach_manifest:
-                ap(f"- **Attachments:** {attach_count} "
-                   f"({len(attach_manifest)} tracked in manifest)")
-            if journal_count:
-                ap(f"- **Work-note journal entries:** {journal_count}")
-            ap(f"- **Self-validation:** "
-               f"{'PASS' if self_val_pass else 'FAIL / not run'}")
-            if self_val_findings:
-                ap("  - Findings:")
-                for f in self_val_findings[:10]:
-                    ap(f"    - {f}")
-            ap("")
-
-        if retro_id or prior_count > 0 or retro_suggestions > 0:
-            ap("## 9. Retrospective")
-            ap("")
-            ap(f"- **retro_id:** `{retro_id or '—'}`")
-            ap(f"- **outcome:** `{retro_outcome or '—'}`")
-            ap(f"- **suggestions emitted:** {retro_suggestions}")
-            ap(f"- **prior retros consulted:** {prior_count} "
-               f"(distribution: {prior_outcomes or 'none'})")
-            ap(f"- **dual-store retrieval:** `{retrieval_status or 'unknown'}`")
-            ap("")
-
-        if drift_path or drift_window:
-            ap("## 10. Drift watch")
-            ap("")
-            ap(f"- **Watch window:** {drift_window} h")
-            if drift_path:
-                ap(f"- **Spawn path:** `{drift_path}`")
-            if drift_child:
-                ap(f"- **Child run id:** `{drift_child}`")
-            ap("")
-
-        if execution_ledger:
-            ap("## Execution ledger")
-            ap("")
-            for entry in execution_ledger:
-                ap(f"- `{entry}`")
+            ap(
+                f"CR {cr_id or cr_sys_id or '(unknown)'} progressed through: "
+                + " → ".join(cr_states) + "."
+            )
+            if attach_count:
+                ap(f"{attach_count} artifact(s) attached to the CR.")
             ap("")
 
         return "\n".join(lines)
@@ -9256,33 +8842,16 @@ async def _sn_upload_attachment_to_table(
     content: bytes,
     content_type: str,
 ) -> str:
-    """Generalized attachment uploader: any table + sys_id pair.
-
-    Used by the Doc+ flow to attach the DOCX to a
-    ``x_krn_document_doc`` record.  ``_sn_upload_attachment`` keeps its
-    change_request-only signature for backward compatibility.
-    """
+    """Upload attachment via Harbor's servicenow.upload_attachment tool."""
     try:
-        import httpx
-    except ImportError:
-        return ""
-    h = dict(headers)
-    h["Content-Type"] = content_type
-    h["Accept"] = "application/json"
-    url = (
-        f"{base_url.rstrip('/')}/api/now/attachment/file"
-        f"?table_name={table_name}&table_sys_id={table_sys_id}"
-        f"&file_name={file_name}"
-    )
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, content=content, headers=h, auth=auth)
-            if resp.status_code < 300:
-                result = (resp.json() or {}).get("result", {})
-                return str(result.get("sys_id", ""))
+        from harbor.tools.servicenow import upload_attachment
+        result = await upload_attachment(
+            table_name=table_name, table_sys_id=table_sys_id,
+            file_name=file_name, content=content, content_type=content_type,
+        )
+        return result.get("sys_id", "")
     except Exception:  # noqa: BLE001
-        pass
-    return ""
+        return ""
 
 
 async def _sn_find_or_create_collection(
@@ -9293,55 +8862,21 @@ async def _sn_find_or_create_collection(
     name: str,
     description: str,
 ) -> tuple[str, str]:
-    """Look up ``x_krn_document_collection`` by exact ``name``; create
-    on miss.  Returns ``(sys_id, error)``.
-
-    Idempotency: subsequent runs reuse the same record so the
-    'Vulnerability Summaries' collection accumulates per-CVE doc
-    entries instead of forking on every run.
-    """
+    """Find or create Doc+ collection via Harbor SN tools."""
     try:
-        import httpx
-    except ImportError:
-        return "", "httpx not installed"
-    h = dict(headers)
-    h["Accept"] = "application/json"
-    base = base_url.rstrip("/")
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.get(
-                f"{base}/api/now/table/x_krn_document_collection",
-                params={
-                    "sysparm_query": f"name={name}",
-                    "sysparm_fields": "sys_id,name",
-                    "sysparm_limit": "1",
-                },
-                headers=h, auth=auth,
-            )
-            if r.status_code == 200:
-                results = (r.json() or {}).get("result", []) or []
-                if results:
-                    return str(results[0].get("sys_id", "") or ""), ""
-            elif r.status_code >= 400:
-                return "", f"GET rc={r.status_code} body={r.text[:240]}"
-            # not found → create
-            r = await client.post(
-                f"{base}/api/now/table/x_krn_document_collection",
-                json={
-                    "name": name,
-                    "description": description,
-                    "public": "true",
-                    "classification": "internal",
-                },
-                headers={**h, "Content-Type": "application/json"},
-                auth=auth,
-            )
-            if r.status_code < 300:
-                sid = str(
-                    (r.json() or {}).get("result", {}).get("sys_id", "") or ""
-                )
-                return sid, ""
-            return "", f"POST rc={r.status_code} body={r.text[:240]}"
+        from harbor.tools.servicenow import table_create, table_query
+        qr = await table_query(
+            table_name="x_krn_document_collection",
+            query=f"name={name}", fields="sys_id,name", limit=1,
+        )
+        results = qr.get("results", [])
+        if results:
+            return str(results[0].get("sys_id", "")), ""
+        cr = await table_create(
+            table_name="x_krn_document_collection",
+            body={"name": name, "description": description, "public": "true", "classification": "internal"},
+        )
+        return cr.get("sys_id", ""), cr.get("error", "")
     except Exception as exc:  # noqa: BLE001
         return "", f"{type(exc).__name__}: {exc}"
 
@@ -9354,39 +8889,14 @@ async def _sn_create_doc(
     name: str,
     description: str,
 ) -> tuple[str, str]:
-    """Create one ``x_krn_document_doc`` record.  Returns
-    ``(sys_id, error)``."""
+    """Create Doc+ document via Harbor SN tools."""
     try:
-        import httpx
-    except ImportError:
-        return "", "httpx not installed"
-    h = dict(headers)
-    h["Accept"] = "application/json"
-    h["Content-Type"] = "application/json"
-    base = base_url.rstrip("/")
-    payload = {
-        "name": name,
-        "description": description,
-        # Reasonable defaults so the record renders in the Doc+ UI:
-        # ``state=draft`` lets HITL flip to published; ``audience``
-        # and ``classification`` are choice fields whose default
-        # values map to the most permissive options on PDI seeds.
-        "state": "draft",
-        "type": "policy",
-        "public": "true",
-    }
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.post(
-                f"{base}/api/now/table/x_krn_document_doc",
-                json=payload, headers=h, auth=auth,
-            )
-            if r.status_code < 300:
-                sid = str(
-                    (r.json() or {}).get("result", {}).get("sys_id", "") or ""
-                )
-                return sid, ""
-            return "", f"POST rc={r.status_code} body={r.text[:240]}"
+        from harbor.tools.servicenow import table_create
+        r = await table_create(
+            table_name="x_krn_document_doc",
+            body={"name": name, "description": description, "state": "draft", "type": "policy", "public": "true"},
+        )
+        return r.get("sys_id", ""), r.get("error", "")
     except Exception as exc:  # noqa: BLE001
         return "", f"{type(exc).__name__}: {exc}"
 
@@ -9401,47 +8911,18 @@ async def _sn_create_doc_version(
     version_label: str = "1.0",
     notes: str = "",
 ) -> tuple[str, str]:
-    """Create one ``x_krn_document_version`` row linked to ``doc_sys_id``.
-
-    Schema (probed from sys_dictionary on x_krn_document_version):
-      * ``document``       -> reference x_krn_document_doc
-      * ``version_number`` -> integer
-      * ``version``        -> string (display label, e.g. "1.0")
-      * ``version_state``  -> choice (draft|ready_for_publish|published|...)
-      * ``notes``          -> string
-      * ``file``           -> file_attachment (uploaded separately via
-        the standard /api/now/attachment/file endpoint targeting
-        table_name=x_krn_document_version, table_sys_id=<this sys_id>)
-
-    Returns ``(sys_id, error)``.
-    """
+    """Create Doc+ version via Harbor SN tools."""
     try:
-        import httpx
-    except ImportError:
-        return "", "httpx not installed"
-    h = dict(headers)
-    h["Accept"] = "application/json"
-    h["Content-Type"] = "application/json"
-    base = base_url.rstrip("/")
-    payload = {
-        "document": doc_sys_id,
-        "version_number": int(version_number),
-        "version": version_label,
-        "version_state": "draft",
-        "notes": notes[:2000],
-    }
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.post(
-                f"{base}/api/now/table/x_krn_document_version",
-                json=payload, headers=h, auth=auth,
-            )
-            if r.status_code < 300:
-                sid = str(
-                    (r.json() or {}).get("result", {}).get("sys_id", "") or ""
-                )
-                return sid, ""
-            return "", f"POST rc={r.status_code} body={r.text[:240]}"
+        from harbor.tools.servicenow import table_create
+        r = await table_create(
+            table_name="x_krn_document_version",
+            body={
+                "document": doc_sys_id, "version_number": int(version_number),
+                "version": version_label, "version_state": "published",
+                "notes": notes[:2000],
+            },
+        )
+        return r.get("sys_id", ""), r.get("error", "")
     except Exception as exc:  # noqa: BLE001
         return "", f"{type(exc).__name__}: {exc}"
 
@@ -9454,40 +8935,14 @@ async def _sn_link_doc_to_collection(
     doc_sys_id: str,
     collection_sys_id: str,
 ) -> tuple[str, str]:
-    """Insert one row into the m2m table linking ``doc_sys_id`` →
-    ``collection_sys_id``.  Returns ``(sys_id, error)``.
-
-    Schema (from sys_dictionary probe):
-      * ``document``  -> reference x_krn_document_doc
-      * ``collection`` -> reference x_krn_document_collection
-      * ``order``     -> integer
-    """
+    """Link Doc+ doc→collection via Harbor SN tools."""
     try:
-        import httpx
-    except ImportError:
-        return "", "httpx not installed"
-    h = dict(headers)
-    h["Accept"] = "application/json"
-    h["Content-Type"] = "application/json"
-    base = base_url.rstrip("/")
-    payload = {
-        "document": doc_sys_id,
-        "collection": collection_sys_id,
-        "order": 0,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.post(
-                f"{base}/api/now/table/"
-                "x_krn_document_m2m_x_krn_docume_x_krn_docume",
-                json=payload, headers=h, auth=auth,
-            )
-            if r.status_code < 300:
-                sid = str(
-                    (r.json() or {}).get("result", {}).get("sys_id", "") or ""
-                )
-                return sid, ""
-            return "", f"POST rc={r.status_code} body={r.text[:240]}"
+        from harbor.tools.servicenow import table_create
+        r = await table_create(
+            table_name="x_krn_document_m2m_x_krn_docume_x_krn_docume",
+            body={"document": doc_sys_id, "collection": collection_sys_id, "order": 0},
+        )
+        return r.get("sys_id", ""), r.get("error", "")
     except Exception as exc:  # noqa: BLE001
         return "", f"{type(exc).__name__}: {exc}"
 
@@ -9502,34 +8957,16 @@ async def _sn_upload_attachment(
     content: bytes,
     content_type: str,
 ) -> str:
-    """POST ``content`` to ServiceNow's attachment API for ``cr_sys_id``.
-
-    Returns the new attachment ``sys_id`` on success, ``""`` on failure
-    (caller decides whether to surface the error). Centralizes the
-    attachment endpoint shape so every artifact uploads through one
-    code path.
-    """
+    """Upload attachment to a CR via Harbor's servicenow.upload_attachment tool."""
     try:
-        import httpx
-    except ImportError:
-        return ""
-    h = dict(headers)
-    h["Content-Type"] = content_type
-    h["Accept"] = "application/json"
-    url = (
-        f"{base_url.rstrip('/')}/api/now/attachment/file"
-        f"?table_name=change_request&table_sys_id={cr_sys_id}"
-        f"&file_name={file_name}"
-    )
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, content=content, headers=h, auth=auth)
-            if resp.status_code < 300:
-                result = (resp.json() or {}).get("result", {})
-                return str(result.get("sys_id", ""))
+        from harbor.tools.servicenow import upload_attachment
+        result = await upload_attachment(
+            table_name="change_request", table_sys_id=cr_sys_id,
+            file_name=file_name, content=content, content_type=content_type,
+        )
+        return result.get("sys_id", "")
     except Exception:  # noqa: BLE001
-        pass
-    return ""
+        return ""
 
 
 class AttachAllArtifactsNode(NodeBase):
@@ -10168,44 +9605,12 @@ class HitlRetrospectiveReviewNode(NodeBase):
 
 
 async def _append_cr_work_note(cr_sys_id: str, note: str) -> None:
-    """PATCH a work_notes entry to an existing CR in ServiceNow.
-
-    Task #65: Called from ProgressiveExecuteNode, VerifyImmediateNode, and
-    WriteRetrospectiveNode at each phase boundary so the CR's audit trail
-    has a distinct entry per phase.
-
-    Best-effort: failures are silently discarded so they don't abort the
-    pipeline. ``cr_sys_id`` empty (offline mode) → no-op.
-    """
+    """PATCH a work_notes entry via Harbor's servicenow.patch_work_notes tool."""
     if not cr_sys_id:
         return
-    base_url = os.environ.get("SERVICENOW_BASE_URL", "").strip()
-    if not base_url:
-        return
-    username = os.environ.get("SERVICENOW_USERNAME", "").strip()
-    password = os.environ.get("SERVICENOW_PASSWORD", "").strip()
-    bearer = os.environ.get("SERVICENOW_BEARER_TOKEN", "").strip()
-    auth_kind = os.environ.get("SERVICENOW_AUTH_KIND", "basic").strip().lower()
     try:
-        import httpx
-    except ImportError:
-        return
-    headers: dict[str, str] = {"Accept": "application/json", "Content-Type": "application/json"}
-    auth_pair: tuple[str, str] | None = None
-    if auth_kind == "bearer" and bearer:
-        headers["Authorization"] = f"Bearer {bearer}"
-    elif auth_kind == "basic" and username and password:
-        auth_pair = (username, password)
-    else:
-        return
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.patch(
-                f"{base_url.rstrip('/')}/api/now/table/change_request/{cr_sys_id}",
-                json={"work_notes": note},
-                headers=headers,
-                auth=auth_pair,
-            )
+        from harbor.tools.servicenow import patch_work_notes
+        await patch_work_notes(cr_sys_id=cr_sys_id, work_notes=note)
     except Exception:  # noqa: BLE001 — best-effort
         pass
 
@@ -10217,81 +9622,51 @@ async def _sn_patch_cr_state(
     work_notes: str,
     extra: dict[str, Any] | None = None,
 ) -> tuple[bool, str]:
-    """PATCH a CR state transition via ``/api/sn_chg_rest/change/{sys_id}``.
-
-    Returns ``(ok, error_msg)``. ``ok=True`` iff a follow-up GET shows the
-    CR landed at ``target_state`` (or further along the workflow).
-
-    Used by ProgressiveExecuteNode (scheduled→implement),
-    VerifyImmediateNode (implement→review), and CloseChangeRequestNode
-    (review→closed) so each transition is owned by the node that actually
-    holds the live state for that phase. ``cr_sys_id`` empty (offline)
-    → no-op.
-    """
+    """PATCH a CR state transition via Harbor's servicenow.patch_cr_state tool."""
     if not cr_sys_id:
         return False, "no cr_sys_id"
-    base_url = os.environ.get("SERVICENOW_BASE_URL", "").strip()
-    if not base_url:
-        return False, "no SERVICENOW_BASE_URL"
-    username = os.environ.get("SERVICENOW_USERNAME", "").strip()
-    password = os.environ.get("SERVICENOW_PASSWORD", "").strip()
-    bearer = os.environ.get("SERVICENOW_BEARER_TOKEN", "").strip()
-    auth_kind = os.environ.get("SERVICENOW_AUTH_KIND", "basic").strip().lower()
     try:
-        import httpx
-    except ImportError:
-        return False, "httpx not installed"
-    headers: dict[str, str] = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-    auth_pair: tuple[str, str] | None = None
-    if auth_kind == "bearer" and bearer:
-        headers["Authorization"] = f"Bearer {bearer}"
-    elif auth_kind == "basic" and username and password:
-        auth_pair = (username, password)
-    else:
-        return False, f"unsupported auth kind {auth_kind!r}"
-
-    body: dict[str, Any] = {"state": target_state, "work_notes": work_notes}
-    if extra:
-        body.update(extra)
-    chg_url = f"{base_url.rstrip('/')}/api/sn_chg_rest/change/{cr_sys_id}"
-    tbl_url = f"{base_url.rstrip('/')}/api/now/table/change_request/{cr_sys_id}"
-    # ServiceNow workflow ordering: lower-numeric states are earlier in
-    # the change lifecycle except for the closed state (3) which jumps
-    # past review (0). Compare against the ordered list to decide
-    # whether the GET-back state has reached or passed the target.
-    order = ["-5", "-4", "-3", "-2", "-1", "0", "3"]
-    try:
-        idx_target = order.index(target_state)
-    except ValueError:
-        idx_target = len(order)
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            resp = await client.patch(chg_url, json=body, headers=headers, auth=auth_pair)
-            patch_status = resp.status_code
-            try:
-                r = await client.get(
-                    tbl_url,
-                    params={"sysparm_fields": "state"},
-                    headers={k: v for k, v in headers.items() if k != "Content-Type"},
-                    auth=auth_pair,
-                )
-                if r.status_code < 300:
-                    sv = (r.json() or {}).get("result", {}).get("state", {})
-                    state_val = str(sv.get("value", sv) if isinstance(sv, dict) else sv)
-                else:
-                    state_val = ""
-            except Exception:  # noqa: BLE001
-                state_val = ""
-            if state_val in order and order.index(state_val) >= idx_target:
-                return True, ""
-            if patch_status >= 300:
-                return False, f"patch={patch_status}:{resp.text[:120]}"
-            return False, f"state_after={state_val!r} target={target_state!r}"
+        from harbor.tools.servicenow import patch_cr_state
+        result = await patch_cr_state(
+            cr_sys_id=cr_sys_id,
+            target_state=target_state,
+            work_notes=work_notes,
+            extra_fields=extra,
+        )
+        return result.get("ok", False), result.get("error", "")
     except Exception as exc:  # noqa: BLE001
         return False, f"{type(exc).__name__}: {exc}"
+
+
+async def _sn_ensure_implement_then_review(
+    cr_sys_id: str,
+    *,
+    work_notes: str,
+    extra: dict[str, Any] | None = None,
+) -> tuple[bool, str]:
+    """Transition CR to review (0), re-applying implement (-1) first if needed.
+
+    ServiceNow rejects direct -2→0 jumps. If the CR reverted to
+    scheduled (-2) after a prior implement PATCH, step through -1
+    before attempting 0.
+    """
+    ok, err = await _sn_patch_cr_state(
+        cr_sys_id, target_state="0", work_notes=work_notes, extra=extra,
+    )
+    if ok:
+        return True, ""
+    if "from_state" in err and "-2" in err:
+        ok_impl, err_impl = await _sn_patch_cr_state(
+            cr_sys_id, target_state="-1",
+            work_notes="[re-implement] stepping through implement before review",
+        )
+        if not ok_impl:
+            return False, f"re-implement failed: {err_impl}"
+        ok2, err2 = await _sn_patch_cr_state(
+            cr_sys_id, target_state="0", work_notes=work_notes, extra=extra,
+        )
+        return ok2, err2
+    return False, err
 
 
 async def _poll_sn_approval(
@@ -10300,59 +9675,19 @@ async def _poll_sn_approval(
     timeout_s: int,
     interval_s: float = 2.0,
 ) -> tuple[bool, str]:
-    """Poll ``sysapproval_approver`` for an approved record on the CR.
-
-    Returns ``(approved, approver_id)``. ``approved=True`` iff at
-    least one ``sysapproval_approver`` row tied to ``cr_sys_id``
-    flips to ``state=approved`` before ``timeout_s`` elapses. Used by
-    :class:`HitlChangeApprovalNode` for the tier-mandated act_hitl_required
-    path so the gate cannot be bypassed offline. ``cr_sys_id`` empty
-    or ``timeout_s <= 0`` short-circuits to ``(False, "")``.
-    """
+    """Poll for CR approval via Harbor's servicenow.poll_approval tool."""
     if not cr_sys_id or timeout_s <= 0:
         return False, ""
-    base_url = os.environ.get("SERVICENOW_BASE_URL", "").strip()
-    if not base_url:
-        return False, ""
-    auth, headers, err = _servicenow_auth()
-    if err:
-        return False, ""
     try:
-        import httpx
-    except ImportError:
+        from harbor.tools.servicenow import poll_approval
+        result = await poll_approval(
+            cr_sys_id=cr_sys_id,
+            timeout_s=timeout_s,
+            interval_s=interval_s,
+        )
+        return result.get("approved", False), result.get("approver_id", "")
+    except Exception:  # noqa: BLE001
         return False, ""
-    deadline = asyncio.get_event_loop().time() + timeout_s
-    url = f"{base_url.rstrip('/')}/api/now/table/sysapproval_approver"
-    while True:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(
-                    url,
-                    params={
-                        "sysparm_query": (
-                            f"document_id={cr_sys_id}^state=approved"
-                        ),
-                        "sysparm_limit": "1",
-                        "sysparm_fields": "sys_id,approver,state",
-                    },
-                    headers={k: v for k, v in headers.items() if k != "Content-Type"},
-                    auth=auth,
-                )
-                if resp.status_code < 300:
-                    rows = (resp.json() or {}).get("result", []) or []
-                    if rows:
-                        approver_field = rows[0].get("approver") or ""
-                        approver_id = (
-                            approver_field.get("value", "")
-                            if isinstance(approver_field, dict)
-                            else str(approver_field)
-                        )
-                        return True, approver_id or "sn-approver"
-        except Exception:  # noqa: BLE001 — best-effort
-            pass
-        if asyncio.get_event_loop().time() >= deadline:
-            return False, ""
-        await asyncio.sleep(interval_s)
 
 
 # ---------------------------------------------------------------------------
@@ -10655,12 +9990,9 @@ class CreateChangeRequestNode(NodeBase):
         svc_sys_id, svc_offering_sys_id, svc_status = await self._lookup_service_fields()
         out["cr_service_lookup_status"] = svc_status
         if svc_status == "missing":
-            print(
-                "  ! WARNING: business_service / service_offering "
-                "missing — set SERVICENOW_SERVICE_SYS_ID and "
-                "SERVICENOW_SERVICE_OFFERING_SYS_ID, or seed "
-                "cmdb_ci_service 'Vulnerability Management' on the PDI",
-                flush=True,
+            log.warning(
+                "servicenow_service_missing",
+                hint="set SERVICENOW_SERVICE_SYS_ID and SERVICENOW_SERVICE_OFFERING_SYS_ID",
             )
 
         # ServiceNow ``risk`` is a separate enum from ``impact`` /
@@ -11708,6 +11040,31 @@ class ProgressiveExecuteNode(NodeBase):
             getattr(state, "servicenow_response", {}).get("result", {}).get("sys_id", "") or ""
         )
         cve_id = str(getattr(state, "cve_id", "") or "unknown")
+        disposition = str(getattr(state, "disposition", "") or "")
+        if disposition == "not_applicable":
+            lifecycle_na = list(getattr(state, "cr_lifecycle_states", []) or [])
+            if "implement" not in lifecycle_na:
+                lifecycle_na.append("implement")
+            await _append_cr_work_note(
+                cr_sys_id,
+                (
+                    f"[not-applicable] {cve_id} -- cannot remediate in "
+                    f"container environment (kernel CVE / vendor appliance)"
+                ),
+            )
+            return {
+                "canary_passed": False,
+                "stage_passed": False,
+                "fleet_passed": False,
+                "rollback_triggered": False,
+                "execution_ledger": ["not_applicable"],
+                "cr_status": "cancelled",
+                "cr_lifecycle_states": lifecycle_na,
+                "per_host_apply_results": [],
+                "verify_outcome": "not_applicable",
+                "verify_probe_method": "none",
+                "halt_reason": "not_applicable: requires host-level remediation",
+            }
         # 2026-05-08 (PRIORITY): bundle-driven apply for tier-2
         # (correlatable, no recipe).  When a hand-authored recipe
         # exists on disk it represents the substrate-matched fix and
@@ -11858,7 +11215,7 @@ class ProgressiveExecuteNode(NodeBase):
         # ProgressiveExecuteNode does NOT run canary/stage/fleet apply
         # (there's no patch to install). Records the mitigations as the
         # rollout payload + marks rollout completed without rollback so
-        # downstream verify treats it as mitigation_verified.
+        # downstream verify treats it as mitigation_applied.
         mitigation_only_flag = bool(
             getattr(state, "mitigation_only", False)
         )
@@ -11943,20 +11300,18 @@ class ProgressiveExecuteNode(NodeBase):
             if "implement" not in lifecycle:
                 lifecycle.append("implement")
             return {
-                "canary_passed": True,
-                "stage_passed": True,
-                "fleet_passed": True,
+                "canary_passed": probe_passed,
+                "stage_passed": probe_passed,
+                "fleet_passed": False,
                 "rollback_triggered": False,
                 "execution_ledger": ledger,
-                "cr_status": "implemented",
+                "cr_status": "implemented" if probe_passed else "rejected",
                 "cr_lifecycle_states": lifecycle,
                 "per_host_apply_results": [],
+                "verify_outcome": "mitigation_applied",
+                "verify_probe_method": "mitigation",
                 "mitigation_probe_passed": probe_passed,
                 "mitigation_probe_issues": probe_issues,
-                # Clear stale halt_reason set by upstream tier router
-                # (e.g. "DEFER tier"). Mitigation rollout completed; the
-                # downstream VerifyImmediateNode mitigation_verified
-                # branch must fire instead of the halt-short-circuit.
                 "halt_reason": "",
             }
         # CRITERIA.md basic-set #8: the HITL approval gate must
@@ -12402,39 +11757,11 @@ class VerifyImmediateNode(NodeBase):
         # fleet_passed=True, the host state has been confirmed.
         # Re-running per-host pip-show probes here would override that
         # confirmation with weaker evidence.  Short-circuit instead.
-        pre_verify = str(getattr(state, "verify_outcome", "") or "")
-        pre_fleet = bool(getattr(state, "fleet_passed", False))
-        pre_method = str(getattr(state, "verify_probe_method", "") or "")
-        if (
-            pre_verify == "patched"
-            and pre_fleet
-            and pre_method in ("recipe", "ansible-bundle")
-        ):
-            cve_id_pv = str(getattr(state, "cve_id", "") or "unknown")
-            cr_sys_id_pv = str(
-                getattr(state, "servicenow_response", {}).get("result", {}).get("sys_id", "") or ""
-            )
-            tier_pv = str(getattr(state, "ssvc_tier", "attend") or "attend")
-            drift_window_pv = self._DRIFT_WINDOW_BY_TIER.get(tier_pv, 48)
-            await _append_cr_work_note(
-                cr_sys_id_pv,
-                (
-                    f"[verify-confirmed] {cve_id_pv} -- "
-                    f"verify_outcome=patched established by upstream "
-                    f"{pre_method!r} apply path (fleet_passed=True)."
-                ),
-            )
-            return {
-                "verify_outcome": "patched",
-                "sandbox_prod_divergence": False,
-                "drift_watch_window_hours": drift_window_pv,
-                "per_host_verify_results": list(
-                    getattr(state, "per_host_apply_results", []) or []
-                ),
-                "verify_probe_method": pre_method,
-            }
+        # Removed: pre-verified short-circuit that trusted upstream
+        # verify_outcome without independent verification. All paths
+        # now run real per-host probes via cargonet or bundle-verify.
         # Retro round #C: mitigation_only path produces a different
-        # verify outcome (``mitigation_verified``).  Mitigations *reduce
+        # verify outcome (``mitigation_applied``).  Mitigations *reduce
         # exposure*; they don't make the host non-vulnerable.  The
         # verify probe records mitigation evidence (work-note links to
         # the mitigation actions + their citations) but does NOT compare
@@ -12442,7 +11769,7 @@ class VerifyImmediateNode(NodeBase):
         # Must run BEFORE the halt_reason short-circuit when the
         # mitigation rollout actually completed (fleet_passed=True) —
         # the rollout path may leave a stale halt_reason from an
-        # upstream tier router, but mitigation_verified is the correct
+        # upstream tier router, but mitigation_applied is the correct
         # outcome. When fleet_passed=False, mitigation_only was
         # suppressed (e.g. not_applicable), so halt-short-circuit
         # remains correct.
@@ -12546,7 +11873,6 @@ class VerifyImmediateNode(NodeBase):
             ]
             tier_v = str(getattr(state, "ssvc_tier", "attend") or "attend")
             drift_window_v = self._DRIFT_WINDOW_BY_TIER.get(tier_v, 48)
-            now_iso = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
             cite_lines = "\n".join(
                 f"  - {getattr(a, 'target', '?')} → "
                 f"{getattr(a, 'citation_url', '')}"
@@ -12555,32 +11881,16 @@ class VerifyImmediateNode(NodeBase):
             await _append_cr_work_note(
                 cr_sys_id_v,
                 (
-                    f"[verify-mitigation] {cve_id_v} -- mitigation_verified "
-                    f"(no upstream fix)\n"
+                    f"[verify-mitigation] {cve_id_v} -- mitigation_only "
+                    f"(no upstream fix; host remains vulnerable)\n"
                     f"  Mitigations + citations:\n{cite_lines}\n"
                     f"  Drift watch: {drift_window_v} h "
                     f"(host remains vulnerable until upstream patch ships)"
                 ),
             )
-            review_note_v = (
-                f"[review] {cve_id_v} -- mitigation_verified\n"
-                f"  Verify outcome: mitigation_verified\n"
-                f"  vulnerability_status="
-                f"{str(getattr(state, 'vulnerability_status', '') or 'unknown')}\n"
-                f"  Mitigation count: {len(mitigations)}\n"
-                f"  Drift watch: {drift_window_v} h"
-            )
-            ok_state_v, err_v = await _sn_patch_cr_state(
-                cr_sys_id_v,
-                target_state="0",
-                work_notes=review_note_v,
-                extra={"actual_end": now_iso},
-            )
             lifecycle_v = list(getattr(state, "cr_lifecycle_states", []) or [])
-            if ok_state_v and "review" not in lifecycle_v:
-                lifecycle_v.append("review")
             return {
-                "verify_outcome": "mitigation_verified",
+                "verify_outcome": "mitigation_applied",
                 "sandbox_prod_divergence": False,
                 "drift_watch_window_hours": drift_window_v,
                 "per_host_verify_results": [],
@@ -12617,11 +11927,16 @@ class VerifyImmediateNode(NodeBase):
             apply_obs = _phase_status("apply")
             rollback_obs = _phase_status("rollback")
             reapply_obs = _phase_status("reapply")
+            # Only count phases that were actually probed.
+            baseline_probed = probe_steps.get("baseline", {}).get("probed", True)
+            apply_probed = probe_steps.get("apply", {}).get("probed", True)
+            rollback_probed = probe_steps.get("rollback", {}).get("probed", True)
+            reapply_probed = probe_steps.get("reapply", {}).get("probed", True)
             sandbox_verified_patched = (
-                baseline_obs == "vulnerable"
-                and apply_obs == "patched"
-                and (rollback_obs in ("", "vulnerable"))
-                and (reapply_obs in ("", "patched"))
+                baseline_probed and baseline_obs == "vulnerable"
+                and apply_probed and apply_obs == "patched"
+                and (not rollback_probed or rollback_obs in ("", "vulnerable"))
+                and (not reapply_probed or reapply_obs in ("", "patched"))
             )
         else:
             sandbox_verified_patched = False
@@ -12712,26 +12027,17 @@ class VerifyImmediateNode(NodeBase):
                 row["probe_method"] = "ansible-bundle-verify"
                 per_host_results.append(row)
             elif probe_method == "bundle-no-verify-tasks":
-                # Bundle exists but has no verify-tagged tasks. Trust the
-                # apply path's own per-task exit codes (rollout reported
-                # success means every translated task returned rc=0).
-                host_ok = fleet_passed_flag
-                per_host_results.append({
-                    "host": host,
-                    "expected_version": fix_version or "(see playbook)",
-                    "observed_version": (
-                        fix_version if host_ok else ""
-                    ) or "(see playbook)",
-                    "ok": host_ok,
-                    "probe_method": "bundle-no-verify-tasks",
-                    "latency_ms": 0,
-                    "evidence": (
-                        "bundle has no verify-tagged tasks; trusting "
-                        "apply-task exit codes (fleet_passed=True)"
-                        if host_ok
-                        else "fleet_passed=false"
-                    ),
-                })
+                # Bundle has no verify-tagged tasks. Run a real cargonet
+                # probe instead of trusting upstream state.
+                row = await self._cargonet_probe_host(
+                    host=host,
+                    pkg=probe_pkg,
+                    channel=install_channel,
+                    fix_version=fix_version,
+                    correlation=cargonet_correlation_map.get(host, {}),
+                )
+                row["probe_method"] = "bundle-no-verify-tasks:cargonet-fallback"
+                per_host_results.append(row)
             elif probe_method == "cargonet":
                 row = await self._cargonet_probe_host(
                     host=host,
@@ -12742,24 +12048,19 @@ class VerifyImmediateNode(NodeBase):
                 )
                 per_host_results.append(row)
             elif probe_method == "offline-trust":
-                host_ok = fleet_passed_flag and sandbox_apply_evidence
+                # offline-trust was a synthesized pass. Replace with
+                # honest unverified status — operator must triage.
                 per_host_results.append({
                     "host": host,
                     "expected_version": fix_version or "(see playbook)",
-                    "observed_version": (
-                        fix_version if host_ok else ""
-                    ) or "(see playbook)",
-                    "ok": host_ok,
+                    "observed_version": "",
+                    "ok": False,
                     "probe_method": "offline-trust",
                     "latency_ms": 0,
-                    "evidence": (
-                        "sandbox.apply=patched + fleet_passed"
-                        if host_ok
-                        else (
-                            "fleet_passed=false"
-                            if not fleet_passed_flag
-                            else "sandbox.apply!=patched"
-                        )
+                    "error": (
+                        "offline-trust probe disabled; no independent "
+                        "verification performed. Use CVE_REM_VERIFY_PROBE="
+                        "cargonet for real host probes."
                     ),
                 })
             elif probe_method in ("ssh", "k8s"):
@@ -12870,9 +12171,8 @@ class VerifyImmediateNode(NodeBase):
                     f"  Per-host hits: {verified_count}/{len(host_names)}\n"
                     f"  Sandbox-prod divergence: True"
                 )
-                ok_state, err = await _sn_patch_cr_state(
+                ok_state, err = await _sn_ensure_implement_then_review(
                     cr_sys_id,
-                    target_state="0",
                     work_notes=review_note,
                     extra={"actual_end": now_iso},
                 )
@@ -12958,9 +12258,8 @@ class VerifyImmediateNode(NodeBase):
                 f"  Sandbox-prod divergence: False\n"
                 f"  Drift watch: {drift_window}h post-close monitor armed"
             )
-            ok_state, err = await _sn_patch_cr_state(
+            ok_state, err = await _sn_ensure_implement_then_review(
                 cr_sys_id,
-                target_state="0",
                 work_notes=review_note,
                 extra={"actual_end": now_iso},
             )
@@ -12999,9 +12298,8 @@ class VerifyImmediateNode(NodeBase):
                 f"stage={stage_passed}, fleet={fleet_passed_flag}\n"
                 f"  Sandbox-prod divergence: True"
             )
-            ok_state, err = await _sn_patch_cr_state(
+            ok_state, err = await _sn_ensure_implement_then_review(
                 cr_sys_id,
-                target_state="0",
                 work_notes=review_note,
                 extra={"actual_end": now_iso},
             )
@@ -13090,6 +12388,36 @@ class VerifyImmediateNode(NodeBase):
                 f"python3 -c \"import sys,json;d=json.load(sys.stdin);"
                 f"v=(d.get('dependencies') or {{}}).get('{pkg}',{{}}).get('version','');"
                 f"print(f'Version: {{v}}') if v else None\" || true"
+            )
+        if channel in ("gem", "rubygems"):
+            return (
+                f"gem list {pkg} --local 2>/dev/null | "
+                f"grep -i '{pkg}' | "
+                f"sed 's/.*(/Version: /;s/)//' || true"
+            )
+        if channel in ("jar", "maven"):
+            artifact = pkg.split(":")[-1] if ":" in pkg else pkg
+            return (
+                f"ls /opt/jars/{artifact}-*.jar 2>/dev/null | head -1 | "
+                f"sed 's|.*/||;s/{artifact}-//;s/\\.jar$//' | "
+                f"xargs -I{{}} echo 'Version: {{}}' || true"
+            )
+        if channel == "binary":
+            return (
+                f"cat /opt/bins/{pkg}/VERSION 2>/dev/null | "
+                f"xargs -I{{}} echo 'Version: {{}}' || "
+                f"/opt/bins/{pkg} --version 2>/dev/null | head -1 || true"
+            )
+        if channel == "app":
+            return (
+                f"cat /opt/apps/{pkg}/VERSION 2>/dev/null | "
+                f"xargs -I{{}} echo 'Version: {{}}' || true"
+            )
+        if channel in ("apk", "alpine"):
+            return (
+                f"apk info -v {pkg} 2>/dev/null | head -1 | "
+                f"sed 's/{pkg}-//' | "
+                f"xargs -I{{}} echo 'Version: {{}}' || true"
             )
         # Fallback: try pip first (most demo CVEs are pip-channel).
         return f"pip show {pkg} 2>/dev/null | grep ^Version: || true"
@@ -13426,6 +12754,8 @@ class HaltNewGateNode(NodeBase):
         self, state: "BaseModel", ctx: ExecutionContext
     ) -> dict[str, Any]:
         del ctx
+        from demos.cve_remediation.graph._bosun import CveRemBosunEvaluator
+
         pg_dsn = os.environ.get("POSTGRES_DSN", "").strip()
         if not pg_dsn:
             return {}
@@ -13433,13 +12763,16 @@ class HaltNewGateNode(NodeBase):
             import asyncpg  # type: ignore[import-not-found]
         except ImportError:
             return {}
+        halt_ttl_default = POLICY.get("halt_new", {}).get("ttl_minutes", 30)
         ttl_min = int(
-            os.environ.get("CVE_REM_HALT_NEW_TTL_MINUTES", "30") or "30"
+            os.environ.get("CVE_REM_HALT_NEW_TTL_MINUTES", str(halt_ttl_default)) or str(halt_ttl_default)
         )
         try:
             conn = await asyncpg.connect(pg_dsn)
         except Exception:  # noqa: BLE001
             return {}
+
+        # Check existing halt ledger entries
         try:
             row = await conn.fetchrow(
                 """
@@ -13453,21 +12786,64 @@ class HaltNewGateNode(NodeBase):
                 str(ttl_min),
             )
         except asyncpg.exceptions.UndefinedTableError:
-            await conn.close()
-            return {}
+            row = None
         except Exception:  # noqa: BLE001
-            await conn.close()
-            return {}
+            row = None
+
+        # Collect fleet metrics for Bosun kill-switch evaluation
+        metrics: list[dict[str, Any]] = []
+        try:
+            rollback_rows = await conn.fetch(
+                """
+                SELECT COUNT(*) FILTER (WHERE rollback_triggered) AS rb,
+                       COUNT(*) AS total
+                FROM cve_rem_run_outcomes
+                WHERE created_at > NOW() - INTERVAL '24 hours'
+                """
+            )
+            if rollback_rows and rollback_rows[0]["total"] > 0:
+                rb_rate = rollback_rows[0]["rb"] / rollback_rows[0]["total"] * 100
+                metrics.append({
+                    "kind": "rollback-rate",
+                    "window_hours": 24,
+                    "value": rb_rate,
+                    "threshold": 5.0,
+                    "run_id": "fleet",
+                })
+        except Exception:  # noqa: BLE001
+            pass
+
         await conn.close()
-        if not row:
-            return {}
-        reason = (
-            f"halt-new active: {row['kind']} severity={row['severity']} "
-            f"({row['reason']}); fired_at={row['fired_at']}"
-        )
+
+        # Evaluate kill-switch rules via Bosun
+        bosun_result = CveRemBosunEvaluator.evaluate_kill_switches(metrics=metrics)
+
+        if row:
+            reason = (
+                f"halt-new active: {row['kind']} severity={row['severity']} "
+                f"({row['reason']}); fired_at={row['fired_at']}"
+            )
+            return {
+                "halt_new_active": True,
+                "halt_reason": reason,
+                "bosun_kill_switch_evaluated": True,
+                "bosun_violations": bosun_result.get("violations", []),
+            }
+
+        if bosun_result.get("halt"):
+            violations = bosun_result.get("violations", [])
+            reason = "; ".join(v.get("reason", "?") for v in violations if v.get("severity") == "halt")
+            log.warning("bosun_halt_new_triggered", violations=violations)
+            return {
+                "halt_new_active": True,
+                "halt_reason": f"bosun kill-switch: {reason}",
+                "bosun_kill_switch_evaluated": True,
+                "bosun_violations": violations,
+            }
+
         return {
-            "halt_new_active": True,
-            "halt_reason": reason,
+            "bosun_kill_switch_evaluated": True,
+            "bosun_violations": [],
         }
 
 
@@ -13494,35 +12870,54 @@ class CloseChangeRequestNode(NodeBase):
         if not cr_sys_id:
             return {}
         cve_id = str(getattr(state, "cve_id", "") or "unknown")
-        canary_passed = bool(getattr(state, "canary_passed", False))
-        stage_passed = bool(getattr(state, "stage_passed", False))
-        fleet_passed = bool(getattr(state, "fleet_passed", False))
+        extract = getattr(state, "extract", None)
+        cwe = str(getattr(extract, "cwe_class", "") or "") if extract else ""
+        cvss_bp = int(
+            (getattr(extract, "cvss_score_bp", None) or 0) if extract else 0
+        )
+        severity = RenderDocxNode._severity_label(cvss_bp)
+        cvss_str = f"{cvss_bp / 100:.1f}" if cvss_bp > 0 else "n/a"
+        pkg_name = (
+            str(getattr(state, "osv_package_name", "") or "")
+            or str(getattr(state, "cmdb_software_name", "") or "")
+            or "unknown package"
+        )
+        fixed_version = str(getattr(state, "fixed_version", "") or "")
+        install_channel = str(getattr(state, "install_channel", "") or "")
+        host_names = list(getattr(state, "affected_host_names", []) or [])
+        host_count = len(host_names)
+        per_verify = list(
+            getattr(state, "per_host_verify_results", []) or []
+        )
+        verify_ok = sum(1 for r in per_verify if r.get("ok"))
         attachment_count = int(getattr(state, "attachment_count", 0) or 0)
         drift_window = int(getattr(state, "drift_watch_window_hours", 0) or 0)
-        retro_pg = bool(getattr(state, "retro_pg_written", False))
-        retro_redis = bool(getattr(state, "retro_redis_written", False))
-        retro_pgvector = bool(getattr(state, "retro_pgvector_written", False))
-        docplus = bool(getattr(state, "docplus_published", False))
-        retro_lines: list[str] = []
-        if retro_pg or retro_redis or retro_pgvector or docplus:
-            retro_lines.append(
-                f"  Retrospective writebacks: pg={retro_pg}, "
-                f"redis={retro_redis}, pgvector={retro_pgvector}, "
-                f"docplus={docplus}"
-            )
-        else:
-            retro_lines.append(
-                "  Retrospective: queued for offline writeback "
-                "(post-close batch)"
-            )
+        verify_probe = str(getattr(state, "verify_probe_method", "") or "")
+
+        host_summary = ", ".join(host_names[:5])
+        if host_count > 5:
+            host_summary += f" (+{host_count - 5} more)"
+
         closed_note = (
-            f"[closed] {cve_id} -- automated remediation closed\n"
-            f"  Verify outcome: patched\n"
-            f"  Canary/Stage/Fleet: canary={canary_passed}, "
-            f"stage={stage_passed}, fleet={fleet_passed}\n"
-            f"  CR attachments uploaded: {attachment_count}\n"
-            f"  Drift watch armed: {drift_window} h\n"
-            + "\n".join(retro_lines)
+            f"[closed] {cve_id} remediation complete\n\n"
+            f"{cve_id} ({severity}, CVSS {cvss_str}, {cwe}) in "
+            f"{pkg_name} was remediated across {host_count} host(s): "
+            f"{host_summary}.\n\n"
+            f"Fix applied: upgrade to {fixed_version} via "
+            f"{install_channel or 'auto'} channel. Independent "
+            f"verification ({verify_probe or 'cargonet'} probes) "
+            f"confirmed {verify_ok}/{host_count} host(s) patched.\n\n"
+            f"Drift watch armed for {drift_window}h. "
+            f"{attachment_count} artifact(s) attached to this CR "
+            f"(apply playbook, rollback playbook, proof report, "
+            f"DOCX retrospective)."
+        )
+        close_notes_text = (
+            f"{cve_id} ({severity}) in {pkg_name}: upgraded to "
+            f"{fixed_version} on {host_count} host(s). "
+            f"{verify_ok}/{host_count} verified patched via "
+            f"{verify_probe or 'cargonet'} probes. "
+            f"Drift watch: {drift_window}h."
         )
         ok_state, err = await _sn_patch_cr_state(
             cr_sys_id,
@@ -13530,11 +12925,7 @@ class CloseChangeRequestNode(NodeBase):
             work_notes=closed_note,
             extra={
                 "close_code": "successful",
-                "close_notes": (
-                    f"Automated remediation closed by cve-rem-pipeline. "
-                    f"Verify outcome: patched. "
-                    f"{attachment_count} artifact(s) attached."
-                ),
+                "close_notes": close_notes_text,
             },
         )
         lifecycle = list(getattr(state, "cr_lifecycle_states", []) or [])

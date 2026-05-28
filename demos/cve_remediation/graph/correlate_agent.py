@@ -208,6 +208,7 @@ async def correlate_hosts_from_cpes(
     affected_version_ranges: list[dict[str, str]] | None = None,
     exact_affected_versions: list[str] | None = None,
     fixed_version: str = "",
+    install_channel: str = "",
 ) -> dict[str, Any]:
     """Run the CorrelateAgent against a CPE list.
 
@@ -324,10 +325,22 @@ async def correlate_hosts_from_cpes(
         # blank — vendor-narrowed pass returns nothing, vendor-free
         # nameLIKE=product drowns in unrelated rows. Prepending the
         # vendor token to the name_like surfaces the right CI.
+        prefix_tokens: list[str] = []
         if vendor:
-            vendor_display = vendor.replace("_", " ").replace("-", " ")
+            prefix_tokens.append(vendor.replace("_", " ").replace("-", " "))
+        # Also prepend ``install_channel`` (pip / npm / rubygems / apt /
+        # maven / gem). When the CMDB seeds Software CIs as
+        # ``{channel} {package}`` (e.g. "npm tar", "PyPI urllib3"), the
+        # CPE-derived vendor (e.g. "isaacs") doesn't match the seed
+        # name -- the channel does. Skip when channel already equals
+        # vendor so we don't double-query.
+        if install_channel:
+            ch_display = install_channel.replace("_", " ").lower()
+            if ch_display and ch_display not in {t.lower() for t in prefix_tokens}:
+                prefix_tokens.append(ch_display)
+        for prefix in prefix_tokens:
             for variant in list(tr.variants_tried):
-                composed = f"{vendor_display} {variant}".strip()
+                composed = f"{prefix} {variant}".strip()
                 if composed in tr.variants_tried:
                     continue
                 tr.variants_tried.append(composed)

@@ -6,10 +6,7 @@
         "h11-rtr-01"
       ],
       "product": "Adaptive Security Appliance (ASA)",
-      "vendor": "Cisco",
-      "host_versions": {
-        "h11-rtr-01": "*"
-      }
+      "vendor": "Cisco"
     },
     {
       "cve_id": "CVE-2017-12319",
@@ -17,10 +14,7 @@
         "h11-rtr-03"
       ],
       "product": "IOS XE Software",
-      "vendor": "Cisco",
-      "host_versions": {
-        "h11-rtr-03": "15.4\\(1\\)s"
-      }
+      "vendor": "Cisco"
     },
     {
       "cve_id": "CVE-2017-3881",
@@ -28,10 +22,7 @@
         "h11-sw-03"
       ],
       "product": "IOS and IOS XE",
-      "vendor": "Cisco",
-      "host_versions": {
-        "h11-sw-03": "12.2s"
-      }
+      "vendor": "Cisco"
     },
     {
       "cve_id": "CVE-2017-6077",
@@ -40,11 +31,7 @@
         "h11-sw-03"
       ],
       "product": "Wireless Router DGN2200",
-      "vendor": "NETGEAR",
-      "host_versions": {
-        "h11-sw-02": "10.0.0.50",
-        "h11-sw-03": "10.0.0.50"
-      }
+      "vendor": "NETGEAR"
     },
     {
       "cve_id": "CVE-2018-0171",
@@ -52,10 +39,7 @@
         "h11-rtr-01"
       ],
       "product": "IOS and IOS XE",
-      "vendor": "Cisco",
-      "host_versions": {
-        "h11-rtr-01": "15.2\\(5\\)e"
-      }
+      "vendor": "Cisco"
     },
     {
       "cve_id": "CVE-2020-15505",
@@ -64,11 +48,7 @@
         "h11-fw-02"
       ],
       "product": "MobileIron Multiple Products",
-      "vendor": "Ivanti",
-      "host_versions": {
-        "h11-rtr-02": "10.3.0.3",
-        "h11-fw-02": "10.3.0.3"
-      }
+      "vendor": "Ivanti"
     },
     {
       "cve_id": "CVE-2020-25079",
@@ -76,10 +56,7 @@
         "h11-rtr-02"
       ],
       "product": "DCS-2530L and DCS-2670L Devices",
-      "vendor": "D-Link",
-      "host_versions": {
-        "h11-rtr-02": "1.03.3"
-      }
+      "vendor": "D-Link"
     },
     {
       "cve_id": "CVE-2020-8515",
@@ -87,10 +64,7 @@
         "h11-sw-03"
       ],
       "product": "Multiple Vigor Routers",
-      "vendor": "DrayTek",
-      "host_versions": {
-        "h11-sw-03": "1.3.1"
-      }
+      "vendor": "DrayTek"
     },
     {
       "cve_id": "CVE-2021-20035",
@@ -100,12 +74,23 @@
         "h11-rtr-02"
       ],
       "product": "SMA100 Appliances",
-      "vendor": "SonicWall",
-      "host_versions": {
-        "h11-rtr-01": "9.0.0.10-31sv",
-        "h11-sw-01": "9.0.0.10-31sv",
-        "h11-rtr-02": "9.0.0.10-31sv"
-      }
+      "vendor": "SonicWall"
+    },
+    {
+      "cve_id": "CVE-2021-22941",
+      "host_names": [
+        "h11-fw-01"
+      ],
+      "product": "ShareFile",
+      "vendor": "Citrix"
+    },
+    {
+      "cve_id": "CVE-2022-1388",
+      "host_names": [
+        "h11-rtr-03"
+      ],
+      "product": "BIG-IP",
+      "vendor": "F5"
     },
     {
       "cve_id": "CVE-2023-33009",
@@ -113,10 +98,7 @@
         "h11-sw-02"
       ],
       "product": "Multiple Firewalls",
-      "vendor": "Zyxel",
-      "host_versions": {
-        "h11-sw-02": "4.60"
-      }
+      "vendor": "Zyxel"
     },
     {
       "cve_id": "CVE-2023-47565",
@@ -124,10 +106,7 @@
         "h11-rtr-03"
       ],
       "product": "VioStor NVR",
-      "vendor": "QNAP",
-      "host_versions": {
-        "h11-rtr-03": "4.0.0"
-      }
+      "vendor": "QNAP"
     },
     {
       "cve_id": "CVE-2024-13160",
@@ -135,10 +114,7 @@
         "h11-fw-02"
       ],
       "product": "Endpoint Manager (EPM)",
-      "vendor": "Ivanti",
-      "host_versions": {
-        "h11-fw-02": "2021"
-      }
+      "vendor": "Ivanti"
     },
     {
       "cve_id": "CVE-2024-20399",
@@ -147,11 +123,16 @@
         "h11-rtr-03"
       ],
       "product": "NX-OS",
-      "vendor": "Cisco",
-      "host_versions": {
-        "h11-fw-01": "6.2\\(2\\)",
-        "h11-rtr-03": "6.2\\(2\\)"
-      }
+      "vendor": "Cisco"
+    },
+    {
+      "cve_id": "CVE-2024-21887",
+      "host_names": [
+        "h11-sw-01",
+        "h11-rtr-01"
+      ],
+      "product": "Connect Secure and Policy Secure",
+      "vendor": "Ivanti"
     },
     {
       "cve_id": "CVE-2024-21893",
@@ -159,10 +140,7 @@
         "h11-rtr-02"
       ],
       "product": "Connect Secure, Policy Secure, and Neurons",
-      "vendor": "Ivanti",
-      "host_versions": {
-        "h11-rtr-02": "9.0"
-      }
+      "vendor": "Ivanti"
     },
     {
       "cve_id": "CVE-2024-40891",
@@ -170,10 +148,7 @@
         "h11-sw-03"
       ],
       "product": "DSL CPE Devices",
-      "vendor": "Zyxel",
-      "host_versions": {
-        "h11-sw-03": "*"
-      }
+      "vendor": "Zyxel"
     },
     {
       "cve_id": "CVE-2025-64446",
@@ -181,10 +156,7 @@
         "h11-rtr-03"
       ],
       "product": "FortiWeb",
-      "vendor": "Fortinet",
-      "host_versions": {
-        "h11-rtr-03": "7.0.0"
-      }
+      "vendor": "Fortinet"
     },
     {
       "cve_id": "CVE-2025-7775",
@@ -194,12 +166,7 @@
         "h11-fw-01"
       ],
       "product": "NetScaler",
-      "vendor": "Citrix",
-      "host_versions": {
-        "h11-rtr-04": "12.1",
-        "h11-rtr-02": "12.1",
-        "h11-fw-01": "12.1"
-      }
+      "vendor": "Citrix"
     },
     {
       "cve_id": "CVE-2026-0300",
@@ -207,10 +174,7 @@
         "h11-fw-01"
       ],
       "product": "PAN-OS",
-      "vendor": "Palo Alto Networks",
-      "host_versions": {
-        "h11-fw-01": "*"
-      }
+      "vendor": "Palo Alto Networks"
     },
     {
       "cve_id": "CVE-2026-1340",
@@ -218,10 +182,7 @@
         "h11-sw-03"
       ],
       "product": "Endpoint Manager Mobile (EPMM)",
-      "vendor": "Ivanti",
-      "host_versions": {
-        "h11-sw-03": "12.7.0.0"
-      }
+      "vendor": "Ivanti"
     },
     {
       "cve_id": "CVE-2006-1547",
@@ -229,10 +190,7 @@
         "h11-web-02"
       ],
       "product": "Struts 1",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-02": "1.2.8"
-      }
+      "vendor": "Apache"
     },
     {
       "cve_id": "CVE-2010-2861",
@@ -241,11 +199,7 @@
         "h11-api-05"
       ],
       "product": "ColdFusion",
-      "vendor": "Adobe",
-      "host_versions": {
-        "h11-db-04": "9.0.1",
-        "h11-api-05": "9.0.1"
-      }
+      "vendor": "Adobe"
     },
     {
       "cve_id": "CVE-2014-1776",
@@ -253,10 +207,7 @@
         "h11-db-01"
       ],
       "product": "Internet Explorer",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-db-01": "6"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2015-2425",
@@ -264,10 +215,7 @@
         "h11-worker-01"
       ],
       "product": "Internet Explorer",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-worker-01": "11"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2017-0261",
@@ -277,12 +225,7 @@
         "h11-api-04"
       ],
       "product": "Office",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-web-03": "2010",
-        "h11-db-04": "2010",
-        "h11-api-04": "2010"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2017-0262",
@@ -290,10 +233,24 @@
         "h11-db-01"
       ],
       "product": "Office",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-db-01": "2010"
-      }
+      "vendor": "Microsoft"
+    },
+    {
+      "cve_id": "CVE-2017-9841",
+      "host_names": [
+        "h11-web-04"
+      ],
+      "product": "PHPUnit",
+      "vendor": "PHPUnit"
+    },
+    {
+      "cve_id": "CVE-2019-1003029",
+      "host_names": [
+        "h11-db-02",
+        "h11-decom-api-02"
+      ],
+      "product": "Script Security Plugin",
+      "vendor": "Jenkins"
     },
     {
       "cve_id": "CVE-2019-1214",
@@ -302,11 +259,7 @@
         "h11-web-06"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-jump-01": "*",
-        "h11-web-06": "*"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2019-1297",
@@ -315,11 +268,7 @@
         "h11-decom-api-02"
       ],
       "product": "Excel",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-db-01": "2010",
-        "h11-decom-api-02": "2010"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2020-14883",
@@ -329,12 +278,7 @@
         "h11-api-05"
       ],
       "product": "WebLogic Server",
-      "vendor": "Oracle",
-      "host_versions": {
-        "h11-web-02": "10.3.6.0.0",
-        "h11-web-01": "10.3.6.0.0",
-        "h11-api-05": "10.3.6.0.0"
-      }
+      "vendor": "Oracle"
     },
     {
       "cve_id": "CVE-2021-21148",
@@ -343,11 +287,7 @@
         "h11-decom-jump-05"
       ],
       "product": "Chromium V8",
-      "vendor": "Google",
-      "host_versions": {
-        "h11-web-05": "88.0.4324.149",
-        "h11-decom-jump-05": "88.0.4324.149"
-      }
+      "vendor": "Google"
     },
     {
       "cve_id": "CVE-2021-38646",
@@ -355,10 +295,7 @@
         "h11-web-03"
       ],
       "product": "Office",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-web-03": "*"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2021-42321",
@@ -366,10 +303,15 @@
         "h11-worker-04"
       ],
       "product": "Exchange",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-worker-04": "2016"
-      }
+      "vendor": "Microsoft"
+    },
+    {
+      "cve_id": "CVE-2021-45046",
+      "host_names": [
+        "h11-worker-01"
+      ],
+      "product": "Log4j2",
+      "vendor": "Apache"
     },
     {
       "cve_id": "CVE-2022-32894",
@@ -378,11 +320,15 @@
         "h11-jump-02"
       ],
       "product": "iOS and macOS",
-      "vendor": "Apple",
-      "host_versions": {
-        "h11-worker-01": "15.6.0",
-        "h11-jump-02": "15.6.0"
-      }
+      "vendor": "Apple"
+    },
+    {
+      "cve_id": "CVE-2023-7028",
+      "host_names": [
+        "h11-api-02"
+      ],
+      "product": "GitLab CE/EE",
+      "vendor": "GitLab"
     },
     {
       "cve_id": "CVE-2024-20953",
@@ -390,10 +336,7 @@
         "h11-api-01"
       ],
       "product": "Agile Product Lifecycle Management (PLM)",
-      "vendor": "Oracle",
-      "host_versions": {
-        "h11-api-01": "9.3.6"
-      }
+      "vendor": "Oracle"
     },
     {
       "cve_id": "CVE-2024-38475",
@@ -401,10 +344,7 @@
         "h11-db-04"
       ],
       "product": "HTTP Server",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-db-04": "2.4.0"
-      }
+      "vendor": "Apache"
     },
     {
       "cve_id": "CVE-2025-21418",
@@ -412,10 +352,7 @@
         "h11-web-04"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-web-04": "10.0.10240.20914"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2025-32706",
@@ -423,10 +360,7 @@
         "h11-decom-worker-04"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-decom-worker-04": "10.0.10240.21013"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2026-20700",
@@ -436,12 +370,7 @@
         "h11-api-03"
       ],
       "product": "Multiple Products",
-      "vendor": "Apple",
-      "host_versions": {
-        "h11-decom-worker-04": "26.2",
-        "h11-decom-db-03": "26.2",
-        "h11-api-03": "26.2"
-      }
+      "vendor": "Apple"
     },
     {
       "cve_id": "CVE-2026-21519",
@@ -449,10 +378,7 @@
         "h11-db-01"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-db-01": "10.0.14393.8867"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2026-34621",
@@ -460,10 +386,7 @@
         "h11-db-04"
       ],
       "product": "Acrobat and Reader",
-      "vendor": "Adobe",
-      "host_versions": {
-        "h11-db-04": "26.001.21410"
-      }
+      "vendor": "Adobe"
     },
     {
       "cve_id": "CVE-2011-1823",
@@ -471,10 +394,7 @@
         "h11-web-03"
       ],
       "product": "Android OS",
-      "vendor": "Android",
-      "host_versions": {
-        "h11-web-03": "2.0"
-      }
+      "vendor": "Android"
     },
     {
       "cve_id": "CVE-2016-3309",
@@ -482,10 +402,7 @@
         "h11-db-02"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-db-02": "*"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2018-8440",
@@ -493,10 +410,7 @@
         "h11-api-01"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-api-01": "*"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2020-8193",
@@ -504,10 +418,7 @@
         "h11-api-03"
       ],
       "product": "Application Delivery Controller (ADC), Gateway, and SD-WAN WANOP Appliance",
-      "vendor": "Citrix",
-      "host_versions": {
-        "h11-api-03": "10.5"
-      }
+      "vendor": "Citrix"
     },
     {
       "cve_id": "CVE-2020-8599",
@@ -515,10 +426,7 @@
         "h11-web-07"
       ],
       "product": "Apex One and OfficeScan",
-      "vendor": "Trend Micro",
-      "host_versions": {
-        "h11-web-07": "2019"
-      }
+      "vendor": "Trend Micro"
     },
     {
       "cve_id": "CVE-2021-22600",
@@ -527,11 +435,7 @@
         "h11-web-03"
       ],
       "product": "Kernel",
-      "vendor": "Linux",
-      "host_versions": {
-        "h11-db-02": "4.14.175",
-        "h11-web-03": "4.14.175"
-      }
+      "vendor": "Linux"
     },
     {
       "cve_id": "CVE-2021-36934",
@@ -541,12 +445,7 @@
         "h11-web-05"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-idp-02": "10.0.17763.2113",
-        "h11-web-07": "10.0.17763.2113",
-        "h11-web-05": "10.0.17763.2113"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2021-36955",
@@ -554,10 +453,7 @@
         "h11-api-04"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-api-04": "10.0.10240.19059"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2021-41357",
@@ -565,10 +461,7 @@
         "h11-api-03"
       ],
       "product": "Win32k",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-api-03": "10.0.19041.1287"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2022-41125",
@@ -577,11 +470,7 @@
         "h11-db-01"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-web-03": "10.0.10240.19566",
-        "h11-db-01": "10.0.10240.19566"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2023-21823",
@@ -589,10 +478,7 @@
         "h11-api-01"
       ],
       "product": "Windows",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-api-01": "10.0.10240.19746"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2023-29357",
@@ -600,10 +486,7 @@
         "h11-web-05"
       ],
       "product": "SharePoint Server",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-web-05": "2019"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2024-38813",
@@ -611,10 +494,7 @@
         "h11-api-02"
       ],
       "product": "vCenter Server",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-api-02": "4.0"
-      }
+      "vendor": "VMware"
     },
     {
       "cve_id": "CVE-2024-7593",
@@ -622,10 +502,7 @@
         "h11-web-03"
       ],
       "product": "Virtual Traffic Manager",
-      "vendor": "Ivanti",
-      "host_versions": {
-        "h11-web-03": "22.2"
-      }
+      "vendor": "Ivanti"
     },
     {
       "cve_id": "CVE-2010-1428",
@@ -633,10 +510,7 @@
         "h11-rtr-04"
       ],
       "product": "JBoss",
-      "vendor": "Red Hat",
-      "host_versions": {
-        "h11-rtr-04": "4.2.0"
-      }
+      "vendor": "Red Hat"
     },
     {
       "cve_id": "CVE-2015-5317",
@@ -644,10 +518,7 @@
         "h11-rtr-03"
       ],
       "product": "Jenkins User Interface (UI)",
-      "vendor": "Jenkins",
-      "host_versions": {
-        "h11-rtr-03": "1.637"
-      }
+      "vendor": "Jenkins"
     },
     {
       "cve_id": "CVE-2016-0162",
@@ -656,11 +527,7 @@
         "h11-db-04"
       ],
       "product": "Internet Explorer",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-db-01": "9",
-        "h11-db-04": "9"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2016-3351",
@@ -669,11 +536,7 @@
         "h11-sw-01"
       ],
       "product": "Internet Explorer and Edge",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-rtr-01": "9",
-        "h11-sw-01": "9"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2016-4655",
@@ -682,11 +545,7 @@
         "h11-fw-02"
       ],
       "product": "iOS",
-      "vendor": "Apple",
-      "host_versions": {
-        "h11-decom-web-01": "9.3.4",
-        "h11-fw-02": "9.3.4"
-      }
+      "vendor": "Apple"
     },
     {
       "cve_id": "CVE-2017-0059",
@@ -694,10 +553,7 @@
         "h11-db-04"
       ],
       "product": "Internet Explorer",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-db-04": "9"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2019-0676",
@@ -705,10 +561,7 @@
         "h11-rtr-01"
       ],
       "product": "Internet Explorer",
-      "vendor": "Microsoft",
-      "host_versions": {
-        "h11-rtr-01": "10"
-      }
+      "vendor": "Microsoft"
     },
     {
       "cve_id": "CVE-2019-1653",
@@ -716,10 +569,15 @@
         "h11-sw-03"
       ],
       "product": "Small Business RV320 and RV325 Routers",
-      "vendor": "Cisco",
-      "host_versions": {
-        "h11-sw-03": "1.4.2.15"
-      }
+      "vendor": "Cisco"
+    },
+    {
+      "cve_id": "CVE-2024-24919",
+      "host_names": [
+        "h11-rtr-02"
+      ],
+      "product": "Quantum Security Gateways",
+      "vendor": "Check Point"
     },
     {
       "cve_id": "CVE-2025-22226",
@@ -727,1128 +585,178 @@
         "h11-web-04"
       ],
       "product": "ESXi, Workstation, and Fusion",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-web-04": "7.0"
-      }
+      "vendor": "VMware"
     },
     {
-      "cve_id": "CVE-2021-44228",
+      "cve_id": "CVE-2026-21441",
       "host_names": [
         "h11-worker-01",
-        "h11-api-01",
-        "h11-web-01"
+        "h11-api-01"
       ],
-      "product": "Log4j",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-worker-01": "2.0-2.14.1",
-        "h11-api-01": "2.0-2.14.1",
-        "h11-web-01": "2.0-2.14.1"
-      }
+      "product": "urllib3",
+      "vendor": "PyPI"
     },
     {
-      "cve_id": "CVE-2021-45046",
+      "cve_id": "CVE-2026-42309",
       "host_names": [
         "h11-worker-02",
         "h11-api-02"
       ],
-      "product": "Log4j",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-worker-02": "2.15.0",
-        "h11-api-02": "2.15.0"
-      }
+      "product": "pillow",
+      "vendor": "PyPI"
     },
     {
-      "cve_id": "CVE-2017-5638",
-      "host_names": [
-        "h11-web-02",
-        "h11-api-03"
-      ],
-      "product": "Struts2",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-02": "2.3.5-2.3.31",
-        "h11-api-03": "2.3.5-2.3.31"
-      }
-    },
-    {
-      "cve_id": "CVE-2018-11776",
-      "host_names": [
-        "h11-web-03"
-      ],
-      "product": "Struts2",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-03": "2.3-2.3.34"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-22965",
+      "cve_id": "CVE-2026-27205",
       "host_names": [
         "h11-web-04",
-        "h11-api-04"
-      ],
-      "product": "Spring Framework",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-web-04": "5.3.0-5.3.17",
-        "h11-api-04": "5.3.0-5.3.17"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-22963",
-      "host_names": [
-        "h11-worker-03"
-      ],
-      "product": "Spring Cloud Function",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-worker-03": "3.1.6"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-22947",
-      "host_names": [
-        "h11-worker-04"
-      ],
-      "product": "Spring Cloud Gateway",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-worker-04": "3.0.0-3.0.6"
-      }
-    },
-    {
-      "cve_id": "CVE-2017-7525",
-      "host_names": [
-        "h11-api-05"
-      ],
-      "product": "jackson-databind",
-      "vendor": "FasterXML",
-      "host_versions": {
-        "h11-api-05": "2.0.0-2.8.10"
-      }
-    },
-    {
-      "cve_id": "CVE-2019-12384",
-      "host_names": [
-        "h11-api-06"
-      ],
-      "product": "jackson-databind",
-      "vendor": "FasterXML",
-      "host_versions": {
-        "h11-api-06": "2.0-2.9.9"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-1471",
-      "host_names": [
-        "h11-worker-05"
-      ],
-      "product": "SnakeYAML",
-      "vendor": "SnakeYAML",
-      "host_versions": {
-        "h11-worker-05": "1.4-1.33"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-3094",
-      "host_names": [
-        "h11-jump-01",
-        "h11-jump-02"
-      ],
-      "product": "xz",
-      "vendor": "xz-utils",
-      "host_versions": {
-        "h11-jump-01": "5.6.0",
-        "h11-jump-02": "5.6.0"
-      }
-    },
-    {
-      "cve_id": "CVE-2017-9841",
-      "host_names": [
-        "h11-web-05"
-      ],
-      "product": "PHPUnit",
-      "vendor": "PHPUnit",
-      "host_versions": {
-        "h11-web-05": "<4.8.28"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-42889",
-      "host_names": [
         "h11-api-01"
       ],
-      "product": "Commons Text",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-api-01": "1.5-1.9"
-      }
+      "product": "flask",
+      "vendor": "PyPI"
     },
     {
-      "cve_id": "CVE-2022-36033",
+      "cve_id": "CVE-2026-35536",
       "host_names": [
-        "h11-web-06"
-      ],
-      "product": "jsoup",
-      "vendor": "jsoup",
-      "host_versions": {
-        "h11-web-06": "<1.15.3"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-44487",
-      "host_names": [
-        "h11-web-07",
+        "h11-web-05",
         "h11-api-02"
       ],
-      "product": "HTTP/2",
-      "vendor": "IETF",
-      "host_versions": {
-        "h11-web-07": "all-h2-stacks-pre-2023-10",
-        "h11-api-02": "all-h2-stacks-pre-2023-10"
-      }
+      "product": "tornado",
+      "vendor": "PyPI"
     },
     {
-      "cve_id": "CVE-2022-23529",
+      "cve_id": "CVE-2026-41066",
       "host_names": [
+        "h11-worker-03",
         "h11-api-03"
-      ],
-      "product": "node-jsonwebtoken",
-      "vendor": "Auth0",
-      "host_versions": {
-        "h11-api-03": "<=8.5.1"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-25883",
-      "host_names": [
-        "h11-worker-01"
-      ],
-      "product": "semver",
-      "vendor": "npm",
-      "host_versions": {
-        "h11-worker-01": "<7.5.2"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-21503",
-      "host_names": [
-        "h11-worker-02"
-      ],
-      "product": "black",
-      "vendor": "Python",
-      "host_versions": {
-        "h11-worker-02": "<24.3.0"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-26119",
-      "host_names": [
-        "h11-web-01"
-      ],
-      "product": "loofah",
-      "vendor": "Ruby",
-      "host_versions": {
-        "h11-web-01": "<2.21.3"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-22195",
-      "host_names": [
-        "h11-web-02"
-      ],
-      "product": "Jinja2",
-      "vendor": "Pallets",
-      "host_versions": {
-        "h11-web-02": "<3.1.3"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-25647",
-      "host_names": [
-        "h11-api-04"
-      ],
-      "product": "gson",
-      "vendor": "Google",
-      "host_versions": {
-        "h11-api-04": "<2.8.9"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-1259",
-      "host_names": [
-        "h11-api-05"
-      ],
-      "product": "undertow",
-      "vendor": "Red Hat",
-      "host_versions": {
-        "h11-api-05": "<2.2.17.Final"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-31197",
-      "host_names": [
-        "h11-db-01"
-      ],
-      "product": "pgjdbc",
-      "vendor": "PostgreSQL",
-      "host_versions": {
-        "h11-db-01": "<42.4.1"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-42282",
-      "host_names": [
-        "h11-api-06"
-      ],
-      "product": "ip",
-      "vendor": "Node.js",
-      "host_versions": {
-        "h11-api-06": "<=2.0.0"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-30635",
-      "host_names": [
-        "h11-worker-03"
-      ],
-      "product": "Go",
-      "vendor": "Google",
-      "host_versions": {
-        "h11-worker-03": "<1.17.13"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-22569",
-      "host_names": [
-        "h11-worker-04"
-      ],
-      "product": "protobuf-java",
-      "vendor": "Google",
-      "host_versions": {
-        "h11-worker-04": "<3.16.1"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-28957",
-      "host_names": [
-        "h11-web-03"
       ],
       "product": "lxml",
-      "vendor": "lxml",
-      "host_versions": {
-        "h11-web-03": "<4.6.3"
-      }
+      "vendor": "PyPI"
     },
     {
-      "cve_id": "CVE-2023-46604",
+      "cve_id": "CVE-2026-42044",
       "host_names": [
-        "h11-worker-05"
-      ],
-      "product": "ActiveMQ",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-worker-05": "<5.15.16"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-26336",
-      "host_names": [
-        "h11-worker-01"
-      ],
-      "product": "POI",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-worker-01": "<5.2.0"
-      }
-    },
-    {
-      "cve_id": "CVE-2020-11023",
-      "host_names": [
-        "h11-web-04"
-      ],
-      "product": "jQuery",
-      "vendor": "jQuery",
-      "host_versions": {
-        "h11-web-04": "<3.5.0"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-26134",
-      "host_names": [
-        "h11-web-05"
-      ],
-      "product": "Confluence",
-      "vendor": "Atlassian",
-      "host_versions": {
-        "h11-web-05": "<7.4.17"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-26084",
-      "host_names": [
-        "h11-web-06"
-      ],
-      "product": "Confluence",
-      "vendor": "Atlassian",
-      "host_versions": {
-        "h11-web-06": "<6.13.23"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-22515",
-      "host_names": [
-        "h11-web-07"
-      ],
-      "product": "Confluence",
-      "vendor": "Atlassian",
-      "host_versions": {
-        "h11-web-07": "8.0.0-8.5.1"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-22518",
-      "host_names": [
-        "h11-web-01"
-      ],
-      "product": "Confluence",
-      "vendor": "Atlassian",
-      "host_versions": {
-        "h11-web-01": "<7.19.16"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-23897",
-      "host_names": [
-        "h11-api-01"
-      ],
-      "product": "Jenkins",
-      "vendor": "Jenkins",
-      "host_versions": {
-        "h11-api-01": "<2.442"
-      }
-    },
-    {
-      "cve_id": "CVE-2019-1003029",
-      "host_names": [
-        "h11-api-02"
-      ],
-      "product": "Script Security Plugin",
-      "vendor": "Jenkins",
-      "host_versions": {
-        "h11-api-02": "<1.54"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-7028",
-      "host_names": [
-        "h11-api-03"
-      ],
-      "product": "GitLab",
-      "vendor": "GitLab",
-      "host_versions": {
-        "h11-api-03": "16.1.0-16.7.1"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-2825",
-      "host_names": [
+        "h11-worker-04",
         "h11-api-04"
       ],
-      "product": "GitLab",
-      "vendor": "GitLab",
-      "host_versions": {
-        "h11-api-04": "16.0.0"
-      }
+      "product": "axios",
+      "vendor": "npm"
     },
     {
-      "cve_id": "CVE-2022-29464",
+      "cve_id": "CVE-2026-44705",
       "host_names": [
+        "h11-worker-05",
         "h11-api-05"
       ],
-      "product": "Identity Server",
-      "vendor": "WSO2",
-      "host_versions": {
-        "h11-api-05": "IS 5.2.0-5.11.0"
-      }
+      "product": "tmp",
+      "vendor": "npm"
     },
     {
-      "cve_id": "CVE-2024-23917",
+      "cve_id": "CVE-2026-45736",
       "host_names": [
+        "h11-web-01",
         "h11-api-06"
       ],
-      "product": "TeamCity",
-      "vendor": "JetBrains",
-      "host_versions": {
-        "h11-api-06": "2017.1-2023.11.2"
-      }
+      "product": "ws",
+      "vendor": "npm"
     },
     {
-      "cve_id": "CVE-2024-27198",
+      "cve_id": "CVE-2026-23745",
       "host_names": [
-        "h11-web-01"
+        "h11-web-02",
+        "h11-worker-01"
       ],
-      "product": "TeamCity",
-      "vendor": "JetBrains",
-      "host_versions": {
-        "h11-web-01": "<2023.11.4"
-      }
+      "product": "tar",
+      "vendor": "npm"
     },
     {
-      "cve_id": "CVE-2022-24682",
+      "cve_id": "CVE-2026-2950",
       "host_names": [
-        "h11-web-02"
+        "h11-web-03",
+        "h11-worker-02"
       ],
-      "product": "Zimbra",
-      "vendor": "Synacor",
-      "host_versions": {
-        "h11-web-02": "<8.8.15.P30"
-      }
+      "product": "lodash",
+      "vendor": "npm"
     },
     {
-      "cve_id": "CVE-2022-27924",
+      "cve_id": "CVE-2026-35611",
       "host_names": [
-        "h11-web-03"
-      ],
-      "product": "Zimbra",
-      "vendor": "Synacor",
-      "host_versions": {
-        "h11-web-03": "<8.8.15.P32"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-37042",
-      "host_names": [
-        "h11-web-04"
-      ],
-      "product": "Zimbra",
-      "vendor": "Synacor",
-      "host_versions": {
-        "h11-web-04": "<8.8.15.P32"
-      }
-    },
-    {
-      "cve_id": "CVE-2018-7600",
-      "host_names": [
-        "h11-web-05"
-      ],
-      "product": "Drupal",
-      "vendor": "Drupal",
-      "host_versions": {
-        "h11-web-05": "<7.58"
-      }
-    },
-    {
-      "cve_id": "CVE-2018-7602",
-      "host_names": [
-        "h11-web-06"
-      ],
-      "product": "Drupal",
-      "vendor": "Drupal",
-      "host_versions": {
-        "h11-web-06": "<7.59"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-21661",
-      "host_names": [
-        "h11-web-07"
-      ],
-      "product": "WordPress Core",
-      "vendor": "WordPress",
-      "host_versions": {
-        "h11-web-07": "<5.8.3"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-49103",
-      "host_names": [
-        "h11-jump-01"
-      ],
-      "product": "graphapi",
-      "vendor": "ownCloud",
-      "host_versions": {
-        "h11-jump-01": "0.2.0-0.3.0"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-21887",
-      "host_names": [
-        "h11-jump-02"
-      ],
-      "product": "Connect Secure",
-      "vendor": "Ivanti",
-      "host_versions": {
-        "h11-jump-02": "9.x-22.x"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-3400",
-      "host_names": [
-        "h11-idp-01"
-      ],
-      "product": "GlobalProtect",
-      "vendor": "Palo Alto",
-      "host_versions": {
-        "h11-idp-01": "PAN-OS 10.2"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-3519",
-      "host_names": [
-        "h11-idp-02"
-      ],
-      "product": "NetScaler ADC",
-      "vendor": "Citrix",
-      "host_versions": {
-        "h11-idp-02": "13.0-91.13"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-1388",
-      "host_names": [
-        "h11-fw-01"
-      ],
-      "product": "BIG-IP",
-      "vendor": "F5",
-      "host_versions": {
-        "h11-fw-01": "16.x"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-1709",
-      "host_names": [
-        "h11-jump-01"
-      ],
-      "product": "ScreenConnect",
-      "vendor": "ConnectWise",
-      "host_versions": {
-        "h11-jump-01": "<=23.9.7"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-46805",
-      "host_names": [
-        "h11-jump-02"
-      ],
-      "product": "EPMM",
-      "vendor": "Ivanti",
-      "host_versions": {
-        "h11-jump-02": "9.x"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-34362",
-      "host_names": [
-        "h11-web-04"
-      ],
-      "product": "MOVEit Transfer",
-      "vendor": "Progress",
-      "host_versions": {
-        "h11-web-04": "<2023.0.1"
-      }
-    },
-    {
-      "cve_id": "CVE-2020-1938",
-      "host_names": [
-        "h11-web-01"
-      ],
-      "product": "Tomcat",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-01": "<7.0.100"
-      }
-    },
-    {
-      "cve_id": "CVE-2017-12615",
-      "host_names": [
-        "h11-web-02"
-      ],
-      "product": "Tomcat",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-02": "7.0.0-7.0.79"
-      }
-    },
-    {
-      "cve_id": "CVE-2020-9484",
-      "host_names": [
-        "h11-web-03"
-      ],
-      "product": "Tomcat",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-03": "<7.0.104"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-41773",
-      "host_names": [
-        "h11-web-04"
-      ],
-      "product": "httpd",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-04": "2.4.49"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-42013",
-      "host_names": [
-        "h11-web-05"
-      ],
-      "product": "httpd",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-web-05": "2.4.49"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-22978",
-      "host_names": [
+        "h11-worker-01",
         "h11-api-01"
       ],
-      "product": "Spring Security",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-api-01": "<5.4.11"
-      }
+      "product": "addressable",
+      "vendor": "RubyGems"
     },
     {
-      "cve_id": "CVE-2023-20860",
+      "cve_id": "CVE-2026-34830",
       "host_names": [
+        "h11-worker-02",
         "h11-api-02"
       ],
-      "product": "Spring Framework",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-api-02": "<5.3.26"
-      }
+      "product": "rack",
+      "vendor": "RubyGems"
     },
     {
-      "cve_id": "CVE-2022-22720",
+      "cve_id": "CVE-2026-26962",
       "host_names": [
+        "h11-web-06",
         "h11-api-03"
       ],
-      "product": "httpd",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-api-03": "<2.4.53"
-      }
+      "product": "rack",
+      "vendor": "RubyGems"
     },
     {
-      "cve_id": "CVE-2018-1273",
+      "cve_id": "CVE-2026-26961",
       "host_names": [
+        "h11-web-07",
         "h11-api-04"
       ],
-      "product": "Spring Data Commons",
-      "vendor": "VMware",
-      "host_versions": {
-        "h11-api-04": "<1.13.11"
-      }
+      "product": "rack",
+      "vendor": "RubyGems"
     },
     {
-      "cve_id": "CVE-2021-40438",
+      "cve_id": "CVE-2026-25500",
       "host_names": [
-        "h11-api-05"
-      ],
-      "product": "httpd",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-api-05": "<2.4.49"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-3156",
-      "host_names": [
-        "h11-jump-01",
-        "h11-worker-01"
-      ],
-      "product": "sudo",
-      "vendor": "Sudo",
-      "host_versions": {
-        "h11-jump-01": "1.8.2-1.8.31p2",
-        "h11-worker-01": "1.8.2-1.8.31p2"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-4034",
-      "host_names": [
-        "h11-jump-02",
-        "h11-worker-02"
-      ],
-      "product": "polkit",
-      "vendor": "polkit",
-      "host_versions": {
-        "h11-jump-02": "<0.120-2",
-        "h11-worker-02": "<0.120-2"
-      }
-    },
-    {
-      "cve_id": "CVE-2014-6271",
-      "host_names": [
-        "h11-worker-03"
-      ],
-      "product": "Bash",
-      "vendor": "GNU",
-      "host_versions": {
-        "h11-worker-03": "<=4.3"
-      }
-    },
-    {
-      "cve_id": "CVE-2014-7169",
-      "host_names": [
-        "h11-worker-04"
-      ],
-      "product": "Bash",
-      "vendor": "GNU",
-      "host_versions": {
-        "h11-worker-04": "4.3.25-4.3.29"
-      }
-    },
-    {
-      "cve_id": "CVE-2016-5195",
-      "host_names": [
-        "h11-jump-01"
-      ],
-      "product": "kernel",
-      "vendor": "Linux",
-      "host_versions": {
-        "h11-jump-01": "<4.8.3"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-0847",
-      "host_names": [
-        "h11-jump-02"
-      ],
-      "product": "kernel",
-      "vendor": "Linux",
-      "host_versions": {
-        "h11-jump-02": "5.8-5.16.10"
-      }
-    },
-    {
-      "cve_id": "CVE-2019-14287",
-      "host_names": [
-        "h11-worker-05"
-      ],
-      "product": "sudo",
-      "vendor": "Sudo",
-      "host_versions": {
-        "h11-worker-05": "<1.8.28"
-      }
-    },
-    {
-      "cve_id": "CVE-2014-0160",
-      "host_names": [
-        "h11-web-06"
-      ],
-      "product": "OpenSSL",
-      "vendor": "OpenSSL",
-      "host_versions": {
-        "h11-web-06": "1.0.1-1.0.1f"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-3602",
-      "host_names": [
-        "h11-web-07"
-      ],
-      "product": "OpenSSL",
-      "vendor": "OpenSSL",
-      "host_versions": {
-        "h11-web-07": "3.0.0-3.0.6"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-3786",
-      "host_names": [
-        "h11-api-06"
-      ],
-      "product": "OpenSSL",
-      "vendor": "OpenSSL",
-      "host_versions": {
-        "h11-api-06": "3.0.0-3.0.6"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-0286",
-      "host_names": [
-        "h11-api-01"
-      ],
-      "product": "OpenSSL",
-      "vendor": "OpenSSL",
-      "host_versions": {
-        "h11-api-01": "3.0.0-3.0.7"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-6387",
-      "host_names": [
-        "h11-jump-01"
-      ],
-      "product": "OpenSSH",
-      "vendor": "OpenBSD",
-      "host_versions": {
-        "h11-jump-01": "8.5p1-9.7p1"
-      }
-    },
-    {
-      "cve_id": "CVE-2018-15473",
-      "host_names": [
-        "h11-jump-02"
-      ],
-      "product": "OpenSSH",
-      "vendor": "OpenBSD",
-      "host_versions": {
-        "h11-jump-02": "<=7.7"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-38408",
-      "host_names": [
-        "h11-worker-01"
-      ],
-      "product": "OpenSSH",
-      "vendor": "OpenBSD",
-      "host_versions": {
-        "h11-worker-01": "<9.3p2"
-      }
-    },
-    {
-      "cve_id": "CVE-2019-10149",
-      "host_names": [
-        "h11-worker-02"
-      ],
-      "product": "Exim",
-      "vendor": "Exim",
-      "host_versions": {
-        "h11-worker-02": "4.87-4.91"
-      }
-    },
-    {
-      "cve_id": "CVE-2020-28018",
-      "host_names": [
-        "h11-worker-03"
-      ],
-      "product": "Exim",
-      "vendor": "Exim",
-      "host_versions": {
-        "h11-worker-03": "<4.94.2"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-23943",
-      "host_names": [
-        "h11-worker-04"
-      ],
-      "product": "httpd",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-worker-04": "<2.4.53"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-2068",
-      "host_names": [
-        "h11-worker-05"
-      ],
-      "product": "OpenSSL c_rehash",
-      "vendor": "OpenSSL",
-      "host_versions": {
-        "h11-worker-05": "<1.1.1p"
-      }
-    },
-    {
-      "cve_id": "CVE-2016-2776",
-      "host_names": [
-        "h11-db-01"
-      ],
-      "product": "BIND",
-      "vendor": "ISC",
-      "host_versions": {
-        "h11-db-01": "<9.9.9-P3"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-22555",
-      "host_names": [
-        "h11-jump-01"
-      ],
-      "product": "kernel",
-      "vendor": "Linux",
-      "host_versions": {
-        "h11-jump-01": "2.6.19-5.11"
-      }
-    },
-    {
-      "cve_id": "CVE-2019-5736",
-      "host_names": [
-        "h11-worker-01"
-      ],
-      "product": "runc",
-      "vendor": "Docker",
-      "host_versions": {
-        "h11-worker-01": "<1.0.0-rc7"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-21626",
-      "host_names": [
-        "h11-worker-02"
-      ],
-      "product": "runc",
-      "vendor": "Docker",
-      "host_versions": {
-        "h11-worker-02": "<1.1.12"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-0185",
-      "host_names": [
-        "h11-worker-03"
-      ],
-      "product": "kernel",
-      "vendor": "Linux",
-      "host_versions": {
-        "h11-worker-03": "5.1-5.16.1"
-      }
-    },
-    {
-      "cve_id": "CVE-2022-23648",
-      "host_names": [
-        "h11-worker-04"
-      ],
-      "product": "containerd",
-      "vendor": "containerd",
-      "host_versions": {
-        "h11-worker-04": "<1.4.13"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-30465",
-      "host_names": [
-        "h11-worker-05"
-      ],
-      "product": "runc",
-      "vendor": "Docker",
-      "host_versions": {
-        "h11-worker-05": "<1.0.0-rc95"
-      }
-    },
-    {
-      "cve_id": "CVE-2021-25741",
-      "host_names": [
-        "h11-api-01"
-      ],
-      "product": "kubelet",
-      "vendor": "Kubernetes",
-      "host_versions": {
-        "h11-api-01": "<1.19.15"
-      }
-    },
-    {
-      "cve_id": "CVE-2018-1002105",
-      "host_names": [
-        "h11-api-02"
-      ],
-      "product": "kube-apiserver",
-      "vendor": "Kubernetes",
-      "host_versions": {
-        "h11-api-02": "<1.10.11"
-      }
-    },
-    {
-      "cve_id": "CVE-2020-8554",
-      "host_names": [
+        "h11-worker-03",
         "h11-api-03"
       ],
-      "product": "kube-apiserver",
-      "vendor": "Kubernetes",
-      "host_versions": {
-        "h11-api-03": "all"
-      }
+      "product": "rack",
+      "vendor": "RubyGems"
     },
     {
-      "cve_id": "CVE-2022-29162",
+      "cve_id": "CVE-2026-47784",
       "host_names": [
-        "h11-api-04"
+        "h11-db-01",
+        "h11-api-01"
       ],
-      "product": "runc",
-      "vendor": "Docker",
-      "host_versions": {
-        "h11-api-04": "<1.1.2"
-      }
+      "product": "memcached",
+      "vendor": "Ubuntu"
     },
     {
-      "cve_id": "CVE-2023-25153",
+      "cve_id": "CVE-2026-42945",
       "host_names": [
-        "h11-api-05"
+        "h11-db-02",
+        "h11-web-01"
       ],
-      "product": "buildkit",
-      "vendor": "Moby",
-      "host_versions": {
-        "h11-api-05": "<0.10.5"
-      }
+      "product": "nginx",
+      "vendor": "Ubuntu"
     },
     {
-      "cve_id": "CVE-2021-22941",
+      "cve_id": "CVE-2026-6475",
       "host_names": [
+        "h11-db-03",
+        "h11-worker-01"
+      ],
+      "product": "postgresql-14",
+      "vendor": "Ubuntu"
+    },
+    {
+      "cve_id": "CVE-2026-4892",
+      "host_names": [
+        "h11-db-04",
         "h11-idp-01"
       ],
-      "product": "ShareFile",
-      "vendor": "Citrix",
-      "host_versions": {
-        "h11-idp-01": "sz-controller-2021.x"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-25690",
-      "host_names": [
-        "h11-fw-02"
-      ],
-      "product": "httpd",
-      "vendor": "Apache",
-      "host_versions": {
-        "h11-fw-02": "<2.4.56"
-      }
-    },
-    {
-      "cve_id": "CVE-2023-22527",
-      "host_names": [
-        "h11-idp-02"
-      ],
-      "product": "Confluence",
-      "vendor": "Atlassian",
-      "host_versions": {
-        "h11-idp-02": "8.0.x-8.5.3"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-2961",
-      "host_names": [
-        "h11-db-02"
-      ],
-      "product": "glibc",
-      "vendor": "GNU",
-      "host_versions": {
-        "h11-db-02": "<2.39"
-      }
-    },
-    {
-      "cve_id": "CVE-2024-24919",
-      "host_names": [
-        "h11-fw-01"
-      ],
-      "product": "Quantum Gateway",
-      "vendor": "Check Point",
-      "host_versions": {
-        "h11-fw-01": "R77.20-R81.20"
-      }
+      "product": "dnsmasq",
+      "vendor": "Ubuntu"
     }
   ],
   "ci_count": 35,

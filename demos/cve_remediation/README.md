@@ -41,6 +41,62 @@ uv run --no-project python -m pytest demos/cve_remediation/graph/tests --no-cov
 uv run --no-project python -m demos.cve_remediation.run_demo --json
 ```
 
+## Run the watcher UI
+
+The watcher is a browser-based run visualizer served by the same
+FastAPI process. It works in two modes: **simulated** (baked-in demo
+data, no server needed beyond static files) and **live** (streams
+real run events over WebSocket).
+
+```bash
+# Start the server (serves both the API and the watcher UI)
+uv run --no-project python -m demos.cve_remediation.serve_cve_rem
+
+# Open the watcher
+#   Simulated demo (no live run required):
+#     http://localhost:9000/watch/?demo=1
+#
+#   Live run (after POST /v1/runs):
+#     http://localhost:9000/watch/?run=<run_id>
+```
+
+### Simulated mode (`?demo=1`)
+
+Plays a pre-baked CVE-2021-44228 (Log4Shell) remediation run with
+realistic timing. Every node has a specialized detail view — CVSS
+severity, SSVC decision matrix, sandbox proof pipeline, etc. Good
+for demos and UI development; no LLM or external services needed.
+
+### Live mode (`?run=<run_id>`)
+
+Streams real node events from a running graph execution. Start a run
+via the API, then open the watcher with the returned `run_id`:
+
+```bash
+# In another terminal — kick off a live run
+curl -X POST http://localhost:9000/v1/runs \
+  -H 'Content-Type: application/json' \
+  -d '{"graph_id": "cve-rem-pipeline", "input": {"cve_id": "CVE-2021-44228"}}'
+
+# Response includes run_id — paste it into the watcher URL
+```
+
+The watcher connects to the `/v1/runs/{run_id}/stream` WebSocket and
+renders each node's specialized view as events arrive. Checkpoint
+state is fetched from `/watch/api/run/{run_id}/checkpoints` for
+per-node state diffs.
+
+### Environment
+
+The server reads `.env` in the demo directory. For live runs with
+real LLM nodes, set:
+
+```
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=qwen2.5:7b
+LLM_API_KEY=no-key
+```
+
 ## Layout
 
 ```

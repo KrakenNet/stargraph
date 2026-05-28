@@ -53,7 +53,21 @@ class SubstrateSpec:
     """
 
     name: str = "linux-x86_64"
-    allowed_target_sw: frozenset[str] = frozenset({"linux", "*", "-", ""})
+    # Allow language runtimes that run on Linux hosts. The h11 fleet
+    # installs Python, Node.js, Ruby and Java per-role (per
+    # ``Dockerfile.h11-base``), so CPE rows tagged with these
+    # target_sw values are substrate-compatible. Without these entries
+    # every PyPI / npm / RubyGems / Maven CVE is dropped at the CMDB
+    # correlation stage because OSV / GHSA records carry these
+    # target_sw tags on their CPE projections.
+    allowed_target_sw: frozenset[str] = frozenset({
+        "linux", "*", "-", "",
+        "python", "pypi", "cpython",
+        "node.js", "nodejs", "node",
+        "ruby", "rubygems",
+        "java", "jdk", "jre", "jvm",
+        "php", "perl",
+    })
     denied_target_sw: frozenset[str] = frozenset({
         "windows", "windows_10", "windows_11", "windows_server",
         "macos", "mac_os", "mac_os_x", "osx",

@@ -476,10 +476,26 @@ def install_version_spec(
         )
         verify_cmd = f"rpm -q --queryformat '%{{VERSION}}' {pkg} | grep -Fxq '{ver}'"
     elif ch in ("pip", "pypi", "python"):
-        apply_cmd = f"python3 -m pip install --upgrade '{pkg}=={ver}'"
+        apply_cmd = f"python3 -m pip install --upgrade --no-deps '{pkg}=={ver}'"
         verify_cmd = (
             f"python3 -m pip show {pkg} 2>/dev/null | "
             f"awk '/^Version:/ {{print $2}}' | grep -Fxq '{ver}'"
+        )
+    elif ch in ("npm", "node"):
+        apply_cmd = (
+            f"npm install -g --silent --no-audit --no-fund {pkg}@{ver}"
+        )
+        verify_cmd = (
+            f"npm list -g {pkg} --depth=0 --json 2>/dev/null | "
+            f"python3 -c \"import sys,json;d=json.load(sys.stdin);"
+            f"v=(d.get('dependencies') or {{}}).get('{pkg}',{{}}).get('version','');"
+            f"sys.exit(0 if v == '{ver}' else 1)\""
+        )
+    elif ch in ("gem", "rubygems", "ruby"):
+        apply_cmd = f"gem install {pkg} -v {ver} --no-document --silent"
+        verify_cmd = (
+            f"gem list {pkg} --local 2>/dev/null | "
+            f"grep -Eq '{pkg} \\([^)]*\\<{ver}\\>[^)]*\\)'"
         )
     else:
         # Cross-tool fallback: try apt, dnf, yum, pip in order.
@@ -516,7 +532,13 @@ def install_version_spec(
                 f"(command -v yum >/dev/null && yum install -y {pkg}-{rv})"
             )
         elif ch in ("pip", "pypi", "python"):
-            rollback_cmd = f"python3 -m pip install '{pkg}=={rv}'"
+            rollback_cmd = f"python3 -m pip install --no-deps '{pkg}=={rv}'"
+        elif ch in ("npm", "node"):
+            rollback_cmd = (
+                f"npm install -g --silent --no-audit --no-fund {pkg}@{rv}"
+            )
+        elif ch in ("gem", "rubygems", "ruby"):
+            rollback_cmd = f"gem install {pkg} -v {rv} --no-document --silent"
         else:
             rollback_cmd = (
                 f"(command -v apt-get >/dev/null && "

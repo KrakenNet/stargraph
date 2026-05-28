@@ -1,2194 +1,1044 @@
 {
-  "schema_version": "1",
-  "kev_catalog_version": "v2-server-side-2026-05-14",
-  "kev_date_released": "2026-05-14",
-  "seed": 514,
-  "count": 100,
   "bucket_quotas": {
-    "library": 30,
     "application": 25,
-    "web-framework": 10,
-    "host": 20,
+    "config-only": 5,
     "container": 10,
-    "config-only": 5
+    "host": 20,
+    "library": 30,
+    "web-framework": 10
   },
+  "count": 100,
   "cves": [
     {
+      "cve_id": "CVE-2026-21441",
+      "expected_cwe": "CWE-22",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_auto",
+      "host_pool": [
+        "h11-worker-01",
+        "h11-api-01"
+      ],
+      "install_channel": "pip"
+    },
+    {
+      "cve_id": "CVE-2026-42309",
+      "expected_cwe": "CWE-787",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-worker-02",
+        "h11-api-02"
+      ],
+      "install_channel": "pip"
+    },
+    {
+      "cve_id": "CVE-2026-27205",
+      "expected_cwe": "CWE-79",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-web-04",
+        "h11-api-01"
+      ],
+      "install_channel": "pip"
+    },
+    {
+      "cve_id": "CVE-2026-35536",
+      "expected_cwe": "CWE-400",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-web-05",
+        "h11-api-02"
+      ],
+      "install_channel": "pip"
+    },
+    {
+      "cve_id": "CVE-2026-41066",
+      "expected_cwe": "CWE-611",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-worker-03",
+        "h11-api-03"
+      ],
+      "install_channel": "pip"
+    },
+    {
+      "cve_id": "CVE-2026-42044",
+      "expected_cwe": "CWE-918",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-worker-04",
+        "h11-api-04"
+      ],
+      "install_channel": "npm"
+    },
+    {
+      "cve_id": "CVE-2026-44705",
+      "expected_cwe": "CWE-22",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-worker-05",
+        "h11-api-05"
+      ],
+      "install_channel": "npm"
+    },
+    {
+      "cve_id": "CVE-2026-45736",
+      "expected_cwe": "CWE-400",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-web-01",
+        "h11-api-06"
+      ],
+      "install_channel": "npm"
+    },
+    {
+      "cve_id": "CVE-2026-23745",
+      "expected_cwe": "CWE-22",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-web-02",
+        "h11-worker-01"
+      ],
+      "install_channel": "npm"
+    },
+    {
+      "cve_id": "CVE-2026-2950",
+      "expected_cwe": "CWE-1321",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-web-03",
+        "h11-worker-02"
+      ],
+      "install_channel": "npm"
+    },
+    {
+      "cve_id": "CVE-2026-35611",
+      "expected_cwe": "CWE-1333",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-worker-01",
+        "h11-api-01"
+      ],
+      "install_channel": "gem"
+    },
+    {
+      "cve_id": "CVE-2026-34830",
+      "expected_cwe": "CWE-400",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-worker-02",
+        "h11-api-02"
+      ],
+      "install_channel": "gem"
+    },
+    {
+      "cve_id": "CVE-2026-26962",
+      "expected_cwe": "CWE-444",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-web-06",
+        "h11-api-03"
+      ],
+      "install_channel": "gem"
+    },
+    {
+      "cve_id": "CVE-2026-26961",
+      "expected_cwe": "CWE-79",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-web-07",
+        "h11-api-04"
+      ],
+      "install_channel": "gem"
+    },
+    {
+      "cve_id": "CVE-2026-25500",
+      "expected_cwe": "CWE-1284",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-worker-03",
+        "h11-api-03"
+      ],
+      "install_channel": "gem"
+    },
+    {
+      "cve_id": "CVE-2026-47784",
+      "expected_cwe": "CWE-208",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-db-01",
+        "h11-api-01"
+      ],
+      "install_channel": "apt"
+    },
+    {
+      "cve_id": "CVE-2026-42945",
+      "expected_cwe": "CWE-444",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-db-02",
+        "h11-web-01"
+      ],
+      "install_channel": "apt"
+    },
+    {
+      "cve_id": "CVE-2026-6475",
+      "expected_cwe": "CWE-89",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-db-03",
+        "h11-worker-01"
+      ],
+      "install_channel": "apt"
+    },
+    {
+      "cve_id": "CVE-2026-4892",
+      "expected_cwe": "CWE-345",
+      "expected_dispatcher_runtime": "docker_compose",
+      "expected_ssvc_tier": "act_review",
+      "host_pool": [
+        "h11-db-04",
+        "h11-idp-01"
+      ],
+      "install_channel": "apt"
+    },
+    {
       "cve_id": "CVE-2021-44228",
-      "vendor": "Apache",
-      "product": "Log4j",
-      "vuln_class": "library",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-12-10",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Apache Log4j2 JNDI RCE (Log4Shell)",
-      "fixed_version": "2.17.0",
-      "affected_versions": [
-        "2.0-2.14.1"
-      ],
       "host_pool": [
         "h11-worker-01",
         "h11-api-01",
         "h11-web-01"
       ],
-      "audit_signal": "log4j-core-2.x jar with JndiLookup.class present"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2021-45046",
-      "vendor": "Apache",
-      "product": "Log4j",
-      "vuln_class": "library",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-12-15",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache Log4j2 Thread Context Lookup RCE",
-      "fixed_version": "2.17.0",
-      "affected_versions": [
-        "2.15.0"
-      ],
       "host_pool": [
         "h11-worker-02",
         "h11-api-02"
       ],
-      "audit_signal": "log4j-core 2.15.0 with ThreadContext map lookups"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2017-5638",
-      "vendor": "Apache",
-      "product": "Struts2",
-      "vuln_class": "library",
       "expected_cwe": "CWE-20",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Apache Struts2 Jakarta Multipart OGNL RCE",
-      "fixed_version": "2.3.32",
-      "affected_versions": [
-        "2.3.5-2.3.31",
-        "2.5-2.5.10"
-      ],
       "host_pool": [
         "h11-web-02",
         "h11-api-03"
       ],
-      "audit_signal": "Jakarta Multipart parser with Content-Type OGNL eval path"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2018-11776",
-      "vendor": "Apache",
-      "product": "Struts2",
-      "vuln_class": "library",
       "expected_cwe": "CWE-20",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache Struts2 namespace OGNL RCE",
-      "fixed_version": "2.3.35",
-      "affected_versions": [
-        "2.3-2.3.34",
-        "2.5-2.5.16"
-      ],
       "host_pool": [
         "h11-web-03"
       ],
-      "audit_signal": "Struts2 with alwaysSelectFullNamespace=true + actionless URL OGNL eval"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-22965",
-      "vendor": "VMware",
-      "product": "Spring Framework",
-      "vuln_class": "library",
       "expected_cwe": "CWE-94",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-04",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Spring4Shell - Spring Framework RCE",
-      "fixed_version": "5.3.18",
-      "affected_versions": [
-        "5.3.0-5.3.17",
-        "5.2.0-5.2.19"
-      ],
       "host_pool": [
         "h11-web-04",
         "h11-api-04"
       ],
-      "audit_signal": "Spring MVC controller w/ POJO param + JDK9+ class.module.classLoader access"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-22963",
-      "vendor": "VMware",
-      "product": "Spring Cloud Function",
-      "vuln_class": "library",
       "expected_cwe": "CWE-94",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-04",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Spring Cloud Function SpEL RCE",
-      "fixed_version": "3.2.3",
-      "affected_versions": [
-        "3.1.6",
-        "3.2.2"
-      ],
       "host_pool": [
         "h11-worker-03"
       ],
-      "audit_signal": "spring-cloud-function-context with spring.cloud.function.routing-expression header eval"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-22947",
-      "vendor": "VMware",
-      "product": "Spring Cloud Gateway",
-      "vuln_class": "library",
       "expected_cwe": "CWE-94",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Spring Cloud Gateway Actuator SpEL RCE",
-      "fixed_version": "3.1.1",
-      "affected_versions": [
-        "3.0.0-3.0.6",
-        "3.1.0"
-      ],
       "host_pool": [
         "h11-worker-04"
       ],
-      "audit_signal": "spring-cloud-gateway with /actuator/gateway/routes enabled + SpEL filter eval"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2017-7525",
-      "vendor": "FasterXML",
-      "product": "jackson-databind",
-      "vuln_class": "library",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-09-08",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "jackson-databind polymorphic deserialization RCE",
-      "fixed_version": "2.8.11.1",
-      "affected_versions": [
-        "2.0.0-2.8.10",
-        "2.9.0-2.9.10"
-      ],
       "host_pool": [
         "h11-api-05"
       ],
-      "audit_signal": "jackson-databind ObjectMapper enableDefaultTyping w/o blocklist"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2019-12384",
-      "vendor": "FasterXML",
-      "product": "jackson-databind",
-      "vuln_class": "library",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "jackson-databind logback JNDI gadget deser",
-      "fixed_version": "2.9.10",
-      "affected_versions": [
-        "2.0-2.9.9"
-      ],
       "host_pool": [
         "h11-api-06"
       ],
-      "audit_signal": "jackson-databind w/ logback-core on classpath + polymorphic typing"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-1471",
-      "vendor": "SnakeYAML",
-      "product": "SnakeYAML",
-      "vuln_class": "library",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-04-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "SnakeYAML default Constructor unsafe deser",
-      "fixed_version": "2.0",
-      "affected_versions": [
-        "1.4-1.33"
-      ],
       "host_pool": [
         "h11-worker-05"
       ],
-      "audit_signal": "snakeyaml.jar w/ new Yaml() (default Constructor allows arbitrary classes)"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2024-3094",
-      "vendor": "xz-utils",
-      "product": "xz",
-      "vuln_class": "library",
       "expected_cwe": "CWE-506",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-03-29",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "xz-utils malicious build script backdoor (Jia Tan)",
-      "fixed_version": "5.4.6",
-      "affected_versions": [
-        "5.6.0",
-        "5.6.1"
-      ],
       "host_pool": [
         "h11-jump-01",
         "h11-jump-02"
       ],
-      "audit_signal": "liblzma.so.5.6.0 or 5.6.1 with sshd hook offsets"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2017-9841",
-      "vendor": "PHPUnit",
-      "product": "PHPUnit",
-      "vuln_class": "library",
       "expected_cwe": "CWE-94",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-02-15",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "PHPUnit eval-stdin.php exposed RCE",
-      "fixed_version": "4.8.28",
-      "affected_versions": [
-        "<4.8.28",
-        "5.0.0-5.6.2"
-      ],
       "host_pool": [
         "h11-web-05"
       ],
-      "audit_signal": "phpunit/src/Util/PHP/eval-stdin.php reachable under web root"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2022-42889",
-      "vendor": "Apache",
-      "product": "Commons Text",
-      "vuln_class": "library",
       "expected_cwe": "CWE-94",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-04-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache Commons Text StringSubstitutor RCE (Text4Shell)",
-      "fixed_version": "1.10.0",
-      "affected_versions": [
-        "1.5-1.9"
-      ],
       "host_pool": [
         "h11-api-01"
       ],
-      "audit_signal": "commons-text 1.x w/ StringSubstitutor.createInterpolator default lookups (script/dns/url)"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-36033",
-      "vendor": "jsoup",
-      "product": "jsoup",
-      "vuln_class": "library",
       "expected_cwe": "CWE-79",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-08-21",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "jsoup Cleaner HTML sanitizer XSS bypass",
-      "fixed_version": "1.15.3",
-      "affected_versions": [
-        "<1.15.3"
-      ],
       "host_pool": [
         "h11-web-06"
       ],
-      "audit_signal": "jsoup.jar < 1.15.3 used as HTML cleaner without Safelist.relaxed() override"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2023-44487",
-      "vendor": "IETF",
-      "product": "HTTP/2",
-      "vuln_class": "library",
       "expected_cwe": "CWE-400",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-10-10",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "HTTP/2 Rapid Reset DoS",
-      "fixed_version": "vendor-patch",
-      "affected_versions": [
-        "all-h2-stacks-pre-2023-10"
-      ],
       "host_pool": [
         "h11-web-07",
         "h11-api-02"
       ],
-      "audit_signal": "h2 server config without RST_STREAM rate limit / max_concurrent_streams cap"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2022-23529",
-      "vendor": "Auth0",
-      "product": "node-jsonwebtoken",
-      "vuln_class": "library",
       "expected_cwe": "CWE-287",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-01-09",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "jsonwebtoken jwt.verify secretOrPublicKey type confusion RCE",
-      "fixed_version": "9.0.0",
-      "affected_versions": [
-        "<=8.5.1"
-      ],
       "host_pool": [
         "h11-api-03"
       ],
-      "audit_signal": "jsonwebtoken <=8.5.1 calling jwt.verify with untrusted secretOrPublicKey arg"
+      "install_channel": "npm"
     },
     {
       "cve_id": "CVE-2022-25883",
-      "vendor": "npm",
-      "product": "semver",
-      "vuln_class": "library",
       "expected_cwe": "CWE-1333",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-06-22",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "node-semver ReDoS via crafted range",
-      "fixed_version": "7.5.2",
-      "affected_versions": [
-        "<7.5.2"
-      ],
       "host_pool": [
         "h11-worker-01"
       ],
-      "audit_signal": "node_modules/semver < 7.5.2 + new Range() called on untrusted input"
+      "install_channel": "npm"
     },
     {
       "cve_id": "CVE-2024-21503",
-      "vendor": "Python",
-      "product": "black",
-      "vuln_class": "library",
       "expected_cwe": "CWE-1333",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-04-10",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Python black formatter ReDoS in lines option",
-      "fixed_version": "24.3.0",
-      "affected_versions": [
-        "<24.3.0"
-      ],
       "host_pool": [
         "h11-worker-02"
       ],
-      "audit_signal": "black package < 24.3.0 used as service formatter on untrusted code"
+      "install_channel": "pip"
     },
     {
       "cve_id": "CVE-2023-26119",
-      "vendor": "Ruby",
-      "product": "loofah",
-      "vuln_class": "library",
       "expected_cwe": "CWE-79",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-05-31",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "loofah whitewash XSS via DOCTYPE",
-      "fixed_version": "2.21.3",
-      "affected_versions": [
-        "<2.21.3"
-      ],
       "host_pool": [
         "h11-web-01"
       ],
-      "audit_signal": "loofah gem < 2.21.3 used to sanitize untrusted html w/ doctype tags"
+      "install_channel": "gem"
     },
     {
       "cve_id": "CVE-2024-22195",
-      "vendor": "Pallets",
-      "product": "Jinja2",
-      "vuln_class": "library",
       "expected_cwe": "CWE-79",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-01-12",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Jinja2 xmlattr XSS via untrusted key",
-      "fixed_version": "3.1.3",
-      "affected_versions": [
-        "<3.1.3"
-      ],
       "host_pool": [
         "h11-web-02"
       ],
-      "audit_signal": "jinja2 < 3.1.3 calling xmlattr filter on user-controlled dict keys"
+      "install_channel": "pip"
     },
     {
       "cve_id": "CVE-2022-25647",
-      "vendor": "Google",
-      "product": "gson",
-      "vuln_class": "library",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-05-02",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "gson writeReplace DoS via deeply nested objects",
-      "fixed_version": "2.8.9",
-      "affected_versions": [
-        "<2.8.9"
-      ],
       "host_pool": [
         "h11-api-04"
       ],
-      "audit_signal": "gson < 2.8.9 deserializing untrusted JSON with nested structures"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-1259",
-      "vendor": "Red Hat",
-      "product": "undertow",
-      "vuln_class": "library",
       "expected_cwe": "CWE-1333",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-21",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "undertow Accept-Encoding header parsing ReDoS",
-      "fixed_version": "2.2.17.Final",
-      "affected_versions": [
-        "<2.2.17.Final"
-      ],
       "host_pool": [
         "h11-api-05"
       ],
-      "audit_signal": "undertow-core < 2.2.17 with form/multipart parsing of arbitrary Accept-Encoding"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-31197",
-      "vendor": "PostgreSQL",
-      "product": "pgjdbc",
-      "vuln_class": "library",
       "expected_cwe": "CWE-89",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-08-04",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "PostgreSQL JDBC ResultSet refreshRow SQLi",
-      "fixed_version": "42.4.1",
-      "affected_versions": [
-        "<42.4.1"
-      ],
       "host_pool": [
         "h11-db-01"
       ],
-      "audit_signal": "postgresql jdbc < 42.4.1 + ResultSet.refreshRow on user-controlled column names"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2023-42282",
-      "vendor": "Node.js",
-      "product": "ip",
-      "vuln_class": "library",
       "expected_cwe": "CWE-918",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-02-08",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "npm ip isPublic SSRF via octal IP",
-      "fixed_version": "2.0.1",
-      "affected_versions": [
-        "<=2.0.0"
-      ],
       "host_pool": [
         "h11-api-06"
       ],
-      "audit_signal": "node_modules/ip <=2.0.0 used for ip.isPublic() / ip.isPrivate() against user input"
+      "install_channel": "npm"
     },
     {
       "cve_id": "CVE-2022-30635",
-      "vendor": "Google",
-      "product": "Go",
-      "vuln_class": "library",
       "expected_cwe": "CWE-770",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-08-09",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Go encoding/gob stack exhaustion via deeply nested types",
-      "fixed_version": "1.17.13",
-      "affected_versions": [
-        "<1.17.13",
-        "1.18.0-1.18.5"
-      ],
       "host_pool": [
         "h11-worker-03"
       ],
-      "audit_signal": "go binary built with go<1.17.13 calling gob.Decode on untrusted streams"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2021-22569",
-      "vendor": "Google",
-      "product": "protobuf-java",
-      "vuln_class": "library",
       "expected_cwe": "CWE-770",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-01-10",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "protobuf-java unbounded UnknownFieldSet allocation DoS",
-      "fixed_version": "3.19.2",
-      "affected_versions": [
-        "<3.16.1",
-        "<3.19.2"
-      ],
       "host_pool": [
         "h11-worker-04"
       ],
-      "audit_signal": "protobuf-java < 3.19.2 + UnknownFieldSet parsing of untrusted wire format"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2021-28957",
-      "vendor": "lxml",
-      "product": "lxml",
-      "vuln_class": "library",
       "expected_cwe": "CWE-79",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-03-20",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "lxml Cleaner XSS via formaction attribute",
-      "fixed_version": "4.6.3",
-      "affected_versions": [
-        "<4.6.3"
-      ],
       "host_pool": [
         "h11-web-03"
       ],
-      "audit_signal": "python lxml < 4.6.3 + Cleaner without explicit safe_attrs_only=True"
+      "install_channel": "pip"
     },
     {
       "cve_id": "CVE-2023-46604",
-      "vendor": "Apache",
-      "product": "ActiveMQ",
-      "vuln_class": "library",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-11-02",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Apache ActiveMQ OpenWire deserialization RCE",
-      "fixed_version": "5.18.3",
-      "affected_versions": [
-        "<5.15.16",
-        "<5.16.7",
-        "<5.17.6",
-        "<5.18.3"
-      ],
       "host_pool": [
         "h11-worker-05"
       ],
-      "audit_signal": "activemq broker < fix on tcp 61616 + OpenWire transport with default trustAllPackages"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-26336",
-      "vendor": "Apache",
-      "product": "POI",
-      "vuln_class": "library",
       "expected_cwe": "CWE-611",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-14",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache POI XML External Entity",
-      "fixed_version": "5.2.0",
-      "affected_versions": [
-        "<5.2.0"
-      ],
       "host_pool": [
         "h11-worker-01"
       ],
-      "audit_signal": "poi-ooxml < 5.2.0 parsing untrusted xlsx/docx without XMLReader feature hardening"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2020-11023",
-      "vendor": "jQuery",
-      "product": "jQuery",
-      "vuln_class": "library",
       "expected_cwe": "CWE-79",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2020-04-29",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "jQuery <option> tag XSS",
-      "fixed_version": "3.5.0",
-      "affected_versions": [
-        "<3.5.0"
-      ],
       "host_pool": [
         "h11-web-04"
       ],
-      "audit_signal": "jquery.js < 3.5.0 served on page + .html() called with user-controlled <option>"
-    },
-    {
-      "cve_id": "CVE-2022-26134",
-      "vendor": "Atlassian",
-      "product": "Confluence",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-917",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-06-02",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Confluence Server OGNL RCE",
-      "fixed_version": "7.4.17",
-      "affected_versions": [
-        "<7.4.17",
-        "<7.13.7",
-        "<7.14.3",
-        "<7.15.2",
-        "<7.16.4",
-        "<7.17.4",
-        "<7.18.1"
-      ],
-      "host_pool": [
-        "h11-web-05"
-      ],
-      "audit_signal": "confluence URL with OGNL ${...} injection in path returns 302"
-    },
-    {
-      "cve_id": "CVE-2021-26084",
-      "vendor": "Atlassian",
-      "product": "Confluence",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-917",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Confluence Webwork OGNL RCE",
-      "fixed_version": "6.13.23",
-      "affected_versions": [
-        "<6.13.23",
-        "<7.4.11",
-        "<7.11.6",
-        "<7.12.5"
-      ],
-      "host_pool": [
-        "h11-web-06"
-      ],
-      "audit_signal": "confluence /pages/createpage-entervariables.action with OGNL queryString eval"
-    },
-    {
-      "cve_id": "CVE-2023-22515",
-      "vendor": "Atlassian",
-      "product": "Confluence",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-639",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-10-10",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Confluence Data Center broken access control admin takeover",
-      "fixed_version": "8.5.2",
-      "affected_versions": [
-        "8.0.0-8.5.1"
-      ],
-      "host_pool": [
-        "h11-web-07"
-      ],
-      "audit_signal": "confluence /setup/* reachable post-install + bootstrapStatusProvider not locked"
+      "install_channel": "npm"
     },
     {
       "cve_id": "CVE-2023-22518",
-      "vendor": "Atlassian",
-      "product": "Confluence",
-      "vuln_class": "application",
       "expected_cwe": "CWE-863",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-11-07",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Confluence improper authorization data destruction",
-      "fixed_version": "7.19.16",
-      "affected_versions": [
-        "<7.19.16",
-        "<8.3.4",
-        "<8.4.4",
-        "<8.5.3",
-        "<8.6.1"
-      ],
       "host_pool": [
         "h11-web-01"
       ],
-      "audit_signal": "confluence /json/setup-restore.action reachable without auth"
-    },
-    {
-      "cve_id": "CVE-2024-23897",
-      "vendor": "Jenkins",
-      "product": "Jenkins",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-22",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-01-29",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Jenkins CLI args4j file read",
-      "fixed_version": "2.442",
-      "affected_versions": [
-        "<2.442",
-        "<2.426.3"
-      ],
-      "host_pool": [
-        "h11-api-01"
-      ],
-      "audit_signal": "jenkins CLI port 8080 accepts -webSocket cmd args with @-prefix file expansion"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2019-1003029",
-      "vendor": "Jenkins",
-      "product": "Script Security Plugin",
-      "vuln_class": "application",
       "expected_cwe": "CWE-94",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Jenkins script-security sandbox bypass",
-      "fixed_version": "1.54",
-      "affected_versions": [
-        "<1.54"
-      ],
       "host_pool": [
         "h11-api-02"
       ],
-      "audit_signal": "jenkins script-security plugin < 1.54 + Groovy sandbox enabled"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2023-7028",
-      "vendor": "GitLab",
-      "product": "GitLab",
-      "vuln_class": "application",
       "expected_cwe": "CWE-640",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-05-01",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "GitLab password reset acct takeover via secondary email",
-      "fixed_version": "16.7.2",
-      "affected_versions": [
-        "16.1.0-16.7.1"
-      ],
       "host_pool": [
         "h11-api-03"
       ],
-      "audit_signal": "gitlab CE/EE 16.1-16.7.1 accepts password_reset with multiple email[]"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2023-2825",
-      "vendor": "GitLab",
-      "product": "GitLab",
-      "vuln_class": "application",
       "expected_cwe": "CWE-22",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-06-05",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "GitLab arbitrary file read via path traversal",
-      "fixed_version": "16.0.1",
-      "affected_versions": [
-        "16.0.0"
-      ],
       "host_pool": [
         "h11-api-04"
       ],
-      "audit_signal": "gitlab 16.0.0 + nested-group with crafted attachment path traversal"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2022-29464",
-      "vendor": "WSO2",
-      "product": "Identity Server",
-      "vuln_class": "application",
       "expected_cwe": "CWE-434",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-21",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "WSO2 fileupload unrestricted upload RCE",
-      "fixed_version": "vendor-patch",
-      "affected_versions": [
-        "IS 5.2.0-5.11.0",
-        "API Manager 2.2.0-4.0.0"
-      ],
       "host_pool": [
         "h11-api-05"
       ],
-      "audit_signal": "wso2 /fileupload/toolsAny accepts unauth multipart with arbitrary extension"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2024-23917",
-      "vendor": "JetBrains",
-      "product": "TeamCity",
-      "vuln_class": "application",
       "expected_cwe": "CWE-303",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-02-08",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "TeamCity auth bypass via crafted request",
-      "fixed_version": "2023.11.3",
-      "affected_versions": [
-        "2017.1-2023.11.2"
-      ],
       "host_pool": [
         "h11-api-06"
       ],
-      "audit_signal": "teamcity /admin/* reachable with crafted ;.jsp suffix bypassing auth filter"
-    },
-    {
-      "cve_id": "CVE-2024-27198",
-      "vendor": "JetBrains",
-      "product": "TeamCity",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-288",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-03-07",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "TeamCity admin auth bypass via alternate path",
-      "fixed_version": "2023.11.4",
-      "affected_versions": [
-        "<2023.11.4"
-      ],
-      "host_pool": [
-        "h11-web-01"
-      ],
-      "audit_signal": "teamcity REST endpoint /app/rest/users with non-existent jsp suffix exposes admin token endpoint"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2022-24682",
-      "vendor": "Synacor",
-      "product": "Zimbra",
-      "vuln_class": "application",
       "expected_cwe": "CWE-79",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-08-09",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Zimbra Calendar XSS via crafted email",
-      "fixed_version": "8.8.15.P30",
-      "affected_versions": [
-        "<8.8.15.P30"
-      ],
       "host_pool": [
         "h11-web-02"
       ],
-      "audit_signal": "zimbra webmail < P30 + Calendar invite rendering of crafted HTML attribute"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-27924",
-      "vendor": "Synacor",
-      "product": "Zimbra",
-      "vuln_class": "application",
       "expected_cwe": "CWE-74",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-08-09",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Zimbra memcached CRLF injection cred theft",
-      "fixed_version": "9.0.0.P26",
-      "affected_versions": [
-        "<8.8.15.P32",
-        "<9.0.0.P26"
-      ],
       "host_pool": [
         "h11-web-03"
       ],
-      "audit_signal": "zimbra w/ memcached on 11211 + nginx proxy lookups with CRLF-injected keys"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-37042",
-      "vendor": "Synacor",
-      "product": "Zimbra",
-      "vuln_class": "application",
       "expected_cwe": "CWE-22",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-08-12",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Zimbra MailboxImportServlet auth bypass + path traversal",
-      "fixed_version": "9.0.0.P25",
-      "affected_versions": [
-        "<8.8.15.P32",
-        "<9.0.0.P25"
-      ],
       "host_pool": [
         "h11-web-04"
       ],
-      "audit_signal": "zimbra /service/extension/backup/mboximport reachable without auth + accepts crafted account_id"
-    },
-    {
-      "cve_id": "CVE-2018-7600",
-      "vendor": "Drupal",
-      "product": "Drupal",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-20",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Drupal Drupalgeddon2 forms API RCE",
-      "fixed_version": "7.58",
-      "affected_versions": [
-        "<7.58",
-        "<8.3.9",
-        "<8.4.6",
-        "<8.5.1"
-      ],
-      "host_pool": [
-        "h11-web-05"
-      ],
-      "audit_signal": "drupal /user/register?element_parents= with crafted form API renderable arrays"
-    },
-    {
-      "cve_id": "CVE-2018-7602",
-      "vendor": "Drupal",
-      "product": "Drupal",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-20",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Drupal Drupalgeddon3 authenticated RCE",
-      "fixed_version": "7.59",
-      "affected_versions": [
-        "<7.59",
-        "<8.4.8",
-        "<8.5.3"
-      ],
-      "host_pool": [
-        "h11-web-06"
-      ],
-      "audit_signal": "drupal authenticated session + /node/<id>/devel + form_id crafted to invoke ajax callback"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-21661",
-      "vendor": "WordPress",
-      "product": "WordPress Core",
-      "vuln_class": "application",
       "expected_cwe": "CWE-89",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-01-11",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "WordPress WP_Query SQL injection",
-      "fixed_version": "5.8.3",
-      "affected_versions": [
-        "<5.8.3"
-      ],
       "host_pool": [
         "h11-web-07"
       ],
-      "audit_signal": "wordpress < 5.8.3 with plugin/theme calling WP_Query w/ user-controlled tax_query"
-    },
-    {
-      "cve_id": "CVE-2023-49103",
-      "vendor": "ownCloud",
-      "product": "graphapi",
-      "vuln_class": "application",
-      "expected_cwe": "CWE-200",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-11-21",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "ownCloud graphapi phpinfo env leak",
-      "fixed_version": "0.3.1",
-      "affected_versions": [
-        "0.2.0-0.3.0"
-      ],
-      "host_pool": [
-        "h11-jump-01"
-      ],
-      "audit_signal": "owncloud graphapi /apps/graphapi/vendor/microsoft/microsoft-graph/tests/GetPhpInfo.php reachable"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2024-21887",
-      "vendor": "Ivanti",
-      "product": "Connect Secure",
-      "vuln_class": "application",
       "expected_cwe": "CWE-77",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-01-10",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Ivanti Connect Secure command injection",
-      "fixed_version": "vendor-patch",
-      "affected_versions": [
-        "9.x-22.x"
-      ],
       "host_pool": [
         "h11-jump-02"
       ],
-      "audit_signal": "ivanti /api/v1/license/keys-status/<arg> with semicolon-injected shell metachar"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2024-3400",
-      "vendor": "Palo Alto",
-      "product": "GlobalProtect",
-      "vuln_class": "application",
       "expected_cwe": "CWE-77",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-04-12",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "PAN-OS GlobalProtect SESSID telemetry RCE",
-      "fixed_version": "vendor-hotfix",
-      "affected_versions": [
-        "PAN-OS 10.2",
-        "11.0",
-        "11.1"
-      ],
       "host_pool": [
         "h11-idp-01"
       ],
-      "audit_signal": "pan-os globalprotect /ssl-vpn/login.esp with crafted SESSID cookie + telemetry enabled"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2023-3519",
-      "vendor": "Citrix",
-      "product": "NetScaler ADC",
-      "vuln_class": "application",
       "expected_cwe": "CWE-119",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-07-19",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Citrix NetScaler ADC unauth RCE",
-      "fixed_version": "vendor-patch",
-      "affected_versions": [
-        "13.0-91.13",
-        "13.1-49.13"
-      ],
       "host_pool": [
         "h11-idp-02"
       ],
-      "audit_signal": "netscaler /nsg/login.do.gateway? with crafted oauth callback overflow"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2022-1388",
-      "vendor": "F5",
-      "product": "BIG-IP",
-      "vuln_class": "application",
       "expected_cwe": "CWE-306",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-05-05",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "F5 BIG-IP iControl REST auth bypass RCE",
-      "fixed_version": "17.0.0",
-      "affected_versions": [
-        "16.x",
-        "15.x",
-        "14.x",
-        "13.x"
-      ],
       "host_pool": [
         "h11-fw-01"
       ],
-      "audit_signal": "bigip iControl /mgmt/tm/util/bash with Connection: X-F5-Auth-Token header"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2024-1709",
-      "vendor": "ConnectWise",
-      "product": "ScreenConnect",
-      "vuln_class": "application",
       "expected_cwe": "CWE-288",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-02-22",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "ConnectWise ScreenConnect setup wizard auth bypass",
-      "fixed_version": "23.9.8",
-      "affected_versions": [
-        "<=23.9.7"
-      ],
       "host_pool": [
         "h11-jump-01"
       ],
-      "audit_signal": "screenconnect <= 23.9.7 + /SetupWizard.aspx reachable after install with path manipulation"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2023-46805",
-      "vendor": "Ivanti",
-      "product": "EPMM",
-      "vuln_class": "application",
       "expected_cwe": "CWE-287",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-01-10",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Ivanti Connect Secure auth bypass via path traversal",
-      "fixed_version": "vendor-patch",
-      "affected_versions": [
-        "9.x",
-        "22.x"
-      ],
       "host_pool": [
         "h11-jump-02"
       ],
-      "audit_signal": "ivanti connect secure /api/v1/totp/user-backup-code/../license/ bypasses auth filter"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2023-34362",
-      "vendor": "Progress",
-      "product": "MOVEit Transfer",
-      "vuln_class": "application",
       "expected_cwe": "CWE-89",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-06-02",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "MOVEit Transfer SQL injection unauth RCE (Cl0p)",
-      "fixed_version": "2023.0.1",
-      "affected_versions": [
-        "<2023.0.1",
-        "<2022.1.5",
-        "<2022.0.4",
-        "<2021.1.6",
-        "<2021.0.6"
-      ],
       "host_pool": [
         "h11-web-04"
       ],
-      "audit_signal": "moveit transfer < fix + /moveitisapi/moveitisapi.dll accepts crafted SOAP guestaccess SQLi"
-    },
-    {
-      "cve_id": "CVE-2020-1938",
-      "vendor": "Apache",
-      "product": "Tomcat",
-      "vuln_class": "web-framework",
-      "expected_cwe": "CWE-22",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache Tomcat AJP GhostCat file read",
-      "fixed_version": "9.0.31",
-      "affected_versions": [
-        "<7.0.100",
-        "<8.5.51",
-        "<9.0.31"
-      ],
-      "host_pool": [
-        "h11-web-01"
-      ],
-      "audit_signal": "tomcat AJP connector on 8009 reachable + secretRequired=false"
-    },
-    {
-      "cve_id": "CVE-2017-12615",
-      "vendor": "Apache",
-      "product": "Tomcat",
-      "vuln_class": "web-framework",
-      "expected_cwe": "CWE-434",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache Tomcat JSP file upload RCE",
-      "fixed_version": "7.0.81",
-      "affected_versions": [
-        "7.0.0-7.0.79"
-      ],
-      "host_pool": [
-        "h11-web-02"
-      ],
-      "audit_signal": "tomcat 7.x conf/web.xml DefaultServlet readonly=false on Windows w/ PUT"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2020-9484",
-      "vendor": "Apache",
-      "product": "Tomcat",
-      "vuln_class": "web-framework",
       "expected_cwe": "CWE-502",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-05-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache Tomcat persistence FileStore session deser RCE",
-      "fixed_version": "9.0.35",
-      "affected_versions": [
-        "<7.0.104",
-        "<8.5.55",
-        "<9.0.35",
-        "<10.0.0-M5"
-      ],
       "host_pool": [
         "h11-web-03"
       ],
-      "audit_signal": "tomcat PersistentManager + FileStore with writable directory + JSESSIONID controlled"
-    },
-    {
-      "cve_id": "CVE-2021-41773",
-      "vendor": "Apache",
-      "product": "httpd",
-      "vuln_class": "web-framework",
-      "expected_cwe": "CWE-22",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache httpd 2.4.49 path traversal",
-      "fixed_version": "2.4.51",
-      "affected_versions": [
-        "2.4.49"
-      ],
-      "host_pool": [
-        "h11-web-04"
-      ],
-      "audit_signal": "httpd 2.4.49 with Require all granted on /icons/ + alias matching"
-    },
-    {
-      "cve_id": "CVE-2021-42013",
-      "vendor": "Apache",
-      "product": "httpd",
-      "vuln_class": "web-framework",
-      "expected_cwe": "CWE-22",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-17",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache httpd 2.4.50 path traversal CVE-2021-41773 incomplete fix",
-      "fixed_version": "2.4.51",
-      "affected_versions": [
-        "2.4.49",
-        "2.4.50"
-      ],
-      "host_pool": [
-        "h11-web-05"
-      ],
-      "audit_signal": "httpd 2.4.50 with double-encoded ..%%32%65 traversal"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2022-22978",
-      "vendor": "VMware",
-      "product": "Spring Security",
-      "vuln_class": "web-framework",
       "expected_cwe": "CWE-863",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-05-31",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Spring Security RegexRequestMatcher authz bypass",
-      "fixed_version": "5.6.4",
-      "affected_versions": [
-        "<5.4.11",
-        "<5.5.7",
-        "<5.6.4"
-      ],
       "host_pool": [
         "h11-api-01"
       ],
-      "audit_signal": "spring-security-web < 5.6.4 + RegexRequestMatcher pattern with newline-permitting metachar"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2023-20860",
-      "vendor": "VMware",
-      "product": "Spring Framework",
-      "vuln_class": "web-framework",
       "expected_cwe": "CWE-863",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-03-23",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Spring Framework mvcRequestMatcher pattern mismatch authz bypass",
-      "fixed_version": "6.0.7",
-      "affected_versions": [
-        "<5.3.26",
-        "<6.0.7"
-      ],
       "host_pool": [
         "h11-api-02"
       ],
-      "audit_signal": "spring-webmvc < 6.0.7 + Spring Security mvcRequestMatcher with ** suffix"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2022-22720",
-      "vendor": "Apache",
-      "product": "httpd",
-      "vuln_class": "web-framework",
       "expected_cwe": "CWE-444",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-14",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache httpd HTTP request smuggling via inconsistent CL/TE",
-      "fixed_version": "2.4.53",
-      "affected_versions": [
-        "<2.4.53"
-      ],
       "host_pool": [
         "h11-api-03"
       ],
-      "audit_signal": "httpd < 2.4.53 with Content-Length + Transfer-Encoding both honored"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2018-1273",
-      "vendor": "VMware",
-      "product": "Spring Data Commons",
-      "vuln_class": "web-framework",
       "expected_cwe": "CWE-94",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-21",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Spring Data Commons SpEL RCE in propertyPath",
-      "fixed_version": "1.13.11",
-      "affected_versions": [
-        "<1.13.11",
-        "<2.0.6"
-      ],
       "host_pool": [
         "h11-api-04"
       ],
-      "audit_signal": "spring-data-commons < 2.0.6 with PropertyReferenceException invoking SpEL on user input"
-    },
-    {
-      "cve_id": "CVE-2021-40438",
-      "vendor": "Apache",
-      "product": "httpd",
-      "vuln_class": "web-framework",
-      "expected_cwe": "CWE-918",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-12-01",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache httpd mod_proxy SSRF via uri-path",
-      "fixed_version": "2.4.49",
-      "affected_versions": [
-        "<2.4.49"
-      ],
-      "host_pool": [
-        "h11-api-05"
-      ],
-      "audit_signal": "httpd < 2.4.49 + mod_proxy ProxyPass with ?unix: prefix-controlled forwarding"
+      "install_channel": "jar"
     },
     {
       "cve_id": "CVE-2021-3156",
-      "vendor": "Sudo",
-      "product": "sudo",
-      "vuln_class": "host",
       "expected_cwe": "CWE-787",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Sudo Baron Samedit heap overflow LPE",
-      "fixed_version": "1.9.5p2",
-      "affected_versions": [
-        "1.8.2-1.8.31p2",
-        "1.9.0-1.9.5p1"
-      ],
       "host_pool": [
         "h11-jump-01",
         "h11-worker-01"
       ],
-      "audit_signal": "sudo binary < 1.9.5p2 with set-uid bit accepting -s -i with backslash-quoted args"
-    },
-    {
-      "cve_id": "CVE-2021-4034",
-      "vendor": "polkit",
-      "product": "polkit",
-      "vuln_class": "host",
-      "expected_cwe": "CWE-787",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-06-27",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "PolKit pkexec out-of-bounds write LPE (pwnkit)",
-      "fixed_version": "0.120-2",
-      "affected_versions": [
-        "<0.120-2"
-      ],
-      "host_pool": [
-        "h11-jump-02",
-        "h11-worker-02"
-      ],
-      "audit_signal": "pkexec binary with setuid bit + argv[0]=NULL exploit path reachable"
-    },
-    {
-      "cve_id": "CVE-2014-6271",
-      "vendor": "GNU",
-      "product": "Bash",
-      "vuln_class": "host",
-      "expected_cwe": "CWE-78",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "GNU Bash Shellshock function-export env RCE",
-      "fixed_version": "4.3.30",
-      "affected_versions": [
-        "<=4.3"
-      ],
-      "host_pool": [
-        "h11-worker-03"
-      ],
-      "audit_signal": "bash < 4.3.30 accepting env() { :;}; payload + cgi-bin reachable"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2014-7169",
-      "vendor": "GNU",
-      "product": "Bash",
-      "vuln_class": "host",
       "expected_cwe": "CWE-78",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "GNU Bash Shellshock incomplete fix",
-      "fixed_version": "4.3.30",
-      "affected_versions": [
-        "4.3.25-4.3.29"
-      ],
       "host_pool": [
         "h11-worker-04"
       ],
-      "audit_signal": "bash 4.3.25-4.3.29 + env x='() { (a)=>\\' sh -c 'echo'"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2016-5195",
-      "vendor": "Linux",
-      "product": "kernel",
-      "vuln_class": "host",
       "expected_cwe": "CWE-362",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Linux kernel Dirty COW LPE",
-      "fixed_version": "4.8.3",
-      "affected_versions": [
-        "<4.8.3"
-      ],
       "host_pool": [
         "h11-jump-01"
       ],
-      "audit_signal": "linux kernel < 4.8.3 + MAP_PRIVATE + madvise(MADV_DONTNEED) race writeable"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2022-0847",
-      "vendor": "Linux",
-      "product": "kernel",
-      "vuln_class": "host",
       "expected_cwe": "CWE-665",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-05-12",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Linux kernel Dirty Pipe pipe_buffer flag leak",
-      "fixed_version": "5.16.11",
-      "affected_versions": [
-        "5.8-5.16.10"
-      ],
       "host_pool": [
         "h11-jump-02"
       ],
-      "audit_signal": "linux kernel 5.8-5.16.10 + splice() to writeable file via pipe with PIPE_BUF_FLAG_CAN_MERGE"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2019-14287",
-      "vendor": "Sudo",
-      "product": "sudo",
-      "vuln_class": "host",
       "expected_cwe": "CWE-755",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Sudo runas user -1 bypass to root",
-      "fixed_version": "1.8.28",
-      "affected_versions": [
-        "<1.8.28"
-      ],
       "host_pool": [
         "h11-worker-05"
       ],
-      "audit_signal": "sudo < 1.8.28 + sudoers ALL,!root config + runas -u#-1"
-    },
-    {
-      "cve_id": "CVE-2014-0160",
-      "vendor": "OpenSSL",
-      "product": "OpenSSL",
-      "vuln_class": "host",
-      "expected_cwe": "CWE-125",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-05-04",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSL Heartbleed memory disclosure",
-      "fixed_version": "1.0.1g",
-      "affected_versions": [
-        "1.0.1-1.0.1f"
-      ],
-      "host_pool": [
-        "h11-web-06"
-      ],
-      "audit_signal": "openssl 1.0.1-1.0.1f library on tls server w/ heartbeat extension enabled"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2022-3602",
-      "vendor": "OpenSSL",
-      "product": "OpenSSL",
-      "vuln_class": "host",
       "expected_cwe": "CWE-787",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-11-01",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSL 3.0 X.509 punycode 4-byte stack overflow",
-      "fixed_version": "3.0.7",
-      "affected_versions": [
-        "3.0.0-3.0.6"
-      ],
       "host_pool": [
         "h11-web-07"
       ],
-      "audit_signal": "openssl 3.0.0-3.0.6 + X.509 cert chain validation of crafted punycode email field"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2022-3786",
-      "vendor": "OpenSSL",
-      "product": "OpenSSL",
-      "vuln_class": "host",
       "expected_cwe": "CWE-787",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-11-01",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSL 3.0 X.509 punycode arbitrary-length stack overflow",
-      "fixed_version": "3.0.7",
-      "affected_versions": [
-        "3.0.0-3.0.6"
-      ],
       "host_pool": [
         "h11-api-06"
       ],
-      "audit_signal": "openssl 3.0.0-3.0.6 + X.509 punycode w/ dot-controlled length"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2023-0286",
-      "vendor": "OpenSSL",
-      "product": "OpenSSL",
-      "vuln_class": "host",
       "expected_cwe": "CWE-843",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-02-07",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSL X.400 address type confusion",
-      "fixed_version": "3.0.8",
-      "affected_versions": [
-        "3.0.0-3.0.7",
-        "1.1.1-1.1.1s",
-        "1.0.2-1.0.2zg"
-      ],
       "host_pool": [
         "h11-api-01"
       ],
-      "audit_signal": "openssl < fix + GENERAL_NAME_cmp called on X.400-typed altname"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2024-6387",
-      "vendor": "OpenBSD",
-      "product": "OpenSSH",
-      "vuln_class": "host",
       "expected_cwe": "CWE-364",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-07-01",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSH regreSSHion signal handler race RCE",
-      "fixed_version": "9.8p1",
-      "affected_versions": [
-        "8.5p1-9.7p1"
-      ],
       "host_pool": [
         "h11-jump-01"
       ],
-      "audit_signal": "openssh sshd 8.5p1-9.7p1 with LoginGraceTime default + signal handler race window"
-    },
-    {
-      "cve_id": "CVE-2018-15473",
-      "vendor": "OpenBSD",
-      "product": "OpenSSH",
-      "vuln_class": "host",
-      "expected_cwe": "CWE-362",
-      "expected_dispatcher_runtime": "docker_compose",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSH username enumeration via timing",
-      "fixed_version": "7.8",
-      "affected_versions": [
-        "<=7.7"
-      ],
-      "host_pool": [
-        "h11-jump-02"
-      ],
-      "audit_signal": "openssh <=7.7 sshd with malformed SSH2_MSG_USERAUTH_REQUEST returns different timing on invalid user"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2023-38408",
-      "vendor": "OpenBSD",
-      "product": "OpenSSH",
-      "vuln_class": "host",
       "expected_cwe": "CWE-426",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-07-19",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSH ssh-agent forwarded RCE via PKCS#11 dlopen",
-      "fixed_version": "9.3p2",
-      "affected_versions": [
-        "<9.3p2"
-      ],
       "host_pool": [
         "h11-worker-01"
       ],
-      "audit_signal": "openssh-client < 9.3p2 + ForwardAgent yes + remote-controlled $PKCS11_HELPER_LIBRARY_PATH"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2019-10149",
-      "vendor": "Exim",
-      "product": "Exim",
-      "vuln_class": "host",
       "expected_cwe": "CWE-78",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Exim deliver_message recipient RCE",
-      "fixed_version": "4.92",
-      "affected_versions": [
-        "4.87-4.91"
-      ],
       "host_pool": [
         "h11-worker-02"
       ],
-      "audit_signal": "exim 4.87-4.91 mta accepting recipient ${run{cmd}} expansion in local delivery"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2020-28018",
-      "vendor": "Exim",
-      "product": "Exim",
-      "vuln_class": "host",
       "expected_cwe": "CWE-416",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Exim TLS handshake use-after-free RCE",
-      "fixed_version": "4.94.2",
-      "affected_versions": [
-        "<4.94.2"
-      ],
       "host_pool": [
         "h11-worker-03"
       ],
-      "audit_signal": "exim < 4.94.2 + tls_advertise_hosts=* + crafted SNI to free tls_in.peercert before reuse"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2022-23943",
-      "vendor": "Apache",
-      "product": "httpd",
-      "vuln_class": "host",
       "expected_cwe": "CWE-787",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-21",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache httpd mod_sed out-of-bounds write",
-      "fixed_version": "2.4.53",
-      "affected_versions": [
-        "<2.4.53"
-      ],
       "host_pool": [
         "h11-worker-04"
       ],
-      "audit_signal": "httpd < 2.4.53 with mod_sed enabled + crafted filter chain on user-controlled response body"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2022-2068",
-      "vendor": "OpenSSL",
-      "product": "OpenSSL c_rehash",
-      "vuln_class": "host",
       "expected_cwe": "CWE-78",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-08-11",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "OpenSSL c_rehash shell metachar injection",
-      "fixed_version": "3.0.4",
-      "affected_versions": [
-        "<1.1.1p",
-        "<3.0.4"
-      ],
       "host_pool": [
         "h11-worker-05"
       ],
-      "audit_signal": "openssl c_rehash script run on dir w/ filenames containing $(...) backtick metachar"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2016-2776",
-      "vendor": "ISC",
-      "product": "BIND",
-      "vuln_class": "host",
       "expected_cwe": "CWE-617",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "ISC BIND named buffer.c assertion DoS",
-      "fixed_version": "9.10.4-P3",
-      "affected_versions": [
-        "<9.9.9-P3",
-        "<9.10.4-P3"
-      ],
       "host_pool": [
         "h11-db-01"
       ],
-      "audit_signal": "bind9 < fix + recursive resolver accepts crafted oversized response triggering REQUIRE assertion"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2021-22555",
-      "vendor": "Linux",
-      "product": "kernel",
-      "vuln_class": "host",
       "expected_cwe": "CWE-787",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Linux kernel netfilter heap out-of-bounds write LPE",
-      "fixed_version": "5.12",
-      "affected_versions": [
-        "2.6.19-5.11"
-      ],
       "host_pool": [
         "h11-jump-01"
       ],
-      "audit_signal": "linux kernel < 5.12 + CONFIG_USER_NS=y + xt_compat_target_from_user iptables compat path"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2019-5736",
-      "vendor": "Docker",
-      "product": "runc",
-      "vuln_class": "container",
       "expected_cwe": "CWE-78",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-11-03",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "runc container breakout via /proc/self/exe overwrite",
-      "fixed_version": "1.0.0-rc7",
-      "affected_versions": [
-        "<1.0.0-rc7"
-      ],
       "host_pool": [
         "h11-worker-01"
       ],
-      "audit_signal": "runc < rc7 + docker exec into untrusted container that overwrites /proc/self/exe"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2024-21626",
-      "vendor": "Docker",
-      "product": "runc",
-      "vuln_class": "container",
       "expected_cwe": "CWE-403",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-02-01",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "runc leaky fd container breakout",
-      "fixed_version": "1.1.12",
-      "affected_versions": [
-        "<1.1.12"
-      ],
       "host_pool": [
         "h11-worker-02"
       ],
-      "audit_signal": "runc < 1.1.12 + crafted WORKDIR /proc/self/fd/N escape via inherited container fd"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2022-0185",
-      "vendor": "Linux",
-      "product": "kernel",
-      "vuln_class": "container",
       "expected_cwe": "CWE-787",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-02-01",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Linux kernel fs_context heap overflow container escape",
-      "fixed_version": "5.16.2",
-      "affected_versions": [
-        "5.1-5.16.1"
-      ],
       "host_pool": [
         "h11-worker-03"
       ],
-      "audit_signal": "linux kernel < 5.16.2 + unprivileged user namespaces + fs_context with crafted legacy mount opts"
+      "install_channel": "apt"
     },
     {
       "cve_id": "CVE-2022-23648",
-      "vendor": "containerd",
-      "product": "containerd",
-      "vuln_class": "container",
       "expected_cwe": "CWE-22",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-04",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "containerd CRI host file access via crafted image volume",
-      "fixed_version": "1.6.1",
-      "affected_versions": [
-        "<1.4.13",
-        "<1.5.10",
-        "<1.6.1"
-      ],
       "host_pool": [
         "h11-worker-04"
       ],
-      "audit_signal": "containerd < fix + crafted image with VOLUME ../../host-root mounted via cri"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2021-30465",
-      "vendor": "Docker",
-      "product": "runc",
-      "vuln_class": "container",
       "expected_cwe": "CWE-59",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-05-27",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "runc symlink-exchange race container breakout",
-      "fixed_version": "1.0.0-rc95",
-      "affected_versions": [
-        "<1.0.0-rc95"
-      ],
       "host_pool": [
         "h11-worker-05"
       ],
-      "audit_signal": "runc < rc95 + parallel container starts with shared host bind mount under symlink race"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2021-25741",
-      "vendor": "Kubernetes",
-      "product": "kubelet",
-      "vuln_class": "container",
       "expected_cwe": "CWE-22",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-09-15",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Kubernetes subPath symlink host file access",
-      "fixed_version": "1.22.2",
-      "affected_versions": [
-        "<1.19.15",
-        "<1.20.11",
-        "<1.21.5",
-        "<1.22.2"
-      ],
       "host_pool": [
         "h11-api-01"
       ],
-      "audit_signal": "kubelet < fix + Pod with subPath referencing symlink in container image"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2018-1002105",
-      "vendor": "Kubernetes",
-      "product": "kube-apiserver",
-      "vuln_class": "container",
       "expected_cwe": "CWE-77",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-04-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Kubernetes API server upgrade-request privilege escalation",
-      "fixed_version": "1.13.0",
-      "affected_versions": [
-        "<1.10.11",
-        "<1.11.5",
-        "<1.12.3"
-      ],
       "host_pool": [
         "h11-api-02"
       ],
-      "audit_signal": "kube-apiserver < fix + aggregated apiserver with proxy connect that leaves upgrade backend reachable"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2020-8554",
-      "vendor": "Kubernetes",
-      "product": "kube-apiserver",
-      "vuln_class": "container",
       "expected_cwe": "CWE-269",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2021-01-04",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Kubernetes Service ExternalIP MITM via tenant",
-      "fixed_version": "vendor-mitigation",
-      "affected_versions": [
-        "all"
-      ],
       "host_pool": [
         "h11-api-03"
       ],
-      "audit_signal": "kube-apiserver allows non-admin to create Service.spec.externalIPs without admission webhook"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2022-29162",
-      "vendor": "Docker",
-      "product": "runc",
-      "vuln_class": "container",
       "expected_cwe": "CWE-281",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-05-12",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "runc default inheritable capabilities exposure",
-      "fixed_version": "1.1.2",
-      "affected_versions": [
-        "<1.1.2"
-      ],
       "host_pool": [
         "h11-api-04"
       ],
-      "audit_signal": "runc < 1.1.2 + container processes inherit unintended ambient/inheritable capability sets"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2023-25153",
-      "vendor": "Moby",
-      "product": "buildkit",
-      "vuln_class": "container",
       "expected_cwe": "CWE-22",
       "expected_dispatcher_runtime": "docker_compose",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-02-15",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "BuildKit OCI image manifest path traversal during extract",
-      "fixed_version": "0.10.5",
-      "affected_versions": [
-        "<0.10.5"
-      ],
       "host_pool": [
         "h11-api-05"
       ],
-      "audit_signal": "buildkit < 0.10.5 + crafted OCI image with ../../etc/passwd hardlink in layer tarball"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2021-22941",
-      "vendor": "Citrix",
-      "product": "ShareFile",
-      "vuln_class": "config-only",
       "expected_cwe": "CWE-284",
       "expected_dispatcher_runtime": "static_detection",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2022-03-25",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Citrix ShareFile improper access control",
-      "fixed_version": "vendor-hotfix",
-      "affected_versions": [
-        "sz-controller-2021.x"
-      ],
       "host_pool": [
         "h11-idp-01"
       ],
-      "audit_signal": "sharefile storage zones controller config without DLP enforcement on upload paths"
+      "install_channel": "app"
     },
     {
       "cve_id": "CVE-2023-25690",
-      "vendor": "Apache",
-      "product": "httpd",
-      "vuln_class": "config-only",
       "expected_cwe": "CWE-444",
       "expected_dispatcher_runtime": "static_detection",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2023-03-08",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Apache httpd mod_proxy HTTP request smuggling",
-      "fixed_version": "2.4.56",
-      "affected_versions": [
-        "<2.4.56"
-      ],
       "host_pool": [
         "h11-fw-02"
       ],
-      "audit_signal": "httpd < 2.4.56 RewriteRule chain with backreferences forwarded by mod_proxy"
-    },
-    {
-      "cve_id": "CVE-2023-22527",
-      "vendor": "Atlassian",
-      "product": "Confluence",
-      "vuln_class": "config-only",
-      "expected_cwe": "CWE-94",
-      "expected_dispatcher_runtime": "static_detection",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-01-24",
-      "known_exploited": true,
-      "ransomware_use": "Known",
-      "vuln_name": "Confluence template injection RCE",
-      "fixed_version": "8.5.4",
-      "affected_versions": [
-        "8.0.x-8.5.3"
-      ],
-      "host_pool": [
-        "h11-idp-02"
-      ],
-      "audit_signal": "confluence 8.0-8.5.3 velocity template engine accepts OGNL through label/text params"
-    },
-    {
-      "cve_id": "CVE-2024-2961",
-      "vendor": "GNU",
-      "product": "glibc",
-      "vuln_class": "config-only",
-      "expected_cwe": "CWE-119",
-      "expected_dispatcher_runtime": "static_detection",
-      "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-04-18",
-      "known_exploited": false,
-      "ransomware_use": "Unknown",
-      "vuln_name": "glibc iconv ISO-2022-CN-EXT buffer overflow",
-      "fixed_version": "2.39",
-      "affected_versions": [
-        "<2.39"
-      ],
-      "host_pool": [
-        "h11-db-02"
-      ],
-      "audit_signal": "glibc < 2.39 + iconv conversion to ISO-2022-CN-EXT on attacker-controlled charset"
+      "install_channel": "binary"
     },
     {
       "cve_id": "CVE-2024-24919",
-      "vendor": "Check Point",
-      "product": "Quantum Gateway",
-      "vuln_class": "config-only",
       "expected_cwe": "CWE-22",
       "expected_dispatcher_runtime": "static_detection",
       "expected_ssvc_tier": "act_auto",
-      "kev_date_added": "2024-05-30",
-      "known_exploited": true,
-      "ransomware_use": "Unknown",
-      "vuln_name": "Check Point Quantum Security Gateway arbitrary file read",
-      "fixed_version": "vendor-hotfix",
-      "affected_versions": [
-        "R77.20-R81.20"
-      ],
       "host_pool": [
         "h11-fw-01"
       ],
-      "audit_signal": "check point quantum vpn portal with IPSec VPN/Mobile Access enabled accepts path traversal in CGI"
+      "install_channel": "app"
     }
-  ]
+  ],
+  "kev_catalog_version": "v2-server-side-2026-05-14",
+  "kev_date_released": "2026-05-14",
+  "schema_version": "1",
+  "seed": 514
 }

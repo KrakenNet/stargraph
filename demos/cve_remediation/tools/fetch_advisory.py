@@ -657,6 +657,71 @@ async def _query_osv(cve_id: str) -> dict[str, Any]:
     return out
 
 
+# GHSA ecosystem slug (lowercase, GitHub Advisory schema) → channel slug.
+_GHSA_ECOSYSTEM_MAP: dict[str, str] = {
+    "pip":            "pip",
+    "npm":            "npm",
+    "rubygems":       "rubygems",
+    "maven":          "maven",
+    "composer":       "composer",
+    "nuget":          "nuget",
+    "go":             "go",
+    "rust":           "cargo",
+    "pub":            "pub",
+    "erlang":         "hex",
+    "swift":          "swift",
+    "actions":        "github_actions",
+}
+
+
+async def _query_github_advisory(cve_id: str) -> dict[str, str]:
+    """Resolve CVE → ecosystem + package via GitHub Security Advisory API.
+
+    Backstop for OSV.dev whose CVE-keyed lookup is sparse: the OSV
+    record often only exists under its GHSA alias. The public GHSA
+    REST endpoint ``/advisories?cve_id=<CVE>`` indexes the same data
+    by CVE id and returns ``ghsa_id`` plus first-affected-package
+    metadata. We use this when ``_query_osv`` returns no channel.
+
+    Returns ``{"channel": str, "package": str, "fix": str, "ghsa_id":
+    str}`` -- empty values on miss / network failure.
+    """
+    out = {"channel": "", "package": "", "fix": "", "ghsa_id": ""}
+    if not cve_id:
+        return out
+    url = "https://api.github.com/advisories"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT_S) as client:
+            resp = await client.get(
+                url, params={"cve_id": cve_id}, headers=headers,
+                follow_redirects=True,
+            )
+            if resp.status_code != 200:
+                return out
+            items = resp.json() or []
+            if not items:
+                return out
+            adv = items[0]
+            out["ghsa_id"] = str(adv.get("ghsa_id", "") or "")
+            for vuln in adv.get("vulnerabilities", []) or []:
+                pkg = vuln.get("package") or {}
+                eco = str(pkg.get("ecosystem", "") or "").lower()
+                channel = _GHSA_ECOSYSTEM_MAP.get(eco, "")
+                if not channel:
+                    continue
+                out["channel"] = channel
+                out["package"] = str(pkg.get("name", "") or "")
+                out["fix"] = str(vuln.get("first_patched_version", "") or "")
+                return out
+    except (httpx.HTTPError, RuntimeError):
+        return out
+    return out
+
+
 def _product_from_description(desc: str) -> str:
     """Heuristic fallback when NVD has no CPE -- pull the first
     capitalized token from the advisory's English description.
@@ -732,10 +797,71 @@ async def fetch_advisory(*, cve_id: str) -> dict[str, Any]:
 
     vulns = envelope.get("vulnerabilities", [])
     if not vulns:
-        raise HarborRuntimeError(
-            f"NVD returned 0 results for {cve_id!r}",
-            cve_id=cve_id,
-        )
+        # NVD lag: many GitHub-Security-Advisory-indexed CVEs land on
+        # GHSA before NVD ingests them. Fall back to GHSA + OSV for
+        # the minimal advisory shape so downstream stages have a
+        # channel + package + fix to act on instead of halting at
+        # intake. Reference list stays empty (NVD's slot); the GHSA
+        # GHSA_id is surfaced via osv_package_name + install_channel.
+        ghsa_only = await _query_github_advisory(cve_id)
+        osv_only = await _query_osv(cve_id)
+        ghsa_channel = ghsa_only.get("channel", "")
+        ghsa_pkg = ghsa_only.get("package", "")
+        ghsa_fix = ghsa_only.get("fix", "")
+        osv_channel = osv_only.get("channel", "")
+        osv_pkg = osv_only.get("package", "")
+        osv_fix = osv_only.get("fix", "")
+        resolved_channel = ghsa_channel or osv_channel
+        resolved_pkg = ghsa_pkg or osv_pkg
+        resolved_fix = ghsa_fix or osv_fix
+        if not (resolved_channel and resolved_pkg):
+            raise HarborRuntimeError(
+                f"NVD returned 0 results for {cve_id!r}; "
+                f"GHSA/OSV fallback insufficient (channel={resolved_channel!r}, "
+                f"pkg={resolved_pkg!r})",
+                cve_id=cve_id,
+            )
+        return {
+            "url": (
+                f"https://github.com/advisories/{ghsa_only.get('ghsa_id','')}"
+                if ghsa_only.get("ghsa_id") else
+                f"https://osv.dev/vulnerability/{cve_id}"
+            ),
+            "description": (
+                f"{cve_id}: advisory resolved via "
+                f"{'GHSA' if ghsa_channel else 'OSV'} fallback "
+                f"(NVD lag). Package={resolved_pkg}, "
+                f"channel={resolved_channel}, fix={resolved_fix or 'unknown'}."
+            ),
+            "cvss": 0.0,
+            "cwe": "",
+            "vendor": "",
+            "product": resolved_pkg,
+            "candidate_products": [resolved_pkg],
+            "fixed_version": resolved_fix,
+            "exact_affected_versions": [],
+            "affected_version_ranges": [],
+            "install_channel": resolved_channel,
+            "osv_package_name": resolved_pkg,
+            "vulnerability_status": str(
+                osv_only.get("vulnerability_status", "") or ""
+            ),
+            "references": [
+                {"url": u, "tags": []}
+                for u in [
+                    f"https://github.com/advisories/{ghsa_only.get('ghsa_id','')}"
+                    if ghsa_only.get("ghsa_id") else "",
+                    f"https://osv.dev/vulnerability/{cve_id}",
+                ]
+                if u
+            ],
+            "cpe_uris": [],
+            "raw": {
+                "source": "ghsa+osv-fallback",
+                "ghsa": ghsa_only,
+                "osv_raw_keys": list(osv_only.get("raw", {}).keys()),
+            },
+        }
     item = vulns[0].get("cve", {})
     canonical_id = str(item.get("id") or cve_id)
     description = _english_description(item)
@@ -793,6 +919,27 @@ async def fetch_advisory(*, cve_id: str) -> dict[str, Any]:
             candidate_products.insert(0, osv["package"])
         primary_product = osv["package"]
         osv_package_name = osv["package"]
+    # GHSA fallback: OSV indexes most advisories under their GHSA alias,
+    # so ``/v1/vulns/<CVE>`` returns 404 for many real advisories whose
+    # GitHub Security Advisory does carry full ecosystem + package info.
+    # Resolve via the GHSA REST API (``/advisories?cve_id=<CVE>``) when
+    # OSV came back empty. Treat the ``github`` sentinel from
+    # ``_derive_install_channel`` (only a GitHub Advisory URL was in the
+    # NVD references) as unresolved -- it's a fallback marker, not a
+    # real install channel.
+    needs_channel_resolve = install_channel in ("", "github")
+    if needs_channel_resolve or not osv_package_name:
+        ghsa = await _query_github_advisory(canonical_id)
+        if ghsa["channel"] and needs_channel_resolve:
+            install_channel = ghsa["channel"]
+        if ghsa["package"] and not osv_package_name:
+            osv_package_name = ghsa["package"]
+            if ghsa["package"] not in candidate_products:
+                candidate_products.insert(0, ghsa["package"])
+            if not primary_product:
+                primary_product = ghsa["package"]
+        if ghsa["fix"] and not fixed_version:
+            fixed_version = ghsa["fix"]
     # OSV is the canonical source for ecosystem-tagged data: prefer its
     # fix version over NVD's CPE-derived value when both exist. NVD's
     # ``versionEndExcluding`` is often row-bound to a downstream
