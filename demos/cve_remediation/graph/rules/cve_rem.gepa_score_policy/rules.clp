@@ -122,8 +122,7 @@
 ; ------------------------------ extra GEPA policy rules (D2) ------------------------------
 
 (defrule gepa-holdout-too-small
-  "Reject the candidate if the holdout retro count is below the minimum
-   sample size (50). A score from a tiny sample is statistically meaningless."
+  "Reject the candidate if the holdout retro count is below the minimum sample size (50). A score from a tiny sample is statistically meaningless."
   (cve_rem.gepa_inputs (artifact_hash ?h))
   (cve_rem.holdout_metadata (artifact_hash ?h) (retro_count ?n&:(< ?n 50)))
   =>
@@ -134,9 +133,7 @@
             (reason (str-cat "holdout retro_count=" ?n " < 50 minimum sample size; reject")))))
 
 (defrule gepa-regression-on-component
-  "Halt accept-decisions that regress on any single component vs current
-   by more than 5%. Even with positive delta on the weighted score, a
-   regression on validation or sandbox is not acceptable."
+  "Halt accept-decisions that regress on any single component vs current by more than 5%. Even with positive delta on the weighted score, a regression on validation or sandbox is not acceptable."
   (cve_rem.score_component (artifact_hash ?h) (kind ?k) (value ?cand))
   (cve_rem.score_component_current (kind ?k) (value ?curr))
   (test (or (eq ?k "validation") (eq ?k "sandbox")))
@@ -149,8 +146,7 @@
             (reason (str-cat "component " ?k " regressed by >5%: candidate=" ?cand " current=" ?curr)))))
 
 (defrule gepa-shamir-required-on-accept
-  "Accept-decision must be paired with a Shamir quorum=reached fact.
-   Emits a quorum-required signal for the IR to gate ship_to_prompts_dir."
+  "Accept-decision must be paired with a Shamir quorum=reached fact. Emits a quorum-required signal for the IR to gate ship_to_prompts_dir."
   (cve_rem.gepa_decision (artifact_hash ?h) (decision "accept"))
   (not (cve_rem.shamir_status (artifact_hash ?h) (quorum "reached")))
   =>

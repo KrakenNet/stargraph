@@ -119,8 +119,7 @@
                              " not on trusted-signer list")))))
 
 (defrule isolation-egress-attempt-rate-cap
-  "Phase-6 host: more than 1 outbound burst per hour to approved-drop is suspect.
-   Even legitimate egress should be rate-limited; >1/h pages."
+  "Phase-6 host: more than 1 outbound burst per hour to approved-drop is suspect. Even legitimate egress should be rate-limited, >1/h pages."
   (cve_rem.metric (kind "approved-drop-egress-rate") (window_hours 1)
                   (value ?v&:(>= ?v 2)))
   =>

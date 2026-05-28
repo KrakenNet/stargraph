@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from harbor.checkpoint.protocol import Checkpoint
-from harbor.ir._models import GotoAction, HaltAction, ParallelAction
+from harbor.ir._models import GotoAction, HaltAction, InterruptAction, ParallelAction
 from harbor.runtime.action import ContinueAction, translate_actions
 from harbor.runtime.events import TransitionEvent
 from harbor.runtime.parallel import execute_parallel
@@ -69,12 +69,17 @@ async def dispatch_node(
     # 3. Mirror annotated state -> AssertSpecs (Fathom-gated).
     actions: list[Any] = []
     if run.fathom is not None:
-        mirror_specs = run.fathom.mirror_state(state, annotations={})
+        mirror_specs = run.fathom.mirror_state(state, annotations={"node_id": current_id})
         run.mirror_scheduler.schedule(mirror_specs, lifecycle="step")
 
         # 4. Fathom assert + evaluate (sync; off-thread).
         await asyncio.to_thread(_assert_specs, run.fathom, mirror_specs, run.run_id, step)
         actions = await asyncio.to_thread(run.fathom.evaluate)
+
+        # 4b. Retract consumed harbor_action facts so they don't leak
+        # into subsequent ticks (stale routing prevention).
+        if actions:
+            await asyncio.to_thread(_retract_harbor_actions, run.fathom)
 
     # 5. Translate Fathom actions -> single RoutingDecision.
     decision = translate_actions(actions)
@@ -123,6 +128,14 @@ async def dispatch_node(
     await run.mirror_scheduler.persist_pinned(run.fact_store, run_id=run.run_id, step=step)
 
     # 9. Routing.
+    if isinstance(decision, InterruptAction):
+        # HITL interrupt boundary (design §4.4, §17 Decision #1, FR-81).
+        # Raise the cooperative signal that ``harbor.graph.loop.execute``
+        # catches to transition the run to ``awaiting-input``. Imported
+        # lazily to avoid a hard ``runtime → graph`` cycle.
+        from harbor.graph.loop import _HitInterrupt  # noqa: PLC0415
+
+        raise _HitInterrupt(decision)
     if isinstance(decision, HaltAction):
         return state, None
     if isinstance(decision, ParallelAction):
@@ -193,6 +206,26 @@ def _next_node_id(nodes: list[NodeSpec], current_id: str) -> str | None:
         if node.id == current_id and idx + 1 < len(nodes):
             return nodes[idx + 1].id
     return None
+
+
+def _retract_harbor_actions(fathom: Any) -> None:
+    """Retract all ``harbor_action`` facts from CLIPS working memory.
+
+    Called after actions are consumed so stale routing facts
+    don't leak into subsequent ticks. Uses the Fathom typed retract path
+    (safe collect-then-retract) under the adapter's CLIPS lock if one
+    is exposed — required because parallel dispatch branches share the
+    engine and CLIPS is not thread-safe.
+    """
+    lock = getattr(fathom, "clips_lock", None)
+    try:
+        if lock is not None:
+            with lock:
+                fathom.engine.retract("harbor_action")
+        else:
+            fathom.engine.retract("harbor_action")
+    except Exception:
+        pass
 
 
 def _assert_specs(fathom: Any, specs: list[Any], run_id: str, step: int) -> None:

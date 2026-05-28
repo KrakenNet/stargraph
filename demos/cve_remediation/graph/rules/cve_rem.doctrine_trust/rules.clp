@@ -74,8 +74,7 @@
             (reason (str-cat "doctrine manifest hash " ?h " is not in boot-gate allowlist")))))
 
 (defrule doctrine-pin-sha-divergence
-  "Same corpus pin with different sha256 across two source facts.
-   Indicates supply-chain compromise; halt-new."
+  "Same corpus pin with different sha256 across two source facts. Indicates supply-chain compromise, halt-new."
   (cve_rem.doctrine_source (id ?a) (corpus_version_pin ?pin) (corpus_sha256 ?h1))
   (cve_rem.doctrine_source (id ?b&:(neq ?b ?a)) (corpus_version_pin ?pin) (corpus_sha256 ?h2&:(neq ?h2 ?h1)))
   =>
@@ -111,8 +110,7 @@
             (reason (str-cat "doctrine pin " ?pin " is " ?d " days old; refresh required")))))
 
 (defrule doctrine-mirror-divergence
-  "Two mirrors of the same doctrine corpus must publish identical sha256.
-   Divergence indicates one mirror was compromised — halt-new."
+  "Two mirrors of the same doctrine corpus must publish identical sha256. Divergence indicates one mirror was compromised — halt-new."
   (cve_rem.doctrine_mirror (corpus_id ?id) (mirror_url ?ma) (corpus_sha256 ?h1))
   (cve_rem.doctrine_mirror (corpus_id ?id) (mirror_url ?mb&:(neq ?mb ?ma)) (corpus_sha256 ?h2&:(neq ?h2 ?h1)))
   =>

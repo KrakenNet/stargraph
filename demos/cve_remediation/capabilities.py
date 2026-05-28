@@ -59,8 +59,28 @@ def _claims_for_permission(permission: str) -> CapabilityClaim:
     return CapabilityClaim(name=name, scope=scope or None)
 
 
+_RUNS_PERMISSIONS: tuple[str, ...] = (
+    "runs:start",
+    "runs:read",
+    "runs:respond",
+    "runs:resume",
+    "runs:cancel",
+    "runs:pause",
+)
+
+
 def build_cve_rem_capabilities() -> Capabilities:
-    """Return the engine-side default-deny capability profile for cve-rem."""
+    """Return the engine-side default-deny capability profile for cve-rem.
+
+    Grants cover (1) every ``@tool`` permission declared by the
+    cve-rem graph (servicenow, cargonet) so tool dispatch through the
+    engine-side gate succeeds; (2) the HTTP-level ``runs:*`` permissions
+    consumed by :func:`harbor.serve.respond._check_capability` /
+    :mod:`harbor.serve.lifecycle` (cancel, pause, resume) -- without
+    these the engine-side gate denies the legitimate route handlers
+    even though the route-level HTTP gate in ``harbor.serve.api``
+    waves them through under :class:`OssDefaultProfile`.
+    """
     granted: set[CapabilityClaim] = set()
     for tool in (
         create_change_request,
@@ -70,4 +90,6 @@ def build_cve_rem_capabilities() -> Capabilities:
     ):
         for perm in tool.spec.permissions:
             granted.add(_claims_for_permission(perm))
+    for perm in _RUNS_PERMISSIONS:
+        granted.add(_claims_for_permission(perm))
     return Capabilities(default_deny=True, granted=granted)

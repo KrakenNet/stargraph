@@ -452,9 +452,17 @@ rules:
     when: "?n <- (node-id (id critic)) (state (critic_verdict veto)) (state (critic_attempt 1 | 2))"
     then: [{ kind: goto, target: hitl_plan_review }]
 
-  # HITL plan gate (P0)
+  # HITL plan gate (P0). Two rules, mutually exclusive on response presence:
+  # * gate fires when NO response fact is asserted → raise interrupt, halt
+  #   run until /v1/runs/{id}/respond posts a response.
+  # * to-branch fires on resume, when a response IS present → route to
+  #   branch_resp_plan which sub-routes on the decision value.
+  # Without these guards both rules match the same fact pattern and
+  # translate_actions's interrupt-precedence rule would never let the
+  # post-resume path advance (or, before that fix, the goto would silently
+  # drop the interrupt and produce a routing hot-loop).
   - id: r-hitl-plan-gate
-    when: "?n <- (node-id (id hitl_plan_review))"
+    when: "?n <- (node-id (id hitl_plan_review)) (not (response))"
     then:
       - kind: interrupt
         prompt: "Approve plan for {cve_id}? plan_hash={plan_hash} runtime={code_runtime}"
@@ -464,7 +472,7 @@ rules:
         timeout: null
         on_timeout: "noop"
   - id: r-hitl-plan-to-branch
-    when: "?n <- (node-id (id hitl_plan_review))"
+    when: "?n <- (node-id (id hitl_plan_review)) (response (decision ?d))"
     then: [{ kind: goto, target: branch_resp_plan }]
   - id: r-branch-plan-approve
     when: "?n <- (node-id (id branch_resp_plan)) (response (decision approve))"

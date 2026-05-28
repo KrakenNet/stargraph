@@ -41,6 +41,7 @@ from harbor.ir._models import (
     Action,
     GotoAction,
     HaltAction,
+    InterruptAction,
     IRBase,
     ParallelAction,
 )
@@ -49,6 +50,7 @@ __all__ = [
     "ContinueAction",
     "GotoAction",
     "HaltAction",
+    "InterruptAction",
     "ParallelAction",
     "RoutingDecision",
     "translate_actions",
@@ -66,7 +68,7 @@ class ContinueAction(IRBase):
 
 
 RoutingDecision = Annotated[
-    ContinueAction | HaltAction | GotoAction | ParallelAction,
+    ContinueAction | HaltAction | GotoAction | ParallelAction | InterruptAction,
     Field(discriminator="kind"),
 ]
 """Single routing decision produced by :func:`translate_actions` (design §3.1.2).
@@ -80,22 +82,31 @@ variant's fields automatically.
 def translate_actions(actions: list[Action]) -> RoutingDecision:
     """Pick a single :data:`RoutingDecision` from a rule-firing's action list.
 
-    Precedence: halt > goto > parallel > continue (design §3.1.4). Halt always
-    wins -- fail-closed routing matches the ``deny`` extension's intent.
-    Side-effect actions (:class:`AssertAction`, :class:`RetractAction`,
-    :class:`RetryAction`) carry no routing semantics in v1 and are skipped;
-    if no routing-bearing action fires, the result is a :class:`ContinueAction`.
+    Precedence: interrupt > halt > goto > parallel > continue. Interrupt and
+    halt are both fail-closed (matches the ``deny`` extension's intent);
+    interrupt takes precedence so a HITL gate rule that fires concurrently
+    with a downstream goto isn't silently dropped (would let a run skip the
+    interrupt boundary and re-enter the same gate node on the next tick,
+    producing a routing hot-loop). Side-effect actions (:class:`AssertAction`,
+    :class:`RetractAction`, :class:`RetryAction`) carry no routing semantics
+    in v1 and are skipped; if no routing-bearing action fires, the result is
+    a :class:`ContinueAction`.
     """
+    interrupt: InterruptAction | None = None
     halt: HaltAction | None = None
     goto: GotoAction | None = None
     parallel: ParallelAction | None = None
     for action in actions:
-        if isinstance(action, HaltAction) and halt is None:
+        if isinstance(action, InterruptAction) and interrupt is None:
+            interrupt = action
+        elif isinstance(action, HaltAction) and halt is None:
             halt = action
         elif isinstance(action, GotoAction) and goto is None:
             goto = action
         elif isinstance(action, ParallelAction) and parallel is None:
             parallel = action
+    if interrupt is not None:
+        return interrupt
     if halt is not None:
         return halt
     if goto is not None:

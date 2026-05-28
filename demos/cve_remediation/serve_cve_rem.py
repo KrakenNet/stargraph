@@ -12,7 +12,6 @@ fancy #13 hardening).
 
 Usage:
 
-    set -a; source demos/cve_remediation/.env; set +a
     uv run --no-project python -m demos.cve_remediation.serve_cve_rem \
         --host 0.0.0.0 --port 9000
 
@@ -30,6 +29,10 @@ from demos.cve_remediation.capabilities import build_cve_rem_capabilities
 
 
 def main(argv: list[str] | None = None) -> int:
+    from pathlib import Path
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / ".env", override=False)
+
     parser = argparse.ArgumentParser(
         prog="serve_cve_rem",
         description=(
@@ -103,7 +106,13 @@ def main(argv: list[str] | None = None) -> int:
     # Point it at this demo's config dir if the user didn't override.
     os.environ.setdefault("HARBOR_CONFIG_DIR", str(Path(__file__).parent.resolve()))
     tmpdir = Path(tempfile.mkdtemp(prefix="cve-rem-serve-"))
-    checkpointer = SQLiteCheckpointer(tmpdir / "checkpoint.sqlite")
+    # CVE_REM_CHECKPOINT_DB env var lets sweep harnesses (score_100) read
+    # checkpoints from a known path; falls back to per-process tempdir.
+    cp_env = os.environ.get("CVE_REM_CHECKPOINT_DB")
+    cp_path = Path(cp_env) if cp_env else tmpdir / "checkpoint.sqlite"
+    cp_path.parent.mkdir(parents=True, exist_ok=True)
+    checkpointer = SQLiteCheckpointer(cp_path)
+    print(f"[serve_cve_rem] checkpoint DB → {cp_path}")
     artifact_store = FilesystemArtifactStore(tmpdir / "artifacts")
     scheduler = Scheduler()
 
@@ -258,6 +267,29 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[serve_cve_rem] audit supervisor blip: {exc!r}")
             await asyncio.sleep(0.25)
 
+    # Build Fathom adapter so dispatch.py's per-step rule evaluation
+    # actually fires. Without this, ``run.fathom is None`` → every
+    # ``ContinueAction`` walks the static IR edge → all 70 nodes run
+    # sequentially regardless of routing predicates. See
+    # ``demos/cve_remediation/graph/_fathom.py`` for the wiring details.
+    fathom_adapter: Any = None
+    try:
+        from demos.cve_remediation.graph._fathom import build_cve_rem_fathom
+
+        bosun_pack_root = Path(__file__).parent / "graph" / "rules"
+        _engine, fathom_adapter = build_cve_rem_fathom(
+            ir_docs=list(ir_docs.values()),
+            bosun_pack_roots=[bosun_pack_root],
+        )
+        print(
+            f"[serve_cve_rem] Fathom adapter ready "
+            f"(rules from {len(ir_docs)} graph(s))"
+        )
+    except ImportError as exc:
+        print(f"[serve_cve_rem] Fathom unavailable: {exc!r} — routing disabled")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[serve_cve_rem] Fathom init failed: {exc!r} — routing disabled")
+
     deps: dict[str, Any] = {
         "scheduler": scheduler,
         "runs": {},
@@ -276,6 +308,7 @@ def main(argv: list[str] | None = None) -> int:
         # the cve-rem graph; tightens the engine boundary so a graph
         # that imports an undeclared tool fails loud at dispatch.
         "capabilities": build_cve_rem_capabilities(),
+        "fathom": fathom_adapter,
     }
 
     @asynccontextmanager
@@ -290,21 +323,34 @@ def main(argv: list[str] | None = None) -> int:
         await artifact_store.bootstrap()
         scheduler.set_deps(deps)
         scheduler.set_run_history(run_history)
-        await scheduler.start()
-        supervisor_task = asyncio.create_task(
-            _audit_supervisor(), name="serve_cve_rem.audit_supervisor",
-        )
-        try:
-            async with broker_lifespan():
+        # broker_lifespan MUST precede scheduler.start() so the
+        # scheduler's consumer tasks inherit the broker ContextVar.
+        async with broker_lifespan():
+            await scheduler.start()
+            supervisor_task = asyncio.create_task(
+                _audit_supervisor(), name="serve_cve_rem.audit_supervisor",
+            )
+            try:
                 yield
-        finally:
-            supervisor_task.cancel()
-            for task in audit_tap_tasks.values():
-                task.cancel()
-            await scheduler.stop()
-            await checkpointer.close()
+            finally:
+                supervisor_task.cancel()
+                for task in audit_tap_tasks.values():
+                    task.cancel()
+                await scheduler.stop()
+                await checkpointer.close()
 
     app = create_app(selected, deps=deps, lifespan=_lifespan)
+
+    from fastapi.middleware.cors import CORSMiddleware
+    # Dev demo — restrict CORS to localhost origins so a malicious site
+    # can't scrape this API via a visitor's browser. Production deployments
+    # should override with an explicit allowlist.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
     # ---- Extra routes for the run-watcher UI -----------------------------
     # NOTE: declared BEFORE the StaticFiles mount at /watch so the
