@@ -7,7 +7,7 @@ auditable, replayable graphs. Transitions between nodes are decided by
 [Fathom](https://github.com/KrakenNet/fathom) (a CLIPS rules engine) over
 provenance-typed facts — not by an LLM playing router.
 
-> **Status:** v0.2.2 — Alpha. Public API is unstable until v1.0.
+> **Status:** v0.3.0 — Alpha. Public API is unstable until v1.0.
 > Built for environments where auditability, determinism, and provenance matter
 > more than ecosystem size (DoD, regulated, air-gapped, cleared workloads).
 

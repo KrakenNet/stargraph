@@ -1,9 +1,0 @@
-{
-  "deployed_at": "2026-05-26T22:25:30.463798+00:00",
-  "deployment_id": "2bbab9eb-2a39-44f8-9ea4-e9ec08c4aed5",
-  "lab_id": "7de06c64-322b-4d28-aa07-27d5fcf5431f",
-  "lab_name": "cn-net-095c4e18",
-  "node_count": 54,
-  "topology_id": "1a33702a-8705-49cb-a79d-f647aafa6ad5",
-  "topology_name": "h11-cve-scoring"
-}

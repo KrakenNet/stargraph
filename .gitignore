@@ -59,3 +59,4 @@ demos/cve_remediation/watcher/.inspiration/
 demos/sentinel_dark_watch/.env
 demos/sentinel_dark_watch/data/
 !demos/sentinel_dark_watch/data/.gitkeep
+.worktree/
