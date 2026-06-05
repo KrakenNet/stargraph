@@ -55,8 +55,8 @@ from harbor.stores.embeddings import FakeEmbedder
 from harbor.stores.fact import FactPattern
 from harbor.stores.graph import NodeRef
 from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.lancedb import LanceDBVectorStore
+from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.sqlite_doc import SQLiteDocStore
 from harbor.stores.sqlite_fact import SQLiteFactStore
 from harbor.stores.sqlite_memory import SQLiteMemoryStore
@@ -70,7 +70,11 @@ if TYPE_CHECKING:
     from harbor.stores.vector import VectorStore
 
 
-pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
+pytestmark = [
+    pytest.mark.knowledge,
+    pytest.mark.integration,
+    pytest.mark.usefixtures("standin_lm"),
+]
 
 
 class _RecordingEngine:
@@ -191,7 +195,7 @@ async def test_knowledge_poc_e2e_milestone(tmp_path: Path) -> None:
     assert len(retrieved_ids) >= 4, (
         f"expected >= 4 distinct retrieved ids (vector + doc fan-out), got {sorted(retrieved_ids)}"
     )
-    assert out_state.answer.startswith("Based on ")
+    assert out_state.answer == "STANDIN_ANSWER"  # canned StandinLM payload (T10 dspy seam)
     assert out_state.sources
 
     # ------------------------------------------------------------------

@@ -16,7 +16,11 @@ import pytest
 from harbor.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
 from harbor.skills.refs.wiki import WikiSkill, WikiState
 
-pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
+pytestmark = [
+    pytest.mark.knowledge,
+    pytest.mark.integration,
+    pytest.mark.usefixtures("standin_lm"),
+]
 
 
 async def test_wiki_consumes_autoresearch_provenance_preserved() -> None:

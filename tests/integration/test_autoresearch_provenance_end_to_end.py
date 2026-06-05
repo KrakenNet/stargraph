@@ -20,7 +20,11 @@ from harbor.skills.refs.autoresearch import (
     SourceRecord,
 )
 
-pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
+pytestmark = [
+    pytest.mark.knowledge,
+    pytest.mark.integration,
+    pytest.mark.usefixtures("standin_lm"),
+]
 
 
 async def test_every_claim_resolves_to_source() -> None:
