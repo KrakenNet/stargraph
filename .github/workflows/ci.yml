@@ -186,7 +186,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
       - run: uv sync --group dev --extra stores --extra skills-rag --extra ml
-      - run: uv run pytest tests/ -m "knowledge" --cov=harbor.stores --cov=harbor.skills -q
+      - run: uv run pytest tests/ -m "knowledge" --cov=harbor -q
 
   cypher-subset:
     # Two-engine Cypher portable-subset CI gate (FR-12, AC-9.3, NFR-4).

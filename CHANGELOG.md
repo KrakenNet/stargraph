@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Changed (CI pipeline green campaign)
+- Typing-only pyright strict cleanup across `src/harbor` and `tests`
+  (527 errors → 0), including annotation-only edits in
+  `src/harbor/ir/_validate.py`. No IR schema or runtime behavior
+  changes.
+- Knowledge CI job: coverage flag changed from
+  `--cov=harbor.stores --cov=harbor.skills` to `--cov=harbor` — dotted
+  `source_pkgs` triggered a re-entrant numpy import under coverage's
+  lazy `find_spec`, crashing with "cannot load module more than once
+  per process".
+- Integration skill tests now run under a canned-JSON standin LM
+  (`tests/fixtures/lm_stub.py` + opt-in `standin_lm` fixture) instead
+  of requiring a live model.
+- Regenerated `docs/reference/openapi.json` to match the current serve
+  surface.
+
 The harbor-knowledge surface — Stores, Skills, retrieval, memory, and
 consolidation built on top of harbor-engine.
 
