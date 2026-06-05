@@ -22,6 +22,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from fathom.chained_log import GENESIS_RECORD_TYPE
+
+from harbor.audit.jsonl import unwrap_audit_record
+
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 SAMPLE_GRAPH: Path = REPO_ROOT / "tests" / "fixtures" / "sample-graph.yaml"
 
@@ -58,13 +62,15 @@ def test_poc_milestone(tmp_path: Path) -> None:
     )
 
     # 2. JSONL file exists and has >=2 events. Each line is a chained-log
-    #    envelope (``fathom.chained_log.ChainedAttestationLog``); the run
-    #    event lives under ``record``. The genesis record (seq 0,
-    #    ``type: fathom.genesis``) is chain bookkeeping, not a run event.
+    #    envelope; ``unwrap_audit_record`` dual-reads all on-disk shapes.
+    #    The genesis record (seq 0) is chain bookkeeping, not a run event.
     assert log_file.exists(), f"log file missing: {log_file}"
-    raw_lines = log_file.read_text(encoding="utf-8").splitlines()
-    records = [json.loads(line)["record"] for line in raw_lines if line.strip()]
-    events = [r for r in records if r.get("type") != "fathom.genesis"]
+    records = [
+        unwrap_audit_record(json.loads(line))
+        for line in log_file.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    events = [r for r in records if r.get("type") != GENESIS_RECORD_TYPE]
     assert len(events) >= 2, f"expected >=2 events, got {len(events)}: {events!r}"
 
     # 3. At least one TransitionEvent + one ResultEvent (by ``type`` discriminator).

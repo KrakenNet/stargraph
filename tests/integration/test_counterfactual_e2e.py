@@ -41,6 +41,9 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from fathom.chained_log import GENESIS_RECORD_TYPE
+
+from harbor.audit.jsonl import unwrap_audit_record
 from harbor.checkpoint import Checkpoint
 from harbor.checkpoint.sqlite import SQLiteCheckpointer
 from harbor.replay.compare import RunDiff, compare
@@ -87,17 +90,16 @@ def _harbor_run_to_artifacts(
 def _read_events(log_file: Path) -> list[dict[str, Any]]:
     """Unwrap chained-log envelopes into the modeled run events.
 
-    Each JSONL line is a ``fathom.chained_log.ChainedAttestationLog``
-    envelope; the run event lives under ``record``. The genesis record
-    (seq 0, ``type: fathom.genesis``) is chain bookkeeping, not a run
-    event, so it is dropped.
+    ``unwrap_audit_record`` dual-reads all on-disk audit line shapes;
+    the genesis record (seq 0) is chain bookkeeping, not a run event,
+    so it is dropped.
     """
     records = [
-        json.loads(line)["record"]
+        unwrap_audit_record(json.loads(line))
         for line in log_file.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    return [r for r in records if r.get("type") != "fathom.genesis"]
+    return [r for r in records if r.get("type") != GENESIS_RECORD_TYPE]
 
 
 def _normalize_event(ev: dict[str, Any]) -> dict[str, Any]:
