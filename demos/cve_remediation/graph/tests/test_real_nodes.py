@@ -102,7 +102,7 @@ def test_ssvc_tier_evaluator(kwargs: dict[str, Any], expected_tier: str) -> None
     node = SsvcTierEvaluatorNode()
     state = _state_with_extract(**kwargs)
     out = asyncio.run(node.execute(state, _Ctx()))
-    assert out == {"ssvc_tier": expected_tier}
+    assert out["ssvc_tier"] == expected_tier
 
 
 # ---------------------------------------------------------------------------

@@ -53,6 +53,7 @@ function HeaderGantt({ topo, nodeTimings, runStartTs, nodeStatus, selectedId, on
             type="button"
             className={classes}
             data-node-id={id}
+            data-gantt-node={id}
             title={id + " · " + Math.round(elapsed_ms) + "ms"}
             style={{ left: pctLeft, width: pctWidth }}
             onClick={() => onSelect(id)}

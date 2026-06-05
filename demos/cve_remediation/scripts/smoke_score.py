@@ -75,6 +75,8 @@ _VERIFY_OUTCOME_ALLOWED = {
     "substrate_not_applicable",
     "unpatchable_hitl_pending",
     "rollback",
+    "mitigation_applied",
+    "not_applicable",
 }
 _ERROR_KEYS_HARD = (
     "last_intake_error",

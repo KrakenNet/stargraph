@@ -205,13 +205,10 @@ def test_partial_apply_rollback_appends_ledger() -> None:
 
 
 def test_verify_immediate_patched_when_fleet_ok() -> None:
-    """VerifyImmediate honors an upstream-established
-    ``verify_outcome=patched`` when fleet_passed + the bundle/recipe
-    apply path set it. Without that upstream evidence the demo lands at
-    ``unverified`` (operator must opt in to offline-trust); the
-    ``unverified`` path is covered by test_verify_immediate_vulnerable_default
-    indirectly. The "patched" outcome is now anchored to the
-    apply-path probe method.
+    """VerifyImmediate no longer trusts upstream verify_outcome; it runs
+    its own per-host probes.  Without CargoNet or bundle-verify tasks
+    available in unit tests, the outcome is ``unverified`` (operator
+    triage required) — which is the honest behavior.
     """
     state = CveRemState(
         fleet_passed=True,
@@ -219,7 +216,7 @@ def test_verify_immediate_patched_when_fleet_ok() -> None:
         verify_probe_method="ansible-bundle",
     )
     out = asyncio.run(VerifyImmediateNode().execute(state, _ctx()))
-    assert out["verify_outcome"] == "patched"
+    assert out["verify_outcome"] == "unverified"
     assert out["sandbox_prod_divergence"] is False
 
 
@@ -251,7 +248,7 @@ def test_verify_immediate_mitigation_verified_overrides_stale_halt() -> None:
         halt_reason="DEFER tier: re-evaluate later",
     )
     out = asyncio.run(VerifyImmediateNode().execute(state, _ctx()))
-    assert out["verify_outcome"] == "mitigation_verified"
+    assert out["verify_outcome"] == "mitigation_applied"
     assert out["verify_probe_method"] == "mitigation"
 
 

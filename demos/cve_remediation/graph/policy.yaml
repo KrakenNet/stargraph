@@ -1,0 +1,105 @@
+# CVE Remediation Pipeline — Externalized Policy Configuration
+#
+# All governance thresholds, weights, budgets, and term lists that were
+# previously hardcoded in real_nodes.py. Loaded once at module init by
+# _load_policy() and referenced by nodes at runtime.
+#
+# To override per-deployment: set CVE_REM_POLICY_PATH to a custom YAML.
+
+ssvc:
+  act_auto_cvss_bp: 900
+  act_auto_blast_min: 100
+  act_hitl_cvss_bp: 700
+  act_hitl_epss_bp: 500
+  attend_cvss_bp: 400
+  defer_max_cvss_bp: 400
+
+gepa:
+  weights:
+    validation: 35
+    sandbox: 25
+    cr_approved: 15
+    no_drift_7d: 15
+    no_rollback_30d: 10
+  epsilon_margin_bp: 200
+
+sandbox:
+  max_retries: 2
+
+quarantine:
+  ttl_days: 30
+  severity_levels:
+    critical:
+      - "status"
+      - "version"
+    warn:
+      - "config"
+      - "service_state"
+    info:
+      - "timestamp"
+      - "log_level"
+
+halt_new:
+  ttl_minutes: 30
+
+planner:
+  schema_max_retries: 3
+  max_turns: 4
+
+llm:
+  timeout_seconds: 30
+  max_tokens:
+    vuln_classify: 200
+    planner_agent: 4096
+    rationale: 4096
+    ansible: 4096
+    retro_suggestions: 512
+
+unpatchable:
+  cvss_high_threshold_bp: 700
+
+source_trust:
+  trusted:
+    - "mitre.org"
+    - "cisa.gov"
+    - "nvd.nist.gov"
+    - "psirt."
+    - "redhat.com"
+    - "ubuntu.com"
+    - "debian.org"
+    - "canonical.com"
+    - "oracle.com"
+    - "microsoft.com"
+  semi:
+    - "github.com/advisories"
+    - "github.com/security"
+    - "snyk.io"
+    - "ossf.io"
+  untrusted:
+    - "twitter.com"
+    - "x.com"
+    - "reddit.com"
+    - "blog."
+    - "medium.com"
+    - "pastebin.com"
+  default: "untrusted"
+
+injection_classify:
+  attack_terms:
+    - "ignore previous instructions"
+    - "ignore all previous"
+    - "system prompt"
+    - "you are now"
+    - "disregard the rules"
+    - "forget all rules"
+    - "override your guidelines"
+    - "reveal your instructions"
+    - "print your system"
+    - "show me your prompt"
+  suspicious_terms:
+    - "as an ai"
+    - "pretend you are"
+    - "roleplay as"
+    - "without restrictions"
+    - "act as if"
+    - "hypothetically speaking"

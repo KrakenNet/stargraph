@@ -608,15 +608,30 @@ function NodeView({ node, status, clock }) {
     : 1;
   const clockInNode = Math.max(0, clock - node.startAt);
 
-  let Body;
-  switch (node.type) {
-    case "source":         Body = SourceView; break;
-    case "llm":            Body = LLMView; break;
-    case "graph_traverse": Body = GraphTraverseView; break;
-    case "agent_loop":     Body = AgentLoopView; break;
-    case "tool":           Body = ToolView; break;
-    case "decision":       Body = DecisionView; break;
-    default:               Body = Pending;
+  const NODE_VIEW = {
+    intake_fetch:          window.IntakeFetchView,
+    extract_trusted:       window.ExtractTrustedView,
+    correlate_assets:      window.CorrelateAssetsView,
+    ssvc_evaluate:         window.SSVCEvaluateView,
+    plan_template_lookup:  window.PlanTemplateLookupView,
+    remediation_discovery: window.RemediationDiscoveryView,
+    sandbox_run:           window.SandboxRunView,
+    retro_analysis:        window.RetroAnalysisView,
+    open_change_request:   window.OpenChangeRequestView,
+    tier_terminal_track:   window.TierTerminalTrackView,
+  };
+
+  let Body = NODE_VIEW[node.id];
+  if (!Body) {
+    switch (node.type) {
+      case "source":         Body = SourceView; break;
+      case "llm":            Body = LLMView; break;
+      case "graph_traverse": Body = GraphTraverseView; break;
+      case "agent_loop":     Body = AgentLoopView; break;
+      case "tool":           Body = ToolView; break;
+      case "decision":       Body = DecisionView; break;
+      default:               Body = Pending;
+    }
   }
 
   return (
@@ -627,4 +642,4 @@ function NodeView({ node, status, clock }) {
   );
 }
 
-Object.assign(window, { NodeView });
+Object.assign(window, { NodeView, Panel, StatusPill, ShimmerLine, Pill, ViewHeader, Pending, Skipped });

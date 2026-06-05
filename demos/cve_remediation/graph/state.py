@@ -440,6 +440,7 @@ class CveRemState(BaseRunState):
     correlated: CorrelatedAssets = Field(default_factory=CorrelatedAssets)
     disposition: Literal["applicable", "not_applicable"] = "applicable"
     ssvc_tier: SsvcTier = SsvcTier.ATTEND
+    ssvc_bosun_rule: str = ""
 
     # --- Phase 3 plan + sandbox ---
     template_lookup_hit: bool = False
@@ -647,7 +648,7 @@ class CveRemState(BaseRunState):
     # ``{retro_id, suggestion_text, generated_at}``. Read by PlannerNode
     # and injected into the rationale + LM prompt so Run N's plan
     # genuinely incorporates lessons from Runs 1..N-1 (not just a flag).
-    prior_retro_suggestions: list[dict[str, str]] = Field(default_factory=list)
+    prior_retro_suggestions: list[dict[str, Any]] = Field(default_factory=list)
     # PlannerNode bumps this when it injects suggestions into the
     # rationale. The verifier asserts Run 2 > Run 1 so we have proof
     # the planner consumed something Run 1 wrote.

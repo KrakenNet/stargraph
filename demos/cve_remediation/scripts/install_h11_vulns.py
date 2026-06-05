@@ -110,10 +110,11 @@ def _state_to_command(item: dict) -> str:
     raise ValueError(f"unknown state kind: {kind!r}")
 
 
-async def _exec(lab_id: str, node_id: str, cmd: str) -> dict:
+async def _exec(lab_id: str, node_id: str, cmd: str, timeout: float = 120.0) -> dict:
     return await cargonet_exec(
         lab_id=lab_id, node_id=node_id,
         command=("/bin/sh -c " + shlex.quote(cmd)),
+        timeout=timeout,
     )
 
 
@@ -205,6 +206,9 @@ async def _amain(args: argparse.Namespace) -> int:
         if not node_id:
             summary["errors"].append(f"{host}/{cid}: host not in lab")
             summary["fail"] += 1
+            continue
+        if recipe.get("install_type") == "not_applicable":
+            print(f"  [{i:3d}/{len(targets)}] {cid} -> {host}  SKIP (not_applicable)")
             continue
         if args.dry_run:
             print(f"  [{i:3d}/{len(targets)}] {cid} -> {host}  (would install)")

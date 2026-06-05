@@ -61,20 +61,20 @@ _OUT_CMDB = _FIXTURES / "h11_cmdb_seed.json"
 _OUT_TRUTH = _FIXTURES / "scoring_ground_truth.json"
 
 # Node-role definitions: role -> (cargonet kind, image, count)
-# Counts sum to 35 (the topology size). All linux/alpine for image
-# portability -- role is metadata for the scoring run, not for
-# CargoNet's container runtime.
+# Counts sum to 35 (the topology size). harbor-h11-base includes
+# JDK, Python, Node, Ruby, PHP and common system packages so each
+# host can install real vulnerable packages for its assigned CVEs.
 _ROLE_PLAN: list[tuple[str, str, str, int]] = [
-    # role,    kind,    image,           count
-    ("rtr",    "linux", "alpine:latest", 4),   # routers (logical role only)
-    ("sw",     "linux", "alpine:latest", 3),   # switches
-    ("fw",     "linux", "alpine:latest", 2),   # firewalls
-    ("web",    "linux", "alpine:latest", 7),   # web servers
-    ("api",    "linux", "alpine:latest", 6),   # api hosts
-    ("db",     "linux", "alpine:latest", 4),   # db hosts
-    ("worker", "linux", "alpine:latest", 5),   # worker pool
-    ("jump",   "linux", "alpine:latest", 2),   # jump hosts
-    ("idp",    "linux", "alpine:latest", 2),   # IDP / auth
+    # role,    kind,    image,                      count
+    ("rtr",    "linux", "harbor-h11-rtr:latest",    4),   # routers
+    ("sw",     "linux", "harbor-h11-sw:latest",     3),   # switches
+    ("fw",     "linux", "harbor-h11-fw:latest",     2),   # firewalls
+    ("web",    "linux", "harbor-h11-web:latest",    7),   # web servers (full stack)
+    ("api",    "linux", "harbor-h11-api:latest",    6),   # api hosts (JDK + Node)
+    ("db",     "linux", "harbor-h11-db:latest",     4),   # db hosts (JDK)
+    ("worker", "linux", "harbor-h11-worker:latest", 5),   # worker pool (JDK + Python + Node)
+    ("jump",   "linux", "harbor-h11-jump:latest",   2),   # jump hosts
+    ("idp",    "linux", "harbor-h11-idp:latest",    2),   # IDP / auth (Python + Node)
 ]
 # Role -> compatible vuln_class (which CVE buckets a host of this
 # role can plausibly host).

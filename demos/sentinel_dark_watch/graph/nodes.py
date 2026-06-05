@@ -165,35 +165,38 @@ def _decode_obb(
     affine: Any,
     conf_threshold: float = 0.25,
 ) -> list[dict[str, Any]]:
-    """Decode ONNX OBB output: [x_ctr, y_ctr, w, h, angle, conf, class].
+    """Decode Ultralytics YOLO OBB ONNX output.
 
-    Returns list of detection dicts with geo-coordinates.
+    Output shape: (1, 6, N) for 1-class OBB where the 6 channels are
+    [x_ctr, y_ctr, w, h, angle, conf]. Transpose to (N, 6) rows.
     """
     import numpy as np
 
     detections: list[dict[str, Any]] = []
-    if raw_output is None or len(raw_output) == 0:
+    if raw_output is None:
         return detections
 
-    arr = np.asarray(raw_output)
+    arr = np.asarray(raw_output).squeeze()  # (6, N) or (7, N) etc.
     if arr.ndim == 1:
-        arr = arr.reshape(1, -1)
+        return detections
+    if arr.ndim == 2 and arr.shape[0] < arr.shape[1]:
+        arr = arr.T  # (N, 6)
 
     for row in arr:
-        if len(row) < 7:
+        if len(row) < 5:
             continue
-        x_ctr, y_ctr, w, h, angle, conf, _cls = row[:7]
+        x_ctr, y_ctr, w, h = row[0], row[1], row[2], row[3]
+        angle = row[4] if len(row) > 4 else 0.0
+        raw_conf = row[5] if len(row) > 5 else row[4]
+        conf = 1.0 / (1.0 + math.exp(-float(raw_conf)))  # sigmoid
         if conf < conf_threshold:
             continue
 
-        # Patch-local pixel → image-level pixel
         img_x = col_off + x_ctr
         img_y = row_off + y_ctr
 
-        # Geo center
         geo_lon, geo_lat = _pixel_to_geo(img_x, img_y, affine)
 
-        # Compute OBB corners in geo-coords
         cos_a, sin_a = math.cos(angle), math.sin(angle)
         half_w, half_h = w / 2, h / 2
         corners_px = [
@@ -216,7 +219,7 @@ def _decode_obb(
                 "geo_lon": geo_lon,
                 "confidence": float(conf),
                 "obb_corners": geo_corners,
-                "vessel_length_m": float(max(w, h)),  # rough proxy
+                "vessel_length_m": float(max(w, h)) * abs(affine.a),
             }
         )
     return detections
@@ -261,7 +264,7 @@ def _load_dual_band(scene_dir: Path) -> tuple[Any, Any]:
 
 
 class YOLOInferenceNode(NodeBase):
-    """Load VH+VV GeoTIFFs, tile into patches, run ONNX OBB inference, geo-transform."""
+    """Load VH+VV GeoTIFFs, tile into patches, run YOLO OBB inference, geo-transform."""
 
     async def execute(
         self,
@@ -291,41 +294,59 @@ class YOLOInferenceNode(NodeBase):
             patches = _tile_image(img, _PATCH_SIZE, _OVERLAP_FRAC)
             logger.info("Scene %s: %dx%d → %d patches", tile.tile_id, img.shape[1], img.shape[0], len(patches))
 
-            try:
-                from harbor.ml.loaders import get_onnx_session
-                from harbor.ml.registry import ModelRegistry
-
-                registry_path = os.environ.get(
-                    "SDW_REGISTRY_DB", "data/model_registry.db"
-                )
-                registry = ModelRegistry(registry_path)
-                await registry.bootstrap()
-                entry = await registry.load_alias("sdw-detector", "production")
-                session = get_onnx_session(
-                    model_id=entry.model_id,
-                    version=entry.version,
-                    file_uri=entry.file_uri,
-                )
-            except Exception as exc:
-                logger.warning("ONNX session error: %s", exc)
+            model_path = os.environ.get("SDW_MODEL_PATH", "")
+            if not model_path:
+                data_dir = Path(__file__).resolve().parent.parent / "data" / "models"
+                model_path = str(data_dir / "yolo11n-obb.pt")
+            if not Path(model_path).exists():
                 return {"raw_detections": [], "pipeline_phase": "detection",
-                        "last_error": f"YOLOInferenceNode ONNX: {exc}"}
+                        "last_error": f"YOLOInferenceNode: model not found at {model_path}"}
 
-            input_name = session.get_inputs()[0].name
+            from ultralytics import YOLO
+            model = await asyncio.to_thread(YOLO, model_path)
+            logger.info("Loaded YOLO model: %s", model_path)
+
+            conf_threshold = float(os.environ.get("SDW_CONF_THRESHOLD", "0.1"))
             all_detections: list[dict[str, Any]] = []
 
             for patch, r_off, c_off in patches:
-                # (H, W, 3) → (3, H, W) → (1, 3, H, W) float32 normalised
-                blob = np.expand_dims(
-                    patch.transpose(2, 0, 1).astype(np.float32) / 255.0, axis=0
+                results = await asyncio.to_thread(
+                    model.predict, patch, conf=conf_threshold, verbose=False,
                 )
-                raw = await asyncio.to_thread(session.run, None, {input_name: blob})
+                if not results or not results[0].obb:
+                    continue
+                obb = results[0].obb
+                for i in range(len(obb.conf)):
+                    conf = float(obb.conf[i])
+                    cls_id = int(obb.cls[i])
+                    xywhr = obb.xywhr[i].cpu().numpy()
+                    x_ctr, y_ctr, w, h, angle = xywhr
 
-                if raw and len(raw) > 0:
-                    dets = _decode_obb(raw[0], r_off, c_off, affine)
-                    for d in dets:
-                        d["tile_id"] = tile.tile_id
-                    all_detections.extend(dets)
+                    img_x = c_off + float(x_ctr)
+                    img_y = r_off + float(y_ctr)
+                    geo_lon, geo_lat = _pixel_to_geo(img_x, img_y, affine)
+
+                    cos_a, sin_a = math.cos(float(angle)), math.sin(float(angle))
+                    half_w, half_h = float(w) / 2, float(h) / 2
+                    geo_corners: list[list[float]] = []
+                    for dx, dy in [(-half_w, -half_h), (half_w, -half_h),
+                                   (half_w, half_h), (-half_w, half_h)]:
+                        rx = cos_a * dx - sin_a * dy
+                        ry = sin_a * dx + cos_a * dy
+                        gx, gy = _pixel_to_geo(img_x + rx, img_y + ry, affine)
+                        geo_corners.append([gx, gy])
+
+                    all_detections.append({
+                        "detection_id": str(uuid.uuid4()),
+                        "geo_lat": geo_lat,
+                        "geo_lon": geo_lon,
+                        "confidence": conf,
+                        "obb_corners": geo_corners,
+                        "vessel_length_m": float(max(w, h)) * abs(affine.a),
+                        "tile_id": tile.tile_id,
+                        "class_id": cls_id,
+                        "class_name": model.names.get(cls_id, "unknown"),
+                    })
 
             from demos.sentinel_dark_watch.graph.state import Detection
 
@@ -638,66 +659,76 @@ class AISCorrelationNode(NodeBase):
             # SAR acquisition timestamp
             acq_ts = tile.timestamp if tile.timestamp else ""
 
+            # Try Nautilus broker first, fall back to direct PostGIS
+            rows: list[Any] = []
+            broker_used = False
             try:
-                import asyncpg
-
-                conn = await asyncpg.connect(get_pg_dsn())
-            except Exception:
-                logger.warning(
-                    "PostGIS/broker unavailable — marking all as dark vessels (conservative)",
+                from harbor.serve.contextvars import current_broker
+                broker = current_broker()
+                response = await broker.arequest(
+                    agent_id="sdw-pipeline",
+                    intent="ais-correlation",
+                    context={
+                        "min_lat": min_lat, "max_lat": max_lat,
+                        "min_lon": min_lon, "max_lon": max_lon,
+                        "acq_ts": acq_ts,
+                        "time_window_min": time_window_min,
+                    },
                 )
-                for det in detections:
-                    det.dark_vessel = True
-                return {
-                    "detections": detections,
-                    "last_error": "AISCorrelationNode: DB unavailable",
-                    "pipeline_phase": "ais_correlation",
-                }
+                ais_rows = response.data.get("ais_buffer", [])
+                rows = ais_rows
+                broker_used = True
+                logger.info("AIS via Nautilus broker: %d rows from %s",
+                            len(rows), response.sources_queried)
+            except Exception as broker_exc:
+                logger.info("Nautilus broker unavailable (%s), falling back to direct PostGIS",
+                            type(broker_exc).__name__)
 
-            try:
-                # Query AIS positions in bounding box + time window
-                if acq_ts:
-                    rows = await conn.fetch(
-                        "SELECT mmsi, ship_name, flag_state, vessel_type,"
-                        "       lat, lon, speed_kn, heading, timestamp"
-                        "  FROM ais_positions"
-                        " WHERE lat BETWEEN $1 AND $2"
-                        "   AND lon BETWEEN $3 AND $4"
-                        "   AND timestamp BETWEEN $5::timestamptz - ($6 || ' minutes')::interval"
-                        "                      AND $5::timestamptz + ($6 || ' minutes')::interval",
-                        min_lat,
-                        max_lat,
-                        min_lon,
-                        max_lon,
-                        acq_ts,
-                        str(time_window_min),
-                    )
-                else:
-                    # No acquisition time — get all AIS in bounding box
-                    rows = await conn.fetch(
-                        "SELECT mmsi, ship_name, flag_state, vessel_type,"
-                        "       lat, lon, speed_kn, heading, timestamp"
-                        "  FROM ais_positions"
-                        " WHERE lat BETWEEN $1 AND $2"
-                        "   AND lon BETWEEN $3 AND $4",
-                        min_lat,
-                        max_lat,
-                        min_lon,
-                        max_lon,
-                    )
-            except Exception:
-                logger.warning(
-                    "AIS query failed — marking all as dark vessels (conservative)",
-                )
-                for det in detections:
-                    det.dark_vessel = True
-                return {
-                    "detections": detections,
-                    "last_error": "AISCorrelationNode: query failed",
-                    "pipeline_phase": "ais_correlation",
-                }
-            finally:
-                await conn.close()
+            if not broker_used:
+                try:
+                    import asyncpg
+                    conn = await asyncpg.connect(get_pg_dsn())
+                except Exception:
+                    logger.warning("PostGIS unavailable — marking all as dark vessels")
+                    for det in detections:
+                        det.dark_vessel = True
+                    return {
+                        "detections": detections,
+                        "last_error": "AISCorrelationNode: DB unavailable",
+                        "pipeline_phase": "ais_correlation",
+                    }
+                try:
+                    if acq_ts:
+                        rows = await conn.fetch(
+                            "SELECT mmsi, ship_name, flag_state, vessel_type,"
+                            "       lat, lon, speed_kn, heading, recorded_at"
+                            "  FROM ais_positions"
+                            " WHERE lat BETWEEN $1 AND $2"
+                            "   AND lon BETWEEN $3 AND $4"
+                            "   AND recorded_at BETWEEN $5::timestamptz - ($6 || ' minutes')::interval"
+                            "                          AND $5::timestamptz + ($6 || ' minutes')::interval",
+                            min_lat, max_lat, min_lon, max_lon, acq_ts, str(time_window_min),
+                        )
+                    else:
+                        rows = await conn.fetch(
+                            "SELECT mmsi, ship_name, flag_state, vessel_type,"
+                            "       lat, lon, speed_kn, heading, recorded_at"
+                            "  FROM ais_positions"
+                            " WHERE lat BETWEEN $1 AND $2"
+                            "   AND lon BETWEEN $3 AND $4",
+                            min_lat, max_lat, min_lon, max_lon,
+                        )
+                except Exception:
+                    logger.warning("AIS query failed — marking all as dark vessels")
+                    for det in detections:
+                        det.dark_vessel = True
+                    return {
+                        "detections": detections,
+                        "last_error": "AISCorrelationNode: query failed",
+                        "pipeline_phase": "ais_correlation",
+                    }
+                finally:
+                    await conn.close()
 
             # Compute predicted positions for each AIS report
             from demos.sentinel_dark_watch.geo import predicted_ais_position
@@ -709,11 +740,11 @@ class AISCorrelationNode(NodeBase):
 
                 # Time delta in hours
                 dt_hours = 0.0
-                if acq_ts and row["timestamp"]:
+                if acq_ts and row["recorded_at"]:
                     try:
                         from datetime import datetime
 
-                        ais_time = row["timestamp"]
+                        ais_time = row["recorded_at"]
                         if isinstance(ais_time, str):
                             ais_time = datetime.fromisoformat(ais_time)
                         if isinstance(acq_ts, str):
@@ -1203,9 +1234,16 @@ class EmitSARChipsNode(NodeBase):
                 logger.warning("Tile file not found: %s — skipping chip extraction", file_path)
                 return {"detections": detections, "pipeline_phase": "emit_chips"}
 
+            tif_path = Path(file_path)
+            if tif_path.is_dir():
+                tif_path = tif_path / "VH_dB.tif"
+            if not tif_path.exists():
+                logger.warning("No GeoTIFF at %s — skipping chips", tif_path)
+                return {"detections": detections, "pipeline_phase": "emit_chips"}
+
             # Open source GeoTIFF once, crop per-detection
             try:
-                src = rasterio.open(file_path)
+                src = rasterio.open(str(tif_path))
             except Exception:
                 logger.warning("Failed to open GeoTIFF %s — skipping chips", file_path)
                 return {"detections": detections, "pipeline_phase": "emit_chips"}
@@ -1311,11 +1349,14 @@ class AnalystReviewNode(NodeBase):
             # Check if this is a resume (response already populated)
             response_decision = getattr(state, "response_decision", None)
             if response_decision:
-                # Resume path: response was delivered via GraphRun.respond().
-                # Write corrections to Postgres and return.
                 corrections = getattr(state, "analyst_corrections", []) or []
                 if corrections:
                     await self._write_corrections(corrections, state)
+                return {"pipeline_phase": "analyst_review"}
+
+            # Skip interrupt when no low-confidence detections need review
+            has_low_conf = getattr(state, "has_low_confidence_detections", False)
+            if not has_low_conf:
                 return {"pipeline_phase": "analyst_review"}
 
             # First dispatch: build prompt and raise interrupt
@@ -1459,11 +1500,11 @@ class MetricsCollectorNode(NodeBase):
             from demos.sentinel_dark_watch.graph.state import RunMetrics
 
             metrics = RunMetrics(
-                detection_count=detection_count,
-                dark_vessel_count=dark_vessel_count,
-                ais_match_count=ais_match_count,
-                false_positive_count=false_positive_count,
-                processing_secs=processing_secs,
+                total_detections=detection_count,
+                dark_vessels_flagged=dark_vessel_count,
+                ais_matched=ais_match_count,
+                false_positives_rejected=false_positive_count,
+                processing_time_seconds=processing_secs,
             )
 
             # Write to Postgres
@@ -1491,24 +1532,18 @@ class MetricsCollectorNode(NodeBase):
         try:
             await conn.execute(
                 "INSERT INTO run_metrics"
-                " (run_id, detection_count, dark_vessel_count,"
-                "  ais_match_count, false_positive_count, processing_secs)"
-                " VALUES ($1, $2, $3, $4, $5, $6)"
-                " ON CONFLICT (run_id) DO UPDATE SET"
-                "   detection_count = EXCLUDED.detection_count,"
-                "   dark_vessel_count = EXCLUDED.dark_vessel_count,"
-                "   ais_match_count = EXCLUDED.ais_match_count,"
-                "   false_positive_count = EXCLUDED.false_positive_count,"
-                "   processing_secs = EXCLUDED.processing_secs",
+                " (run_id, total_detections, dark_vessels,"
+                "  ais_matched, false_positives, processing_secs)"
+                " VALUES ($1, $2, $3, $4, $5, $6)",
                 run_id,
-                metrics.detection_count,
-                metrics.dark_vessel_count,
-                metrics.ais_match_count,
-                metrics.false_positive_count,
-                metrics.processing_secs,
+                metrics.total_detections,
+                metrics.dark_vessels_flagged,
+                metrics.ais_matched,
+                metrics.false_positives_rejected,
+                metrics.processing_time_seconds,
             )
-        except Exception:
-            logger.warning("Failed to write run metrics to Postgres")
+        except Exception as exc:
+            logger.warning("Failed to write run metrics to Postgres: %s", exc)
         finally:
             await conn.close()
 

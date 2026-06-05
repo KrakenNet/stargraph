@@ -233,6 +233,15 @@ merged feeds:
       { k: "epss",      v: "0.97543" },
       { k: "kev",       v: "yes" },
     ],
+    cvss: 10.0,
+    epss: 0.97543,
+    kevListed: true,
+    published: "2021-12-10",
+    feeds: [
+      { id: "nvd",  label: "NVD",  url: "services.nvd.nist.gov", doneAt: 0.30, value: "CVSS 10.0" },
+      { id: "epss", label: "EPSS", url: "api.first.org",         doneAt: 0.60, value: "0.97543" },
+      { id: "kev",  label: "KEV",  url: "cisa.gov",              doneAt: 0.85, value: "listed" },
+    ],
   },
 
   extract_trusted: {
@@ -263,21 +272,36 @@ merged feeds:
       "Affected version range from NVD CPE: < 2.15.0 (2.15.0 partial, 2.17.1 full).",
       "Trusted source (NVD + Apache advisory) — emitting watermark clean=true.",
     ],
+    extracted: {
+      cwe: "CWE-502",
+      vector: "network",
+      products: ["log4j-core"],
+      versionRange: "< 2.15.0",
+      confidence: 0.96,
+    },
+    signature: {
+      inputs: ["canonical_text: str"],
+      outputs: ["cwe: str", "vector: str", "products: Product[]", "version_ranges: Range[]", "summary: str", "source_confidence: float"],
+    },
   },
 
   correlate_assets: {
     root: "nautilus://broker/correlate_assets",
     indexedAt: "live",
     visited: [
-      { path: "nautobot://devices/prod-edge-01",      score: 0.98, hit: "java/11-corretto · log4j 2.14.1" },
-      { path: "nautobot://devices/prod-edge-02",      score: 0.97, hit: "java/11-corretto · log4j 2.14.1" },
-      { path: "nautobot://devices/prod-edge-03",      score: 0.96, hit: "java/11-corretto · log4j 2.14.1" },
-      { path: "cmdb://services/order-api",            score: 0.81, hit: "transitive log4j 2.13.3 via spring-boot 2.5" },
-      { path: "cmdb://services/billing-worker",       score: 0.74, hit: "transitive log4j 2.14.0 via kafka-clients" },
-      { path: "nautilus://reachability/edge→billing", score: 0.62, hit: "south-bound TLS 443 · attestation ed25519:7c91" },
+      { path: "nautobot://devices/prod-edge-01",      score: 0.98, hit: "java/11-corretto · log4j 2.14.1", sourceType: "nautobot" },
+      { path: "nautobot://devices/prod-edge-02",      score: 0.97, hit: "java/11-corretto · log4j 2.14.1", sourceType: "nautobot" },
+      { path: "nautobot://devices/prod-edge-03",      score: 0.96, hit: "java/11-corretto · log4j 2.14.1", sourceType: "nautobot" },
+      { path: "cmdb://services/order-api",            score: 0.81, hit: "transitive log4j 2.13.3 via spring-boot 2.5", sourceType: "cmdb" },
+      { path: "cmdb://services/billing-worker",       score: 0.74, hit: "transitive log4j 2.14.0 via kafka-clients", sourceType: "cmdb" },
+      { path: "nautilus://reachability/edge→billing", score: 0.62, hit: "south-bound TLS 443 · attestation ed25519:7c91", sourceType: "reachability" },
     ],
     edgesFollowed: 28,
     nodesExpanded: 41,
+    totalHosts: 5,
+    exposedCount: 3,
+    assetClasses: ["nautobot device", "cmdb service"],
+    attestation: "ed25519:7c91…ab8d",
   },
 
   ssvc_evaluate: {
@@ -295,19 +319,33 @@ merged feeds:
       { label: "track",     target: "tier_terminal_track",  taken: false },
       { label: "defer",     target: "tier_terminal_defer",  taken: false },
     ],
+    dimensions: [
+      { name: "exploitation", value: "active",          level: 1.0 },
+      { name: "exposure",     value: "open",            level: 1.0 },
+      { name: "utility",      value: "super-effective", level: 1.0 },
+      { name: "human_impact", value: "very-high",       level: 1.0 },
+    ],
+    evalMethod: "fathom_cache_hit",
+    evalRule: "ssvc_v2.clp",
+    evalLatencyMs: 2,
+    evalConfidence: 1.00,
   },
 
   plan_template_lookup: {
     root: "kg://plan-kg/templates",
     indexedAt: "32 min ago",
     visited: [
-      { path: "plan-tpl/java-deser-upgrade",          score: 0.91, hit: "MATCH (t)-[:APPLIES_TO]->(c:Cwe{id:'CWE-502'})" },
-      { path: "plan-tpl/log4j-family-upgrade",        score: 0.88, hit: "product=log4j-core · range_lt=2.17.1" },
-      { path: "plan-tpl/transitive-bom-bump",         score: 0.71, hit: "spring-boot.parent → log4j-bom 2.17.1" },
-      { path: "retro://CVE-2021-45046/plan",          score: 0.83, hit: "PRIOR · upgrade=2.16.0 → drift detected, bumped" },
+      { path: "plan-tpl/java-deser-upgrade",          score: 0.91, hit: "MATCH (t)-[:APPLIES_TO]->(c:Cwe{id:'CWE-502'})", t: 1, isRetro: false },
+      { path: "plan-tpl/log4j-family-upgrade",        score: 0.88, hit: "product=log4j-core · range_lt=2.17.1", t: 2, isRetro: false },
+      { path: "retro://CVE-2021-45046/plan",          score: 0.83, hit: "PRIOR · upgrade=2.16.0 → drift detected, bumped", t: 3, isRetro: true },
+      { path: "plan-tpl/transitive-bom-bump",         score: 0.71, hit: "spring-boot.parent → log4j-bom 2.17.1", t: 4, isRetro: false },
     ],
     edgesFollowed: 12,
     nodesExpanded: 19,
+    queryInputs: { cwe: "CWE-502", assetClass: "java", runtime: "corretto-11" },
+    query: "MATCH (t:PlanTemplate)-[:APPLIES_TO]->(:Cwe{id:'CWE-502'})-[:ON]->(:AssetClass{id:'java'})-[:RUNTIME]->(:Runtime{id:'corretto-11'}) RETURN t ORDER BY t.score DESC LIMIT 5",
+    winner: { path: "plan-tpl/java-deser-upgrade", score: 0.91 },
+    retroOverlap: { cve: "CVE-2021-45046", insight: "upgrade=2.16.0 → drift detected, bumped to 2.17.1" },
   },
 
   remediation_discovery: {
@@ -316,6 +354,13 @@ merged feeds:
     elapsed: 26,
     tokens: 8420,
     file: "candidates.json",
+    sources: [
+      { id: "advisory", label: "advisory refs", sublabel: "apache.org",     confirmedAt: 3,  version: "2.17.1", detail: "recommends 2.17.1 (full fix)" },
+      { id: "registry", label: "registry",      sublabel: "maven-central",  confirmedAt: 7,  version: "2.17.1", detail: "latest=2.17.1 published 2021-12-28" },
+      { id: "ddg",      label: "DDG",           sublabel: "web search",     confirmedAt: 12, version: "2.17.1", detail: "3/6 results corroborate" },
+      { id: "searxng",  label: "SearXNG",       sublabel: "meta-search",    confirmedAt: 18, version: "2.17.1", detail: "4/5 top results converge" },
+    ],
+    consensus: { version: "2.17.1", confidence: "high", sourceCount: 4 },
     thoughts: [
       { t: 0,  k: "plan",  text: "Need a deterministic upgrade target for log4j-core < 2.15.0. Strategy: probe 4 sources (advisory refs, maven registry, DDG, SearXNG) → LM extract." },
       { t: 3,  k: "read",  text: "Fetched apache.org/log4j/security.html → recommends 2.17.1 (full fix, includes 2.16 / 2.17 fixes)." },
@@ -371,6 +416,14 @@ merged feeds:
 
   sandbox_run: {
     cmd: "docker run --rm cargonet/log4j-2.14:cve-2021-44228 -- /sandbox/verify.sh 2.17.1",
+    image: "cargonet/log4j-2.14:cve-2021-44228",
+    imageSha: "7c91…ab8d",
+    phases: [
+      { id: "before", label: "BEFORE", result: "VULNERABLE", detail: "JNDI lookup FIRED · RCE class loaded", expected: true, doneAt: 0.30 },
+      { id: "apply",  label: "APPLY",  result: "2.14.1 → 2.17.1", detail: "rebuild ok · 1 module · 4.2s", doneAt: 0.60 },
+      { id: "after",  label: "AFTER",  result: "CLEAN", detail: "lookups disabled · no JNDI fired", doneAt: 0.90 },
+    ],
+    divergence: { drift: 0, sig: "cargonet ↔ prod ed25519:7c91 match" },
     output:
 `[sandbox] image cargonet/log4j-2.14:cve-2021-44228 (sha256:7c91…ab8d)
 [sandbox] phase=BEFORE

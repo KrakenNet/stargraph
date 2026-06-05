@@ -135,7 +135,7 @@ async def _deploy(args):
         labs = await _http_get(client, "/api/v1/labs")
         lab = None
         for la in (labs or {}).get("items", []):
-            if la.get("node_count") == 35 and la.get("status") == "running":
+            if la.get("node_count", 0) >= 35 and la.get("status") == "running":
                 lab = la
                 break
         if lab is None:
@@ -260,6 +260,55 @@ async def _amain(args):
     return 0 if not summary["errors"] else 1
 
 
+def _build_base_image():
+    """Build harbor-h11-base:latest from Dockerfile.h11-base."""
+    import subprocess  # noqa: S404
+    dockerfile = _FIXTURES / "Dockerfile.h11-base"
+    if not dockerfile.is_file():
+        print(f"! Dockerfile not found: {dockerfile}")
+        return False
+    print(f"  building harbor-h11-base:latest from {dockerfile} ...")
+    result = subprocess.run(
+        ["docker", "build", "-t", "harbor-h11-base:latest",
+         "-f", str(dockerfile), str(_FIXTURES)],
+        capture_output=True, text=True, timeout=600,
+    )
+    if result.returncode != 0:
+        print(f"  ! docker build failed:\n{result.stderr[-500:]}")
+        return False
+    print("  harbor-h11-base:latest built OK")
+    return True
+
+
+_ROLES = ("web", "api", "worker", "db", "fw", "idp", "jump", "rtr", "sw")
+
+
+def _build_role_images():
+    """Build harbor-h11-<role>:latest for each role from Dockerfile.h11-roles."""
+    import subprocess  # noqa: S404
+    dockerfile = _FIXTURES / "Dockerfile.h11-roles"
+    if not dockerfile.is_file():
+        print(f"! Dockerfile not found: {dockerfile}")
+        return False
+    ok = True
+    for role in _ROLES:
+        tag = f"harbor-h11-{role}:latest"
+        print(f"  building {tag} ...")
+        result = subprocess.run(
+            ["docker", "build",
+             "--build-arg", f"ROLE={role}",
+             "-t", tag,
+             "-f", str(dockerfile), str(_FIXTURES)],
+            capture_output=True, text=True, timeout=600,
+        )
+        if result.returncode != 0:
+            print(f"  ! {tag} build failed:\n{result.stderr[-500:]}")
+            ok = False
+        else:
+            print(f"  {tag} built OK")
+    return ok
+
+
 def main():
     ap = argparse.ArgumentParser(description="deploy h11 + push CVE markers")
     ap.add_argument("--reuse", action="store_true",
@@ -268,7 +317,17 @@ def main():
                     help="don't (re)deploy; use existing meta only")
     ap.add_argument("--skip-markers", action="store_true",
                     help="don't push CVE markers; deploy lab only")
+    ap.add_argument("--build-image", action="store_true",
+                    help="build harbor-h11-base:latest before deploy")
+    ap.add_argument("--build-images", action="store_true",
+                    help="build per-role harbor-h11-<role>:latest images before deploy")
     args = ap.parse_args()
+    if args.build_images:
+        if not _build_role_images():
+            return 1
+    elif args.build_image:
+        if not _build_base_image():
+            return 1
     return asyncio.run(_amain(args))
 
 

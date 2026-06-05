@@ -177,9 +177,17 @@ class CveRemFathomAdapter(FathomAdapter):
                 _fathom.AssertSpec(template="state", slots=state_slots)
             )
 
-        # response fact — populated only when a HITL response has been
-        # posted. State carries it under ``response_decision``.
-        decision = str(getattr(state, "response_decision", "") or "")
+        # response fact — populated once a HITL decision exists in state.
+        # HITL nodes (HitlPlanReviewNode etc.) write a ``HitlResponse``
+        # object onto ``state.response`` with a ``.decision`` field (offline
+        # auto-approve sets it inline; the HTTP /respond path sets it on
+        # resume). Read the nested object first, then fall back to a flat
+        # ``response_decision`` field. Routing templates are retracted +
+        # re-asserted each tick, so this reflects the current decision only.
+        resp_obj = getattr(state, "response", None)
+        decision = str(getattr(resp_obj, "decision", "") or "") if resp_obj else ""
+        if not decision:
+            decision = str(getattr(state, "response_decision", "") or "")
         if decision:
             specs.append(
                 _fathom.AssertSpec(
@@ -326,7 +334,8 @@ def build_cve_rem_fathom(
         # caller populates which.
         (
             "(deftemplate harbor.evidence "
-            "(slot _run_id) (slot _step) "
+            "(slot _origin) (slot _source) (slot _run_id) (slot _step) "
+            "(slot _confidence) (slot _timestamp) "
             "(slot data) (slot text) (slot kind) "
             "(slot buffer_used) (slot max) (slot block_seconds))"
         ),
@@ -334,18 +343,26 @@ def build_cve_rem_fathom(
     for stub in _audit_stubs:
         _install_template(engine, stub)
     # Also register harbor.evidence in the Python-side template_registry so
-    # ``assert_with_provenance`` finds it via the typed path.
-    engine.template_registry["harbor.evidence"] = TemplateDefinition(
+    # ``assert_with_provenance`` finds it via the typed path. Fathom 0.3.1
+    # tightened TemplateDefinition.name to reject dots ([A-Za-z_]...), but
+    # the framework's HITL respond path (harbor/graph/run.py:559) asserts
+    # the literal "harbor.evidence" name. Use model_construct() to bypass
+    # the pydantic identifier check — the CLIPS engine already accepts the
+    # dotted name via the raw deftemplate string above.
+    _evidence_slots = _prov_slots + [
+        SlotDefinition(name="data", type="string"),
+        SlotDefinition(name="text", type="string"),
+        SlotDefinition(name="kind", type="string"),
+        SlotDefinition(name="buffer_used", type="integer"),
+        SlotDefinition(name="max", type="integer"),
+        SlotDefinition(name="block_seconds", type="string"),
+    ]
+    engine.template_registry["harbor.evidence"] = TemplateDefinition.model_construct(
         name="harbor.evidence",
         description="HITL respond + bus backpressure evidence",
-        slots=_prov_slots + [
-            SlotDefinition(name="data", type="string"),
-            SlotDefinition(name="text", type="string"),
-            SlotDefinition(name="kind", type="string"),
-            SlotDefinition(name="buffer_used", type="integer"),
-            SlotDefinition(name="max", type="integer"),
-            SlotDefinition(name="block_seconds", type="string"),
-        ],
+        slots=_evidence_slots,
+        ttl=None,
+        scope="session",
     )
 
     # Install routing scaffold (state + node-id + response deftemplates).

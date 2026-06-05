@@ -20,10 +20,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(name)s %(levelname)s %(message)s",
+)
 
 from demos.sentinel_dark_watch.capabilities import build_sdw_capabilities
 
@@ -145,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     default_graphs = [
         str(graph_dir / "harbor.yaml"),
         str(graph_dir / "retrain.yaml"),
+        str(graph_dir / "evolve.yaml"),
     ]
     graph_paths = [Path(p) for p in (args.graph or default_graphs)]
     graphs: dict[str, Any] = {}
@@ -162,6 +169,105 @@ def main(argv: list[str] | None = None) -> int:
             f"(nodes={len(ir_doc.nodes)}, hash={graph_obj.graph_hash[:12]}, path={path})"
         )
 
+    # Bootstrap Fathom engine with Bosun governance packs.
+    fathom_adapter = None
+    try:
+        import fathom as _fathom
+
+        from harbor.fathom._adapter import FathomAdapter
+
+        engine = _fathom.Engine(default_decision="deny")
+        fathom_adapter = FathomAdapter(engine)
+        fathom_adapter.register_harbor_action_template()
+
+        # Register harbor_action in Fathom's template registry so query() works
+        from fathom.models import SlotDefinition, TemplateDefinition
+
+        harbor_action_def = TemplateDefinition(
+            name="harbor_action",
+            description="Harbor routing action",
+            slots=[
+                SlotDefinition(name="kind", type="symbol"),
+                SlotDefinition(name="target", type="string"),
+                SlotDefinition(name="reason", type="string"),
+                SlotDefinition(name="rule_id", type="string"),
+                SlotDefinition(name="step", type="integer"),
+                SlotDefinition(name="join", type="string"),
+                SlotDefinition(name="fact", type="string"),
+                SlotDefinition(name="slots", type="string"),
+                SlotDefinition(name="pattern", type="string"),
+            ],
+        )
+        engine.template_registry["harbor_action"] = harbor_action_def
+
+        # Install CLIPS deftemplate stubs for audit pack (dots OK in CLIPS)
+        _harbor_stubs = [
+            "(deftemplate harbor.transition (slot _run_id) (slot _step) (slot kind))",
+            "(deftemplate harbor.tool_call (slot _run_id) (slot _step) (slot name))",
+            "(deftemplate harbor.node_run (slot _run_id) (slot _step) (slot node_id))",
+            "(deftemplate harbor.respond (slot _run_id) (slot _step) (slot caller))",
+            "(deftemplate harbor.cancel (slot _run_id) (slot _step) (slot reason))",
+            "(deftemplate harbor.pause (slot _run_id) (slot _step) (slot reason))",
+            "(deftemplate harbor.artifact_write (slot _run_id) (slot _step) (slot artifact_id))",
+        ]
+        for stub in _harbor_stubs:
+            engine._env.build(stub)
+
+        # Load Bosun packs declared in any graph's governance section.
+        bosun_root = Path(__file__).parent.parent.parent / "src" / "harbor" / "bosun"
+        sdw_bosun_root = Path(__file__).parent / "bosun"
+        loaded_packs: set[str] = set()
+        for graph_obj in graphs.values():
+            for pack in graph_obj.ir.governance:
+                if pack.id in loaded_packs:
+                    continue
+                # Resolve pack location: harbor.bosun.X → src/harbor/bosun/X
+                # sdw.X → demos/sentinel_dark_watch/bosun/X
+                parts = pack.id.split(".")
+                if parts[0] == "harbor" and parts[1] == "bosun" and len(parts) > 2:
+                    pack_dir = bosun_root / parts[2]
+                elif parts[0] == "sdw" and len(parts) > 1:
+                    pack_dir = sdw_bosun_root / parts[1]
+                else:
+                    print(f"[serve_sdw] unknown pack namespace: {pack.id}")
+                    continue
+
+                rules_path = pack_dir / "rules.clp"
+                if rules_path.exists():
+                    src = rules_path.read_text(encoding="utf-8")
+                    # Strip CLIPS comments and split into constructs
+                    lines = []
+                    for line in src.splitlines():
+                        idx = line.find(";")
+                        lines.append(line[:idx] if idx >= 0 else line)
+                    clean = "\n".join(lines)
+                    constructs, cur, depth = [], [], 0
+                    for ch in clean:
+                        if depth == 0 and ch.isspace():
+                            continue
+                        cur.append(ch)
+                        if ch == "(":
+                            depth += 1
+                        elif ch == ")":
+                            depth -= 1
+                            if depth == 0:
+                                constructs.append("".join(cur))
+                                cur = []
+                    for construct in constructs:
+                        engine._env.build(construct)
+                    loaded_packs.add(pack.id)
+                    print(f"[serve_sdw] loaded Bosun pack {pack.id!r} from {rules_path}")
+                else:
+                    print(f"[serve_sdw] Bosun pack {pack.id!r} not found at {rules_path}")
+
+        if loaded_packs:
+            print(f"[serve_sdw] Fathom engine ready with {len(loaded_packs)} governance packs")
+        else:
+            fathom_adapter = None
+            print("[serve_sdw] no Bosun packs loaded — Fathom disabled")
+    except ImportError:
+        print("[serve_sdw] fathom not installed — governance disabled")
+
     deps: dict[str, Any] = {
         "scheduler": scheduler,
         "runs": {},
@@ -176,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
             "stores": StoreRegistry(),
         },
         "capabilities": build_sdw_capabilities(),
+        "fathom": fathom_adapter,
     }
 
     # ---- APScheduler nightly retrain trigger (02:00 UTC) ----------------
@@ -262,6 +369,21 @@ def main(argv: list[str] | None = None) -> int:
                 json={
                     "graph_id": "graph:sdw-pipeline",
                     "state": {"tile_queue": tile_ids, "run_id": f"scan-{int(__import__('time').time())}"},
+                },
+            )
+            return resp.json()
+
+    @app.post("/sdw/evolve")
+    async def _evolve() -> dict[str, Any]:
+        """Trigger one evolution (self-improvement) cycle."""
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"http://localhost:{args.port}/v1/runs",
+                json={
+                    "graph_id": "graph:sdw-evolve",
+                    "state": {"run_id": f"evolve-{int(__import__('time').time())}"},
                 },
             )
             return resp.json()

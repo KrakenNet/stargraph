@@ -119,7 +119,7 @@ def test_extract_vuln_class_offline_falls_back_to_heuristic(
     out = asyncio.run(ExtractTrustedNode().execute(state, _ctx()))
     assert out["vuln_class"] == "library"
     assert out["vuln_class_source"] == "heuristic"
-    assert out["last_vuln_class_lm_error"] == "LLM_BASE_URL or LLM_MODEL unset"
+    assert out["last_vuln_class_lm_error"] == "DSPy LM not configured"
 
 
 def test_extract_vuln_class_lm_supersedes_heuristic(

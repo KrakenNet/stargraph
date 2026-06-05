@@ -4,7 +4,7 @@
 For each CVE in the spec, emits:
 1. fixtures/nvd/<CVE>.json — minimal NVD-shape JSON (configurations, descriptions, metrics, weaknesses, references, cisa* fields)
 2. CMDB binding entry into h11_cmdb_seed.json (additive — preserves existing entries)
-3. fixtures/vuln_install_recipes/<CVE>.yaml — sandbox-friendly planted-marker recipe with real CVE audit_signal content
+3. fixtures/vuln_install_recipes/<CVE>.yaml
 
 Recipe schema: vuln_class drives sandbox_runtime via the dispatcher's
 _SANDBOX_BY_VULN_CLASS map (library/application/web-framework/host/container → docker_compose).
@@ -201,6 +201,8 @@ def _build_cmdb_binding(spec: dict) -> dict:
 
 
 def _build_recipe(spec: dict) -> dict:
+    from demos.cve_remediation.scripts._install_map import _INSTALL_MAP
+
     cve = spec["cve_id"]
     vendor = spec["vendor"]
     product = spec["product"]
@@ -210,71 +212,65 @@ def _build_recipe(spec: dict) -> dict:
     affected_repr = ",".join(affected) if affected else "all"
     cwe = spec["expected_cwe"]
     vuln_class = spec["vuln_class"]
-    # Marker path under /opt/cve-rem/ — sandbox-readable
-    marker_path = f"/opt/cve-rem/{cve.lower()}/audit_signature.txt"
-    config_path = f"/opt/cve-rem/{cve.lower()}/{_slug(product)}.conf"
-    setup = ["mkdir -p /opt/cve-rem/" + cve.lower()]
+
+    imap = _INSTALL_MAP.get(cve)
+    if not imap:
+        # Fallback: CVE not in install map — use config_vendor stub
+        imap = {
+            "install_type": "config_vendor",
+            "install_channel": "app",
+            "package_name": _slug(product),
+            "vulnerable_version": affected[0] if affected else "unknown",
+            "fixed_version": fixed,
+            "setup_cmd": f"mkdir -p /opt/apps/{_slug(product)}",
+            "install_cmd": f"echo '{affected[0] if affected else 'unknown'}' > /opt/apps/{_slug(product)}/VERSION",
+            "probe_cmd": f"cat /opt/apps/{_slug(product)}/VERSION 2>/dev/null | xargs -I{{}} echo 'Version: {{}}'",
+            "fix_cmd": f"echo '{fixed}' > /opt/apps/{_slug(product)}/VERSION",
+        }
+
+    install_type = imap["install_type"]
+    install_channel = imap["install_channel"]
+    pkg_name = imap["package_name"]
+    vuln_ver = imap["vulnerable_version"]
+    fix_ver = imap["fixed_version"]
+    setup_cmd = imap.get("setup_cmd", "")
+    install_cmd = imap.get("install_cmd", "")
+    probe_cmd = imap["probe_cmd"]
+    fix_cmd = imap["fix_cmd"]
+
+    setup = [setup_cmd] if setup_cmd else []
+    state = [{"kind": "shell", "cmd": install_cmd}] if install_cmd else []
+
     description = (
         f"{cve}: {spec['vuln_name']}.\n"
         f"Affected: {vendor} {product} {affected_repr}.\n"
         f"Fixed in: {fixed}.\n"
         f"Audit signature: {audit}\n"
         f"CWE: {cwe} ({_CWE_TO_CWE_NAME.get(cwe, 'Other')}).\n"
-        f"Recipe plants the signature on the host so the pipeline's sandbox "
-        f"probe (read-only static_detection or planted-file grep) can detect "
-        f"the vulnerable state. Fix removes the marker; production fix is the "
-        f"vendor upgrade in fix.rationale."
+        f"Install method: {install_type} via {install_channel}.\n"
+        f"Package: {pkg_name} {vuln_ver} → {fix_ver}."
     )
-    state = [
-        {
-            "kind": "write_file",
-            "path": marker_path,
-            "mode": "0644",
-            "content": (
-                f"# CVE-REM v2 audit marker for {cve}\n"
-                f"# vendor={vendor}\n"
-                f"# product={product}\n"
-                f"# affected_versions={affected_repr}\n"
-                f"# fixed_version={fixed}\n"
-                f"# cwe={cwe}\n"
-                f"# audit_signal: {audit}\n"
-                f"VULNERABLE_VERSION={affected[0] if affected else 'unknown'}\n"
-                f"SIGNATURE_HASH={cve.lower()}-{_slug(product)}-vulnerable\n"
-            ),
-        },
-        {
-            "kind": "write_file",
-            "path": config_path,
-            "mode": "0644",
-            "content": (
-                f"# {product} configuration marked vulnerable for {cve}\n"
-                f"version = \"{affected[0] if affected else 'unknown'}\"\n"
-                f"status = \"unpatched\"\n"
-                f"required_fix_version = \"{fixed}\"\n"
-            ),
-        },
-    ]
-    probe_cmd = (
-        f"test -f {marker_path} && "
-        f"grep -q 'SIGNATURE_HASH={cve.lower()}-{_slug(product)}-vulnerable' {marker_path} && "
-        f"grep -q 'status = \"unpatched\"' {config_path}"
-    )
-    fix_cmd = f"rm -f {marker_path} && sed -i 's/status = \"unpatched\"/status = \"patched-{fixed}\"/' {config_path}"
     rationale = (
-        f"Real fix: upgrade {vendor} {product} to {fixed} per vendor advisory "
-        f"(NVD {cve}). Recipe simulates upgrade by clearing the audit marker + "
-        f"flipping the config status flag — production playbook bumps the "
-        f"package via RemediationDiscoveryNode-emitted apt/yum/apk/maven ops."
+        f"Upgrade {vendor} {product} to {fix_ver} per vendor advisory "
+        f"(NVD {cve}). Install channel: {install_channel}."
     )
+    if imap.get("not_applicable_reason"):
+        description += f"\nNOT APPLICABLE: {imap['not_applicable_reason']}"
+        rationale = imap["not_applicable_reason"]
+
     return {
         "cve_id": cve,
         "vuln_class": vuln_class,
-        "install_type": "config_file",
+        "install_type": install_type,
+        "install_channel": install_channel,
+        "package_name": pkg_name,
+        "vulnerable_version": vuln_ver,
+        "fixed_version": fix_ver,
         "audit_signal": audit,
         "description": description,
         "setup": setup,
         "state": state,
-        "probe": {"cmd": probe_cmd, "description": f"detect {cve} marker + unpatched flag"},
+        "probe": {"cmd": probe_cmd, "description": f"detect {cve} vulnerable {pkg_name} {vuln_ver}"},
         "fix": {"cmd": fix_cmd, "rationale": rationale},
     }
 

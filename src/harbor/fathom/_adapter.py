@@ -168,12 +168,24 @@ class FathomAdapter:
             payload = json.loads(payload_raw) if payload_raw else {}
         else:
             payload = payload_raw
+        # Coerce empty strings to None so CLIPS-asserted facts (which
+        # cannot carry true NULL slot values) round-trip cleanly.
+        cap_raw = fact.get("requested_capability")
+        cap = cap_raw if cap_raw else None
+        timeout_raw = fact.get("timeout")
+        if timeout_raw in (None, "", "None"):
+            timeout: Any = None
+        else:
+            try:
+                timeout = float(timeout_raw)
+            except (TypeError, ValueError):
+                timeout = timeout_raw
         kwargs: dict[str, Any] = {
             "prompt": fact.get("prompt"),
             "interrupt_payload": payload,
-            "requested_capability": fact.get("requested_capability"),
-            "timeout": fact.get("timeout"),
-            "on_timeout": fact.get("on_timeout", "halt"),
+            "requested_capability": cap,
+            "timeout": timeout,
+            "on_timeout": fact.get("on_timeout") or "halt",
         }
         return InterruptAction(**kwargs)
 

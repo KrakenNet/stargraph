@@ -183,10 +183,10 @@ export function startHitlResponder(
         // fetch error, retry
       }
 
-      // 60s-per-gate watchdog
-      if (Date.now() - lastProgressTs > 60_000) {
+      // 180s-per-gate watchdog (LLM inference on large models can be slow)
+      if (Date.now() - lastProgressTs > 180_000) {
         console.error(
-          `[hitl-responder] watchdog: no progress for 60s, force-stopping`
+          `[hitl-responder] watchdog: no progress for 180s, force-stopping`
         );
         running = false;
         break;

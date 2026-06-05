@@ -8894,7 +8894,7 @@ async def _sn_create_doc(
         from harbor.tools.servicenow import table_create
         r = await table_create(
             table_name="x_krn_document_doc",
-            body={"name": name, "description": description, "state": "draft", "type": "policy", "public": "true"},
+            body={"name": name, "description": description, "state": "published", "type": "policy", "public": "true"},
         )
         return r.get("sys_id", ""), r.get("error", "")
     except Exception as exc:  # noqa: BLE001

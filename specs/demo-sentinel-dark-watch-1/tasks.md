@@ -818,7 +818,7 @@ total_tasks: 83
 
 ## Phase 5: PR Lifecycle
 
-- [ ] 5.1 Create PR
+- [x] 5.1 Create PR
   - **Do**:
     1. Verify on feature branch: `git branch --show-current`
     2. Stage all new SDW files: `git add demos/sentinel_dark_watch/ pyproject.toml .gitignore`
@@ -828,7 +828,7 @@ total_tasks: 83
   - **Done when**: PR created and open
   - **Commit**: None (PR creation, not code change)
 
-- [ ] 5.2 CI monitoring loop
+- [x] 5.2 CI monitoring loop
   - **Do**:
     1. Check CI status: `gh pr checks`
     2. If failures: read failure details, fix locally, commit, push
@@ -838,7 +838,7 @@ total_tasks: 83
   - **Done when**: All CI checks green
   - **Commit**: `fix(sdw): address CI failures` (if fixes needed)
 
-- [ ] 5.3 Review resolution loop
+- [x] 5.3 Review resolution loop
   - **Do**:
     1. Check for review comments: `gh pr view --json reviews`
     2. Address each comment with code fixes
@@ -848,7 +848,7 @@ total_tasks: 83
   - **Done when**: No unresolved review comments
   - **Commit**: `fix(sdw): address review feedback` (if fixes needed)
 
-- [ ] 5.4 Final validation
+- [x] 5.4 Final validation
   - **Do**:
     1. Verify all Phase 1-4 tasks complete
     2. Verify CI green: `gh pr checks`

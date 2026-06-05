@@ -1,14 +1,9 @@
-// app.jsx — shell, transport controls, timeline, tweaks
+// app.jsx — shell, transport controls, timeline
 
 const { useState: useState2, useEffect: useEffect2, useRef: useRef2, useMemo: useMemo2 } = React;
 
-const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "speed": 1,
-  "panelSide": "left",
-  "accent": "emerald",
-  "density": "regular",
-  "wireSimplification": "default"
-}/*EDITMODE-END*/;
+if (!window.t) window.t = { speed: 1, accent: "emerald", panelSide: "left", density: "default" };
+const t = window.t;
 
 const ACCENT_MAP = {
   emerald: { accent: "#3ddc97", accentDim: "rgba(61,220,151,.14)", ring: "rgba(61,220,151,.4)" },
@@ -18,7 +13,6 @@ const ACCENT_MAP = {
 };
 
 function App() {
-  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
   // Optional ?run=<run_id> binds the watcher to a live harbor WS stream. With
   // no query param the page plays a deterministic simulated cve-rem run so the
@@ -64,7 +58,7 @@ function App() {
   // and we have no audit-log replay to drive a from-scratch playback).
   useEffect2(() => {
     if (!wsRunId) return;
-    fetch(`/v1/runs/${encodeURIComponent(wsRunId)}`)
+    fetch(window.apiUrl(`/v1/runs/${encodeURIComponent(wsRunId)}`))
       .then((r) => r.ok ? r.json() : null)
       .then((j) => {
         if (j && (j.status === "done" || j.status === "failed" || j.status === "cancelled")) {
@@ -77,8 +71,7 @@ function App() {
 
   useEffect2(() => {
     if (!wsRunId) return;
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${window.location.host}/v1/runs/${wsRunId}/stream`;
+    const url = window.wsUrl(`/v1/runs/${wsRunId}/stream`);
     const stageStart = new Map(WORKGRAPH.nodes.map((n) => [n.id, n.startAt]));
     let ws = null;
     let stopped = false;
@@ -167,70 +160,12 @@ function App() {
         </section>
       </main>
 
-      <Timeline
-        clock={clock}
-        onScrub={(v) => { setClock(v); setSelectedId(null); }}
+      <BottomBus
+        topo={{ order: WORKGRAPH.nodes.filter(n => n.type !== "start" && n.type !== "end").map(n => n.id) }}
+        nodeStatus={new Map(WORKGRAPH.nodes.filter(n => n.type !== "start" && n.type !== "end").map(n => [n.id, statusFor(n, clock)]))}
         selectedId={selectedId}
-        onClearSelection={() => setSelectedId(null)}
-        viewingLive={!selectedId}
+        onSelect={(id) => { setSelectedId(id); if (id) setPlaying(false); }}
       />
-
-      <TweaksPanel>
-        <TweakSection label="Playback" />
-        <TweakSlider
-          label="Speed"
-          value={t.speed}
-          min={0.25}
-          max={4}
-          step={0.25}
-          unit="×"
-          onChange={(v) => setTweak("speed", v)}
-        />
-
-        <TweakSection label="Layout" />
-        <TweakRadio
-          label="Graph side"
-          value={t.panelSide}
-          options={["left", "right"]}
-          onChange={(v) => setTweak("panelSide", v)}
-        />
-        <TweakRadio
-          label="Density"
-          value={t.density}
-          options={["compact", "regular", "comfy"]}
-          onChange={(v) => setTweak("density", v)}
-        />
-
-        <TweakSection label="Theme" />
-        <TweakColor
-          label="Accent"
-          value={t.accent}
-          options={["emerald", "amber", "cyan", "violet"]}
-          swatches={[ACCENT_MAP.emerald.accent, ACCENT_MAP.amber.accent, ACCENT_MAP.cyan.accent, ACCENT_MAP.violet.accent]}
-          onChange={(v) => setTweak("accent", v)}
-        />
-      </TweaksPanel>
-    </div>
-  );
-}
-
-// TweakColor wrapper — the starter expects hex strings; we want named accents.
-// Re-implement as a small swatch row.
-function TweakColor({ label, value, options, swatches, onChange }) {
-  return (
-    <div className="twk-row">
-      <div className="twk-lbl"><span>{label}</span><span className="twk-val">{value}</span></div>
-      <div className="twk-swatches">
-        {options.map((opt, i) => (
-          <button
-            key={opt}
-            className={"twk-swatch " + (opt === value ? "is-on" : "")}
-            style={{ background: swatches[i] }}
-            onClick={() => onChange(opt)}
-            aria-label={opt}
-          />
-        ))}
-      </div>
     </div>
   );
 }
@@ -331,6 +266,60 @@ function Timeline({ clock, onScrub, selectedId, onClearSelection, viewingLive })
   );
 }
 
+// ─── Harbor server picker (above CVE input) ────────────────────────────────
+
+function LauncherServerRow() {
+  const initial = (window.getApiBase && window.getApiBase()) || "";
+  const [val, setVal] = useState2(initial);
+  const [savedAt, setSavedAt] = useState2(0);
+  const dirty = (val || "") !== (initial || "");
+  const apply = () => {
+    window.setApiBase((val || "").trim());
+    setSavedAt(Date.now());
+    // Reload so runs list + future fetches re-hit new base.
+    setTimeout(() => window.location.reload(), 150);
+  };
+  const reset = () => {
+    setVal("");
+    window.clearApiBase();
+    setSavedAt(Date.now());
+    setTimeout(() => window.location.reload(), 150);
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--fg-3)" }}>
+        <span style={{ textTransform: "uppercase", letterSpacing: ".08em" }}>harbor server</span>
+        <span className="mono" style={{ color: initial ? "var(--info)" : "var(--fg-2)" }}>
+          {initial ? initial : "(same-origin)"}
+        </span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 6 }}>
+        <input
+          className="launcher-input"
+          placeholder="http://host:port  (blank = same-origin)"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && dirty) apply(); }}
+          style={{ fontSize: 12, padding: "6px 10px" }}
+        />
+        <button
+          className="launcher-go"
+          onClick={apply}
+          disabled={!dirty}
+          style={{ padding: "6px 14px", fontSize: 12 }}
+        >save</button>
+        <button
+          className="ghost-btn"
+          onClick={reset}
+          disabled={!initial && !val}
+          title="Clear override (use same-origin)"
+          style={{ padding: "6px 10px", fontSize: 12 }}
+        >reset</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Launcher (CVE input + recent runs) ────────────────────────────────────
 
 const CVE_GRAPH_ID = "graph:cve-rem-pipeline";
@@ -348,7 +337,7 @@ function Launcher() {
 
   const loadRuns = async () => {
     try {
-      const res = await fetch("/v1/runs?limit=25");
+      const res = await fetch(window.apiUrl("/v1/runs?limit=25"));
       if (!res.ok) return;
       const j = await res.json();
       setRuns(Array.isArray(j.items) ? j.items : []);
@@ -370,7 +359,7 @@ function Launcher() {
     setErr("");
     setSubmitting(true);
     try {
-      const res = await fetch("/v1/runs", {
+      const res = await fetch(window.apiUrl("/v1/runs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -399,6 +388,8 @@ function Launcher() {
           <span className="launcher-brand">cve-rem · run watcher</span>
           <span className="launcher-sub">graph:cve-rem-pipeline</span>
         </div>
+
+        <LauncherServerRow />
 
         <div className="launcher-title">Run a CVE</div>
         <div className="launcher-row">

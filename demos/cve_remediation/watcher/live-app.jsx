@@ -94,14 +94,45 @@ function topoSort(nodes /*, edges */) {
 
 function applyEventToStatus(prev, ev) {
   // Pure reducer: take a node-status map and one Event, return the new map.
+  // Parallel branches emit transitions out of step order — never demote a node
+  // that has already settled (done/failed/skipped) back to running.
   const next = new Map(prev);
+  const terminalStatus = (s) => s === "done" || s === "failed" || s === "skipped";
   if (ev.type === "transition") {
-    if (ev.from_node && ev.from_node !== "__start__") next.set(ev.from_node, "done");
-    if (ev.to_node) next.set(ev.to_node, "running");
-  } else if (ev.type === "result") {
-    // Snap every still-pending/running to done (terminal).
+    if (ev.from_node && ev.from_node !== "__start__") {
+      const cur = next.get(ev.from_node);
+      if (cur !== "failed" && cur !== "skipped") {
+        // reason="interrupt" → run paused at this node awaiting HITL response.
+        next.set(ev.from_node, ev.reason === "interrupt" ? "waiting" : "done");
+      }
+    }
+    if (ev.to_node) {
+      const cur = next.get(ev.to_node);
+      if (!terminalStatus(cur) && cur !== "waiting") next.set(ev.to_node, "running");
+    }
+  } else if (ev.type === "waiting_for_input") {
+    // Run is paused at a HITL gate. Out-of-order parallel transitions may have
+    // left nodes "running" — promote them to done. The HITL node itself was
+    // already marked "waiting" by its interrupt transition.
     for (const [k, v] of next) {
-      if (v !== "skipped" && v !== "failed") next.set(k, "done");
+      if (v === "running") next.set(k, "done");
+    }
+  } else if (ev.type === "branch_completed") {
+    // A parallel sub-branch finished. We don't get a node id, but the branch's
+    // tail node should already have transitioned out. Nothing extra to do —
+    // the don't-demote guard above keeps later out-of-order events from
+    // marking tail nodes "running" again.
+  } else if (ev.type === "respond_received" || ev.type === "resumed") {
+    // HITL responded — paused waiting node resumes via downstream transition.
+    for (const [k, v] of next) {
+      if (v === "waiting") next.set(k, "done");
+    }
+  } else if (ev.type === "result") {
+    // Run terminated. Running/waiting nodes finished → done. Pending nodes
+    // were never reached by the router (branch not taken) → skipped.
+    for (const [k, v] of next) {
+      if (v === "running" || v === "waiting") next.set(k, "done");
+      else if (v === "pending") next.set(k, "skipped");
     }
   } else if (ev.type === "error" && ev.scope === "node") {
     // No node id on the event itself; fall back to "current running" mark.
@@ -114,12 +145,57 @@ function applyEventToStatus(prev, ev) {
 
 // ─── Live header ───────────────────────────────────────────────────────────
 
-function LiveTopBar({ runId, status, currentLabel, nodeCount, eventsCount, onShare, elapsedMs, completedCount, wsState, wsFrames }) {
+function ServerPill() {
+  const base = (window.getApiBase && window.getApiBase()) || "";
+  const label = base ? base.replace(/^https?:\/\//, "") : "same-origin";
+  const color = base ? "var(--info)" : "var(--fg-3)";
+  const onClick = () => {
+    const current = base || "";
+    const next = window.prompt(
+      "Harbor server URL (e.g. http://other-host:9000). Leave blank for same-origin.",
+      current,
+    );
+    if (next === null) return; // cancel
+    window.setApiBase(next.trim());
+    window.location.reload();
+  };
+  return (
+    <button
+      className="mono"
+      onClick={onClick}
+      title={base ? `Harbor API: ${base} (click to change)` : "Using same-origin (click to point at remote harbor server)"}
+      style={{
+        fontSize: 11,
+        color,
+        border: `1px solid ${color}`,
+        background: "transparent",
+        borderRadius: 4,
+        padding: "2px 6px",
+        marginRight: 8,
+        cursor: "pointer",
+      }}
+    >
+      srv:{label}
+    </button>
+  );
+}
+
+function LiveTopBar({ runId, status, currentLabel, nodeCount, eventsCount, collapsed, onToggleCollapse, onShare, elapsedMs, completedCount, wsState, wsFrames, autoFollow, onToggleAutoFollow, onStopRun, cveId }) {
   const wsColor = wsState === "open" ? "var(--ok)" : wsState === "closed" ? "var(--fg-3)" : "var(--warn)";
   const wsLabel = wsState === "open" ? "live" : wsState === "reconnecting" ? "reconnect" : wsState === "closed" ? "off" : wsState;
   return (
     <header className="topbar">
       <div className="topbar-l">
+          <button
+            className="ghost-btn gp-collapse-btn"
+            onClick={onToggleCollapse}
+            title={collapsed ? "Expand panel" : "Collapse panel"}
+            style={{ padding: "0px", fontSize: 14, lineHeight: 1 }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" viewBox="0 0 24 24" fill="none">
+              <path d="M11 5V19M6 8H8M6 11H8M6 14H8M6.2 19H17.8C18.9201 19 19.4802 19 19.908 18.782C20.2843 18.5903 20.5903 18.2843 20.782 17.908C21 17.4802 21 16.9201 21 15.8V8.2C21 7.0799 21 6.51984 20.782 6.09202C20.5903 5.71569 20.2843 5.40973 19.908 5.21799C19.4802 5 18.9201 5 17.8 5H6.2C5.0799 5 4.51984 5 4.09202 5.21799C3.71569 5.40973 3.40973 5.71569 3.21799 6.09202C3 6.51984 3 7.07989 3 8.2V15.8C3 16.9201 3 17.4802 3.21799 17.908C3.40973 18.2843 3.71569 18.5903 4.09202 18.782C4.51984 19 5.07989 19 6.2 19Z" stroke="#f1f3f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         <div className="brand">
           <span className="brand-mark" aria-hidden>◐</span>
           <span className="brand-name">WorkGraph</span>
@@ -130,6 +206,27 @@ function LiveTopBar({ runId, status, currentLabel, nodeCount, eventsCount, onSha
           <span className="muted">/</span>cve-rem
           <span className="muted">/runs/</span>{runId}
         </span>
+        {cveId && (
+          <a
+            href={`https://nvd.nist.gov/vuln/detail/${cveId}`}
+            target="_blank"
+            rel="noopener"
+            className="mono"
+            title={`Open ${cveId} on NVD`}
+            style={{
+              marginLeft: 12,
+              padding: "3px 10px",
+              background: "var(--accent-dim)",
+              color: "var(--accent)",
+              border: "1px solid var(--accent)",
+              borderRadius: 4,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: ".04em",
+              textDecoration: "none",
+            }}
+          >{cveId} ↗</a>
+        )}
       </div>
 
       <div className="topbar-c">
@@ -143,6 +240,7 @@ function LiveTopBar({ runId, status, currentLabel, nodeCount, eventsCount, onSha
       </div>
 
       <div className="topbar-r">
+        <ServerPill />
         <span
           className="mono"
           title={`WebSocket ${wsState} · ${wsFrames} frames received`}
@@ -162,8 +260,16 @@ function LiveTopBar({ runId, status, currentLabel, nodeCount, eventsCount, onSha
           {status === "running" && <span className="nv-pill-pulse" />}
           {status || "—"}
         </span>
+        {status === "running" && (
+          <button className="ghost-btn" onClick={onToggleAutoFollow}>
+            {autoFollow ? "❚❚ pause" : "▶ resume"}
+          </button>
+        )}
         <a className="ghost-btn" href="/watch/">← runs</a>
-        <button className="ghost-btn" onClick={onShare}>copy link</button>
+        <button className="ghost-btn" onClick={onShare}>share</button>
+        {status === "running" && (
+          <button className="primary-btn" onClick={onStopRun}>stop run</button>
+        )}
       </div>
     </header>
   );
@@ -359,7 +465,7 @@ function statsFor(events, delta) {
   return stats.length ? stats : null;
 }
 
-function LiveGraphPanel({ topo, nodeStatus, nodeEvents, selectedId, onSelect, currentRunningId, timingByNode, stateDeltaByNode, runStatus, runElapsedMs }) {
+function LiveGraphPanel({ topo, nodeStatus, nodeEvents, selectedId, onSelect, currentRunningId, timingByNode, stateDeltaByNode, runStatus, runElapsedMs, collapsed, onToggleCollapse, autoFollow }) {
   const scrollRef = useRefL(null);
   const rowRefs = useRefL(new Map());
 
@@ -374,7 +480,7 @@ function LiveGraphPanel({ topo, nodeStatus, nodeEvents, selectedId, onSelect, cu
   }, [topo.edges]);
 
   useEffectL(() => {
-    if (!currentRunningId || !scrollRef.current) return;
+    if (!autoFollow || !currentRunningId || !scrollRef.current) return;
     const el = rowRefs.current.get(currentRunningId);
     if (!el) return;
     const cont = scrollRef.current;
@@ -403,35 +509,47 @@ function LiveGraphPanel({ topo, nodeStatus, nodeEvents, selectedId, onSelect, cu
   const startedWall = fmtWall(firstTs);
 
   return (
-    <aside className="graph-panel" data-side="left">
+    <aside className={"graph-panel" + (collapsed ? " gp-collapsed" : "")} data-side="left" style={{display: collapsed ? "none" : undefined}}>
       <header className="gp-head">
         <div className="gp-head-row">
           <div className="gp-title">
             <span className="gp-dot" />
-            <span className="gp-name">{topo.graph_id}</span>
+            {!collapsed && <span className="gp-name">{topo.graph_id}</span>}
           </div>
-          <span className="gp-live">
-            <span className="gp-pulse" />{runStatus === "done" ? "complete" : runStatus === "failed" ? "failed" : "live"}
-          </span>
+          {!collapsed && (
+            <span className="gp-live">
+              <span className="gp-pulse" />{runStatus === "done" ? "complete" : runStatus === "failed" ? "failed" : "live"}
+            </span>
+          )}
         </div>
-        <div className="gp-meta">
-          <span className="gp-runid mono">{topo.graph_hash.slice(0, 12)}</span>
-          <span className="gp-sep">·</span>
-          {startedWall && <><span>started {startedWall}</span><span className="gp-sep">·</span></>}
-          <span className="mono">{fmtElapsed(runElapsedMs)} elapsed</span>
-          <span className="gp-sep">·</span>
-          <span>{doneCount} done</span>
-          <span className="gp-sep">·</span>
-          <span>{runningCount} running</span>
-          <span className="gp-sep">·</span>
-          <span>{total - doneCount - runningCount} queued</span>
-        </div>
-        {/* RunMiniMap removed — replaced by BottomBus (Phase 4) */}
+        {!collapsed && (
+          <>
+            <div className="gp-meta">
+              <span className="gp-runid mono">{topo.graph_hash.slice(0, 12)}</span>
+              <span className="gp-sep">·</span>
+              {startedWall && <><span>started {startedWall}</span><span className="gp-sep">·</span></>}
+              <span className="mono">{fmtElapsed(runElapsedMs)} elapsed</span>
+              <span className="gp-sep">·</span>
+              <span>{doneCount} done</span>
+              <span className="gp-sep">·</span>
+              <span>{runningCount} running</span>
+              <span className="gp-sep">·</span>
+              <span>{total - doneCount - runningCount} queued</span>
+            </div>
+            <RunMiniMap
+              order={topo.order}
+              byId={topo.byId}
+              nodeStatus={nodeStatus}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          </>
+        )}
       </header>
 
-      <div className="gp-scroll" ref={scrollRef} style={{ position: "relative" }}>
+      <div className="gp-scroll" ref={scrollRef} style={{ position: "relative", display: collapsed ? "none" : undefined }}>
         <div className="gp-rows">
-          {topo.order.map((id, idx) => {
+          {topo.order.filter(id => !id.startsWith("branch_resp_")).map((id, idx) => {
             const node = topo.byId.get(id);
             const status = nodeStatus.get(id) || "pending";
             const evs = nodeEvents.get(id) || [];
@@ -476,12 +594,6 @@ function LiveGraphPanel({ topo, nodeStatus, nodeEvents, selectedId, onSelect, cu
               </React.Fragment>
             );
           })}
-          {(runStatus === "done" || runStatus === "failed" || runStatus === "cancelled") && (
-            <button className={"sc-card is-summary" + (selectedId === "__summary__" ? " is-selected" : "")} data-node-id="__summary__" onClick={() => onSelect("__summary__")} type="button" style={{ marginTop: 8 }}>
-              <span className="sc-name">Run summary</span>
-              <span className="sc-type">Final summary</span>
-            </button>
-          )}
         </div>
       </div>
     </aside>
@@ -568,6 +680,7 @@ function LiveStepCard({ node, stepNum, status, selected, onSelect, events, timin
             {status === "running" && <span className="gp-spin" />}
             {status === "done"    && <span className="sc-ok">✓</span>}
             {status === "failed"  && <span className="sc-skip">✕</span>}
+            {status === "skipped" && <span className="sc-skip">⊘</span>}
             {status === "pending" && <span className="sc-pend">◌</span>}
             <span className="sc-status-t">{status}</span>
           </span>
@@ -720,7 +833,7 @@ function ProfilePanel({ node }) {
           </span>
         )}
       </header>
-      <div className="panel-b">
+      <div className="panel-b max-40 is-scroll">
         {!profile ? (
           <div className="muted">no profile authored for this node id</div>
         ) : (
@@ -840,7 +953,7 @@ function RoutingPanel({ node, edges, byId, firedRuleIds }) {
         <span className="panel-t">branch routing</span>
         <span className="panel-r mono">{outgoing.length} out · {incoming.length} in</span>
       </header>
-      <div className="panel-b is-mono is-scroll" style={{ maxHeight: 240, fontSize: 12 }}>
+      <div className="panel-b is-mono is-scroll max-40" style={{ padding: "0.5rem", fontSize: 12 }}>
         {outRules.length === 0 && outgoing.length === 0 ? (
           <span className="muted">terminal node — no outgoing rules</span>
         ) : outRules.map((r) => (
@@ -1165,7 +1278,7 @@ function HaltNewGateView({ node, status, delta, timing }) {
   );
 }
 
-function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta, timing, runState, runTerminal }) {
+function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta, timing, runState, runTerminal, checkpoints }) {
   if (!node) {
     return (
       <div className="nv-pending">
@@ -1197,7 +1310,7 @@ function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta,
 
   // Dispatcher: priority-id → family → OutcomePanel fallback.
   const Panel = (typeof window.panelForNode === "function"
-    ? window.panelForNode(node)
+    ? window.panelForNode(node, status)
     : null) || OutcomePanel;
 
   const panelProps = {
@@ -1207,9 +1320,10 @@ function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta,
     delta,
     events,
     timing,
-    runState: runState || {},
+    runState: { ...(runState || {}), checkpoints },
     runTerminal: !!runTerminal,
   };
+  const [metaOpen, setMetaOpen] = useStateL(false);
 
   return (
     <>
@@ -1226,38 +1340,38 @@ function LiveNodeView({ node, status, events, topo, allEvents, runStatus, delta,
           </span>
         </div>
         <h1 className="nv-title">{profile ? profile.title : node.id}</h1>
-        <div className="mono" style={{ color: "var(--fg-3)", fontSize: 12, marginTop: 4 }}>
-          {node.id} · {kindShort} · {fmtElapsed(timing?.elapsed_ms)}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <span className="mono" style={{ color: "var(--fg-3)", fontSize: 12 }}>
+            {node.id} · {kindShort} · {fmtElapsed(timing?.elapsed_ms)}
+          </span>
+          <button
+            onClick={() => setMetaOpen(o => !o)}
+            style={{
+              background: "none", border: "1px solid var(--line-2)", borderRadius: 4,
+              color: "var(--fg-3)", fontSize: 10, padding: "1px 6px", cursor: "pointer",
+            }}
+          >{metaOpen ? "▾ meta" : "▸ meta"}</button>
         </div>
       </header>
-
-      <div style={{ borderBottom: "1px solid var(--edge)", padding: 12 }}>
-        <Panel {...panelProps} />
-      </div>
-
-      <div
-        className="nv-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          alignItems: "start",
-          gap: 12,
-          padding: 12,
-          minWidth: 0,
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+      {metaOpen && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            alignItems: "start",
+            gap: 12,
+            padding: "0 12px 12px",
+            minWidth: 0,
+            borderBottom: "1px solid var(--line-1)",
+          }}
+        >
           <ProfilePanel node={node} />
-          <TimingPanel timing={timing} status={status} />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           <OutcomePanel node={node} delta={delta} status={status} />
           <RoutingPanel node={node} edges={topo.edges} byId={topo.byId} firedRuleIds={firedRuleIds} />
         </div>
-        <div style={{ minWidth: 0 }}>
-          <ActivityPanel events={events} />
-        </div>
+      )}
+      <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+        <Panel {...panelProps} />
       </div>
     </>
   );
@@ -1288,6 +1402,16 @@ function useUrlNodeSelection(topoOrder) {
 
   const [selectedId, setSelectedIdRaw] = useStateL(readFromUrl);
 
+  // Re-read URL when validSet updates (topo order loaded after mount).
+  const prevValidSize = useRefL(validSet.size);
+  useEffectL(() => {
+    if (validSet.size > prevValidSize.current) {
+      const urlVal = readFromUrl();
+      if (urlVal) setSelectedIdRaw(urlVal);
+    }
+    prevValidSize.current = validSet.size;
+  }, [validSet]);
+
   const setSelectedId = (id) => {
     const safeId = (id && validSet.has(id)) ? id : null;
     setSelectedIdRaw(safeId);
@@ -1314,6 +1438,16 @@ function useUrlNodeSelection(topoOrder) {
     return () => window.removeEventListener("popstate", onPop);
   }, [validSet]);
 
+  // Custom event jump from RouterPanel / SkippedPanel
+  useEffectL(() => {
+    const onJump = (e) => {
+      const id = e?.detail?.id;
+      if (id && validSet.has(id)) setSelectedId(id);
+    };
+    window.addEventListener("nv:select-node", onJump);
+    return () => window.removeEventListener("nv:select-node", onJump);
+  }, [validSet]);
+
   return [selectedId, setSelectedId];
 }
 
@@ -1328,6 +1462,8 @@ function LiveApp({ runId }) {
   const [selectedId, setSelectedId] = useUrlNodeSelection(topo ? topo.order : []);
   const [err, setErr] = useStateL("");
   const [checkpoints, setCheckpoints] = useStateL([]);
+  const [graphCollapsed, setGraphCollapsed] = useStateL(false);
+  const [autoFollow, setAutoFollow] = useStateL(true);
 
   // Refs mirror the latest status / last-running so handleEvent can attribute
   // non-transition events (tool_call, token, error) to the right node without
@@ -1338,6 +1474,12 @@ function LiveApp({ runId }) {
   // Dedupe across JSONL replay + WS live + JSONL fallback poll. Keyed by
   // (step, type, ts, from_node, to_node) — a tuple unique per emit.
   const seenKeysRef = useRefL(new Set());
+
+  const handleStopRun = async () => {
+    try {
+      await fetch(window.apiUrl(`/v1/runs/${encodeURIComponent(runId)}/cancel`), { method: "POST" });
+    } catch {}
+  };
 
   // Visible diagnostics. Surfaces "WS open + N frames" or "WS closed" so
   // the user can tell at a glance whether live updates are flowing.
@@ -1407,7 +1549,7 @@ function LiveApp({ runId }) {
     let cancelled = false;
     (async () => {
       try {
-        const tres = await fetch("/watch/api/graph");
+        const tres = await fetch(window.apiUrl("/watch/api/graph"));
         if (!tres.ok) throw new Error("graph fetch " + tres.status);
         const tjson = await tres.json();
         const byId = new Map(tjson.nodes.map((n) => [n.id, n]));
@@ -1431,7 +1573,7 @@ function LiveApp({ runId }) {
       // single handleEvent path so cursor + dedupe stay consistent with
       // the WS pump.
       try {
-        const ares = await fetch(`/watch/api/run/${encodeURIComponent(runId)}/events`);
+        const ares = await fetch(window.apiUrl(`/watch/api/run/${encodeURIComponent(runId)}/events`));
         if (ares.ok) {
           const aj = await ares.json();
           const past = Array.isArray(aj.events) ? aj.events : [];
@@ -1443,7 +1585,7 @@ function LiveApp({ runId }) {
 
       // Fetch per-step checkpoints (real durable state from SQLiteCheckpointer).
       try {
-        const cres = await fetch(`/watch/api/run/${encodeURIComponent(runId)}/checkpoints`);
+        const cres = await fetch(window.apiUrl(`/watch/api/run/${encodeURIComponent(runId)}/checkpoints`));
         if (cres.ok) {
           const cj = await cres.json();
           if (!cancelled && Array.isArray(cj.checkpoints)) {
@@ -1454,7 +1596,7 @@ function LiveApp({ runId }) {
 
       // Peek run status (so we know whether to keep retrying the WS).
       try {
-        const rres = await fetch(`/v1/runs/${encodeURIComponent(runId)}`);
+        const rres = await fetch(window.apiUrl(`/v1/runs/${encodeURIComponent(runId)}`));
         if (rres.ok) {
           const rj = await rres.json();
           if (rj.status) setRunStatus(rj.status);
@@ -1473,7 +1615,7 @@ function LiveApp({ runId }) {
     let cancelled = false;
     (async () => {
       try {
-        const cres = await fetch(`/watch/api/run/${encodeURIComponent(runId)}/checkpoints`);
+        const cres = await fetch(window.apiUrl(`/watch/api/run/${encodeURIComponent(runId)}/checkpoints`));
         if (cres.ok) {
           const cj = await cres.json();
           if (!cancelled && Array.isArray(cj.checkpoints)) {
@@ -1495,11 +1637,126 @@ function LiveApp({ runId }) {
   const runTerminal = runStatus === "done" || runStatus === "failed" || runStatus === "cancelled";
 
   // Auto-switch to __summary__ on terminal transition (fires once on false→true).
+  // Skip if the URL already specifies a node selection (deep-link).
   const prevRunTerminal = useRefL(false);
   useEffectL(() => {
-    if (runTerminal && !prevRunTerminal.current) setSelectedId("__summary__");
+    if (runTerminal && !prevRunTerminal.current) {
+      const urlNode = new URLSearchParams(window.location.search).get("node");
+      if (!urlNode) setSelectedId("__summary__");
+    }
     prevRunTerminal.current = runTerminal;
   }, [runTerminal]);
+
+  // Reconcile statuses when run terminates: pending → skipped, running → done.
+  // Result event may be missing on older runs / polled-status terminations;
+  // this guarantees branch-not-taken nodes are tagged regardless.
+  useEffectL(() => {
+    if (!runTerminal) return;
+    setNodeStatus((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const [k, v] of next) {
+        if (v === "running" || v === "waiting") { next.set(k, "done"); changed = true; }
+        else if (v === "pending") { next.set(k, "skipped"); changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [runTerminal]);
+
+  // Backfill done status from checkpoints. Every checkpoint represents a node
+  // that ran — but the dispatcher sometimes skips the first transition (entry
+  // node has no incoming edge to fire), leaving halt_new_gate stuck "pending"
+  // in the sidebar despite having a checkpoint. Mark every checkpointed node
+  // as at least "done" (unless terminal/waiting overrides apply).
+  useEffectL(() => {
+    if (checkpoints.length === 0) return;
+    setNodeStatus((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      for (const c of checkpoints) {
+        const id = c.last_node;
+        if (!id) continue;
+        const cur = next.get(id);
+        if (cur === undefined || cur === "pending") { next.set(id, "done"); changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [checkpoints.length]);
+
+  // Demote done → skipped for nodes that ran as no-ops. The graph wires
+  // several "alternative" branches serially (e.g. sandbox_run → sandbox_skip),
+  // so every node fires even when its body short-circuits. A node with zero
+  // state-field changes AND no next_action routing decision did no real work —
+  // surface that as "skipped" in the sidebar so the user can scan for the
+  // active path. Routers (next_action set) and HITL waits stay "done".
+  useEffectL(() => {
+    if (!checkpoints || checkpoints.length === 0) return;
+    const noop = new Set();
+    let prev = {};
+    for (const c of checkpoints) {
+      const cur = c.state || {};
+      let changedCount = 0;
+      for (const k of Object.keys(cur)) {
+        if (JSON.stringify(prev[k]) !== JSON.stringify(cur[k])) { changedCount += 1; break; }
+      }
+      if (changedCount === 0 && !c.next_action && c.last_node) noop.add(c.last_node);
+      prev = cur;
+    }
+    setNodeStatus((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      for (const id of noop) {
+        const cur = next.get(id);
+        if (cur === "done") { next.set(id, "skipped"); changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [checkpoints.length]);
+
+  // Cascade skipped status while the run is still live. A pending node whose
+  // every inbound edge originates from a node that already settled (done /
+  // skipped / failed) AND none of those edges actually fired is unreachable —
+  // mark it skipped so the sidebar stops showing "queued" for router branches
+  // that lost the race. Re-runs cheaply on every transition.
+  const transitionCount = allEvents.filter((e) => e.type === "transition").length;
+  useEffectL(() => {
+    if (!topo || !topo.edges) return;
+    const taken = new Set();
+    for (const ev of allEvents) {
+      if (ev.type === "transition" && ev.from_node && ev.to_node) {
+        taken.add(ev.from_node + "→" + ev.to_node);
+      }
+    }
+    const inbound = new Map();
+    for (const e of topo.edges) {
+      const src = e.from || e.source;
+      const tgt = e.to || e.target;
+      if (!src || !tgt) continue;
+      if (!inbound.has(tgt)) inbound.set(tgt, []);
+      inbound.get(tgt).push(src);
+    }
+    setNodeStatus((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      let pass = true;
+      let guard = 0;
+      while (pass && guard++ < 200) {
+        pass = false;
+        for (const [n, s] of next) {
+          if (s !== "pending") continue;
+          const srcs = inbound.get(n) || [];
+          if (srcs.length === 0) continue;
+          const dead = srcs.every((src) => {
+            const ss = next.get(src);
+            const settled = ss === "done" || ss === "skipped" || ss === "failed";
+            return settled && !taken.has(src + "→" + n);
+          });
+          if (dead) { next.set(n, "skipped"); changed = true; pass = true; }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [transitionCount, runTerminal, topo]);
 
   // Dev-time coverage assertion (localhost only).
   useEffectL(() => {
@@ -1542,8 +1799,7 @@ function LiveApp({ runId }) {
   //     until run is terminal.
   useEffectL(() => {
     if (!topo) return;
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${window.location.host}/v1/runs/${encodeURIComponent(runId)}/stream`;
+    const url = window.wsUrl(`/v1/runs/${encodeURIComponent(runId)}/stream`);
 
     let ws = null;
     let stopped = false;
@@ -1558,7 +1814,7 @@ function LiveApp({ runId }) {
 
     const pollJsonl = async () => {
       try {
-        const ares = await fetch(`/watch/api/run/${encodeURIComponent(runId)}/events`);
+        const ares = await fetch(window.apiUrl(`/watch/api/run/${encodeURIComponent(runId)}/events`));
         if (!ares.ok) return;
         const aj = await ares.json();
         const past = Array.isArray(aj.events) ? aj.events : [];
@@ -1668,6 +1924,7 @@ function LiveApp({ runId }) {
     >
       <LiveTopBar
         runId={runId}
+        cveId={runState.cve_id || ""}
         status={runStatus}
         currentLabel={currentRunningId || (runStatus === "done" ? "complete" : "queued")}
         nodeCount={topo.nodes.length}
@@ -1676,9 +1933,13 @@ function LiveApp({ runId }) {
         completedCount={completedCount}
         wsState={wsState}
         wsFrames={wsFrames}
+        collapsed={graphCollapsed}
+        onToggleCollapse={() => setGraphCollapsed(c => !c)}
         onShare={() => { try { navigator.clipboard.writeText(window.location.href); } catch {} }}
+        autoFollow={autoFollow}
+        onToggleAutoFollow={() => setAutoFollow(f => !f)}
+        onStopRun={handleStopRun}
       />
-      <HeaderGantt topo={topo} nodeTimings={timingByNode} runStartTs={allEvents.length ? allEvents[0].ts : null} nodeStatus={nodeStatus} selectedId={selectedId} onSelect={setSelectedId} />
       <main className="main" data-side="left">
         <LiveGraphPanel
           topo={topo}
@@ -1691,26 +1952,27 @@ function LiveApp({ runId }) {
           stateDeltaByNode={stateDeltaByNode}
           runStatus={runStatus}
           runElapsedMs={runElapsedMs}
+          collapsed={graphCollapsed}
+          onToggleCollapse={() => setGraphCollapsed(c => !c)}
+          autoFollow={autoFollow}
         />
         <section className="view" data-screen-label={selectedId === "__summary__" ? "summary" : "node " + visibleNode.id}>
-          {selectedId === "__summary__"
-            ? <FinalSummaryPanel runState={runState} events={allEvents} runTerminal={runTerminal} />
-            : <LiveNodeView
-                node={visibleNode}
-                status={visibleStatus}
-                events={visibleEvents}
-                topo={topo}
-                allEvents={allEvents}
-                runStatus={runStatus}
-                delta={stateDeltaByNode.get(visibleNode.id) || null}
-                timing={timingByNode.get(visibleNode.id) || null}
-                runState={runState}
-                runTerminal={runTerminal}
-              />
-          }
+          <LiveNodeView
+            node={visibleNode}
+            status={visibleStatus}
+            events={visibleEvents}
+            topo={topo}
+            allEvents={allEvents}
+            runStatus={runStatus}
+            delta={stateDeltaByNode.get(visibleNode.id) || null}
+            timing={timingByNode.get(visibleNode.id) || null}
+            runState={runState}
+            runTerminal={runTerminal}
+            checkpoints={checkpoints}
+          />
         </section>
       </main>
-      <BottomBus topo={topo} nodeStatus={nodeStatus} selectedId={selectedId} onSelect={setSelectedId} />
+      <BottomBus topo={topo} nodeStatus={nodeStatus} selectedId={selectedId} onSelect={setSelectedId} nodeTimings={timingByNode} autoFollow={autoFollow} />
     </div>
   );
 }

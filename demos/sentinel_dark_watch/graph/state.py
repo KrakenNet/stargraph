@@ -27,6 +27,8 @@ class Detection(BaseModel):
     confidence: float = 0.0
     obb_corners: list[list[float]] = Field(default_factory=list)
     vessel_length_m: float = 0.0
+    class_id: int = 0
+    class_name: str = ""
     dark_vessel: bool = False
     ais_mmsi: str | None = None
     ais_vessel_name: str | None = None
@@ -120,3 +122,88 @@ class RetrainState(BaseModel):
     challenger_wins: bool = False
     promoted: bool = False
     retrain_metrics: ModelMetrics = Field(default_factory=ModelMetrics)
+
+
+# ---------------------------------------------------------------------------
+# Evolution (self-improvement) state
+# ---------------------------------------------------------------------------
+
+
+class ProposalRisk(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ProposalStatus(StrEnum):
+    DRAFT = "draft"
+    EVALUATED = "evaluated"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    APPLIED = "applied"
+    VERIFIED = "verified"
+
+
+class ProposalCategory(StrEnum):
+    THRESHOLD = "threshold"
+    HYPERPARAMETER = "hyperparameter"
+    PREPROCESSING = "preprocessing"
+    MODEL_ARCHITECTURE = "model_architecture"
+    NODE_ADDITION = "node_addition"
+    NODE_REMOVAL = "node_removal"
+    FLOW_CHANGE = "flow_change"
+    RULE_CHANGE = "rule_change"
+    DATA_SOURCE = "data_source"
+
+
+class EvolutionProposal(BaseModel):
+    proposal_id: str = ""
+    category: ProposalCategory = ProposalCategory.THRESHOLD
+    risk: ProposalRisk = ProposalRisk.LOW
+    status: ProposalStatus = ProposalStatus.DRAFT
+    title: str = ""
+    description: str = ""
+    rationale: str = ""
+    expected_improvement: str = ""
+    baseline_metric: float = 0.0
+    experiment_metric: float = 0.0
+    delta_pct: float = 0.0
+    requires_human_approval: bool = False
+    approved_by: str = ""
+    applied_at: str = ""
+
+
+class EvolutionState(BaseModel):
+    run_id: str = ""
+    cycle_number: int = 0
+    # Observation phase
+    recent_run_count: int = 0
+    avg_detection_count: float = 0.0
+    avg_confidence: float = 0.0
+    avg_processing_seconds: float = 0.0
+    false_positive_rate: float = 0.0
+    dark_vessel_rate: float = 0.0
+    current_model_version: str = ""
+    current_model_map50: float = 0.0
+    # Analysis phase
+    identified_weaknesses: list[str] = Field(default_factory=list)
+    improvement_opportunities: list[str] = Field(default_factory=list)
+    # Proposal phase
+    proposals: list[EvolutionProposal] = Field(default_factory=list)
+    active_proposal: EvolutionProposal = Field(default_factory=EvolutionProposal)
+    # Experiment phase
+    experiment_run_id: str = ""
+    experiment_baseline: float = 0.0
+    experiment_result: float = 0.0
+    experiment_passed: bool = False
+    # Governance
+    auto_approved: bool = False
+    human_approval_required: bool = False
+    governance_decision: str = ""
+    governance_reason: str = ""
+    # Training data curation
+    curated_samples_count: int = 0
+    training_data_path: str = ""
+    # State
+    last_error: str = ""
+    phase: str = "observe"

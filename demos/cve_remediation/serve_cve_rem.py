@@ -71,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
 
     import uvicorn
     from fastapi import FastAPI, HTTPException
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import JSONResponse, Response
 
     from harbor.artifacts.fs import FilesystemArtifactStore
     from harbor.checkpoint.sqlite import SQLiteCheckpointer
@@ -426,6 +426,62 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=500, detail=f"checkpoint read failed: {exc!r}") from exc
         return JSONResponse({"run_id": run_id, "checkpoints": rows})
+
+    @app.get("/watch/api/artifact")
+    async def _watch_artifact(ref: str) -> Response:  # pyright: ignore[reportUnusedFunction]
+        """Serve an artifact for in-browser preview (markdown, docx, json).
+
+        Accepted ``ref`` forms:
+          * ``file://<absolute path>`` -- direct read, allowlisted under
+            the resolved ``HARBOR_ARTIFACTS_ROOT`` (default ``.harbor/artifacts``).
+          * ``<blake3-hex>`` (64 hex chars) -- fetched via the artifact store.
+
+        Returns the raw bytes with a best-effort content-type.
+        """
+        from pathlib import Path as _P
+        import os as _os
+        if not ref:
+            raise HTTPException(status_code=400, detail="ref required")
+
+        root = _P(_os.environ.get("HARBOR_ARTIFACTS_ROOT", ".harbor/artifacts")).resolve()
+
+        data: bytes
+        name = ""
+        if ref.startswith("file://"):
+            p = _P(ref[len("file://"):]).resolve()
+            try:
+                p.relative_to(root)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"path outside artifacts root: {p}",
+                ) from exc
+            if not p.is_file():
+                raise HTTPException(status_code=404, detail=f"artifact not found: {p}")
+            data = p.read_bytes()
+            name = p.name
+        else:
+            import re as _re
+            if not _re.fullmatch(r"[a-f0-9]{64}", ref):
+                raise HTTPException(status_code=400, detail="ref must be file://… or 64-char blake3 hex")
+            try:
+                data = await artifact_store.get(ref)
+            except Exception as exc:  # noqa: BLE001
+                raise HTTPException(status_code=404, detail=f"artifact not found: {ref!r}") from exc
+            name = ref
+
+        lower = name.lower()
+        if lower.endswith(".docx"):
+            ctype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif lower.endswith(".json"):
+            ctype = "application/json"
+        elif lower.endswith(".md"):
+            ctype = "text/markdown; charset=utf-8"
+        elif lower.endswith(".txt"):
+            ctype = "text/plain; charset=utf-8"
+        else:
+            ctype = "application/octet-stream"
+        return Response(content=data, media_type=ctype)
 
     # Mount the WorkGraph run-watcher UI at /watch (static React+Babel page
     # under demos/cve_remediation/watcher/). Visiting /watch with no query

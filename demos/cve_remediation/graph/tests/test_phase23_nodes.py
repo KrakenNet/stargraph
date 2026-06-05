@@ -476,17 +476,14 @@ def test_sandbox_dispatch_logic_flaw_skips() -> None:
 
 
 def test_sandbox_run_emits_ok_result() -> None:
-    # CARGONET_LAB runtime with no proxy_ref + no docker dependency falls
-    # to the deterministic plan-hash fallback, which is the offline-replay
-    # path the unit test asserts. DOCKER_COMPOSE now requires a real
-    # docker daemon AND sufficient advisory signal -- both unavailable in
-    # a unit test, so SandboxRunNode honest-skips that branch.
+    # CARGONET_LAB runtime without proxy_ref or lab_ref honest-skips
+    # with force_hitl=True. No fake "ok" from plan-hash deterministic stub.
     state = CveRemState(
         sandbox_runtime=SandboxRuntime.CARGONET_LAB, plan_hash="abc"
     )
     out = asyncio.run(SandboxRunNode().execute(state, _ctx()))
-    assert out["sandbox_status"] == "ok"
-    assert out["sandbox"].apply_probe.endswith("/apply")
+    assert out["sandbox_status"] == "skipped"
+    assert out["sandbox"].force_hitl is True
 
 
 def test_sandbox_run_skip_path() -> None:

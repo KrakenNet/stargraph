@@ -47,6 +47,13 @@ specs/
 
 .shipwright-out/
 .hypothesis/
+runs/
+.checkpoints/
+/data/
+test-results/
+*.pt
+demos/cve_remediation/watcher/.designs/
+demos/cve_remediation/watcher/.inspiration/
 
 # Sentinel Dark Watch demo
 demos/sentinel_dark_watch/.env

@@ -120,7 +120,13 @@ function GraphPanel({ clock, selectedId, onSelect, side }) {
           <span className="gp-sep">·</span>
           <span>{Math.round(clock)}s elapsed</span>
         </div>
-        <RunMiniMap clock={clock} selectedId={selectedId} onSelect={onSelect} />
+        <RunMiniMap
+          order={WORKGRAPH.nodes.filter(n => n.type !== "start" && n.type !== "end").map(n => n.id)}
+          byId={new Map(WORKGRAPH.nodes.map(n => [n.id, n]))}
+          nodeStatus={new Map(WORKGRAPH.nodes.map(n => [n.id, statusFor(n, clock)]))}
+          selectedId={selectedId}
+          onSelect={onSelect}
+        />
       </header>
 
       <div className="gp-scroll" ref={scrollRef}>
@@ -354,29 +360,7 @@ function BranchFork({ gateDone }) {
   );
 }
 
-// ─── Run mini-map (compact horizontal strip in header) ──────────────────────
-
-function RunMiniMap({ clock, selectedId, onSelect }) {
-  const nodes = WORKGRAPH.nodes.filter(n => n.type !== "start" && n.type !== "end");
-  return (
-    <div className="gp-mini">
-      {nodes.map(n => {
-        const s = statusFor(n, clock);
-        return (
-          <button
-            key={n.id}
-            className={"gp-mini-seg is-" + s + (n.id === selectedId ? " is-selected" : "")}
-            style={{ flex: n.duration || 1 }}
-            title={n.label}
-            onClick={() => onSelect(n.id)}
-          >
-            <span className="gp-mini-dot" />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+// RunMiniMap is defined in live-app.jsx (shared by both demo and live mode).
 
 function Legend() {
   return (

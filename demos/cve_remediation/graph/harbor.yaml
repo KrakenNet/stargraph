@@ -352,7 +352,7 @@ rules:
 
   # HITL ingest gate (P0)
   - id: r-hitl-ingest-gate
-    when: "?n <- (node-id (id hitl_ingest_review))"
+    when: "?n <- (node-id (id hitl_ingest_review)) (not (response))"
     then:
       - kind: interrupt
         prompt: "Approve ingest of {cve_id}? trust={source_trust} injection_class={injection_class}"
@@ -362,7 +362,7 @@ rules:
         timeout: null
         on_timeout: "noop"
   - id: r-hitl-ingest-to-branch
-    when: "?n <- (node-id (id hitl_ingest_review))"
+    when: "?n <- (node-id (id hitl_ingest_review)) (response (decision ?d))"
     then: [{ kind: goto, target: branch_resp_ingest }]
   - id: r-branch-ingest-approve
     when: "?n <- (node-id (id branch_resp_ingest)) (response (decision approve))"
@@ -415,19 +415,28 @@ rules:
     when: "?n <- (node-id (id plan_template_lookup)) (state (template_lookup_hit false))"
     then: [{ kind: goto, target: mcp_retrieval_dispatch }]
 
-  # P1: parallel agentic retrieval (up to 5 calls/attempt)
+  # P1: agentic retrieval (up to 5 calls/attempt). Sequential chain —
+  # parallel join was dropping branch deltas (join saw fork-base state,
+  # not branch outputs), starving planner of all 5 retrieval results.
+  # Run sequentially so every retrieval delta lands in shared state.
   - id: r-mcp-fanout
     when: "?n <- (node-id (id mcp_retrieval_dispatch))"
-    then:
-      - kind: parallel
-        targets:
-          - vec_search_retros
-          - graph_prior_remediations
-          - graph_blast_radius
-          - framework_mapping
-          - cargonet_lab_telemetry
-        join: planner
-        strategy: all
+    then: [{ kind: goto, target: vec_search_retros }]
+  - id: r-retr-vec-next
+    when: "?n <- (node-id (id vec_search_retros))"
+    then: [{ kind: goto, target: graph_prior_remediations }]
+  - id: r-retr-prior-next
+    when: "?n <- (node-id (id graph_prior_remediations))"
+    then: [{ kind: goto, target: graph_blast_radius }]
+  - id: r-retr-blast-next
+    when: "?n <- (node-id (id graph_blast_radius))"
+    then: [{ kind: goto, target: framework_mapping }]
+  - id: r-retr-framework-next
+    when: "?n <- (node-id (id framework_mapping))"
+    then: [{ kind: goto, target: cargonet_lab_telemetry }]
+  - id: r-retr-telemetry-next
+    when: "?n <- (node-id (id cargonet_lab_telemetry))"
+    then: [{ kind: goto, target: planner }]
 
   - id: r-plan-write
     when: "?n <- (node-id (id planner))"
@@ -485,13 +494,18 @@ rules:
     then: [{ kind: halt, reason: "Plan rejected at HITL; pipeline aborted" }]
 
   # P1: parallel dual judges
+  # Sequential dual-judge chain — parallel join dropped one judge's
+  # verdict (merge returned last branch's state, not the union), leaving
+  # judge_safety_verdict='' → validation_passed=false → HITL hot-loop.
   - id: r-validate-fanout
     when: "?n <- (node-id (id validate_dispatch))"
-    then:
-      - kind: parallel
-        targets: [judge_safety, judge_lint]
-        join: validate_plan_join
-        strategy: all
+    then: [{ kind: goto, target: judge_safety }]
+  - id: r-judge-safety-next
+    when: "?n <- (node-id (id judge_safety))"
+    then: [{ kind: goto, target: judge_lint }]
+  - id: r-judge-lint-next
+    when: "?n <- (node-id (id judge_lint))"
+    then: [{ kind: goto, target: validate_plan_join }]
   - id: r-validate-pass
     when: "?n <- (node-id (id validate_plan_join)) (state (validation_passed true))"
     then: [{ kind: goto, target: plan_quarantine_gate }]
@@ -560,16 +574,15 @@ rules:
     then: [{ kind: goto, target: hitl_change_approval }]
 
   # HITL change-approval gate (P0)
-  - id: r-hitl-change-gate
-    when: "?n <- (node-id (id hitl_change_approval))"
-    then:
-      - kind: interrupt
-        prompt: "Approve CR {cr_correlation_id} for {cve_id}?"
-        interrupt_payload:
-          requested_capability: "runs:respond"
-        requested_capability: "runs:respond"
-        timeout: null
-        on_timeout: "noop"
+  # The change node (HitlChangeApprovalNode) IS the durable wait: offline
+  # it auto-writes response=approve; live (CVE_REM_LIVE_BROKER) it emits no
+  # response. Route unconditionally to branch_resp_change — by the time that
+  # node's routing evaluates, the change node's response delta is committed,
+  # so r-branch-change-approve fires offline. Live-mode block leaves no
+  # response → branch_resp_change has no matching rule → engine halts at the
+  # durable wait until POST /respond lands a decision (node docstring §4).
+  # (A node-id-only interrupt rule here fires BEFORE the node's own response
+  # is mirrored, so it always paused even on offline auto-approve.)
   - id: r-hitl-change-to-branch
     when: "?n <- (node-id (id hitl_change_approval))"
     then: [{ kind: goto, target: branch_resp_change }]
@@ -622,13 +635,20 @@ rules:
     when: "?n <- (node-id (id emit_docx_archive))"
     then: [{ kind: goto, target: retro_dispatch }]
 
+  # Sequential writeback chain — parallel join dropped branch deltas;
+  # run writebacks in series so retro_join sees all three results.
   - id: r-retro-fanout
     when: "?n <- (node-id (id retro_dispatch))"
-    then:
-      - kind: parallel
-        targets: [publish_docplus, cargonet_writeback, plan_kg_writeback]
-        join: retro_join
-        strategy: all
+    then: [{ kind: goto, target: publish_docplus }]
+  - id: r-retro-docplus-next
+    when: "?n <- (node-id (id publish_docplus))"
+    then: [{ kind: goto, target: cargonet_writeback }]
+  - id: r-retro-writeback-next
+    when: "?n <- (node-id (id cargonet_writeback))"
+    then: [{ kind: goto, target: plan_kg_writeback }]
+  - id: r-retro-kg-next
+    when: "?n <- (node-id (id plan_kg_writeback))"
+    then: [{ kind: goto, target: retro_join }]
   - id: r-retro-join-attest
     when: "?n <- (node-id (id retro_join))"
     then: [{ kind: goto, target: krakntrust_attest }]
@@ -647,7 +667,7 @@ rules:
 
   # HITL retro gate (P0)
   - id: r-hitl-retro-gate
-    when: "?n <- (node-id (id hitl_retrospective_review))"
+    when: "?n <- (node-id (id hitl_retrospective_review)) (not (response))"
     then:
       - kind: interrupt
         prompt: "Was CMDB/live-device match correct for {cve_id}?"
@@ -657,7 +677,7 @@ rules:
         timeout: null
         on_timeout: "noop"
   - id: r-hitl-retro-to-branch
-    when: "?n <- (node-id (id hitl_retrospective_review))"
+    when: "?n <- (node-id (id hitl_retrospective_review)) (response (decision ?d))"
     then: [{ kind: goto, target: branch_resp_retro }]
   - id: r-branch-retro-approve
     when: "?n <- (node-id (id branch_resp_retro)) (response (decision approve))"

@@ -3,109 +3,109 @@ topology:
   nodes:
     h11-web-06:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-web:latest
     h11-rtr-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-rtr:latest
     h11-web-04:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-web:latest
     h11-api-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-api:latest
     h11-db-04:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-db:latest
     h11-sw-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-sw:latest
     h11-fw-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-fw:latest
     h11-worker-04:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-worker:latest
     h11-fw-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-fw:latest
     h11-idp-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-idp:latest
     h11-web-07:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-web:latest
     h11-worker-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-worker:latest
     h11-api-05:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-api:latest
     h11-web-05:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-web:latest
     h11-sw-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-sw:latest
     h11-web-03:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-web:latest
     h11-web-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-web:latest
     h11-api-04:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-api:latest
     h11-rtr-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-rtr:latest
     h11-jump-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-jump:latest
     h11-sw-03:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-sw:latest
     h11-worker-05:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-worker:latest
     h11-rtr-04:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-rtr:latest
     h11-api-03:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-api:latest
     h11-db-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-db:latest
     h11-jump-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-jump:latest
     h11-web-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-web:latest
     h11-db-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-db:latest
     h11-rtr-03:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-rtr:latest
     h11-api-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-api:latest
     h11-api-06:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-api:latest
     h11-worker-03:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-worker:latest
     h11-worker-02:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-worker:latest
     h11-db-03:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-db:latest
     h11-idp-01:
       kind: linux
-      image: alpine:latest
+      image: harbor-h11-idp:latest
   links:
   - endpoints:
     - h11-rtr-01:eth2
