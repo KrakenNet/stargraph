@@ -57,10 +57,14 @@ def test_poc_milestone(tmp_path: Path) -> None:
         f"harbor run exited {result.returncode}\nstdout={result.stdout!r}\nstderr={result.stderr!r}"
     )
 
-    # 2. JSONL file exists and has >=2 events.
+    # 2. JSONL file exists and has >=2 events. Each line is a chained-log
+    #    envelope (``fathom.chained_log.ChainedAttestationLog``); the run
+    #    event lives under ``record``. The genesis record (seq 0,
+    #    ``type: fathom.genesis``) is chain bookkeeping, not a run event.
     assert log_file.exists(), f"log file missing: {log_file}"
     raw_lines = log_file.read_text(encoding="utf-8").splitlines()
-    events = [json.loads(line) for line in raw_lines if line.strip()]
+    records = [json.loads(line)["record"] for line in raw_lines if line.strip()]
+    events = [r for r in records if r.get("type") != "fathom.genesis"]
     assert len(events) >= 2, f"expected >=2 events, got {len(events)}: {events!r}"
 
     # 3. At least one TransitionEvent + one ResultEvent (by ``type`` discriminator).
