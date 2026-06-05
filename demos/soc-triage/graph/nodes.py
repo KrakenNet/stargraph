@@ -18,6 +18,11 @@ Custom nodes:
 * :class:`IngestAlert` — reads one ``data/alerts_sample.jsonl`` line into the
   alert fields of :class:`RunState` and builds the ONNX feature vector (the
   ``MLNode`` downstream reads it via its configured ``input_field``).
+* :class:`RetrievalPriors` — RRF over the ``data/priors/`` historical-outcome
+  records (matched on signature / asset tier) into ``state.priors``. Harbor's
+  builtin ``RetrievalNode`` needs a live vector/graph/doc ``store_resolver``,
+  so this self-contained JSONL fusion is wired as a ``module:Class`` node
+  instead (zero-arg, builds at serve boot regardless of store wiring).
 """
 
 from __future__ import annotations
@@ -150,3 +155,82 @@ class IngestAlert(NodeBase):
         except Exception as exc:
             logger.exception("IngestAlert failed: %s", exc)
             return {"last_error": f"IngestAlert: {exc}", "pipeline_phase": "ingest"}
+
+
+# Reciprocal-rank-fusion constant (standard RRF k; smaller = sharper top-rank).
+_RRF_K = 60
+
+# Historical-outcome priors live here; created in task 1.32. Missing dir → no
+# priors (graceful — the run still scores + decides, just without precedent).
+_PRIORS_DIR = _DEMO_ROOT / "data" / "priors"
+
+
+def _rrf_fuse(ranked_lists: list[list[str]]) -> dict[str, float]:
+    """Reciprocal-rank fusion of several ranked id lists → {id: rrf_score}."""
+    scores: dict[str, float] = {}
+    for ranked in ranked_lists:
+        for rank, key in enumerate(ranked):
+            scores[key] = scores.get(key, 0.0) + 1.0 / (_RRF_K + rank + 1)
+    return scores
+
+
+class RetrievalPriors(NodeBase):
+    """Fuse historical-outcome priors for the current alert via RRF.
+
+    Reads every ``data/priors/*.jsonl`` record, ranks them under two cheap
+    signals — exact ``signature`` match and ``asset_tier`` match — then fuses
+    the two ranked lists with Reciprocal Rank Fusion (the same fusion the
+    builtin :class:`~harbor.nodes.retrieval.RetrievalNode` uses) and writes the
+    top precedents to ``state.priors`` for the downstream ``dspy`` triage step.
+
+    Self-contained on purpose: the builtin RetrievalNode requires a live
+    ``store_resolver`` callable that a config-only IR node can't supply, so
+    this node does a file-backed RRF over the seeded priors instead. When the
+    priors dir is absent (before task 1.32) it returns an empty list — the
+    pipeline degrades to "no precedent" rather than crashing.
+    """
+
+    async def execute(
+        self,
+        state: BaseModel,
+        ctx: ExecutionContext,
+    ) -> dict[str, Any]:
+        del ctx
+        try:
+            if not _PRIORS_DIR.is_dir():
+                return {"priors": [], "pipeline_phase": "retrieval"}
+
+            records: list[dict[str, Any]] = []
+            for path in sorted(_PRIORS_DIR.glob("*.jsonl")):
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    if line.strip():
+                        records.append(json.loads(line))
+
+            signature = str(getattr(state, "signature", ""))
+            asset_tier = str(getattr(state, "asset_tier", ""))
+
+            by_signature = [
+                i for i, r in enumerate(records) if str(r.get("signature", "")) == signature
+            ]
+            by_tier = [
+                i for i, r in enumerate(records) if str(r.get("asset_tier", "")) == asset_tier
+            ]
+
+            fused = _rrf_fuse([by_signature, by_tier])
+            top = sorted(fused, key=lambda i: fused[i], reverse=True)[:5]
+            priors = [records[i] for i in top]
+
+            event = ProvenanceEvent(
+                node="retrieval",
+                kind="retrieval",
+                summary=f"fused {len(priors)} prior(s) from {len(records)} record(s)",
+                detail={
+                    "signature": signature,
+                    "asset_tier": asset_tier,
+                    "prior_count": len(priors),
+                },
+            )
+            return {"priors": priors, "provenance": [event], "pipeline_phase": "retrieval"}
+        except Exception as exc:
+            logger.exception("RetrievalPriors failed: %s", exc)
+            return {"last_error": f"RetrievalPriors: {exc}", "pipeline_phase": "retrieval"}
