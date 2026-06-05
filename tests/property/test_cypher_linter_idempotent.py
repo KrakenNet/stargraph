@@ -20,6 +20,9 @@ snappy; a Phase-5 fuzz task can dial this up if needed.
 from __future__ import annotations
 
 import pytest
+from graphglot.lexer import (  # pyright: ignore[reportMissingTypeStubs]
+    Lexer as _GGLexer,
+)
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -31,9 +34,17 @@ from harbor.stores.cypher import Linter
 # ---------------------------------------------------------------------------
 
 # Identifier shape that avoids the banned `:$(` dynamic-label pattern and
-# the `{.field` map-projection pattern.
-_IDENT = st.from_regex(r"\A[a-z][a-z0-9_]{0,7}\Z", fullmatch=True)
-_LABEL = st.from_regex(r"\A[A-Z][A-Za-z0-9]{0,9}\Z", fullmatch=True)
+# the `{.field` map-projection pattern. Filtered against graphglot's own
+# keyword table (case-insensitive) so the strategy never emits a reserved
+# word as a variable, label, or property name -- e.g. `MATCH (a:Of)` fails
+# graphglot's parse with "Expected label primary or label negation".
+_GG_KEYWORDS = frozenset(kw.lower() for kw in _GGLexer.KEYWORDS if kw.isalpha())
+_IDENT = st.from_regex(r"\A[a-z][a-z0-9_]{0,7}\Z", fullmatch=True).filter(
+    lambda s: s not in _GG_KEYWORDS
+)
+_LABEL = st.from_regex(r"\A[A-Z][A-Za-z0-9]{0,9}\Z", fullmatch=True).filter(
+    lambda s: s.lower() not in _GG_KEYWORDS
+)
 _INT = st.integers(min_value=0, max_value=999)
 
 
