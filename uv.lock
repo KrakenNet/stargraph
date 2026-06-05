@@ -977,16 +977,16 @@ wheels = [
 
 [[package]]
 name = "fathom-rules"
-version = "0.3.2"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "clipspy" },
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/29/c4/c7bf2ec28e39e457350b28e98d654e227e4ec23a97ad885e6a54613c9152/fathom_rules-0.3.2.tar.gz", hash = "sha256:a2d7286fec761fea1821c6229a7902e40e07b7262ebf3a806944be25df013f17", size = 600246, upload-time = "2026-04-27T16:52:42.877Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/07/6189051fd82e42e88ac87a1984e5550c87ce13e12227f9be03f935b91496/fathom_rules-0.5.0.tar.gz", hash = "sha256:823e57087c2a3fdf12192d0313c1aa9870b211bb14cb323809fad6a240277dff", size = 805428, upload-time = "2026-06-05T21:44:59.813Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/bf/49feb953b72e6aa237975fe8457d70ec0a1c058c159bb4230204bd450568/fathom_rules-0.3.2-py3-none-any.whl", hash = "sha256:d2227cfdb219331b0638dce906dc01acdd445e0bb6796780af224f19131929f2", size = 142833, upload-time = "2026-04-27T16:52:41.508Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/6f/761d89398072127f4aa4957aeecddfbea4b49b2d6d7ca35480661a10204e/fathom_rules-0.5.0-py3-none-any.whl", hash = "sha256:001adcd03258543008945814f07152635682cffaae37af93b161906e9db66b64", size = 151897, upload-time = "2026-06-05T21:44:58.077Z" },
 ]
 
 [[package]]
@@ -3977,7 +3977,7 @@ wheels = [
 
 [[package]]
 name = "stargraph"
-version = "0.2.2"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
@@ -4089,7 +4089,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=47.0.0" },
     { name = "dspy", specifier = ">=3.0.4,<3.4" },
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "fathom-rules", specifier = ">=0.3.1" },
+    { name = "fathom-rules", specifier = ">=0.5.0" },
     { name = "folium", marker = "extra == 'sdw'", specifier = ">=0.15" },
     { name = "geopandas", marker = "extra == 'sdw'", specifier = ">=0.14" },
     { name = "graphglot", specifier = ">=0.11.0" },
