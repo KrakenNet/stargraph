@@ -39,6 +39,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import orjson
 
+from harbor.audit.jsonl import unwrap_audit_record
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -133,7 +135,7 @@ def _read_run_events(
             if not isinstance(record, dict):
                 continue
             record_dict = cast("dict[str, Any]", record)
-            payload_raw = record_dict.get("event", record_dict)
+            payload_raw = unwrap_audit_record(record_dict)
             if not isinstance(payload_raw, dict):
                 continue
             payload = cast("dict[str, Any]", payload_raw)

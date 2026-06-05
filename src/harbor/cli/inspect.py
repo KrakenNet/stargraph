@@ -36,6 +36,7 @@ from typing import Annotated, Any, cast
 import orjson
 import typer
 
+from harbor.audit.jsonl import unwrap_audit_record
 from harbor.checkpoint.sqlite import SQLiteCheckpointer
 from harbor.serve import inspect as inspect_body
 
@@ -45,8 +46,9 @@ __all__ = ["cmd"]
 def _stream_audit_log(log_file: Path, run_id: str) -> None:
     """Phase-1 audit-log streaming mode -- one record per line, filtered.
 
-    Tolerates both bare-event lines (Phase 1 unsigned writer) and
-    signed envelopes ``{"event": ..., "sig": "<hex>"}`` (Phase 2).
+    Tolerates bare-event lines (Phase 1 unsigned writer), signed
+    envelopes ``{"event": ..., "sig": "<hex>"}`` (Phase 2), and chained
+    lines ``{"record": ..., "jws": ...}`` (chained sink).
     """
     matched = 0
     with log_file.open("rb") as fh:
@@ -58,7 +60,7 @@ def _stream_audit_log(log_file: Path, run_id: str) -> None:
             if not isinstance(record, dict):
                 continue
             record_dict = cast("dict[str, Any]", record)
-            inner = record_dict.get("event", record_dict)
+            inner = unwrap_audit_record(record_dict)
             if not isinstance(inner, dict):
                 continue
             event_dict = cast("dict[str, Any]", inner)

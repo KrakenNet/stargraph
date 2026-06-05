@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 from pydantic import BaseModel, Field
 
+from harbor.audit.jsonl import unwrap_audit_record
 from harbor.serve.scheduler import PendingRun
 
 if TYPE_CHECKING:
@@ -243,7 +244,7 @@ class RunHistory:
                         continue
                     # Unwrap signed envelope if present.
                     record_dict = cast("dict[str, Any]", record)
-                    payload_raw = record_dict.get("event", record_dict)
+                    payload_raw = unwrap_audit_record(record_dict)
                     if not isinstance(payload_raw, dict):
                         continue
                     payload = cast("dict[str, Any]", payload_raw)

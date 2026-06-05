@@ -356,16 +356,18 @@ def test_pack_signing_unknown_key_under_profile(profile: Profile, tmp_path: Path
 # --------------------------------------------------------------------------- #
 
 
-def test_allow_side_effects_startup_flag(profile: Profile) -> None:
+def test_allow_side_effects_startup_flag(
+    profile: Profile, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Cleared rejects ``--allow-side-effects`` at startup; oss-default boots.
 
     Drives the typer ``harbor serve`` command via
     :class:`typer.testing.CliRunner`. The cleared profile raises
     :class:`ProfileViolationError` BEFORE any I/O, so ``CliRunner``
     sees a non-zero exit code. The oss-default profile reaches the
-    uvicorn boot phase; we monkeypatch :func:`uvicorn.run` to a no-op
-    so the test does not actually start a listener -- the assertion
-    is "the gate did not raise + uvicorn was reached".
+    uvicorn boot phase; we monkeypatch :class:`uvicorn.Server` to a
+    no-op stub so the test does not actually start a listener -- the
+    assertion is "the gate did not raise + uvicorn was reached".
     """
     runner = CliRunner()
 
@@ -403,26 +405,28 @@ def test_allow_side_effects_startup_flag(profile: Profile) -> None:
             f"{result.exception!r}"
         )
     else:
-        # OSS-default path: monkeypatch uvicorn.run to a no-op. We stub
-        # it on the ``harbor.cli.serve`` module-level reference (the
-        # name the cmd actually calls) so the patch hits the in-use
-        # binding rather than only the upstream module.
+        # OSS-default path: monkeypatch uvicorn.Server to a no-op stub.
+        # The cmd boots via ``uvicorn.Server(uvicorn.Config(...)).run()``
+        # (T15, e69a815); we stub it on the ``harbor.cli.serve``
+        # module-level reference (the name the cmd actually calls) so
+        # the patch hits the in-use binding rather than only the
+        # upstream module. Same idiom as test_cli_serve.py.
         import harbor.cli.serve as cli_serve_mod
 
-        original_run = cli_serve_mod.uvicorn.run
         called = {"hit": False}
 
-        def _stub_run(*_args: Any, **_kwargs: Any) -> None:
-            called["hit"] = True
+        class _StubServer:
+            def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+                pass
 
-        cli_serve_mod.uvicorn.run = _stub_run  # type: ignore[assignment]
-        try:
-            result = runner.invoke(
-                app,
-                ["--profile", "oss-default", "--allow-side-effects"],
-            )
-        finally:
-            cli_serve_mod.uvicorn.run = original_run  # type: ignore[assignment]
+            def run(self) -> None:
+                called["hit"] = True
+
+        monkeypatch.setattr(cli_serve_mod.uvicorn, "Server", _StubServer)
+        result = runner.invoke(
+            app,
+            ["--profile", "oss-default", "--allow-side-effects"],
+        )
 
         assert result.exit_code == 0, (
             f"oss-default + --allow-side-effects expected zero exit; got "
@@ -430,5 +434,5 @@ def test_allow_side_effects_startup_flag(profile: Profile) -> None:
             f"exception={result.exception!r}"
         )
         assert called["hit"] is True, (
-            "oss-default path should reach uvicorn.run (gate did not block)"
+            "oss-default path should reach uvicorn.Server.run (gate did not block)"
         )
