@@ -84,7 +84,23 @@ def _harbor_run_to_artifacts(
     return match.group(1), match.group(2)
 
 
-def _normalize_event(line: str) -> dict[str, Any]:
+def _read_events(log_file: Path) -> list[dict[str, Any]]:
+    """Unwrap chained-log envelopes into the modeled run events.
+
+    Each JSONL line is a ``fathom.chained_log.ChainedAttestationLog``
+    envelope; the run event lives under ``record``. The genesis record
+    (seq 0, ``type: fathom.genesis``) is chain bookkeeping, not a run
+    event, so it is dropped.
+    """
+    records = [
+        json.loads(line)["record"]
+        for line in log_file.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    return [r for r in records if r.get("type") != "fathom.genesis"]
+
+
+def _normalize_event(ev: dict[str, Any]) -> dict[str, Any]:
     """Strip wall-clock fields the FR-28 determinism shims do not cover.
 
     ``ts`` (event envelope) and ``run_duration_ms`` (terminal
@@ -95,7 +111,7 @@ def _normalize_event(line: str) -> dict[str, Any]:
     fresh UUIDv7s per invocation. Everything else (modeled payload,
     routing decisions, projected outputs) is durable.
     """
-    ev: dict[str, Any] = json.loads(line)
+    ev = dict(ev)
     ev.pop("ts", None)
     ev.pop("run_id", None)
     ev.pop("call_id", None)
@@ -137,11 +153,11 @@ def test_counterfactual_e2e_smoke(tmp_path: Path) -> None:
         checkpoint_db=orig_db,
     )
     assert orig_status == "done", orig_status
-    orig_lines = orig_log.read_text(encoding="utf-8").splitlines()
+    orig_events = _read_events(orig_log)
     # 9 modeled events: 6 transitions + tool_call + tool_result + result
     # (see fixture header for the exact stream).
-    assert len(orig_lines) == 9, f"expected 9 events, got {len(orig_lines)}: {orig_lines!r}"
-    types = [json.loads(line).get("type") for line in orig_lines]
+    assert len(orig_events) == 9, f"expected 9 events, got {len(orig_events)}: {orig_events!r}"
+    types = [ev.get("type") for ev in orig_events]
     assert types.count("transition") == 6, types
     assert "tool_call" in types
     assert "tool_result" in types
@@ -245,12 +261,12 @@ def test_counterfactual_e2e_smoke(tmp_path: Path) -> None:
         checkpoint_db=rerun_db,
     )
     assert rerun_status == "done"
-    rerun_lines = rerun_log.read_text(encoding="utf-8").splitlines()
-    assert len(rerun_lines) == len(orig_lines), (
-        f"event count mismatch: orig={len(orig_lines)} rerun={len(rerun_lines)}"
+    rerun_events = _read_events(rerun_log)
+    assert len(rerun_events) == len(orig_events), (
+        f"event count mismatch: orig={len(orig_events)} rerun={len(rerun_events)}"
     )
-    orig_normalized = [_normalize_event(line) for line in orig_lines]
-    rerun_normalized = [_normalize_event(line) for line in rerun_lines]
+    orig_normalized = [_normalize_event(ev) for ev in orig_events]
+    rerun_normalized = [_normalize_event(ev) for ev in rerun_events]
     assert orig_normalized == rerun_normalized, (
         "event payloads diverged between runs (post-strip): "
         f"orig={orig_normalized!r}\nrerun={rerun_normalized!r}"

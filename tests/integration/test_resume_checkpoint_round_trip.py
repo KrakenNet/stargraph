@@ -36,7 +36,7 @@ async def test_checkpoint_round_trips_through_sqlite_checkpointer(
     """``GraphRun.checkpoint()`` → ``checkpointer.write`` → ``read_latest`` returns
     a :class:`Checkpoint` equal to the input by ``model_dump`` (INV-2)."""
     db_path = tmp_path / "ckpt.db"
-    cp = SQLiteCheckpointer(db_path=db_path)
+    cp = SQLiteCheckpointer(path=db_path)
     await cp.bootstrap()
 
     run = GraphRun(run_id="run-round-trip", graph=_graph(), checkpointer=cp)
