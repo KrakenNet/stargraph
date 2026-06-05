@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# Phase-3 task 3.26 fixture: CVE-triage IR with the StubBrokerNode form.
+# Phase-3 task 3.26 fixture: triage IR with the StubBrokerNode form.
 #
 # Topology (linear):
 #
@@ -10,15 +10,14 @@
 # `broker` resolves to ``tests.fixtures.nautilus_stub.StubBrokerNode`` in
 # the composition test's node-registry construction (the IR loader
 # uses ``kind`` as a free-form key; the test owns the kind->NodeBase
-# mapping). The "_real_nautilus" sibling fixture differs only in the
-# `broker` step (real ``BrokerNode``); the "_no_nautilus" variant drops
-# this step entirely and edges directly retrieve_kv -> ml_score.
+# mapping). The "_no_nautilus" sibling fixture drops the `broker` step
+# entirely and edges directly retrieve_kv -> ml_score.
 #
 # State schema is intentionally compact: the composition test seeds
-# `agent_id` + `intent` for the broker step and `cve_record_bytes`
+# `agent_id` + `intent` for the broker step and `record_bytes`
 # (artifact payload) before WriteArtifactNode.
 ir_version: "1.0.0"
-id: "run:cve-triage-stub-broker"
+id: "run:triage-stub-broker"
 nodes:
   - id: source
     kind: passthrough
@@ -41,4 +40,4 @@ nodes:
 state_schema:
   agent_id: str
   intent: str
-  cve_record_bytes: bytes
+  record_bytes: bytes

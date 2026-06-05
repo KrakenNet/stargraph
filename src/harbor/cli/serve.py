@@ -130,7 +130,7 @@ def cmd(
             help=(
                 "IR YAML graph to load and register at boot "
                 "(repeatable). The graph's ``id`` (e.g. "
-                "``graph:cve-rem-pipeline``) is the key downstream "
+                "``graph:sdw-pipeline``) is the key downstream "
                 "POST /v1/runs uses; submitting a run for an "
                 "unregistered graph_id falls back to the synthetic "
                 "POC RunSummary (status=done, no real execution). "

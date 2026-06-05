@@ -3,7 +3,7 @@
 
 Nautilus's adapter surface is intentionally read-only (see
 :mod:`nautilus.adapters.servicenow`; ``execute()`` issues HTTP GET and
-no other verbs). The cve_remediation pilot uncovered two gaps:
+no other verbs). Production pilots uncovered two gaps:
 
 * Phase 4 :class:`CreateChangeRequestNode` needs to *create* a CR, not
   just fetch one. Write-side mutation lives here until Nautilus ships a

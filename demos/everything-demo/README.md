@@ -144,11 +144,11 @@ This demo is a **scaffold**, not a production graph:
 - `notify_user_call` is the MCP integration seam. Wire it via `harbor.adapters.mcp.bind` against an MCP stdio server before relying on it; the in-process `@tool` callable is the fallback.
 - Custom nodes register via the `module:ClassName` IR `kind:` escape hatch — there is no `harbor.nodes` entry-point group yet (see `TODO.md`).
 
-## What this exercises that the cve-remediation demo does not
+## What this exercises that the other demos do not
 
-- `memory_write` node (cve demo uses `tool` for memory writes).
+- `memory_write` node.
 - Explicit `assert` and `retract` action variants in the same graph.
 - All three triggers wired in one `triggers:` block.
 - All five store kinds in one `stores:` block.
 - A custom `NodeBase` subclass loaded via the `module:ClassName` import path.
-- A standalone Skill manifest under `skills/` (cve demo embeds skills inline).
+- A standalone Skill manifest under `skills/`.

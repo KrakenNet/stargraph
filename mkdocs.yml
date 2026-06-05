@@ -139,8 +139,6 @@ nav:
           - Manual: reference/triggers/manual.md
           - Cron: reference/triggers/cron.md
           - Webhook: reference/triggers/webhook.md
-      - Validation reports:
-          - CVE pipeline (Phase-5): validation/cve-pipeline-report.md
 
 markdown_extensions:
   - admonition

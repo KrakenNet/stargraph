@@ -61,13 +61,13 @@ async def test_dry_run_default(monkeypatch: pytest.MonkeyPatch) -> None:
     out = await create_change_request(
         short_description="CVE-2021-44228 remediation",
         description="Apply log4j 2.17 patch to affected hosts.",
-        correlation_id="cve-rem-2021-44228-batch-1",
+        correlation_id="remediation-2021-44228-batch-1",
         priority=2,
     )
     assert out["status"] == "dry-run"
     body = out["request_body"]
     assert body["short_description"] == "CVE-2021-44228 remediation"
-    assert body["correlation_id"] == "cve-rem-2021-44228-batch-1"
+    assert body["correlation_id"] == "remediation-2021-44228-batch-1"
     assert body["priority"] == "2"
     prov = out["__harbor_provenance__"]
     assert prov["source"] == "servicenow"

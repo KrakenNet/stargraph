@@ -62,7 +62,7 @@ rules:
     when: "?n <- (node-id (id human_gate))"
     then:
       - kind: interrupt
-        prompt: "Approve remediation for {cve_id}?"
+        prompt: "Approve remediation for {record_id}?"
         interrupt_payload:
           requested_capability: "runs:respond"
         requested_capability: "runs:respond"
@@ -71,7 +71,7 @@ rules:
 ```
 
 The `kind: interrupt` rule action mirrors `InterruptNodeConfig` field-by-field.
-See `tests/fixtures/cve_triage.yaml` for the full HITL pipeline.
+See `tests/fixtures/triage_stub_broker.yaml` for the full HITL pipeline.
 
 ## Errors
 

@@ -28,7 +28,7 @@ function DataSourceBar({ onLoadTopology, loading, error, graphList }) {
     if (!serverUrl) return;
     var url = serverUrl.replace(/\/$/, '');
     onLoadTopology(null, 'connecting');
-    // Try /api/graph (graph-viewer native), then /watch/api/graph (cve-rem watcher).
+    // Try /api/graph (graph-viewer native), then /watch/api/graph (run-watcher).
     var paths = ['/api/graph', '/watch/api/graph'];
     var attempt = 0;
     function tryNext() {
@@ -181,7 +181,7 @@ function App() {
       .then(function(data) { if (data) setGraphList(data.graphs); })
       .catch(function() {});
 
-    // Try /api/graph (graph-viewer native), then /watch/api/graph (cve-rem watcher).
+    // Try /api/graph (graph-viewer native), then /watch/api/graph (run-watcher).
     var paths = ['/api/graph', '/watch/api/graph'];
     var attempt = 0;
     function tryNext() {

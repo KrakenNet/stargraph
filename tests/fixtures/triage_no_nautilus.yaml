@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# Phase-3 task 3.26 fixture: CVE-triage IR with the broker step REMOVED.
+# Phase-3 task 3.26 fixture: triage IR with the broker step REMOVED.
 #
 # Topology (linear, broker-free):
 #
@@ -13,7 +13,7 @@
 # (`approval_gate`) and the artifact write (`write_record`) still fire
 # in this form, proving they are not load-bearing on the broker step.
 ir_version: "1.0.0"
-id: "run:cve-triage-no-nautilus"
+id: "run:triage-no-nautilus"
 nodes:
   - id: source
     kind: passthrough
@@ -34,4 +34,4 @@ nodes:
 state_schema:
   agent_id: str
   intent: str
-  cve_record_bytes: bytes
+  record_bytes: bytes

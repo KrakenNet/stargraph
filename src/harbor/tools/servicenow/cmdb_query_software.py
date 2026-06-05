@@ -7,8 +7,8 @@ optional vendor narrowing. Returns raw rows so the correlation agent
 can rank / filter; this tool deliberately does NOT score candidates —
 that's an agent-side concern (so the rule pack can also intervene).
 
-Capability: ``tools:servicenow:read`` (default-allow on the
-cve_remediation capability profile; gated on graphs that opt out).
+Capability: ``tools:servicenow:read`` (default-allow on remediation
+capability profiles; gated on graphs that opt out).
 """
 
 from __future__ import annotations

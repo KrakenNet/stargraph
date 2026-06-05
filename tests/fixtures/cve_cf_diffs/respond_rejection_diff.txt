@@ -1,7 +1,0 @@
-# Counterfactual respond-rejection RunDiff (FR-56, AC-11.3, AC-14.7, design §13.3).
-# Scenario: parent pipeline analyst-approves at the InterruptNode -> action notify.
-# CF mutation: respond_payloads[step=4] = {decision: reject, comment: vetoed} -> action drop.
-# Expected divergence: state at steps 5..6, derived_hash, final_status.
-# Captured 2026-04-30 via scripts/gen_cve_cf_diffs.py.
-
-{"original_run_id":"parent-cve-respond","counterfactual_run_id":"cf-cve-respond-001","derived_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","steps":[{"step":5,"branch_id":null,"diverged_at":"state","state_diff":[{"op":"add","path":"/comment","value":"vetoed"},{"op":"replace","path":"/decision","value":"reject"}],"output_diff":null,"side_effect_diff":null},{"step":6,"branch_id":null,"diverged_at":"state","state_diff":[{"op":"replace","path":"/action","value":"drop"},{"op":"replace","path":"/decision","value":"reject"}],"output_diff":null,"side_effect_diff":null}],"final_state_diff":[{"op":"replace","path":"/action","value":"drop"},{"op":"replace","path":"/decision","value":"reject"}],"final_status_diff":null}

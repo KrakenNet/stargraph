@@ -7,11 +7,11 @@ and serves both the API and the static viewer UI.
 Usage:
 
     uv run --no-project python -m demos.graph_viewer.serve_graph_viewer \
-        --graph demos/cve_remediation/graph/harbor.yaml
+        --graph demos/sentinel_dark_watch/graph/harbor.yaml
 
     # or multiple graphs:
     uv run --no-project python -m demos.graph_viewer.serve_graph_viewer \
-        --graph demos/cve_remediation/graph/harbor.yaml \
+        --graph demos/sentinel_dark_watch/graph/harbor.yaml \
         --graph demos/everything-demo/graph/harbor.yaml
 """
 

@@ -1337,7 +1337,7 @@ class AnalystReviewNode(NodeBase):
     table.
 
     Matches the :class:`harbor.nodes.interrupt.InterruptNode` pattern
-    from CVE-rem exactly: raise ``_HitInterrupt(InterruptAction(...))``.
+    exactly: raise ``_HitInterrupt(InterruptAction(...))``.
     """
 
     async def execute(

@@ -485,8 +485,8 @@ def cmd(
             help=(
                 "Wire the lifespan-singleton Nautilus Broker around the run "
                 "(reads <harbor-config>/nautilus.yaml). Soft-fails when the "
-                "YAML is absent -- BrokerNode/broker_request/cve_remediation "
-                "demo intents fall back to offline envelopes."
+                "YAML is absent -- BrokerNode/broker_request demo intents "
+                "fall back to offline envelopes."
             ),
         ),
     ] = False,

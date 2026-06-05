@@ -85,11 +85,11 @@ nodes:
   - id: write_record
     kind: write_artifact
 state_schema:
-  cve_record_bytes: bytes
+  record_bytes: bytes
 ```
 
-See `tests/fixtures/cve_triage_no_nautilus.yaml` and
-`tests/fixtures/cve_triage.yaml` for full pipeline shapes.
+See `tests/fixtures/triage_no_nautilus.yaml` and
+`tests/fixtures/triage_stub_broker.yaml` for full pipeline shapes.
 
 ## Errors
 

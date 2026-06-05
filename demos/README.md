@@ -11,12 +11,10 @@ single store + skill all the way up to the full stack.
 | 1 | [`internal-docs-qa/`](internal-docs-qa/internal-docs-qa.md) | easy | Mandatory provenance + lineage audit CI gate |
 | 2 | [`code-graph/`](code-graph/code-graph.md) | easy | Stateful agent graph over a real codebase |
 | 3 | [`pr-review/`](pr-review/pr-review.md) | easy → medium | Drives on `code-graph` + replay for dispute |
-| 4 | [`atr/`](atr/atr-graph.md) | medium | Threat-response workflow (legacy, see `soc-triage`) |
-| 5 | [`soc-triage/`](soc-triage/soc-triage.md) | medium | Bosun-signed governance + counterfactual replay |
-| 6 | [`regwatch/`](regwatch/regwatch.md) | medium | Cron trigger + air-gap deployment variant |
-| 7 | [`support-veto/`](support-veto/support-veto.md) | medium → hard | Fathom interrupt mid-run + signed-pack hot-swap |
-| 8 | [`pv-case-manager/`](pv-case-manager/pv-case-manager.md) | hard | Master-of-all (19 capabilities, regulated industry) |
-| 9 | [`cve_remediation/`](cve_remediation/README.md) | hard | Production showcase — every node kind, action, store, trigger; 10 IRs, 174 tests |
+| 4 | [`soc-triage/`](soc-triage/soc-triage.md) | medium | Bosun-signed governance + counterfactual replay |
+| 5 | [`regwatch/`](regwatch/regwatch.md) | medium | Cron trigger + air-gap deployment variant |
+| 6 | [`support-veto/`](support-veto/support-veto.md) | medium → hard | Fathom interrupt mid-run + signed-pack hot-swap |
+| 7 | [`pv-case-manager/`](pv-case-manager/pv-case-manager.md) | hard | Master-of-all (19 capabilities, regulated industry) |
 
 ## How to read a demo doc
 
@@ -46,32 +44,32 @@ from design to running code.
 
 ## Feature coverage matrix
 
-| Capability | docs-qa | code-graph | pr-review | soc-triage | regwatch | support-veto | pv-cm | cve-rem |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| DocStore | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| VectorStore | ✓ |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| GraphStore |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| FactStore |   |   |   | ✓ | ✓ | ✓ | ✓ | ✓ |
-| MemoryStore |   |   |   | ✓ |   | ✓ | ✓ | ✓ |
-| RAG / autoresearch | ✓ |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| RetrievalNode (RRF) | ✓ |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| MLNode + sha256 weights |   |   |   | ✓ |   |   | ✓ | ✓ |
-| DSPy adapter | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| MCP adapter |   |   |   |   |   |   | ✓ | ✓ |
-| Fathom + harbor_action |   |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Bosun signed packs |   |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| InterruptAction (HITL) |   |   |   | ✓ |   | ✓ | ✓ | ✓ |
-| Cron trigger |   |   |   |   | ✓ |   | ✓ | ✓ |
-| Webhook trigger |   |   | ✓ | ✓ |   |   | ✓ | ✓ |
-| Provenance bundle | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| BLAKE3 artifacts | ✓ |   |   | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Ed25519 audit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Checkpoint (sqlite/pg) |   | ✓ |   | ✓ |   | ✓ | ✓ | ✓ |
-| Counterfactual replay |   | ✓ | ✓ | ✓ |   | ✓ | ✓ | ✓ |
-| Air-gap variant |   |   |   |   | ✓ |   | ✓ | ✓ |
-| harbor.serve API |   |   |   | ✓ |   | ✓ | ✓ | ✓ |
-| mTLS + capabilities |   |   |   | ✓ |   | ✓ | ✓ | ✓ |
-| KG promotion (memory) |   |   |   |   |   |   | ✓ | ✓ |
+| Capability | docs-qa | code-graph | pr-review | soc-triage | regwatch | support-veto | pv-cm |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| DocStore | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| VectorStore | ✓ |   | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GraphStore |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| FactStore |   |   |   | ✓ | ✓ | ✓ | ✓ |
+| MemoryStore |   |   |   | ✓ |   | ✓ | ✓ |
+| RAG / autoresearch | ✓ |   | ✓ | ✓ | ✓ | ✓ | ✓ |
+| RetrievalNode (RRF) | ✓ |   | ✓ | ✓ | ✓ | ✓ | ✓ |
+| MLNode + sha256 weights |   |   |   | ✓ |   |   | ✓ |
+| DSPy adapter | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| MCP adapter |   |   |   |   |   |   | ✓ |
+| Fathom + harbor_action |   |   | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Bosun signed packs |   |   | ✓ | ✓ | ✓ | ✓ | ✓ |
+| InterruptAction (HITL) |   |   |   | ✓ |   | ✓ | ✓ |
+| Cron trigger |   |   |   |   | ✓ |   | ✓ |
+| Webhook trigger |   |   | ✓ | ✓ |   |   | ✓ |
+| Provenance bundle | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| BLAKE3 artifacts | ✓ |   |   | ✓ | ✓ | ✓ | ✓ |
+| Ed25519 audit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Checkpoint (sqlite/pg) |   | ✓ |   | ✓ |   | ✓ | ✓ |
+| Counterfactual replay |   | ✓ | ✓ | ✓ |   | ✓ | ✓ |
+| Air-gap variant |   |   |   |   | ✓ |   | ✓ |
+| harbor.serve API |   |   |   | ✓ |   | ✓ | ✓ |
+| mTLS + capabilities |   |   |   | ✓ |   | ✓ | ✓ |
+| KG promotion (memory) |   |   |   |   |   |   | ✓ |
 | Cypher subset linter |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Lineage audit CI | ✓ |   |   | ✓ | ✓ |   | ✓ | ✓ |
 | Multi-runtime sandbox |   |   |   |   |   |   |   | ✓ |

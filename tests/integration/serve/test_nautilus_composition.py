@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase-3 task 3.26: Nautilus-stub + Nautilus-removed composition tests (FR-58, AC-11.5).
 
-Drives the CVE-triage IR end-to-end through the FastAPI serve surface in
+Drives the triage IR end-to-end through the FastAPI serve surface in
 two composition variants and asserts the same invariants hold in both:
 
 1. **`test_with_stub`** loads
-   :file:`tests/fixtures/cve_triage_stub_broker.yaml`. The broker step
+   :file:`tests/fixtures/triage_stub_broker.yaml`. The broker step
    resolves to :class:`tests.fixtures.nautilus_stub.StubBrokerNode`
    (canned :class:`nautilus.BrokerResponse`). The graph drives through
    `write_record` (real :class:`WriteArtifactNode` against a
@@ -17,7 +17,7 @@ two composition variants and asserts the same invariants hold in both:
    asserts the route returns 200 with state="running".
 
 2. **`test_with_removed`** loads
-   :file:`tests/fixtures/cve_triage_no_nautilus.yaml`. The broker step
+   :file:`tests/fixtures/triage_no_nautilus.yaml`. The broker step
    is dropped entirely; the graph edges `retrieve_kv -> ml_score`
    directly. Same artifact + HITL invariants hold.
 
@@ -106,13 +106,13 @@ pytestmark = [pytest.mark.serve, pytest.mark.api, pytest.mark.integration]
 
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures"
-_STUB_FIXTURE = _FIXTURES_DIR / "cve_triage_stub_broker.yaml"
-_REMOVED_FIXTURE = _FIXTURES_DIR / "cve_triage_no_nautilus.yaml"
+_STUB_FIXTURE = _FIXTURES_DIR / "triage_stub_broker.yaml"
+_REMOVED_FIXTURE = _FIXTURES_DIR / "triage_no_nautilus.yaml"
 
 _ACTOR = "alice"
-_INTERRUPT_PROMPT = "approve CVE record write?"
+_INTERRUPT_PROMPT = "approve record write?"
 _RESPONSE_BODY: dict[str, Any] = {"decision": "approve"}
-_CVE_RECORD_BYTES = b'{"cve_id": "CVE-2026-0001", "score": 9.8}'
+_RECORD_BYTES = b'{"record_id": "REC-2026-0001", "score": 9.8}'
 
 
 class _PassthroughNode(NodeBase):
@@ -206,11 +206,11 @@ def _build_node_registry(ir: IRDocument) -> dict[str, NodeBase]:
     registry: dict[str, NodeBase] = {}
     interrupt_cfg = InterruptNodeConfig(
         prompt=_INTERRUPT_PROMPT,
-        interrupt_payload={"target": "cve-record"},
+        interrupt_payload={"target": "record"},
     )
     write_cfg = WriteArtifactNodeConfig(
-        content_field="cve_record_bytes",
-        name="cve-record.json",
+        content_field="record_bytes",
+        name="record.json",
         content_type="application/json",
         output_field="artifact_ref",
     )
@@ -331,8 +331,8 @@ async def _run_composition(
 
     initial_state = graph.state_schema(
         agent_id="analyst",
-        intent="cve-triage",
-        cve_record_bytes=_CVE_RECORD_BYTES,
+        intent="triage",
+        record_bytes=_RECORD_BYTES,
     )
 
     run = GraphRun(
@@ -398,7 +398,7 @@ async def _run_composition(
 @pytest.mark.serve
 @pytest.mark.api
 async def test_with_stub(tmp_path: Path) -> None:
-    """CVE-triage IR with `StubBrokerNode` -- HITL + artifact fire end-to-end.
+    """triage IR with `StubBrokerNode` -- HITL + artifact fire end-to-end.
 
     Asserts:
 
@@ -408,13 +408,13 @@ async def test_with_stub(tmp_path: Path) -> None:
     * The graph reached the InterruptNode boundary and emitted
       :class:`WaitingForInputEvent` with the configured prompt.
     * The on-disk artifact store contains exactly one row matching the
-      seeded ``_CVE_RECORD_BYTES`` payload.
+      seeded ``_RECORD_BYTES`` payload.
     * The respond POST returned 200 + status="running".
     """
     received, artifact_store = await _run_composition(
         yaml_path=_STUB_FIXTURE,
         tmp_path=tmp_path,
-        run_id="cve-triage-stub-broker-run",
+        run_id="triage-stub-broker-run",
     )
 
     # ---- Artifact fired --------------------------------------------------
@@ -424,7 +424,7 @@ async def test_with_stub(tmp_path: Path) -> None:
         f"got events={[type(e).__name__ for e in received]!r}"
     )
     art_ev = artifact_events[0]
-    assert art_ev.run_id == "cve-triage-stub-broker-run"
+    assert art_ev.run_id == "triage-stub-broker-run"
     assert art_ev.artifact_ref["content_type"] == "application/json"
 
     # ---- HITL fired ------------------------------------------------------
@@ -436,11 +436,11 @@ async def test_with_stub(tmp_path: Path) -> None:
     assert waiting[0].prompt == _INTERRUPT_PROMPT
 
     # ---- On-disk artifact persisted -------------------------------------
-    rows = await artifact_store.list("cve-triage-stub-broker-run")
+    rows = await artifact_store.list("triage-stub-broker-run")
     assert len(rows) == 1, f"expected 1 artifact on disk; got {rows!r}"
     persisted_bytes = await artifact_store.get(rows[0].artifact_id)
-    assert persisted_bytes == _CVE_RECORD_BYTES, (
-        f"persisted artifact bytes mismatch: {persisted_bytes!r} != {_CVE_RECORD_BYTES!r}"
+    assert persisted_bytes == _RECORD_BYTES, (
+        f"persisted artifact bytes mismatch: {persisted_bytes!r} != {_RECORD_BYTES!r}"
     )
 
 
@@ -452,7 +452,7 @@ async def test_with_stub(tmp_path: Path) -> None:
 @pytest.mark.serve
 @pytest.mark.api
 async def test_with_removed(tmp_path: Path) -> None:
-    """CVE-triage IR WITHOUT the broker step -- HITL + artifact still fire.
+    """triage IR WITHOUT the broker step -- HITL + artifact still fire.
 
     Decision-Diamond DD-3 (AC-11.5): the validation gate must not be
     load-bearing on the broker step. Removing the broker entirely
@@ -467,7 +467,7 @@ async def test_with_removed(tmp_path: Path) -> None:
     received, artifact_store = await _run_composition(
         yaml_path=_REMOVED_FIXTURE,
         tmp_path=tmp_path,
-        run_id="cve-triage-no-nautilus-run",
+        run_id="triage-no-nautilus-run",
     )
 
     # ---- Artifact fired --------------------------------------------------
@@ -485,7 +485,7 @@ async def test_with_removed(tmp_path: Path) -> None:
     )
 
     # ---- On-disk artifact persisted -------------------------------------
-    rows = await artifact_store.list("cve-triage-no-nautilus-run")
+    rows = await artifact_store.list("triage-no-nautilus-run")
     assert len(rows) == 1, f"expected 1 artifact on disk; got {rows!r}"
     persisted_bytes = await artifact_store.get(rows[0].artifact_id)
-    assert persisted_bytes == _CVE_RECORD_BYTES
+    assert persisted_bytes == _RECORD_BYTES

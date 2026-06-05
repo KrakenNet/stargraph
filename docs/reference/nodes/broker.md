@@ -69,7 +69,7 @@ tools:
     version: "1.0"
 ```
 
-See `tests/fixtures/cve_triage.yaml` for the full canonical pipeline.
+See `tests/fixtures/triage_stub_broker.yaml` for the full canonical pipeline.
 
 ## Errors
 

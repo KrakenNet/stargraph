@@ -88,15 +88,15 @@ class TriageGate(InterruptNode):
                     ],
                 },
                 requested_capability="runs:respond",
-                timeout=None,            # durable wait (matches CVE demo v6)
+                timeout=None,            # durable wait
                 on_timeout="halt",
             ),
         )
 ```
 
 !!! warning "`timeout=None` means wait forever"
-    The CVE-remediation demo uses `timeout=None` because analyst SLAs
-    govern the wait, not the engine. For experiments add a
+    Use `timeout=None` when analyst SLAs govern the wait, not the
+    engine. For experiments add a
     `timedelta(minutes=5)` and set `on_timeout="goto:node_reject"` so
     untouched runs auto-reject.
 
@@ -247,5 +247,3 @@ the `WaitingForInputEvent` and the post-resume
   the full `InterruptNodeConfig` schema and timeout policy options.
 - [Serve → HITL](../serve/hitl.md) — HTTP resume contract and audit
   mapping.
-- `demos/cve-remediation/graph/harbor.yaml` — four production HITL
-  gates with durable waits, backup-signer escalation, per-gate prompts.

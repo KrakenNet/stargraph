@@ -99,10 +99,9 @@ nodes:
     spec: ./subgraphs/sandbox_dispatch.yaml
 ```
 
-The CVE remediation demo
-([`demos/cve-remediation/graph/harbor.yaml`][cve-graph]) is the
-canonical worked example: 30+ nodes, three sub-graphs, two HITL
-interrupts, governance packs.
+The Sentinel Dark Watch demo
+([`demos/sentinel_dark_watch/graph/harbor.yaml`][sdw-graph]) is the
+canonical worked example: ML detection, HITL review, governance packs.
 
 For one node from that graph:
 
@@ -188,4 +187,4 @@ Non-`done` statuses raise exit code 1 — useful for CI gating.
 [ir-document]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/ir/_models.py
 [node-spec]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/ir/_models.py
 [graph]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/graph/__init__.py
-[cve-graph]: https://github.com/KrakenNet/harbor/blob/main/demos/cve-remediation/graph/harbor.yaml
+[sdw-graph]: https://github.com/KrakenNet/harbor/blob/main/demos/sentinel_dark_watch/graph/harbor.yaml

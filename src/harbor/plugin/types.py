@@ -114,7 +114,7 @@ class PackSpec:
     """
 
     id: str
-    """Stable pack id (e.g. ``cve_rem.routing``)."""
+    """Stable pack id (e.g. ``sdw.routing``)."""
 
     version: str
     """SemVer pack version."""

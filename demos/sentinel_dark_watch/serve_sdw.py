@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """``harbor serve`` wrapper that pins the SDW capability profile.
 
-Mirrors the CVE-rem ``serve_cve_rem.py`` pattern: thin argparse
-wrapper around :func:`harbor.serve.api.create_app` that inserts the
+Thin argparse wrapper around :func:`harbor.serve.api.create_app` that inserts the
 engine-side :class:`Capabilities` from
 :func:`demos.sentinel_dark_watch.capabilities.build_sdw_capabilities`
 into ``deps`` before constructing the FastAPI app.

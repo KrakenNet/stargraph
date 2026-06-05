@@ -39,7 +39,7 @@ harbor serve \
 
 | Flag | Default | Description |
 |---|---|---|
-| `--graph <path>` | none | IR YAML to load and register at boot. Repeatable. The graph's `id` (e.g. `graph:cve-rem-pipeline`) is the key `POST /v1/runs` uses. Each `--graph` builds a per-graph node registry resolving each `NodeSpec.kind` (`module:Class`) to a real callable; an unregistered `graph_id` falls back to a synthetic POC `RunSummary`. |
+| `--graph <path>` | none | IR YAML to load and register at boot. Repeatable. The graph's `id` (e.g. `graph:sdw-pipeline`) is the key `POST /v1/runs` uses. Each `--graph` builds a per-graph node registry resolving each `NodeSpec.kind` (`module:Class`) to a real callable; an unregistered `graph_id` falls back to a synthetic POC `RunSummary`. |
 
 ### LLM (DSPy nodes)
 
@@ -92,7 +92,7 @@ Persistent state + one registered graph:
 harbor serve \
   --db ./harbor.sqlite \
   --audit-log ./audit.jsonl \
-  --graph demos/cve-remediation/ryugraph/harbor.yaml
+  --graph demos/sentinel_dark_watch/graph/harbor.yaml
 ```
 
 Cleared profile with an external LLM endpoint:

@@ -83,7 +83,7 @@ when promoted into their own folder.
 
 ## Workflows — see [`flows/CATALOG.md`](flows/CATALOG.md)
 
-Existing flow demos: `code-graph/`, `atr/`, `cve-remediation/`.
+Existing flow demos: `code-graph/`.
 
 ### Generic
 

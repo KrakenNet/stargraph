@@ -52,8 +52,8 @@ def test_manual_rows_loaded(tmp_path: Path) -> None:
         """
 version: "1.0"
 manual:
-  - id: manual.cve_replay
-    graph_id: graph:cve-rem-main
+  - id: manual.replay
+    graph_id: graph:sdw-main
     description: Operator-fired replay
   - id: manual.audit
     graph_id: graph:audit
@@ -62,8 +62,8 @@ manual:
     out = load_triggers(tmp_path)
     assert len(out.manual_descriptors) == 2
     assert out.manual_descriptors[0] == ManualDescriptor(
-        trigger_id="manual.cve_replay",
-        graph_id="graph:cve-rem-main",
+        trigger_id="manual.replay",
+        graph_id="graph:sdw-main",
         description="Operator-fired replay",
     )
     assert out.manual_descriptors[1].description == ""
@@ -75,7 +75,7 @@ def test_cron_translation(tmp_path: Path) -> None:
         """
 cron:
   - id: cron.daily_anchor
-    graph_id: graph:cve-rem-audit-anchor
+    graph_id: graph:sdw-audit-anchor
     expr: "0 3 * * *"
     tz: UTC
     missed_fire_policy: fire_once_catchup
@@ -89,7 +89,7 @@ cron:
     assert spec.trigger_id == "cron.daily_anchor"
     assert spec.cron_expression == "0 3 * * *"
     assert spec.tz == "UTC"
-    assert spec.graph_id == "graph:cve-rem-audit-anchor"
+    assert spec.graph_id == "graph:sdw-audit-anchor"
     assert spec.params == {"trigger_kind": "cron"}
     assert spec.missed_fire_policy == "fire_once_catchup"
 
@@ -119,9 +119,9 @@ def test_webhook_translation_with_env_secrets(
         tmp_path,
         """
 webhook:
-  - id: webhook.cve_feed
-    graph_id: graph:cve-rem-main
-    path: /triggers/cve-feed
+  - id: webhook.feed
+    graph_id: graph:sdw-main
+    path: /triggers/feed
     current_secret_env: WHK_CURRENT
     previous_secret_env: WHK_PREV
     timestamp_window_seconds: 300
@@ -133,11 +133,11 @@ webhook:
     out = load_triggers(tmp_path)
     assert len(out.webhook_specs) == 1
     spec = out.webhook_specs[0]
-    assert spec.trigger_id == "webhook.cve_feed"
-    assert spec.path == "/triggers/cve-feed"
+    assert spec.trigger_id == "webhook.feed"
+    assert spec.path == "/triggers/feed"
     assert spec.current_secret == b"current-secret-value"
     assert spec.previous_secret == b"prev-secret-value"
-    assert spec.graph_id == "graph:cve-rem-main"
+    assert spec.graph_id == "graph:sdw-main"
     assert spec.timestamp_window_seconds == 300
     assert spec.nonce_lru_size == 10000
     # params_extractor: "json" sentinel is dropped (not callable)

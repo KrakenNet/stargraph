@@ -226,7 +226,7 @@ filterwarnings = [
     "ignore:The 'prefix' argument in InputField/OutputField is deprecated:DeprecationWarning:dspy.*",
     "ignore::DeprecationWarning:nautilus.*",
     # Pydantic v2 emits this for StrEnum fields whose `value` is dumped
-    # under `mode='json'`; cve_remediation state uses StrEnum heavily and
+    # under `mode='json'`; demo state models use StrEnum heavily and
     # the projection is intentional. Filter is scoped to pydantic only.
     "ignore:.*StrEnum.*:DeprecationWarning:pydantic.*",
 ]

@@ -7,26 +7,26 @@ into typed :class:`~harbor.triggers.cron.CronSpec` /
 manual-trigger descriptors (the ManualTrigger plugin holds no per-spec
 state, but operators want them in the YAML for discoverability).
 
-The convention shape (mirrors the ``everything-demo`` and
-``cve_remediation`` ``triggers.yaml``)::
+The convention shape (mirrors the ``everything-demo``
+``triggers.yaml``)::
 
     version: "1.0"
     manual:
-      - id: manual.cve_replay
-        graph_id: graph:cve-rem-main
+      - id: manual.replay
+        graph_id: graph:sdw-main
         description: ...
     cron:
       - id: cron.daily_anchor
-        graph_id: graph:cve-rem-audit-anchor
+        graph_id: graph:sdw-audit-anchor
         expr: "0 3 * * *"
         tz: UTC
         missed_fire_policy: fire_once_catchup
         params: {trigger_kind: cron}
         description: ...
     webhook:
-      - id: webhook.cve_feed
-        graph_id: graph:cve-rem-main
-        path: /triggers/cve-feed
+      - id: webhook.feed
+        graph_id: graph:sdw-main
+        path: /triggers/feed
         current_secret_env: WEBHOOK_SECRET_CURRENT
         previous_secret_env: WEBHOOK_SECRET_PREVIOUS
         timestamp_window_seconds: 300

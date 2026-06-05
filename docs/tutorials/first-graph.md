@@ -172,8 +172,7 @@ uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite --diff 0 1
 
 ## Step 7 — Add a smoke test
 
-Save this as `tests/test_smoke.py` and run with `uv run pytest`. The
-shape mirrors `demos/cve-remediation/graph/tests/test_smoke.py`.
+Save this as `tests/test_smoke.py` and run with `uv run pytest`.
 
 ```python
 # tests/test_smoke.py
