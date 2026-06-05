@@ -12,7 +12,16 @@ from __future__ import annotations
 
 import typer
 
-from harbor.cli import counterfactual, inspect, replay, respond, run, serve, simulate
+from harbor.cli import (
+    counterfactual,
+    inspect,
+    replay,
+    respond,
+    run,
+    serve,
+    simulate,
+    verify_audit,
+)
 
 __all__ = ["app", "main"]
 
@@ -31,6 +40,7 @@ app.command("counterfactual")(counterfactual.cmd)
 app.command("replay")(replay.cmd)
 app.command("respond")(respond.cmd)
 app.command("serve")(serve.cmd)
+app.command("verify-audit")(verify_audit.cmd)
 
 
 def main() -> None:

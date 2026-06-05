@@ -1,0 +1,123 @@
+ir_version: "1.0.0"
+id: "graph:sdw-evolve"
+
+nodes:
+  - id: observe_metrics
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:ObserveMetricsNode"
+  - id: analyze_weaknesses
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:AnalyzeWeaknessesNode"
+  - id: research_alternatives
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:ResearchAlternativesNode"
+  - id: generate_proposals
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:GenerateProposalsNode"
+  - id: evaluate_proposal
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:EvaluateProposalNode"
+  - id: run_experiment
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:RunExperimentNode"
+  - id: governance_gate
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:GovernanceGateNode"
+  - id: apply_change
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:ApplyChangeNode"
+  - id: curate_training_data
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:CurateTrainingDataNode"
+  - id: train_model
+    kind: "demos.sentinel_dark_watch.graph.evolve_nodes:TrainModelNode"
+  - id: evolve_done
+    kind: "demos.sentinel_dark_watch.graph.nodes:PassthroughNode"
+
+state_class: "demos.sentinel_dark_watch.graph.state:EvolutionState"
+
+tools:
+  - id: nautilus.broker_request
+    version: "1"
+
+governance:
+  - id: harbor.bosun.budgets
+    version: "1.0"
+    requires: { harbor_facts_version: "1.0", api_version: "1" }
+  - id: sdw.evolution
+    version: "1.0"
+    requires: { harbor_facts_version: "1.0" }
+
+stores: []
+
+rules:
+  # Linear flow: observe → analyze → research → propose
+  - id: r-observe-to-analyze
+    when: "?n <- (node-id (id observe_metrics))"
+    then: [{ kind: goto, target: analyze_weaknesses }]
+
+  - id: r-analyze-to-research
+    when: "?n <- (node-id (id analyze_weaknesses))"
+    then: [{ kind: goto, target: research_alternatives }]
+
+  - id: r-research-to-propose
+    when: "?n <- (node-id (id research_alternatives))"
+    then: [{ kind: goto, target: generate_proposals }]
+
+  # Proposal evaluation: if proposals exist, evaluate; otherwise skip to data curation
+  - id: r-propose-to-evaluate
+    when: "?n <- (node-id (id generate_proposals)) (state (has_proposals true))"
+    then: [{ kind: goto, target: evaluate_proposal }]
+
+  - id: r-propose-skip-to-curate
+    when: "?n <- (node-id (id generate_proposals)) (state (has_proposals false))"
+    then: [{ kind: goto, target: curate_training_data }]
+
+  # Evaluation → experiment if promising
+  - id: r-eval-to-experiment
+    when: "?n <- (node-id (id evaluate_proposal)) (state (experiment_passed true))"
+    then: [{ kind: goto, target: run_experiment }]
+
+  - id: r-eval-skip-experiment
+    when: "?n <- (node-id (id evaluate_proposal)) (state (experiment_passed false))"
+    then: [{ kind: goto, target: curate_training_data }]
+
+  # Experiment → governance gate
+  - id: r-experiment-to-gate
+    when: "?n <- (node-id (id run_experiment))"
+    then: [{ kind: goto, target: governance_gate }]
+
+  # Governance: auto-approve → apply; human-required → interrupt; reject → curate
+  - id: r-gate-auto-approve
+    when: "?n <- (node-id (id governance_gate)) (state (auto_approved true))"
+    then: [{ kind: goto, target: apply_change }]
+
+  - id: r-gate-human-required
+    when: "?n <- (node-id (id governance_gate)) (state (human_approval_required true))"
+    then:
+      - kind: interrupt
+        prompt: "Evolution proposal requires human approval: {active_proposal.title}. Risk: {active_proposal.risk}. Expected improvement: {active_proposal.expected_improvement}."
+        interrupt_payload:
+          requested_capability: "sdw.evolution_approval"
+        requested_capability: "sdw.evolution_approval"
+        timeout: null
+        on_timeout: "noop"
+
+  - id: r-gate-reject
+    when: "?n <- (node-id (id governance_gate)) (state (governance_decision reject))"
+    then: [{ kind: goto, target: curate_training_data }]
+
+  # Apply → curate training data
+  - id: r-apply-to-curate
+    when: "?n <- (node-id (id apply_change))"
+    then: [{ kind: goto, target: curate_training_data }]
+
+  # Curate → train if enough data
+  - id: r-curate-to-train
+    when: "?n <- (node-id (id curate_training_data)) (state (curated_samples_count > 0))"
+    then: [{ kind: goto, target: train_model }]
+
+  - id: r-curate-skip-train
+    when: "?n <- (node-id (id curate_training_data)) (state (curated_samples_count 0))"
+    then: [{ kind: goto, target: evolve_done }]
+
+  # Train → done
+  - id: r-train-to-done
+    when: "?n <- (node-id (id train_model))"
+    then: [{ kind: goto, target: evolve_done }]
+
+  # Terminal
+  - id: r-evolve-halt
+    when: "?n <- (node-id (id evolve_done))"
+    then: [{ kind: halt, reason: "Evolution cycle complete" }]

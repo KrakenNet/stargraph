@@ -1,0 +1,40 @@
+sources:
+  - id: ais_buffer
+    type: postgres
+    description: "AIS position buffer (populated by ais_ingest daemon)"
+    classification: unclassified
+    data_types: [ais-position, vessel-identity]
+    allowed_purposes: [surveillance, correlation]
+    connection: "${POSTGRES_DSN}"
+    table: ais_positions
+
+  - id: geo_data
+    type: postgres
+    description: "Pre-loaded geographic data (EEZ, ports, coastlines)"
+    classification: unclassified
+    data_types: [eez-boundary, port-location, coastline]
+    allowed_purposes: [enrichment, filtering]
+    connection: "${POSTGRES_DSN}"
+    table: eez_boundaries
+
+  - id: detection_store
+    type: postgres
+    description: "Detection results and run metrics"
+    classification: unclassified
+    data_types: [detection, metrics, correction]
+    allowed_purposes: [storage, analysis, retrain]
+    connection: "${POSTGRES_DSN}"
+    table: detections
+
+agents:
+  sdw-pipeline:
+    id: sdw-pipeline
+    clearance: unclassified
+    compartments: []
+    default_purpose: surveillance
+
+rules:
+  user_rules_dirs: []
+
+analysis:
+  mode: pattern

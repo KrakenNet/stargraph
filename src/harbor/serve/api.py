@@ -77,6 +77,7 @@ from fastapi import (
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from harbor.audit.jsonl import unwrap_audit_record
 from harbor.errors import ArtifactNotFound, BroadcasterOverflow, HarborRuntimeError
 from harbor.ir import dumps as ir_dumps
 from harbor.replay.counterfactual import (
@@ -196,7 +197,7 @@ def _replay_audit_after_cursor(
             if not isinstance(record_any, dict):
                 continue
             record = cast("dict[str, Any]", record_any)
-            payload_any: Any = record.get("event", record)
+            payload_any: Any = unwrap_audit_record(record)
             if not isinstance(payload_any, dict):
                 continue
             payload = cast("dict[str, Any]", payload_any)

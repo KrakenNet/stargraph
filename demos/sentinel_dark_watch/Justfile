@@ -1,0 +1,47 @@
+set dotenv-load
+
+demo:
+    docker compose -f demos/sentinel_dark_watch/docker-compose.yml up -d
+    uv run --no-project python -m demos.sentinel_dark_watch.bootstrap
+    uv run --no-project python -m demos.sentinel_dark_watch.ais_ingest &
+    uv run --no-project python -m demos.sentinel_dark_watch.serve_sdw --port 9001 &
+    sleep 3
+    uv run --no-project streamlit run demos/sentinel_dark_watch/ui/app.py --server.port 8501
+
+demo-offline:
+    AIS_MODE=mock LLM_BASE_URL=http://localhost:41001/v1 just demo
+
+teardown:
+    docker compose -f demos/sentinel_dark_watch/docker-compose.yml down -v
+    pkill -f "serve_sdw" || true
+    pkill -f "ais_ingest" || true
+    pkill -f "streamlit" || true
+
+prepare-data:
+    uv run python -m demos.sentinel_dark_watch.scripts.prepare_dataset \
+        --imagery-dir demos/sentinel_dark_watch/data/xview3/imagery \
+        --train-csv demos/sentinel_dark_watch/data/xview3/labels/train.csv \
+        --val-csv demos/sentinel_dark_watch/data/xview3/labels/validation.csv \
+        --output-dir demos/sentinel_dark_watch/data/prepared
+
+train:
+    uv run python -m demos.sentinel_dark_watch.scripts.train_detector \
+        --data demos/sentinel_dark_watch/data/prepared/data.yaml \
+        --epochs 50 --batch 16 --device 0
+
+retrain:
+    curl -X POST http://localhost:9001/v1/runs \
+        -H "Content-Type: application/json" \
+        -d '{"graph_id": "graph:sdw-retrain", "state": {}}'
+
+bootstrap:
+    uv run --no-project python -m demos.sentinel_dark_watch.bootstrap
+
+serve:
+    uv run --no-project python -m demos.sentinel_dark_watch.serve_sdw --port 9001
+
+ui:
+    uv run --no-project streamlit run demos/sentinel_dark_watch/ui/app.py --server.port 8501
+
+test:
+    uv run --no-project pytest demos/sentinel_dark_watch/tests/ -v

@@ -1,0 +1,624 @@
+"""Unit tests for Sentinel Dark Watch graph nodes."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from demos.sentinel_dark_watch.graph.nodes import (
+    AISCorrelationNode,
+    GeoContextNode,
+    LandMaskFilterNode,
+    NMSDeduplicationNode,
+    ReportingNode,
+    RiskScoringNode,
+    SARIngestNode,
+)
+from demos.sentinel_dark_watch.graph.state import (
+    Detection,
+    RiskLevel,
+    SdwState,
+)
+
+
+@dataclass
+class _MockCtx:
+    """Minimal ExecutionContext stand-in."""
+
+    run_id: str = "test-run"
+
+
+# ---------------------------------------------------------------------------
+# RiskScoringNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_risk_dark_vessel_sensitive_eez_critical(
+    sample_detections: list[Detection],
+) -> None:
+    """Dark vessel in Iranian EEZ → score >= 80, level=Critical."""
+    # Use only the first detection: dark, Iranian EEZ, far from port, large
+    det = sample_detections[0].model_copy()
+    state = SdwState(detections=[det])
+
+    node = RiskScoringNode()
+    result = await node.execute(state, _MockCtx())
+
+    scored = result["detections"]
+    assert len(scored) == 1
+    assert scored[0].risk_score >= 80
+    assert scored[0].risk_level == RiskLevel.CRITICAL
+
+
+async def test_risk_ais_matched_near_port_low(
+    sample_detections: list[Detection],
+) -> None:
+    """AIS-matched vessel near port → score < 40, level=Low."""
+    # det-003: AIS-matched, near port, not dark, Omani EEZ
+    det = sample_detections[2].model_copy()
+    state = SdwState(detections=[det])
+
+    node = RiskScoringNode()
+    result = await node.execute(state, _MockCtx())
+
+    scored = result["detections"]
+    assert len(scored) == 1
+    assert scored[0].risk_score < 40
+    assert scored[0].risk_level == RiskLevel.LOW
+
+
+async def test_risk_configurable_weights(
+    sample_detections: list[Detection],
+) -> None:
+    """Custom weight values change the computed score."""
+    det = sample_detections[0].model_copy()
+
+    # All weights zeroed except confidence (max 20)
+    state = SdwState(
+        detections=[det],
+        risk_weight_dark_vessel=0,
+        risk_weight_sensitive_eez=0,
+        risk_weight_far_from_port=0,
+        risk_weight_large_vessel=0,
+        risk_weight_confidence_max=20,
+    )
+    node = RiskScoringNode()
+    result = await node.execute(state, _MockCtx())
+
+    scored = result["detections"]
+    assert len(scored) == 1
+    # Only confidence contributes: int(0.92 * 20) = 18
+    assert scored[0].risk_score == int(det.confidence * 20)
+    assert scored[0].risk_level == RiskLevel.LOW
+
+
+async def test_risk_empty_detections() -> None:
+    """Empty detection list → pass-through, no error."""
+    state = SdwState(detections=[])
+
+    node = RiskScoringNode()
+    result = await node.execute(state, _MockCtx())
+
+    assert result["detections"] == []
+    assert "last_error" not in result
+
+
+async def test_risk_low_conf_flag(
+    sample_detections: list[Detection],
+) -> None:
+    """Detection below low_conf_threshold → has_low_confidence_detections=True."""
+    # det-005 has confidence 0.25, below default threshold 0.4
+    det = sample_detections[4].model_copy()
+    state = SdwState(detections=[det], low_conf_threshold=0.4)
+
+    node = RiskScoringNode()
+    result = await node.execute(state, _MockCtx())
+
+    assert result["has_low_confidence_detections"] is True
+
+
+# ---------------------------------------------------------------------------
+# NMSDeduplicationNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_nms_overlapping_detections() -> None:
+    """Two detections at same geo-coords → one remains after NMS."""
+    # Same OBB corners = IoU 1.0 → suppressed
+    corners = [[56.29, 26.54], [56.31, 26.54], [56.31, 26.56], [56.29, 26.56]]
+    d1 = Detection(
+        detection_id="dup-1",
+        confidence=0.95,
+        obb_corners=corners,
+        geo_lat=26.55,
+        geo_lon=56.30,
+    )
+    d2 = Detection(
+        detection_id="dup-2",
+        confidence=0.80,
+        obb_corners=corners,
+        geo_lat=26.55,
+        geo_lon=56.30,
+    )
+    state = SdwState(raw_detections=[d1, d2])
+
+    node = NMSDeduplicationNode()
+    result = await node.execute(state, _MockCtx())
+
+    assert result["detection_count"] == 1
+    assert result["detections"][0].detection_id == "dup-1"  # higher confidence kept
+
+
+async def test_nms_non_overlapping() -> None:
+    """Two detections far apart → both preserved."""
+    d1 = Detection(
+        detection_id="far-1",
+        confidence=0.90,
+        obb_corners=[[56.0, 26.0], [56.02, 26.0], [56.02, 26.02], [56.0, 26.02]],
+        geo_lat=26.01,
+        geo_lon=56.01,
+    )
+    d2 = Detection(
+        detection_id="far-2",
+        confidence=0.85,
+        obb_corners=[[57.0, 27.0], [57.02, 27.0], [57.02, 27.02], [57.0, 27.02]],
+        geo_lat=27.01,
+        geo_lon=57.01,
+    )
+    state = SdwState(raw_detections=[d1, d2])
+
+    node = NMSDeduplicationNode()
+    result = await node.execute(state, _MockCtx())
+
+    assert result["detection_count"] == 2
+
+
+async def test_nms_empty_list() -> None:
+    """Empty detection list → empty result."""
+    state = SdwState(raw_detections=[])
+
+    node = NMSDeduplicationNode()
+    result = await node.execute(state, _MockCtx())
+
+    assert result["detections"] == []
+    assert result["detection_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# AISCorrelationNode tests
+# ---------------------------------------------------------------------------
+
+
+def _make_ais_row(
+    mmsi: str = "211000001",
+    ship_name: str = "MV TEST",
+    flag_state: str = "DE",
+    vessel_type: str = "cargo",
+    lat: float = 26.55,
+    lon: float = 56.30,
+    speed_kn: float = 0.0,
+    heading: float = 0.0,
+    timestamp: str = "2024-01-15T01:45:00Z",
+) -> dict[str, Any]:
+    """Build a dict that behaves like an asyncpg Record for AIS queries."""
+    data = {
+        "mmsi": mmsi,
+        "ship_name": ship_name,
+        "flag_state": flag_state,
+        "vessel_type": vessel_type,
+        "lat": lat,
+        "lon": lon,
+        "speed_kn": speed_kn,
+        "heading": heading,
+        "timestamp": timestamp,
+    }
+    return data
+
+
+class _FakeRecord(dict):
+    """Dict subclass supporting key-based access (like asyncpg Record)."""
+
+    def __getitem__(self, key: str) -> Any:
+        return super().__getitem__(key)
+
+
+def _row_to_record(row: dict[str, Any]) -> _FakeRecord:
+    return _FakeRecord(row)
+
+
+async def test_ais_known_position_matched() -> None:
+    """Detection near a known AIS position → dark_vessel=False, MMSI populated."""
+    det = Detection(
+        detection_id="ais-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        obb_corners=[[56.29, 26.54], [56.31, 26.54], [56.31, 26.56], [56.29, 26.56]],
+    )
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-001", timestamp="2024-01-15T01:45:00Z"),
+        ais_match_radius_m=5000,
+    )
+
+    # AIS position right at the detection location (speed 0 → predicted position = same)
+    ais_rows = [_row_to_record(_make_ais_row(lat=26.55, lon=56.30, speed_kn=0.0))]
+
+    mock_conn = AsyncMock()
+    mock_conn.fetch = AsyncMock(return_value=ais_rows)
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = AISCorrelationNode()
+        result = await node.execute(state, _MockCtx())
+
+    matched = result["detections"]
+    assert len(matched) == 1
+    assert matched[0].dark_vessel is False
+    assert matched[0].ais_mmsi == "211000001"
+    assert matched[0].ais_vessel_name == "MV TEST"
+
+
+async def test_ais_no_match_dark_vessel() -> None:
+    """Detection with no nearby AIS → dark_vessel=True."""
+    det = Detection(
+        detection_id="ais-det-2",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        obb_corners=[[56.29, 26.54], [56.31, 26.54], [56.31, 26.56], [56.29, 26.56]],
+    )
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-001", timestamp="2024-01-15T01:45:00Z"),
+        ais_match_radius_m=500,
+    )
+
+    mock_conn = AsyncMock()
+    mock_conn.fetch = AsyncMock(return_value=[])
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = AISCorrelationNode()
+        result = await node.execute(state, _MockCtx())
+
+    matched = result["detections"]
+    assert len(matched) == 1
+    assert matched[0].dark_vessel is True
+
+
+async def test_ais_broker_failure_conservative() -> None:
+    """Mock DB failure → all detections marked dark_vessel=True."""
+    det = Detection(
+        detection_id="ais-det-3",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        obb_corners=[[56.29, 26.54], [56.31, 26.54], [56.31, 26.56], [56.29, 26.56]],
+    )
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-001", timestamp="2024-01-15T01:45:00Z"),
+    )
+
+    with patch("asyncpg.connect", AsyncMock(side_effect=ConnectionError("DB down"))):
+        node = AISCorrelationNode()
+        result = await node.execute(state, _MockCtx())
+
+    matched = result["detections"]
+    assert len(matched) == 1
+    assert matched[0].dark_vessel is True
+    assert "last_error" in result
+
+
+# ---------------------------------------------------------------------------
+# SARIngestNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_ingest_valid_tile() -> None:
+    """Mock DB with tile metadata → populates current_tile."""
+
+    tile_row = _FakeRecord(
+        {
+            "scene_id": "S1A_IW_20240115",
+            "file_path": __file__,  # use this test file as a real existing path
+            "acquired_at": "2024-01-15T01:45:00Z",
+            "bounds_wkt": "POLYGON((56 26,57 26,57 27,56 27,56 26))",
+        }
+    )
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow = AsyncMock(return_value=tile_row)
+
+    state = SdwState(tile_queue=["tile-001"])
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = SARIngestNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert result["current_tile_id"] == "tile-001"
+    assert result["current_tile"].tile_id == "tile-001"
+    assert result["current_tile"].scene_id == "S1A_IW_20240115"
+    assert result["pipeline_phase"] == "ingest"
+
+
+async def test_ingest_missing_tile() -> None:
+    """Empty tile queue → handles gracefully."""
+    state = SdwState(tile_queue=[])
+
+    node = SARIngestNode()
+    result = await node.execute(state, _MockCtx())
+
+    assert result.get("last_error") == "tile_queue empty"
+    assert result["pipeline_phase"] == "ingest"
+
+
+async def test_ingest_failure_threshold() -> None:
+    """tiles_failed >= failure_threshold → last_error set."""
+    # Tile exists in DB but file_path does not exist on disk
+    tile_row = _FakeRecord(
+        {
+            "scene_id": "S1A_IW_20240115",
+            "file_path": "/nonexistent/tile.tif",
+            "acquired_at": "2024-01-15T01:45:00Z",
+            "bounds_wkt": None,
+        }
+    )
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow = AsyncMock(return_value=tile_row)
+
+    state = SdwState(
+        tile_queue=["tile-bad"],
+        tiles_failed=4,
+        failure_threshold=5,
+    )
+
+    with patch("asyncpg.connect", AsyncMock(return_value=mock_conn)):
+        node = SARIngestNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert result["tiles_failed"] == 5
+    assert "failure_threshold reached" in result.get("last_error", "")
+
+
+# ---------------------------------------------------------------------------
+# LandMaskFilterNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_landmask_detection_on_land() -> None:
+    """Mock PostGIS returning True for ST_Contains → detection removed."""
+    det = Detection(
+        detection_id="land-det-1",
+        geo_lat=26.10,
+        geo_lon=56.00,
+        confidence=0.60,
+    )
+    state = SdwState(detections=[det])
+
+    mock_conn = AsyncMock()
+
+    with (
+        patch("asyncpg.connect", AsyncMock(return_value=mock_conn)),
+        patch(
+            "demos.sentinel_dark_watch.geo.point_on_land",
+            AsyncMock(return_value=True),
+        ),
+    ):
+        node = LandMaskFilterNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert result["detections"] == []
+    assert result["detection_count"] == 0
+
+
+async def test_landmask_detection_at_sea() -> None:
+    """Mock PostGIS returning False → detection preserved."""
+    det = Detection(
+        detection_id="sea-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+    )
+    state = SdwState(detections=[det])
+
+    mock_conn = AsyncMock()
+
+    with (
+        patch("asyncpg.connect", AsyncMock(return_value=mock_conn)),
+        patch(
+            "demos.sentinel_dark_watch.geo.point_on_land",
+            AsyncMock(return_value=False),
+        ),
+    ):
+        node = LandMaskFilterNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert len(result["detections"]) == 1
+    assert result["detections"][0].detection_id == "sea-det-1"
+    assert result["detection_count"] == 1
+
+
+async def test_landmask_db_failure_skip() -> None:
+    """Mock DB exception → all detections preserved (skip filter)."""
+    det = Detection(
+        detection_id="skip-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+    )
+    state = SdwState(detections=[det])
+
+    with patch("asyncpg.connect", AsyncMock(side_effect=ConnectionError("DB down"))):
+        node = LandMaskFilterNode()
+        result = await node.execute(state, _MockCtx())
+
+    # On DB failure, filter is skipped — detections NOT removed from state
+    assert "last_error" in result
+    assert result["pipeline_phase"] == "land_filter"
+
+
+# ---------------------------------------------------------------------------
+# GeoContextNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_geo_context_populates_fields() -> None:
+    """Mock PostGIS + mock DSPy → eez_name, distance_to_port_nm populated."""
+    det = Detection(
+        detection_id="geo-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+    )
+    state = SdwState(detections=[det])
+
+    mock_conn = AsyncMock()
+
+    with (
+        patch("asyncpg.connect", AsyncMock(return_value=mock_conn)),
+        patch(
+            "demos.sentinel_dark_watch.geo.point_in_eez",
+            AsyncMock(return_value="Iranian"),
+        ),
+        patch(
+            "demos.sentinel_dark_watch.geo.nearest_port",
+            AsyncMock(return_value=("Bandar Abbas", 50_000.0)),
+        ),
+        patch(
+            "demos.sentinel_dark_watch.geo.nearest_coast_distance_m",
+            AsyncMock(return_value=20_000.0),
+        ),
+        # Force DSPy unavailable → templated fallback
+        patch(
+            "demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE",
+            False,
+        ),
+    ):
+        node = GeoContextNode()
+        result = await node.execute(state, _MockCtx())
+
+    enriched = result["detections"]
+    assert len(enriched) == 1
+    assert enriched[0].eez_name == "Iranian"
+    assert enriched[0].distance_to_port_nm == pytest.approx(50_000.0 / 1852.0, rel=0.01)
+    assert enriched[0].distance_to_coast_nm == pytest.approx(20_000.0 / 1852.0, rel=0.01)
+    assert enriched[0].geo_summary  # non-empty templated fallback
+
+
+async def test_geo_context_llm_fallback() -> None:
+    """Mock DSPy failure → templated geo_summary used."""
+    det = Detection(
+        detection_id="geo-det-2",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        eez_name="Iranian",
+        distance_to_port_nm=27.0,
+    )
+    state = SdwState(detections=[det])
+
+    # DB unavailable (skip PostGIS enrichment) + DSPy unavailable → templated fallback
+    with (
+        patch("asyncpg.connect", AsyncMock(side_effect=ConnectionError("DB down"))),
+        patch(
+            "demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE",
+            False,
+        ),
+    ):
+        node = GeoContextNode()
+        result = await node.execute(state, _MockCtx())
+
+    enriched = result["detections"]
+    assert len(enriched) == 1
+    # Templated fallback should contain the lat/lon and EEZ
+    assert "26.55" in enriched[0].geo_summary
+    assert "Iranian" in enriched[0].geo_summary
+
+
+# ---------------------------------------------------------------------------
+# ReportingNode tests
+# ---------------------------------------------------------------------------
+
+
+async def test_reporting_generates_report() -> None:
+    """Mock DSPy → report_text has content."""
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    det = Detection(
+        detection_id="rpt-det-1",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        dark_vessel=True,
+        eez_name="Iranian",
+        distance_to_port_nm=85.0,
+        risk_score=85,
+        risk_level=RiskLevel.CRITICAL,
+        geo_summary="Test geo summary.",
+    )
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-rpt-001", scene_id="S1A_TEST"),
+    )
+
+    # Simulate DSPy producing a report (ChainOfThought is called synchronously)
+    from unittest.mock import MagicMock
+
+    mock_cot_instance = MagicMock()
+    mock_call_result = MagicMock()
+    mock_call_result.report = "Maritime Intel Report: Critical dark vessel detected."
+    mock_cot_instance.return_value = mock_call_result
+
+    with (
+        patch("demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE", True),
+        patch("dspy.ChainOfThought", return_value=mock_cot_instance),
+    ):
+        node = ReportingNode()
+        result = await node.execute(state, _MockCtx())
+
+    assert len(result["detections"]) == 1
+    assert "Maritime Intel Report" in result["detections"][0].report_text
+
+
+async def test_reporting_fallback_template() -> None:
+    """Mock DSPy failure → templated report with required sections."""
+    from demos.sentinel_dark_watch.graph.state import TileMetadata
+
+    det = Detection(
+        detection_id="rpt-det-2",
+        geo_lat=26.55,
+        geo_lon=56.30,
+        confidence=0.90,
+        dark_vessel=True,
+        eez_name="Iranian",
+        distance_to_port_nm=85.0,
+        risk_score=85,
+        risk_level=RiskLevel.CRITICAL,
+        geo_summary="Test geo summary.",
+    )
+    state = SdwState(
+        detections=[det],
+        current_tile=TileMetadata(tile_id="tile-rpt-002", scene_id="S1A_TEST"),
+    )
+
+    with patch("demos.sentinel_dark_watch.graph.signatures.DSPY_AVAILABLE", False):
+        node = ReportingNode()
+        result = await node.execute(state, _MockCtx())
+
+    report = result["detections"][0].report_text
+    assert report  # non-empty
+    # Templated fallback includes these sections
+    assert "Detection Summary" in report
+    assert "AIS Correlation" in report
+    assert "Risk Assessment" in report
+    assert "Recommended Actions" in report

@@ -214,6 +214,31 @@ def _pack_requires_component(governance: list[PackMount]) -> list[Any] | None:
     return [list(t) for t in triples]
 
 
+def _coerce_schema_floats(value: Any) -> Any:
+    """Recursively replace ``float`` values in a JSON Schema dict with ints or strings.
+
+    Pydantic emits float defaults (e.g. ``0.0``, ``0.4``) in
+    ``model_json_schema()`` output for models with ``float`` fields.
+    FR-4 forbids floats in the hashed payload.  This helper converts:
+
+    * Lossless floats (``0.0``, ``1.0``) -> ``int`` (``0``, ``1``)
+    * Lossy floats (``0.4``) -> deterministic string (``"0.4"``)
+
+    Applied only to JSON Schema metadata (defaults, examples); runtime
+    state values are never hashed here.
+    """
+    if type(value) is float:
+        as_int = int(value)
+        if float(as_int) == value:
+            return as_int
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _coerce_schema_floats(v) for k, v in cast("dict[Any, Any]", value).items()}
+    if isinstance(value, (list, tuple)):
+        return [_coerce_schema_floats(item) for item in cast("list[Any] | tuple[Any, ...]", value)]
+    return value
+
+
 def _state_schema_signature(state_schema: Any) -> Any:
     """Return rule (c)'s state-schema component.
 
@@ -224,9 +249,14 @@ def _state_schema_signature(state_schema: Any) -> Any:
     force-loud). Callers that previously fed raw ``dict[str, str]`` must
     compile via :func:`harbor.graph.definition._compile_state_schema` first;
     ``Graph.__init__`` already does this.
+
+    Float defaults from Pydantic's JSON Schema output are coerced via
+    :func:`_coerce_schema_floats` so the payload satisfies FR-4's no-float
+    invariant.
     """
     if isinstance(state_schema, type) and issubclass(state_schema, BaseModel):
-        return state_schema.model_json_schema(mode="serialization")
+        raw = state_schema.model_json_schema(mode="serialization")
+        return _coerce_schema_floats(raw)
     raise IRValidationError(
         "state_schema must be a BaseModel subclass at the structural-hash boundary",
         path="state_schema",

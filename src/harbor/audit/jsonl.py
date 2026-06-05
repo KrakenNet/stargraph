@@ -40,9 +40,10 @@ this by patching :func:`os.lseek` and asserting zero invocations.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import orjson
+from fathom.chained_log import ChainedAttestationLog
 from pydantic import TypeAdapter
 
 from harbor.runtime.events import Event
@@ -51,10 +52,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from fathom.attestation import AttestationService
 
 __all__ = [
     "AuditSink",
+    "ChainedJSONLAuditSink",
     "JSONLAuditSink",
+    "is_chained_log",
+    "unwrap_audit_record",
 ]
 
 
@@ -173,3 +178,74 @@ class JSONLAuditSink:
     async def close(self) -> None:
         """Close the underlying file descriptor."""
         os.close(self._fd)
+
+
+def _is_chained_record(obj: Any) -> bool:
+    """True if *obj* has the chained-line shape (``jws`` + ``record`` keys)."""
+    return isinstance(obj, dict) and "jws" in obj and "record" in obj
+
+
+def unwrap_audit_record(record: dict[str, Any]) -> Any:
+    """Return the event payload from any on-disk audit line shape.
+
+    Dual-read across all three generations of the format:
+
+    * chained line ``{"record": ..., "jws": ..., "prev_sha256": ...}``
+      (:class:`ChainedJSONLAuditSink`) -> the ``record`` value;
+    * signed envelope ``{"event": ..., "sig": "<hex>"}`` -> the ``event``
+      value;
+    * bare Phase-1 event dict -> the dict itself.
+    """
+    if _is_chained_record(record):
+        return record["record"]
+    return record.get("event", record)
+
+
+def is_chained_log(path: Path) -> bool:
+    """True if *path* exists, is non-empty, and starts with a chained line."""
+    try:
+        with path.open("rb") as fh:
+            first = fh.readline()
+    except OSError:
+        return False
+    if not first.strip():
+        return False
+    try:
+        obj: Any = orjson.loads(first)
+    except orjson.JSONDecodeError:
+        return False
+    return _is_chained_record(obj)
+
+
+class ChainedJSONLAuditSink:
+    """Hash-chained, JWS-signed append-only audit sink.
+
+    Writes the shared chained-log format (one format across fathom /
+    nautilus / harbor) via :class:`fathom.chained_log.ChainedAttestationLog`:
+    each line carries ``prev_sha256`` linkage plus an EdDSA JWS, so
+    deletion, reordering, or edits of audit events are detectable offline
+    (``harbor verify-audit``). The signing public key is exported beside
+    the log as ``<path>.pub.pem``.
+
+    Unlike :class:`JSONLAuditSink` this sink does NOT rotate -- a rotation
+    rename would sever the hash chain. Durability matches the legacy sink
+    (fsync per append). Fail-closed: if the log is found corrupt on open
+    (e.g. torn write), every :meth:`write` raises rather than silently
+    extending a broken chain.
+    """
+
+    def __init__(self, path: Path, service: AttestationService) -> None:
+        self._log = ChainedAttestationLog(path, service)
+
+    @property
+    def path(self) -> Path:
+        return self._log.path
+
+    async def write(self, ev: Event) -> None:
+        """Sign + append one chained event line (fsynced by the chain log)."""
+        payload = _EVENT_ADAPTER.dump_python(ev, mode="json")
+        self._log.append(payload)
+
+    async def close(self) -> None:
+        """Close the underlying chain-log handle."""
+        self._log.close()

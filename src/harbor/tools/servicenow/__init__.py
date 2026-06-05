@@ -51,10 +51,21 @@ from harbor.tools.servicenow.cmdb_query_software import cmdb_query_software
 from harbor.tools.servicenow.cmdb_resolve_hosts import cmdb_resolve_hosts
 from harbor.tools.servicenow.cmdb_traverse_runs_on import cmdb_traverse_runs_on
 from harbor.tools.servicenow.create_change_request import create_change_request
+from harbor.tools.servicenow.patch_cr_state import patch_cr_state
+from harbor.tools.servicenow.patch_work_notes import patch_work_notes
+from harbor.tools.servicenow.poll_approval import poll_approval
+from harbor.tools.servicenow.table_crud import table_create, table_query
+from harbor.tools.servicenow.upload_attachment import upload_attachment
 
 __all__ = [
     "cmdb_query_software",
     "cmdb_resolve_hosts",
     "cmdb_traverse_runs_on",
     "create_change_request",
+    "patch_cr_state",
+    "patch_work_notes",
+    "poll_approval",
+    "table_create",
+    "table_query",
+    "upload_attachment",
 ]

@@ -35,9 +35,15 @@ from typing import TYPE_CHECKING, Annotated, Any, cast
 import anyio
 import typer
 import yaml
+from fathom.chained_log import load_or_create_key
 from rich.console import Console
 
-from harbor.audit.jsonl import JSONLAuditSink
+from harbor.audit.jsonl import (
+    AuditSink,
+    ChainedJSONLAuditSink,
+    JSONLAuditSink,
+    is_chained_log,
+)
 from harbor.checkpoint.sqlite import SQLiteCheckpointer
 from harbor.cli._inputs import parse_inputs, parse_inputs_for_model
 from harbor.cli._progress import ProgressPrinter
@@ -343,9 +349,32 @@ def _build_node_registry(
         _IR_DIR_VAR.reset(token)
 
 
+def _build_audit_sink(log_file: Path) -> AuditSink:
+    """Choose chained vs legacy sink for ``log_file`` (chain-write, dual-read).
+
+    New/empty logs and existing chained logs get the hash-chained,
+    JWS-signed :class:`ChainedJSONLAuditSink` -- the Ed25519 signing key is
+    auto-created beside the log as ``<log>.key`` (atomic, 0600) and the
+    public half exported as ``<log>.pub.pem`` for ``harbor verify-audit``.
+
+    An existing non-empty unchained log falls back to the legacy
+    :class:`JSONLAuditSink` with a warning: appending chained lines after
+    unchained ones would leave a file neither format can verify.
+    """
+    if log_file.exists() and log_file.stat().st_size > 0 and not is_chained_log(log_file):
+        typer.echo(
+            f"warning: {log_file} is an existing unchained audit log; "
+            "appending in legacy format (move it aside to start a chained log)",
+            err=True,
+        )
+        return JSONLAuditSink(log_file)
+    key_path = log_file.with_name(log_file.name + ".key")
+    return ChainedJSONLAuditSink(log_file, load_or_create_key(key_path))
+
+
 async def _drive_interactive(
     run: GraphRun,
-    audit_sink: JSONLAuditSink | None,
+    audit_sink: AuditSink | None,
     progress: ProgressPrinter,
     hitl: HITLHandler | None,
     console: Console,
@@ -533,10 +562,10 @@ def cmd(
     ckpt_path.parent.mkdir(parents=True, exist_ok=True)
     checkpointer = SQLiteCheckpointer(ckpt_path)
 
-    audit_sink: JSONLAuditSink | None = None
+    audit_sink: AuditSink | None = None
     if log_file is not None:
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        audit_sink = JSONLAuditSink(log_file)
+        audit_sink = _build_audit_sink(log_file)
 
     artifacts_dir = Path(".harbor") / "runs" / run_id
     artifacts_dir.mkdir(parents=True, exist_ok=True)

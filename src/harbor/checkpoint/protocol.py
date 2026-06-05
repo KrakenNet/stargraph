@@ -70,7 +70,7 @@ class RunSummary(BaseModel):
     graph_hash: str
     started_at: datetime
     last_step_at: datetime
-    status: Literal["running", "done", "failed", "paused"]
+    status: Literal["running", "done", "failed", "paused", "cancelled"]
     parent_run_id: str | None
 
 

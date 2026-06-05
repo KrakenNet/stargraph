@@ -22,7 +22,7 @@ __all__ = ["HARBOR_ACTION_DEFTEMPLATE", "register_harbor_action_template"]
 
 HARBOR_ACTION_DEFTEMPLATE: str = """\
 (deftemplate harbor_action
-  (slot kind (type SYMBOL) (allowed-symbols goto parallel halt retry assert retract))
+  (slot kind (type SYMBOL) (allowed-symbols goto parallel halt retry assert retract interrupt))
   (slot target (type STRING) (default ""))
   (slot reason (type STRING) (default ""))
   (slot rule_id (type STRING) (default ""))
@@ -33,7 +33,12 @@ HARBOR_ACTION_DEFTEMPLATE: str = """\
   (slot backoff_ms (type INTEGER) (default 0))
   (slot fact (type STRING) (default ""))
   (slot slots (type STRING) (default ""))
-  (slot pattern (type STRING) (default "")))
+  (slot pattern (type STRING) (default ""))
+  (slot prompt (type STRING) (default ""))
+  (slot interrupt_payload (type STRING) (default ""))
+  (slot requested_capability (type STRING) (default ""))
+  (slot timeout (type STRING) (default ""))
+  (slot on_timeout (type STRING) (default "halt")))
 """
 
 
