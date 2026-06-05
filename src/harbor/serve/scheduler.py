@@ -727,6 +727,7 @@ class Scheduler:
             node_registry=per_graph_nodes,
             checkpointer=deps.get("checkpointer"),
             capabilities=deps.get("capabilities"),
+            fathom=deps.get("fathom"),
         )
         broadcaster = EventBroadcaster(run.bus)
 
@@ -744,6 +745,31 @@ class Scheduler:
 
         try:
             return await run.start()
+        except asyncio.CancelledError:
+            if run.state == "cancelled":
+                # Cooperative operator cancel (FR-76): GraphRun.cancel()
+                # marked the run terminal *before* the loop raised
+                # CancelledError to unwind tools/nodes. This is a normal
+                # per-run termination, not a dispatcher cancellation --
+                # convert to a terminal summary so one cancelled run does
+                # not tear down the dispatcher task group. Entries stay
+                # registered for post-terminal observers, matching the
+                # done-run path.
+                now = datetime.now(UTC)
+                return RunSummary(
+                    run_id=run_id,
+                    graph_hash=item.pending.graph_id,
+                    started_at=self._enqueue_started_at.get(run_id, now),
+                    last_step_at=now,
+                    status="cancelled",
+                    parent_run_id=None,
+                )
+            # Genuine task cancellation (dispatcher shutdown): clean up
+            # and propagate so the task group observes the cancel.
+            runs_reg.pop(run_id, None)
+            bcs_reg.pop(run_id, None)
+            bcs_task.cancel()
+            raise
         except BaseException:
             # Pop on failure so the route does not surface a phantom
             # handle stuck at "pending". Successful terminations leave
