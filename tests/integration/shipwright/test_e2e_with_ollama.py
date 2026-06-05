@@ -11,9 +11,9 @@ test_e2e_new_graph.py.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-import dspy  # pyright: ignore[reportMissingTypeStubs]
+import dspy  # type: ignore[import-untyped]
 import pytest
 
 from harbor.skills.shipwright.nodes.fix import FixLoop
@@ -27,10 +27,12 @@ from harbor.skills.shipwright.state import SpecSlot, State
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from harbor.nodes.base import ExecutionContext
+
 
 @pytest.mark.integration
 @pytest.mark.slow
-async def test_new_graph_with_real_llm(ollama_lm, tmp_path: Path) -> None:
+async def test_new_graph_with_real_llm(ollama_lm: dspy.LM, tmp_path: Path) -> None:  # pyright: ignore[reportUnknownParameterType]
     """Drive the full --new path with a real LLM, except for HITL.
 
     The interview pause is collapsed: after parse_brief + gap_check, we
@@ -38,8 +40,8 @@ async def test_new_graph_with_real_llm(ollama_lm, tmp_path: Path) -> None:
     through synthesize + verify. The point is to prove parse_brief and
     propose_questions emit usable structured output from a real model.
     """
-    dspy.configure(lm=ollama_lm)  # pyright: ignore[reportUnknownMemberType]
-    ctx = SimpleNamespace(run_id="r-ollama")
+    dspy.configure(lm=ollama_lm)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+    ctx = cast("ExecutionContext", SimpleNamespace(run_id="r-ollama"))
 
     state = State(
         mode="new",

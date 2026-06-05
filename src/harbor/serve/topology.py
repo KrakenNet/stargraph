@@ -104,9 +104,9 @@ class TopologyResponse:
 
     graph_id: str
     ir_version: str
-    nodes: list[UINode] = field(default_factory=list)
-    edges: list[UIEdge] = field(default_factory=list)
-    orphan_rules: list[str] = field(default_factory=list)
+    nodes: list[UINode] = field(default_factory=list[UINode])
+    edges: list[UIEdge] = field(default_factory=list[UIEdge])
+    orphan_rules: list[str] = field(default_factory=list[str])
 
 
 def derive_topology(doc: IRDocument) -> TopologyResponse:
@@ -124,9 +124,7 @@ def derive_topology(doc: IRDocument) -> TopologyResponse:
     """
     backfill_rule_node_ids(doc)
     node_index = {n.id: n for n in doc.nodes}
-    ui_nodes: dict[str, UINode] = {
-        n.id: UINode(id=n.id, kind=n.kind) for n in doc.nodes
-    }
+    ui_nodes: dict[str, UINode] = {n.id: UINode(id=n.id, kind=n.kind) for n in doc.nodes}
 
     # Track who has incoming / outgoing edges so we can flag entry /
     # terminal nodes after the walk.
@@ -146,8 +144,7 @@ def derive_topology(doc: IRDocument) -> TopologyResponse:
             continue
         for j, action in enumerate(rule.then):
             edge_id = f"{rule.id}#{j}"
-            kind = action.kind
-            if kind == "goto":
+            if action.kind == "goto":
                 target = action.target
                 if target not in node_index:
                     continue
@@ -169,7 +166,7 @@ def derive_topology(doc: IRDocument) -> TopologyResponse:
                 )
                 out_edges[owner] += 1
                 in_edges[target] += 1
-            elif kind == "retry":
+            elif action.kind == "retry":
                 target = action.target
                 if target not in node_index:
                     continue
@@ -185,7 +182,7 @@ def derive_topology(doc: IRDocument) -> TopologyResponse:
                 )
                 out_edges[owner] += 1
                 in_edges[target] += 1
-            elif kind == "parallel":
+            elif action.kind == "parallel":
                 for k, target in enumerate(action.targets):
                     if target not in node_index:
                         continue
@@ -202,7 +199,7 @@ def derive_topology(doc: IRDocument) -> TopologyResponse:
                     )
                     out_edges[owner] += 1
                     in_edges[target] += 1
-            elif kind == "interrupt":
+            elif action.kind == "interrupt":
                 ui_nodes[owner].hitl = True
                 # Synthetic gate edge (source == target) so the UI can
                 # render a self-marker without a real outgoing flow.
@@ -215,7 +212,7 @@ def derive_topology(doc: IRDocument) -> TopologyResponse:
                         rule_id=rule.id,
                     )
                 )
-            elif kind == "halt":
+            elif action.kind == "halt":
                 ui_nodes[owner].is_terminal = True
             # assert / retract: fact-only, no topology contribution.
 

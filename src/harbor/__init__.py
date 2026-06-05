@@ -68,6 +68,7 @@ def __getattr__(name: str) -> Any:
     msg = f"module {__name__!r} has no attribute {name!r}"
     raise AttributeError(msg)
 
+
 __version__ = "0.3.0"
 
 __all__ = [
@@ -76,11 +77,11 @@ __all__ = [
     "Graph",
     "GraphRun",
     "GraphStore",
-    "RyuGraphStore",
     "LanceDBVectorStore",
     "MemoryStore",
     "MemoryWriteNode",
     "RetrievalNode",
+    "RyuGraphStore",
     "SQLiteDocStore",
     "SQLiteFactStore",
     "SQLiteMemoryStore",

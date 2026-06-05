@@ -28,7 +28,7 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-from nautilus import BrokerResponse
+from nautilus import BrokerResponse  # pyright: ignore[reportMissingTypeStubs]
 from pydantic import BaseModel
 
 from harbor.errors import CapabilityError, HarborRuntimeError

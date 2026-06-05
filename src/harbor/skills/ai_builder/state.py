@@ -28,8 +28,8 @@ class ConversationTurn(BaseModel):
 
 class State(BaseModel):
     # Inputs (injected at run start or on each respond call)
-    turn: str = ""                          # current user message
-    history: list[ConversationTurn] = Field(default_factory=list)
+    turn: str = ""  # current user message
+    history: list[ConversationTurn] = Field(default_factory=list[ConversationTurn])
     tenant_id: str = ""
     user_id: str = ""
     conversation_id: str = ""
@@ -41,7 +41,7 @@ class State(BaseModel):
 
     # Response assembly
     response: str = ""
-    citations: list[dict[str, object]] = Field(default_factory=list)
+    citations: list[dict[str, object]] = Field(default_factory=list[dict[str, object]])
 
     # Shipwright child run (Option B, §2.5)
     child_run_id: str | None = None

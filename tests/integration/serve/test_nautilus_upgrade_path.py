@@ -48,7 +48,7 @@ from __future__ import annotations
 import importlib.metadata
 
 import pytest
-from nautilus import Broker, BrokerResponse
+from nautilus import Broker, BrokerResponse  # pyright: ignore[reportMissingTypeStubs]
 
 pytestmark = [pytest.mark.serve, pytest.mark.integration]
 

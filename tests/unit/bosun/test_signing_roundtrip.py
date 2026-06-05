@@ -14,6 +14,7 @@ form, BLAKE3 tree-hash (SHA-256 in FIPS mode). The verifier must:
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import jwt
 import pytest
@@ -33,8 +34,11 @@ from harbor.bosun.signing import (
 )
 from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def _write_pack(root, files: dict[str, bytes]) -> None:
+
+def _write_pack(root: Path, files: dict[str, bytes]) -> None:
     for rel, content in files.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -56,7 +60,7 @@ def _keypair() -> tuple[bytes, bytes, str]:
 
 
 @pytest.mark.unit
-def test_sign_verify_roundtrip_succeeds(tmp_path) -> None:
+def test_sign_verify_roundtrip_succeeds(tmp_path: Path) -> None:
     """Sign + verify a pack tree under cleared profile; trust store has the pubkey."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -73,7 +77,9 @@ def test_sign_verify_roundtrip_succeeds(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_tampered_tree_fails_under_cleared(tmp_path, caplog) -> None:
+def test_tampered_tree_fails_under_cleared(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     """A single-byte mutation in the pack tree must raise under cleared profile."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -91,7 +97,9 @@ def test_tampered_tree_fails_under_cleared(tmp_path, caplog) -> None:
 
 
 @pytest.mark.unit
-def test_tampered_tree_warns_under_oss_default(tmp_path, caplog) -> None:
+def test_tampered_tree_warns_under_oss_default(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     """Same tamper under oss-default profile: warns + returns verified=False, no raise."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -114,7 +122,7 @@ def test_tampered_tree_warns_under_oss_default(tmp_path, caplog) -> None:
 
 
 @pytest.mark.unit
-def test_alg_none_rejected(tmp_path) -> None:
+def test_alg_none_rejected(tmp_path: Path) -> None:
     """A JWT with ``alg=none`` is refused at decode time (algorithm-confusion defense)."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -136,7 +144,7 @@ def test_alg_none_rejected(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_alg_hs256_rejected(tmp_path) -> None:
+def test_alg_hs256_rejected(tmp_path: Path) -> None:
     """A JWT signed with HS256 (symmetric, not EdDSA) is refused even with a valid HMAC."""
     pack = tmp_path / "pack"
     pack.mkdir()

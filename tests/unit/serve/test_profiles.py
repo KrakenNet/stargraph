@@ -26,6 +26,8 @@ Requirements: FR-29, FR-30, AC-1.2. Design: §11.1, §11.2, §17 #5.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from harbor.serve.auth import (
@@ -39,6 +41,9 @@ from harbor.serve.profiles import (
     OssDefaultProfile,
     select_profile,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.unit
@@ -122,7 +127,7 @@ def test_cleared_auth_factory_default_is_mtls() -> None:
 
 @pytest.mark.unit
 def test_cleared_auth_factory_toml_override_api_key(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """``[serve.cleared].auth_provider = "api_key"`` selects :class:`ApiKeyProvider`."""
     toml = tmp_path / "harbor.toml"
@@ -138,7 +143,7 @@ def test_cleared_auth_factory_toml_override_api_key(
 
 @pytest.mark.unit
 def test_cleared_auth_factory_toml_override_bearer_jwt(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """``[serve.cleared].auth_provider = "bearer_jwt"`` selects :class:`BearerJwtProvider`."""
     toml = tmp_path / "harbor.toml"
@@ -154,7 +159,7 @@ def test_cleared_auth_factory_toml_override_bearer_jwt(
 
 @pytest.mark.unit
 def test_cleared_auth_factory_unknown_toml_value_falls_through_to_mtls(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Unknown ``auth_provider`` value falls through to mTLS default."""
     toml = tmp_path / "harbor.toml"

@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, cast
 import dspy  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
 
-from harbor.adapters.dspy import _install_filter
+from harbor.adapters.dspy import _install_filter  # pyright: ignore[reportPrivateUsage]
 from harbor.logging import get_logger
 from harbor.nodes.retrieval import RetrievalNode
 from harbor.skills.base import Skill, SkillKind
@@ -162,7 +162,7 @@ class RagSkill(Skill):
         predictor = dspy.Predict(_RagAnswerSignature)
         _LOGGER.debug("rag._call_llm", query=query, n_hits=len(hits))
         result = predictor(query=query, context=context)
-        return str(result.answer)
+        return str(result.answer)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
 
 
 class _RagAnswerSignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]

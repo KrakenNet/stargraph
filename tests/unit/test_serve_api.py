@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.serve.api import _RunsPage
+from harbor.serve.api import _RunsPage  # pyright: ignore[reportPrivateUsage]
 
 pytestmark = pytest.mark.unit
 

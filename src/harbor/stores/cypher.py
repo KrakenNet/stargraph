@@ -25,9 +25,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import graphglot.ast as gg_ast
-import graphglot.ast.cypher as gg_cypher
-from graphglot.dialect import Dialect
+import graphglot.ast as gg_ast  # pyright: ignore[reportMissingTypeStubs]
+import graphglot.ast.cypher as gg_cypher  # pyright: ignore[reportMissingTypeStubs]
+from graphglot.dialect import Dialect  # pyright: ignore[reportMissingTypeStubs]
 
 from harbor.errors import UnportableCypherError
 
@@ -67,7 +67,7 @@ def _proc_full_name(call: gg_ast.NamedProcedureCall) -> str:
     if parent_ref is not None:
         parent_chain = getattr(parent_ref, "catalog_object_parent_reference", [])
         parts.extend(ident.name for ident in parent_chain)
-    parts.append(pr.procedure_name.name)
+    parts.append(pr.procedure_name.name)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
     return ".".join(parts)
 
 
@@ -92,7 +92,7 @@ def _iter_parsed_programs(cypher: str) -> Iterable[gg_ast.GqlProgram]:
             rule="parse-error",
             match=message,
         ) from exc
-    return programs
+    return programs  # pyright: ignore[reportReturnType]
 
 
 class Linter:
@@ -160,8 +160,7 @@ class Linter:
             head = full_name.split(".", 1)[0].lower()
             if head in _BANNED_PROC_PREFIXES:
                 raise UnportableCypherError(
-                    f"Cypher rejected by linter rule 'banned-procedure': "
-                    f"{full_name!r}",
+                    f"Cypher rejected by linter rule 'banned-procedure': {full_name!r}",
                     cypher=cypher,
                     violation="banned-procedure",
                     rule="banned-procedure",
@@ -178,8 +177,7 @@ class Linter:
             head = anon_name.split(".", 1)[0].lower()
             if head in _BANNED_PROC_PREFIXES:
                 raise UnportableCypherError(
-                    f"Cypher rejected by linter rule 'banned-procedure': "
-                    f"{anon_name!r}",
+                    f"Cypher rejected by linter rule 'banned-procedure': {anon_name!r}",
                     cypher=cypher,
                     violation="banned-procedure",
                     rule="banned-procedure",

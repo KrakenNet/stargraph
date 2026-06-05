@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING
 import dspy  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
 
-from harbor.adapters.dspy import _install_filter
+from harbor.adapters.dspy import _install_filter  # pyright: ignore[reportPrivateUsage]
 from harbor.logging import get_logger
 from harbor.skills.base import Skill, SkillKind
 
@@ -229,7 +229,7 @@ class AutoresearchSkill(Skill):
         predictor = dspy.Predict(_AutoresearchSummarySignature)
         _LOGGER.debug("autoresearch._call_summary", topic=topic, n_claims=len(claims))
         result = predictor(topic=topic, claims=claims)
-        return str(result.summary)
+        return str(result.summary)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
 
 
 class _AutoresearchSummarySignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]

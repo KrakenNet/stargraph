@@ -18,8 +18,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import ryugraph
 import pytest
+import ryugraph
 
 from harbor.stores.graph import NodeRef
 from harbor.stores.ryugraph import RyuGraphStore

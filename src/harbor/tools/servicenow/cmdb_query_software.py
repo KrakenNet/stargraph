@@ -94,7 +94,8 @@ async def cmdb_query_software(
     async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT_S, **kw) as client:
         resp = await client.get(f"{base}{_PATH}", params=params, headers=headers)
         resp.raise_for_status()
-        rows = resp.json().get("result") or []
+        payload: dict[str, Any] = resp.json() or {}
+        rows: list[dict[str, Any]] = payload.get("result") or []
     return {
         "status": "ok",
         "rows": rows,

@@ -25,7 +25,8 @@ _PYPROJECT = Path(__file__).resolve().parents[2] / "pyproject.toml"
 
 
 def test_ryugraph_version_pinned() -> None:
-    """``ryugraph>=25.9.2,<26`` calver pin lives under ``[project.optional-dependencies].stores``."""
+    """``ryugraph>=25.9.2,<26`` calver pin lives under
+    ``[project.optional-dependencies].stores``."""
     data = tomllib.loads(_PYPROJECT.read_text())
     stores = data["project"]["optional-dependencies"]["stores"]
     pins = [dep for dep in stores if dep.startswith("ryugraph")]
@@ -52,6 +53,5 @@ def test_ryugraph_pin_has_swap_path_comment() -> None:
         "maintainers see why we are on the RyuGraph fork (FR-11, AC-12.1)"
     )
     assert "archived" in lowered or "apple" in lowered, (
-        "swap-path comment must capture WHY we forked (Kuzu repo archived after "
-        "Apple acquisition)"
+        "swap-path comment must capture WHY we forked (Kuzu repo archived after Apple acquisition)"
     )

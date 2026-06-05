@@ -8,6 +8,8 @@ lookup; missing-run path still surfaces a :class:`HarborRuntimeError`.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from harbor.errors import HarborRuntimeError
@@ -45,6 +47,6 @@ def test_resolve_run_raises_when_absent() -> None:
     not in ``deps["runs"]`` (T17)."""
     from harbor.serve import lifecycle
 
-    deps = {"runs": {}}
+    deps: dict[str, Any] = {"runs": {}}
     with pytest.raises(HarborRuntimeError):
         lifecycle._resolve_run("missing", None, deps=deps)  # pyright: ignore[reportPrivateUsage]

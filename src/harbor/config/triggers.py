@@ -54,7 +54,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 from pydantic import ValidationError
@@ -88,9 +88,9 @@ class ManualDescriptor:
 class LoadedTriggers:
     """Parsed result of :func:`load_triggers`."""
 
-    cron_specs: list[CronSpec] = field(default_factory=list)
-    webhook_specs: list[WebhookSpec] = field(default_factory=list)
-    manual_descriptors: list[ManualDescriptor] = field(default_factory=list)
+    cron_specs: list[CronSpec] = field(default_factory=list[CronSpec])
+    webhook_specs: list[WebhookSpec] = field(default_factory=list[WebhookSpec])
+    manual_descriptors: list[ManualDescriptor] = field(default_factory=list[ManualDescriptor])
     version: str = "1.0"
 
 
@@ -121,9 +121,7 @@ def _resolve_env(env_name: str | None, *, required: bool) -> bytes:
     """Resolve an env-var reference to bytes; empty bytes when optional+unset."""
     if not env_name:
         if required:
-            raise HarborRuntimeError(
-                "webhook trigger missing current_secret_env reference"
-            )
+            raise HarborRuntimeError("webhook trigger missing current_secret_env reference")
         return b""
     val = os.environ.get(env_name)
     if val is None or val == "":
@@ -183,47 +181,51 @@ def load_triggers(config_dir: Path | str) -> LoadedTriggers:
         return LoadedTriggers()
 
     try:
-        doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+        raw: object = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as exc:
         raise HarborRuntimeError(f"triggers.yaml parse error: {exc}") from exc
-    if not isinstance(doc, dict):
+    if not isinstance(raw, dict):
         raise HarborRuntimeError(
-            f"triggers.yaml top-level must be a mapping, got {type(doc).__name__}"
+            f"triggers.yaml top-level must be a mapping, got {type(raw).__name__}"
         )
+    doc = cast("dict[str, Any]", raw)
 
     out = LoadedTriggers(version=str(doc.get("version", "1.0")))
 
-    for row in doc.get("manual", []) or []:
-        if not isinstance(row, dict):
-            raise HarborRuntimeError(f"triggers.yaml manual entry not a mapping: {row!r}")
+    for entry in cast("list[object]", doc.get("manual", []) or []):
+        if not isinstance(entry, dict):
+            raise HarborRuntimeError(f"triggers.yaml manual entry not a mapping: {entry!r}")
+        manual_row = cast("dict[str, Any]", entry)
         out.manual_descriptors.append(
             ManualDescriptor(
-                trigger_id=str(row["id"]),
-                graph_id=str(row["graph_id"]),
-                description=str(row.get("description", "")),
+                trigger_id=str(manual_row["id"]),
+                graph_id=str(manual_row["graph_id"]),
+                description=str(manual_row.get("description", "")),
             )
         )
 
-    for row in doc.get("cron", []) or []:
-        if not isinstance(row, dict):
-            raise HarborRuntimeError(f"triggers.yaml cron entry not a mapping: {row!r}")
-        translated = _translate_cron_row(row)
+    for entry in cast("list[object]", doc.get("cron", []) or []):
+        if not isinstance(entry, dict):
+            raise HarborRuntimeError(f"triggers.yaml cron entry not a mapping: {entry!r}")
+        cron_row = cast("dict[str, Any]", entry)
+        translated = _translate_cron_row(cron_row)
         try:
             out.cron_specs.append(CronSpec.model_validate(translated))
         except ValidationError as exc:
             raise HarborRuntimeError(
-                f"triggers.yaml cron[{row.get('id', '?')}] invalid: {exc}"
+                f"triggers.yaml cron[{cron_row.get('id', '?')}] invalid: {exc}"
             ) from exc
 
-    for row in doc.get("webhook", []) or []:
-        if not isinstance(row, dict):
-            raise HarborRuntimeError(f"triggers.yaml webhook entry not a mapping: {row!r}")
-        translated = _translate_webhook_row(row)
+    for entry in cast("list[object]", doc.get("webhook", []) or []):
+        if not isinstance(entry, dict):
+            raise HarborRuntimeError(f"triggers.yaml webhook entry not a mapping: {entry!r}")
+        webhook_row = cast("dict[str, Any]", entry)
+        translated = _translate_webhook_row(webhook_row)
         try:
             out.webhook_specs.append(WebhookSpec.model_validate(translated))
         except ValidationError as exc:
             raise HarborRuntimeError(
-                f"triggers.yaml webhook[{row.get('id', '?')}] invalid: {exc}"
+                f"triggers.yaml webhook[{webhook_row.get('id', '?')}] invalid: {exc}"
             ) from exc
 
     return out

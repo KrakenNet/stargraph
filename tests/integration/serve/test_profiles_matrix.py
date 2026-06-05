@@ -356,9 +356,7 @@ def test_pack_signing_unknown_key_under_profile(profile: Profile, tmp_path: Path
 # --------------------------------------------------------------------------- #
 
 
-def test_allow_side_effects_startup_flag(
-    profile: Profile, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_allow_side_effects_startup_flag(profile: Profile, monkeypatch: pytest.MonkeyPatch) -> None:
     """Cleared rejects ``--allow-side-effects`` at startup; oss-default boots.
 
     Drives the typer ``harbor serve`` command via

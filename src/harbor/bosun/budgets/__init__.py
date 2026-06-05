@@ -61,9 +61,7 @@ def decide(*, budget_kind: str, used: float, limit: float) -> BudgetDecision:
         _LOG.info("budgets.decide deny kind=%s used=%.3f limit=%.3f", budget_kind, used, limit)
         return BudgetDecision(action="deny", remaining=remaining, reason=f"{label} exhausted")
     if used >= _THROTTLE_RATIO * limit:
-        _LOG.info(
-            "budgets.decide throttle kind=%s used=%.3f limit=%.3f", budget_kind, used, limit
-        )
+        _LOG.info("budgets.decide throttle kind=%s used=%.3f limit=%.3f", budget_kind, used, limit)
         return BudgetDecision(
             action="throttle", remaining=remaining, reason=f"{label} near exhaustion"
         )

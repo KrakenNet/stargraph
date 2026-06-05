@@ -195,7 +195,9 @@ def cmd(
     # Configure DSPy LM up front so any --graph that uses DSPy nodes finds
     # a real endpoint at boot. _configure_lm is a no-op when both flags are
     # None; raises typer.BadParameter if exactly one is set.
-    from harbor.cli.run import _configure_lm  # local import: cli cycle
+    # Local import: cli cycle.
+    from harbor.cli.run import _configure_lm  # pyright: ignore[reportPrivateUsage]
+
     _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
 
     # Profile-conditional startup gate (task 2.37, FR-32, FR-68, AC-4.2,
@@ -264,16 +266,20 @@ def cmd(
     # `harbor run` CLI so serve + run share the same import-and-wire
     # path (matching FR-1 invariant: identical IR -> identical
     # behaviour across surfaces).
-    from harbor.cli.run import _build_node_registry  # local import: cli cycle
+    # Local import: cli cycle.
+    from harbor.cli.run import _build_node_registry  # pyright: ignore[reportPrivateUsage]
+
     graphs: dict[str, Graph] = {}
     node_registries: dict[str, dict[str, Any]] = {}
     for path in graph_paths or []:
         import yaml as _yaml  # local import: yaml is an indirect dep
+
         ir_doc = IRDocument.model_validate(_yaml.safe_load(path.read_text()))
         graph = Graph(ir=ir_doc)
         graphs[ir_doc.id] = graph
         node_registries[ir_doc.id] = _build_node_registry(
-            ir_doc.nodes, ir_dir=path.parent.resolve(),
+            ir_doc.nodes,
+            ir_dir=path.parent.resolve(),
         )
         typer.echo(
             f"  loaded graph: {ir_doc.id}  "

@@ -240,14 +240,16 @@ def test_parse_version_rejects_malformed(bad: str) -> None:
 @pytest.mark.unit
 def test_validate_rejects_duplicate_node_ids() -> None:
     """Two nodes sharing an id raise a structured ValidationError row."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:dup-nodes",
-        "nodes": [
-            {"id": "alpha", "kind": "stub"},
-            {"id": "alpha", "kind": "stub"},
-        ],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:dup-nodes",
+            "nodes": [
+                {"id": "alpha", "kind": "stub"},
+                {"id": "alpha", "kind": "stub"},
+            ],
+        }
+    )
     assert errs
     assert errs[0].context["path"] == "/nodes/1/id"
     assert "duplicate" in errs[0].context["hint"]
@@ -256,15 +258,17 @@ def test_validate_rejects_duplicate_node_ids() -> None:
 @pytest.mark.unit
 def test_validate_rejects_duplicate_rule_ids() -> None:
     """Two rules sharing an id are flagged."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:dup-rules",
-        "nodes": [],
-        "rules": [
-            {"id": "r1"},
-            {"id": "r1"},
-        ],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:dup-rules",
+            "nodes": [],
+            "rules": [
+                {"id": "r1"},
+                {"id": "r1"},
+            ],
+        }
+    )
     assert errs
     assert any(e.context["path"] == "/rules/1/id" for e in errs)
 
@@ -272,27 +276,31 @@ def test_validate_rejects_duplicate_rule_ids() -> None:
 @pytest.mark.unit
 def test_validate_allows_same_id_across_namespaces() -> None:
     """A node id matching a rule id is fine -- distinct namespaces."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:cross-ns",
-        "nodes": [{"id": "shared", "kind": "stub"}],
-        "rules": [{"id": "shared"}],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:cross-ns",
+            "nodes": [{"id": "shared", "kind": "stub"}],
+            "rules": [{"id": "shared"}],
+        }
+    )
     assert errs == []
 
 
 @pytest.mark.unit
 def test_validate_rejects_duplicate_store_names() -> None:
     """Two stores sharing a ``name`` collide on the StoreRef key (FR-19/FR-20)."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:dup-stores",
-        "nodes": [],
-        "stores": [
-            {"name": "kg", "provider": "ryugraph"},
-            {"name": "kg", "provider": "kuzu"},
-        ],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:dup-stores",
+            "nodes": [],
+            "stores": [
+                {"name": "kg", "provider": "ryugraph"},
+                {"name": "kg", "provider": "kuzu"},
+            ],
+        }
+    )
     assert errs
     assert any(e.context["path"] == "/stores/1/name" for e in errs)
 
@@ -305,17 +313,19 @@ def test_validate_rejects_duplicate_store_names() -> None:
 @pytest.mark.unit
 def test_validate_rejects_unportable_cypher_in_node_config() -> None:
     """A banned procedure (apoc.*) inside ``cypher`` config fails IR validation."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:bad-cypher",
-        "nodes": [
-            {
-                "id": "kg_query",
-                "kind": "stub",
-                "config": {"cypher": "MATCH (a) WITH apoc.coll.sum([1]) AS x RETURN x"},
-            },
-        ],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:bad-cypher",
+            "nodes": [
+                {
+                    "id": "kg_query",
+                    "kind": "stub",
+                    "config": {"cypher": "MATCH (a) WITH apoc.coll.sum([1]) AS x RETURN x"},
+                },
+            ],
+        }
+    )
     assert errs
     assert errs[0].context["path"] == "/nodes/0/config/cypher"
 
@@ -323,34 +333,38 @@ def test_validate_rejects_unportable_cypher_in_node_config() -> None:
 @pytest.mark.unit
 def test_validate_accepts_portable_cypher_in_node_config() -> None:
     """A clean MATCH/RETURN passes the pre-lint."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:ok-cypher",
-        "nodes": [
-            {
-                "id": "kg_query",
-                "kind": "stub",
-                "config": {"cypher": "MATCH (a:User) RETURN a.name"},
-            },
-        ],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:ok-cypher",
+            "nodes": [
+                {
+                    "id": "kg_query",
+                    "kind": "stub",
+                    "config": {"cypher": "MATCH (a:User) RETURN a.name"},
+                },
+            ],
+        }
+    )
     assert errs == []
 
 
 @pytest.mark.unit
 def test_validate_lints_cypher_suffixed_keys() -> None:
     """``filter_cypher`` (and any ``*_cypher``) is also linted."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:filter-cypher",
-        "nodes": [
-            {
-                "id": "promote",
-                "kind": "stub",
-                "config": {"filter_cypher": "MATCH (a)-[*]->(b) RETURN b"},
-            },
-        ],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:filter-cypher",
+            "nodes": [
+                {
+                    "id": "promote",
+                    "kind": "stub",
+                    "config": {"filter_cypher": "MATCH (a)-[*]->(b) RETURN b"},
+                },
+            ],
+        }
+    )
     # Unbounded variable-length path is rejected by the portable subset.
     assert errs
     assert errs[0].context["path"] == "/nodes/0/config/filter_cypher"
@@ -359,15 +373,17 @@ def test_validate_lints_cypher_suffixed_keys() -> None:
 @pytest.mark.unit
 def test_validate_skips_non_string_cypher_values() -> None:
     """A dict / list under a ``cypher`` key is not linted (structured builder)."""
-    errs = validate({
-        "ir_version": HARBOR_IR_VERSION,
-        "id": "run:non-string",
-        "nodes": [
-            {
-                "id": "n",
-                "kind": "stub",
-                "config": {"cypher": {"match": "(a)"}},
-            },
-        ],
-    })
+    errs = validate(
+        {
+            "ir_version": HARBOR_IR_VERSION,
+            "id": "run:non-string",
+            "nodes": [
+                {
+                    "id": "n",
+                    "kind": "stub",
+                    "config": {"cypher": {"match": "(a)"}},
+                },
+            ],
+        }
+    )
     assert errs == []

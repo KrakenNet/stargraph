@@ -133,7 +133,7 @@ async def dispatch_node(
         # Raise the cooperative signal that ``harbor.graph.loop.execute``
         # catches to transition the run to ``awaiting-input``. Imported
         # lazily to avoid a hard ``runtime → graph`` cycle.
-        from harbor.graph.loop import _HitInterrupt  # noqa: PLC0415
+        from harbor.graph.loop import _HitInterrupt  # pyright: ignore[reportPrivateUsage]
 
         raise _HitInterrupt(decision)
     if isinstance(decision, HaltAction):
@@ -176,8 +176,7 @@ async def _dispatch_parallel(
         return _run
 
     factories = [
-        _branch_factory(target, step + idx + 1)
-        for idx, target in enumerate(action.targets)
+        _branch_factory(target, step + idx + 1) for idx, target in enumerate(action.targets)
     ]
     results = await execute_parallel(
         factories,

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 from typer.testing import CliRunner
@@ -81,7 +82,7 @@ def test_both_lm_flags_configure_dspy(
 
     import dspy  # pyright: ignore[reportMissingTypeStubs]
 
-    real_configure = dspy.configure  # pyright: ignore[reportUnknownMemberType]
+    real_configure = cast("object", dspy.configure)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
     real_lm_cls = dspy.LM  # pyright: ignore[reportUnknownMemberType]
 
     def fake_configure(**kwargs: object) -> None:

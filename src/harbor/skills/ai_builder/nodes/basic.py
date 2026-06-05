@@ -67,7 +67,7 @@ def _call_llm(
         history=history_text,
         user_turn=turn,
     )
-    return str(result.response)  # pyright: ignore[reportUnknownMemberType]
+    return str(result.response)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
 
 
 class BasicChat(NodeBase):

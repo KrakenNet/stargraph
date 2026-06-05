@@ -254,7 +254,7 @@ def _lint_cypher_in_node_configs(doc: IRDocument) -> list[ValidationError]:
     linter: Any = None  # lazy
 
     for n_idx, node in enumerate(doc.nodes):
-        if not isinstance(node.config, dict):
+        if not isinstance(node.config, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
             continue
         for key, value in node.config.items():
             if not _is_cypher_key(key) or not isinstance(value, str):
@@ -265,7 +265,7 @@ def _lint_cypher_in_node_configs(doc: IRDocument) -> list[ValidationError]:
                 linter = Linter()
             try:
                 linter.check(value)
-            except Exception as exc:  # noqa: BLE001 - any lint failure surfaces
+            except Exception as exc:
                 errors.append(
                     ValidationError(
                         "IR validation failed",

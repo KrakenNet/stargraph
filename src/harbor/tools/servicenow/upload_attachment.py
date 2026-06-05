@@ -18,7 +18,12 @@ _REQUIRED_CAPABILITY = "tools:servicenow:write"
 
 
 def _live_enabled() -> bool:
-    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 @tool(
@@ -68,7 +73,8 @@ async def upload_attachment(
         async with httpx.AsyncClient(timeout=30.0, **ck) as client:
             resp = await client.post(url, content=content, headers=headers)
             resp.raise_for_status()
-            result = (resp.json() or {}).get("result", {})
+            payload: dict[str, Any] = resp.json() or {}
+            result: dict[str, Any] = payload.get("result", {})
             return {
                 "status": "ok",
                 "sys_id": str(result.get("sys_id", "")),
@@ -78,5 +84,5 @@ async def upload_attachment(
                     "external_id": str(result.get("sys_id", "")),
                 },
             }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"status": "error", "error": f"{type(exc).__name__}: {exc}", "sys_id": ""}

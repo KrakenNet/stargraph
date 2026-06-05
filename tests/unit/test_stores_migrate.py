@@ -98,9 +98,8 @@ async def test_lancedb_migrate_valid_add_column_succeeds_silently(
 ) -> None:
     """``LanceDBVectorStore.migrate(add_column nullable=True)`` returns ``None``
     without raising (T04)."""
-    from harbor.stores.lancedb import LanceDBVectorStore
-
     from harbor.stores.embeddings import FakeEmbedder
+    from harbor.stores.lancedb import LanceDBVectorStore
 
     store = LanceDBVectorStore(Path(str(tmp_path)), FakeEmbedder())
     result = await store.migrate(_add_column_plan())
@@ -113,9 +112,8 @@ async def test_lancedb_migrate_valid_add_column_succeeds_silently(
 )
 async def test_lancedb_migrate_rejects_drop_column(tmp_path: object) -> None:
     """``LanceDBVectorStore.migrate(drop_column)`` raises ``MigrationNotSupported`` (T04)."""
-    from harbor.stores.lancedb import LanceDBVectorStore
-
     from harbor.stores.embeddings import FakeEmbedder
+    from harbor.stores.lancedb import LanceDBVectorStore
 
     store = LanceDBVectorStore(Path(str(tmp_path)), FakeEmbedder())
     with pytest.raises(MigrationNotSupported):

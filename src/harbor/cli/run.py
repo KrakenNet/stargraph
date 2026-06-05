@@ -197,9 +197,7 @@ def _build_subgraph(spec: NodeSpec) -> NodeBase:
             )
         sub_path = (ir_dir / sub_path).resolve()
     if not sub_path.is_file():
-        raise typer.BadParameter(
-            f"subgraph node {spec.id!r}: child IR not found at {sub_path}"
-        )
+        raise typer.BadParameter(f"subgraph node {spec.id!r}: child IR not found at {sub_path}")
 
     sub_ir_dict = yaml.safe_load(sub_path.read_text(encoding="utf-8"))
     sub_ir = IRDocument.model_validate(sub_ir_dict)
@@ -227,7 +225,7 @@ def _build_tool(_spec: NodeSpec) -> NodeBase:
 
 _NODE_FACTORIES: dict[str, _NodeBuilder] = {
     "echo": _build_echo,
-    "halt": _build_echo,                # halt is a marker terminal
+    "halt": _build_echo,  # halt is a marker terminal
     "passthrough": _build_passthrough,
     "dspy": _build_dspy,
     "broker": _build_broker,
@@ -277,11 +275,15 @@ def _resolve_node_factory(kind: str) -> _NodeBuilder:
             f"expected one of {sorted(_NODE_FACTORIES)} or 'module.path:ClassName'"
         )
     cls = _resolve_class_kind(kind)
+
     # ``module:ClassName`` refs are zero-arg by contract; NodeSpec.config
     # is ignored for them. Custom plugin classes that want config should
     # register themselves via the short-kind table (Phase 3 follow-up:
     # ``harbor.nodes`` entry-point group lands a uniform path).
-    return lambda _spec: cls()
+    def _build_class(_spec: NodeSpec) -> NodeBase:
+        return cls()
+
+    return _build_class
 
 
 def _configure_lm(
@@ -595,9 +597,7 @@ def cmd(
                 from harbor.serve.lifecycle import broker_lifespan
 
                 async with broker_lifespan():
-                    return await _drive_interactive(
-                        run, audit_sink, progress, hitl, console
-                    )
+                    return await _drive_interactive(run, audit_sink, progress, hitl, console)
             return await _drive_interactive(run, audit_sink, progress, hitl, console)
         finally:
             await checkpointer.close()

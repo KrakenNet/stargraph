@@ -237,7 +237,9 @@ async def test_persist_pinned_propagates_pin_error() -> None:
 @pytest.mark.unit
 def test_assert_spec_to_fact_deterministic_id() -> None:
     """Two identical ``AssertSpec``s yield ``Fact``s with identical ``id`` (T13)."""
-    from harbor.runtime.mirror_lifecycle import _assert_spec_to_fact
+    from harbor.runtime.mirror_lifecycle import (
+        _assert_spec_to_fact,  # pyright: ignore[reportPrivateUsage]
+    )
 
     spec_a = _spec("template-x", "value-1")
     spec_b = _spec("template-x", "value-1")

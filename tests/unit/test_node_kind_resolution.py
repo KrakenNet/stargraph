@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 import typer
 
-from harbor.cli.run import _build_node_registry
+from harbor.cli.run import _build_node_registry  # pyright: ignore[reportPrivateUsage]
 from harbor.ir._models import NodeSpec
 from harbor.nodes.base import EchoNode, NodeBase
 

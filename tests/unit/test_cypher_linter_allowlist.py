@@ -109,9 +109,7 @@ def test_count_subquery_rejected() -> None:
     graph backend cannot execute it.
     """
     with pytest.raises(UnportableCypherError):
-        Linter().check(
-            "MATCH (n:Doc) RETURN n, COUNT { MATCH (n)-[:REL]->(m) RETURN m } AS c"
-        )
+        Linter().check("MATCH (n:Doc) RETURN n, COUNT { MATCH (n)-[:REL]->(m) RETURN m } AS c")
 
 
 @pytest.mark.knowledge

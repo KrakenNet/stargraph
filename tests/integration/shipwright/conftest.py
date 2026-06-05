@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import dspy  # type: ignore[import-untyped]
 import httpx
 import pytest
 
@@ -38,10 +39,8 @@ def ollama_config() -> dict[str, str | int]:
 
 
 @pytest.fixture(scope="session")
-def ollama_lm(ollama_config):
+def ollama_lm(ollama_config: dict[str, str | int]) -> dspy.LM:  # pyright: ignore[reportUnknownParameterType]
     """A configured `dspy.LM` pointing at llm-ollama; skip if not reachable."""
-    import dspy
-
     url = ollama_config["url"]
     try:
         r = httpx.get(f"{url}/models", timeout=2.0)

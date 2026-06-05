@@ -21,19 +21,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from harbor.plugin._markers import hookspec
-from harbor.plugin.types import (
-    BosunAction,
-    MCPAdapterSpec,
-    PackSpec,
-    PluginManager,
-    Route,
-    StoreSpec,
-    ToolCall,
-    ToolResult,
-)
 
 if TYPE_CHECKING:
     from harbor.ir._models import SkillSpec, ToolSpec
+    from harbor.plugin.types import (
+        BosunAction,
+        MCPAdapterSpec,
+        PackSpec,
+        PluginManager,
+        Route,
+        StoreSpec,
+        ToolCall,
+        ToolResult,
+    )
 
 
 @hookspec

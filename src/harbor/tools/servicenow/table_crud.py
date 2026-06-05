@@ -15,7 +15,12 @@ _NAMESPACE = "servicenow"
 
 
 def _live_enabled() -> bool:
-    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 @tool(
@@ -60,7 +65,8 @@ async def table_query(
         async with httpx.AsyncClient(timeout=15.0, **ck) as client:
             resp = await client.get(url, params=params, headers=headers)
             resp.raise_for_status()
-            results = (resp.json() or {}).get("result", [])
+            payload: dict[str, Any] = resp.json() or {}
+            results: list[dict[str, Any]] = payload.get("result", [])
             return {
                 "status": "ok",
                 "table_name": table_name,
@@ -71,7 +77,7 @@ async def table_query(
                     "external_id": f"query:{table_name}",
                 },
             }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"status": "error", "error": f"{type(exc).__name__}: {exc}", "results": []}
 
 
@@ -112,7 +118,8 @@ async def table_create(
         async with httpx.AsyncClient(timeout=15.0, **ck) as client:
             resp = await client.post(url, json=body, headers=headers)
             resp.raise_for_status()
-            result = (resp.json() or {}).get("result", {})
+            payload: dict[str, Any] = resp.json() or {}
+            result: dict[str, Any] = payload.get("result", {})
             return {
                 "status": "ok",
                 "table_name": table_name,
@@ -124,5 +131,5 @@ async def table_create(
                     "external_id": str(result.get("sys_id", "")),
                 },
             }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"status": "error", "error": f"{type(exc).__name__}: {exc}", "sys_id": ""}

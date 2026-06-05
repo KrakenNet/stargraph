@@ -57,7 +57,7 @@ class _RecordingScheduler:
             graph_id, datetime.now(UTC)
         )
         run_id = Scheduler._derive_run_id(graph_id, key)  # pyright: ignore[reportPrivateUsage]
-        return EnqueueHandle(run_id=run_id, future=None)  # pyright: ignore[arg-type]
+        return EnqueueHandle(run_id=run_id, future=None)  # pyright: ignore[reportArgumentType]
 
 
 @pytest.fixture

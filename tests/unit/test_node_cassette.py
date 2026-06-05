@@ -18,7 +18,7 @@ checkpointer to persist node-cassette state across restarts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from pydantic import BaseModel
@@ -26,6 +26,9 @@ from pydantic import BaseModel
 from harbor.errors import ArtifactStoreError
 from harbor.nodes.artifacts import WriteArtifactNode, WriteArtifactNodeConfig
 from harbor.replay.cassettes import InMemoryNodeCassette
+
+if TYPE_CHECKING:
+    from harbor.graph import GraphRun
 
 
 class _FakeBus:
@@ -58,9 +61,7 @@ class _FakeArtifactStore:
 
         from harbor.artifacts import ArtifactRef
 
-        self.calls.append(
-            {"name": name, "content": content, "run_id": run_id, "step": step}
-        )
+        self.calls.append({"name": name, "content": content, "run_id": run_id, "step": step})
         digest = "0" * 64
         return ArtifactRef(
             artifact_id=digest[:32],
@@ -231,7 +232,7 @@ class _FakeRun:
     checkpointer: Any = field(default_factory=_FakeCheckpointer)
     mirror_scheduler: Any = field(default_factory=_FakeMirror)
     bus: Any = field(default_factory=_FakeBus)
-    node_registry: dict[str, Any] = field(default_factory=dict)
+    node_registry: dict[str, Any] = field(default_factory=lambda: {})
 
 
 @pytest.mark.unit
@@ -252,7 +253,7 @@ async def test_dispatch_node_clears_node_id_after_raise() -> None:
         x: int = 0
 
     with pytest.raises(RuntimeError, match="boom"):
-        await dispatch_node(run, nodes, nodes[0], _S(), step=0)
+        await dispatch_node(cast("GraphRun", run), nodes, nodes[0], _S(), step=0)
     assert run.node_id == "", "node_id must be cleared in the finally arm"
 
 
@@ -268,7 +269,7 @@ async def test_dispatch_node_clears_node_id_on_success() -> None:
     class _S(BaseModel):
         x: int = 0
 
-    await dispatch_node(run, nodes, nodes[0], _S(), step=0)
+    await dispatch_node(cast("GraphRun", run), nodes, nodes[0], _S(), step=0)
     assert run.node_id == ""
 
 

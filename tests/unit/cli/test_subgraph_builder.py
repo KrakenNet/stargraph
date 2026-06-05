@@ -3,19 +3,25 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import typer
 import yaml
 
-from harbor.cli.run import _build_node_registry, _build_subgraph
-from harbor.ir._models import IRDocument, NodeSpec
+from harbor.cli.run import (
+    _build_node_registry,  # pyright: ignore[reportPrivateUsage]
+    _build_subgraph,  # pyright: ignore[reportPrivateUsage]
+)
+from harbor.ir._models import NodeSpec
 from harbor.nodes.base import EchoNode
 from harbor.nodes.subgraph import SubGraphNode
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def _write_subir(tmp_path: Path, body: dict) -> Path:
+
+def _write_subir(tmp_path: Path, body: dict[str, object]) -> Path:
     p = tmp_path / "child.yaml"
     p.write_text(yaml.safe_dump(body), encoding="utf-8")
     return p

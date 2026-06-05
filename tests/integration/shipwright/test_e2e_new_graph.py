@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -19,6 +19,8 @@ from harbor.skills.shipwright.state import SpecSlot, State
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from harbor.nodes.base import ExecutionContext
+
 
 _PARSED = {
     "kind": "graph",
@@ -27,15 +29,17 @@ _PARSED = {
 }
 
 
-def _stub_parse(self, brief):
+def _stub_parse(self: ParseBrief, brief: str) -> dict[str, Any]:
     return _PARSED
 
 
-def _stub_propose(self, slots, existing):
+def _stub_propose(
+    self: ProposeQuestions, slots: dict[str, Any], existing: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     return []
 
 
-def _stub_node_bodies(self, slots):
+def _stub_node_bodies(self: SynthesizeGraph, slots: dict[str, Any]) -> dict[str, str]:
     return {n: "return {}" for n in slots["nodes"]}
 
 
@@ -45,7 +49,7 @@ async def test_new_graph_happy_path(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     monkeypatch.setattr(ProposeQuestions, "_call_predictor", _stub_propose)
     monkeypatch.setattr(SynthesizeGraph, "_call_predictor", _stub_node_bodies)
 
-    ctx = SimpleNamespace(run_id="r-e2e")
+    ctx = cast("ExecutionContext", SimpleNamespace(run_id="r-e2e"))
     state = State(mode="new", brief="a triage graph that classifies SOC alerts")
 
     # 1. triage

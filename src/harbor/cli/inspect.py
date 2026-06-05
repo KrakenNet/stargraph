@@ -94,9 +94,7 @@ async def _run_timeline(db: Path, run_id: str, jsonl_path: Path | None) -> None:
     cp = SQLiteCheckpointer(db)
     await cp.bootstrap()
     try:
-        rows = await inspect_body.build_timeline(
-            cp, run_id, history=None, jsonl_path=jsonl_path
-        )
+        rows = await inspect_body.build_timeline(cp, run_id, history=None, jsonl_path=jsonl_path)
         typer.echo(inspect_body.format_timeline(rows))
     finally:
         await cp.close()

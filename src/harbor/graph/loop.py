@@ -112,7 +112,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import anyio
 
@@ -619,7 +619,8 @@ def _merge_branch_results(
             # Non-dict branch state: no field-level merge possible.
             # Return the last branch's state (degenerate case).
             return results[-1]
-        for key, value in branch.items():
+        branch_dict = cast("dict[str, Any]", branch)
+        for key, value in branch_dict.items():
             all_keys.setdefault(key, []).append(value)
 
     merged: dict[str, Any] = {}

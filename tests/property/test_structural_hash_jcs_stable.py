@@ -243,7 +243,7 @@ def test_irdocument_hash_stable() -> None:
     BaseModel subclass via _compile_state_schema and inject via model_copy
     before calling structural_hash (repr fallback removed by T18, FR-6).
     """
-    from harbor.graph.definition import _compile_state_schema
+    from harbor.graph.definition import _compile_state_schema  # pyright: ignore[reportPrivateUsage]
     from harbor.graph.hash import structural_hash
 
     rule_packs: list[tuple[str, str, str]] = [("pack-a", "deadbeef", "1.0.0")]
@@ -265,7 +265,7 @@ def test_irdocument_rule_pack_order_invariant() -> None:
 
     Amended per T18: mirrors Graph.__init__:384 compile-then-replace pattern.
     """
-    from harbor.graph.definition import _compile_state_schema
+    from harbor.graph.definition import _compile_state_schema  # pyright: ignore[reportPrivateUsage]
     from harbor.graph.hash import structural_hash
 
     compiled = _compile_state_schema({}, graph_id="ir-test-order")
@@ -294,7 +294,7 @@ def test_irdocument_state_schema_change_changes_hash() -> None:
     Amended per T18: compile raw dicts via _compile_state_schema and inject
     via model_copy (mirrors Graph.__init__:384; repr fallback removed FR-6).
     """
-    from harbor.graph.definition import _compile_state_schema
+    from harbor.graph.definition import _compile_state_schema  # pyright: ignore[reportPrivateUsage]
     from harbor.graph.hash import structural_hash
 
     rule_packs: list[tuple[str, str, str]] = [("pack-a", "deadbeef", "1.0.0")]

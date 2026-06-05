@@ -261,7 +261,7 @@ def _state_schema_signature(state_schema: Any) -> Any:
         "state_schema must be a BaseModel subclass at the structural-hash boundary",
         path="state_schema",
         expected="type[BaseModel]",
-        actual=type(state_schema).__name__,
+        actual=type(cast("object", state_schema)).__name__,
         hint=(
             "callers via Graph.__init__ are already compiled; "
             "direct callers must compile via _compile_state_schema"

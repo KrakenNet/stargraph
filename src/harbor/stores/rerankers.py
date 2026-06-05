@@ -192,16 +192,11 @@ class CrossEncoderReranker:
 
         import asyncio
 
-        scores = await asyncio.to_thread(
-            encoder.predict, pairs, batch_size=self._batch_size
-        )
+        scores = await asyncio.to_thread(encoder.predict, pairs, batch_size=self._batch_size)
 
         scored = list(zip(ordered, [float(s) for s in scores], strict=True))
         scored.sort(key=lambda pair: (-pair[1], pair[0].id))
-        return [
-            Hit(id=hit.id, score=score, metadata=hit.metadata)
-            for hit, score in scored[:k]
-        ]
+        return [Hit(id=hit.id, score=score, metadata=hit.metadata) for hit, score in scored[:k]]
 
 
 def _extract_doc_text(hit: Hit) -> str:

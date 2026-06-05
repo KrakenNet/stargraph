@@ -18,13 +18,9 @@ _DEFAULT_TIMEOUT = 30.0
 
 
 def _resolve_base_url() -> str:
-    base = os.environ.get(
-        "CARGONET_BASE_URL", "http://localhost:28080"
-    ).strip().rstrip("/")
+    base = os.environ.get("CARGONET_BASE_URL", "http://localhost:28080").strip().rstrip("/")
     if not base:
-        raise HarborRuntimeError(
-            "CARGONET_BASE_URL is unset; cannot reach CargoNet"
-        )
+        raise HarborRuntimeError("CARGONET_BASE_URL is unset; cannot reach CargoNet")
     return base
 
 
@@ -43,14 +39,13 @@ def _auth_headers() -> dict[str, str]:
     side_effects=SideEffects.read,
     requires_capability="tools:cargonet:read",
     description=(
-        "List CargoNet lab nodes. With lab_id unset, returns nodes "
-        "across every running lab."
+        "List CargoNet lab nodes. With lab_id unset, returns nodes across every running lab."
     ),
 )
 async def cargonet_list_nodes(
     *,
     lab_id: str | None = None,
-    timeout: float = _DEFAULT_TIMEOUT,
+    timeout: float = _DEFAULT_TIMEOUT,  # noqa: ASYNC109 -- explicit timeout forwarded to subprocess wait
 ) -> list[dict[str, Any]]:
     base = _resolve_base_url()
     headers = _auth_headers()
@@ -61,25 +56,28 @@ async def cargonet_list_nodes(
         else:
             r = await client.get(f"{base}/api/v1/labs", headers=headers)
             r.raise_for_status()
+            labs_body: dict[str, Any] = r.json() or {}
+            items: list[dict[str, Any]] = labs_body.get("items", [])
             lab_ids = [
                 str(item.get("id"))
-                for item in (r.json() or {}).get("items", [])
-                if str(item.get("status") or "").lower() == "running"
-                and item.get("id")
+                for item in items
+                if str(item.get("status") or "").lower() == "running" and item.get("id")
             ]
         for lid in lab_ids:
-            r = await client.get(
-                f"{base}/api/v1/labs/{lid}/nodes", headers=headers
-            )
+            r = await client.get(f"{base}/api/v1/labs/{lid}/nodes", headers=headers)
             r.raise_for_status()
-            for node in (r.json() or {}).get("items", []):
-                rows.append({
-                    "lab_id": lid,
-                    "id": str(node.get("id") or ""),
-                    "name": str(node.get("name") or ""),
-                    "kind": str(node.get("kind") or ""),
-                    "health": str(node.get("health") or ""),
-                })
+            nodes_body: dict[str, Any] = r.json() or {}
+            nodes: list[dict[str, Any]] = nodes_body.get("items", [])
+            for node in nodes:
+                rows.append(
+                    {
+                        "lab_id": lid,
+                        "id": str(node.get("id") or ""),
+                        "name": str(node.get("name") or ""),
+                        "kind": str(node.get("kind") or ""),
+                        "health": str(node.get("health") or ""),
+                    }
+                )
     return rows
 
 
@@ -94,7 +92,7 @@ async def cargonet_list_nodes(
 async def cargonet_find_node(
     *,
     name: str,
-    timeout: float = _DEFAULT_TIMEOUT,
+    timeout: float = _DEFAULT_TIMEOUT,  # noqa: ASYNC109 -- explicit timeout forwarded to subprocess wait
 ) -> dict[str, Any]:
     rows = await cargonet_list_nodes(timeout=timeout)
     for row in rows:
@@ -124,7 +122,7 @@ async def cargonet_exec(
     lab_id: str,
     node_id: str,
     command: str,
-    timeout: float = _DEFAULT_TIMEOUT,
+    timeout: float = _DEFAULT_TIMEOUT,  # noqa: ASYNC109 -- explicit timeout forwarded to subprocess wait
 ) -> dict[str, Any]:
     if not lab_id or not node_id:
         raise HarborRuntimeError(
@@ -147,7 +145,7 @@ async def cargonet_exec(
             body=resp.text[:500],
             url=url,
         )
-    body = resp.json() or {}
+    body: dict[str, Any] = resp.json() or {}
     return {
         "exit_code": int(body.get("exit_code", -1)),
         "output": str(body.get("output", "") or ""),

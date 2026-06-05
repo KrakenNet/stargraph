@@ -206,7 +206,7 @@ def test_derive_input_schema_from_basemodel_subclass() -> None:
     converted via ``.model_json_schema(mode="serialization")`` (T19)."""
     from pydantic import BaseModel
 
-    from harbor.tools.decorator import _derive_input_schema
+    from harbor.tools.decorator import _derive_input_schema  # pyright: ignore[reportPrivateUsage]
 
     class _Inputs(BaseModel):
         query: str
@@ -223,7 +223,7 @@ def test_derive_input_schema_from_basemodel_subclass() -> None:
 @pytest.mark.unit
 def test_derive_input_schema_from_dict_unchanged() -> None:
     """``input_schema`` already a dict is returned unchanged (T19)."""
-    from harbor.tools.decorator import _derive_input_schema
+    from harbor.tools.decorator import _derive_input_schema  # pyright: ignore[reportPrivateUsage]
 
     given = {"type": "object", "properties": {"x": {"type": "string"}}}
 
@@ -237,7 +237,7 @@ def test_derive_input_schema_from_dict_unchanged() -> None:
 def test_derive_input_schema_from_signature_unchanged() -> None:
     """``input_schema=None`` falls through to the ``TypeAdapter`` signature path
     -- existing behavior preserved (T19)."""
-    from harbor.tools.decorator import _derive_input_schema
+    from harbor.tools.decorator import _derive_input_schema  # pyright: ignore[reportPrivateUsage]
 
     def _fn(x: str, y: int = 0) -> None: ...
 

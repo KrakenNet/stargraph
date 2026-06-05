@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from harbor.skills.shipwright.nodes.parse import ParseBrief
 from harbor.skills.shipwright.state import State
+
+if TYPE_CHECKING:
+    from harbor.nodes.base import ExecutionContext
 
 
 @pytest.mark.integration
@@ -17,14 +21,14 @@ async def test_parse_brief_returns_typed_slots(monkeypatch: pytest.MonkeyPatch) 
         "node_hints": ["classify", "auto_resolve", "escalate"],
     }
 
-    def fake_call(self, brief: str) -> dict:
+    def fake_call(self: ParseBrief, brief: str) -> dict[str, Any]:
         return fake
 
     monkeypatch.setattr(ParseBrief, "_call_predictor", fake_call)
 
     out = await ParseBrief().execute(
         State(brief="a triage graph that classifies SOC alerts"),
-        SimpleNamespace(run_id="r-test"),
+        cast("ExecutionContext", SimpleNamespace(run_id="r-test")),
     )
 
     slots = out["slots"]
@@ -36,5 +40,7 @@ async def test_parse_brief_returns_typed_slots(monkeypatch: pytest.MonkeyPatch) 
 
 @pytest.mark.integration
 async def test_parse_brief_skips_when_brief_missing() -> None:
-    out = await ParseBrief().execute(State(brief=None), SimpleNamespace(run_id="r-test"))
+    out = await ParseBrief().execute(
+        State(brief=None), cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     assert out == {"slots": {}}

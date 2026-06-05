@@ -8,6 +8,8 @@ override, then loud raise.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from harbor.errors import HarborRuntimeError
@@ -43,6 +45,6 @@ def test_resolve_run_raises_when_absent() -> None:
     """``_resolve_run`` raises :class:`HarborRuntimeError` when missing (T17)."""
     from harbor.serve import respond
 
-    deps = {"runs": {}}
+    deps: dict[str, Any] = {"runs": {}}
     with pytest.raises(HarborRuntimeError):
         respond._resolve_run("missing", None, deps=deps)  # pyright: ignore[reportPrivateUsage]

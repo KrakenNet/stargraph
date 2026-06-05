@@ -18,7 +18,12 @@ _REQUIRED_CAPABILITY = "tools:servicenow:write"
 
 
 def _live_enabled() -> bool:
-    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 @tool(
@@ -68,5 +73,5 @@ async def patch_work_notes(
                     "external_id": cr_sys_id,
                 },
             }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
