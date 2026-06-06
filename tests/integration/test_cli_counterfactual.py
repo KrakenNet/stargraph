@@ -13,6 +13,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from tests.fixtures.ansi import strip_ansi
+
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 SAMPLE_GRAPH: Path = REPO_ROOT / "tests" / "fixtures" / "sample-graph.yaml"
 
@@ -31,8 +33,9 @@ def test_counterfactual_help_exits_zero() -> None:
     """``harbor counterfactual --help`` must exit 0 (subcommand registered)."""
     result = _run("counterfactual", "--help")
     assert result.returncode == 0, result.stderr
-    assert "--step" in result.stdout
-    assert "--mutate" in result.stdout
+    help_text = strip_ansi(result.stdout)
+    assert "--step" in help_text
+    assert "--mutate" in help_text
 
 
 def test_counterfactual_prints_derived_hash(tmp_path: Path) -> None:

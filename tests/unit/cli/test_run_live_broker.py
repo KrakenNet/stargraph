@@ -19,6 +19,7 @@ from typer.testing import CliRunner
 
 import harbor.cli.run as run_mod
 from harbor.cli.run import cmd
+from tests.fixtures.ansi import strip_ansi
 
 if TYPE_CHECKING:
     import pytest
@@ -108,7 +109,7 @@ def test_live_broker_flag_help_listed() -> None:
     app = _make_app()
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "--live-broker" in result.output
+    assert "--live-broker" in strip_ansi(result.output)
 
 
 def test_live_broker_imports_lazily(monkeypatch: pytest.MonkeyPatch) -> None:

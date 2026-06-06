@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from tests.fixtures.ansi import strip_ansi
+
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 SAMPLE_GRAPH: Path = REPO_ROOT / "tests" / "fixtures" / "sample-graph.yaml"
 
@@ -68,7 +70,7 @@ def test_simulate_help_exits_zero() -> None:
     """``harbor simulate --help`` must exit 0 (subcommand is registered)."""
     result = _run("simulate", "--help")
     assert result.returncode == 0, result.stderr
-    assert "--fixtures" in result.stdout
+    assert "--fixtures" in strip_ansi(result.stdout)
 
 
 def test_simulate_runs_and_prints_trace(tmp_path: Path) -> None:
