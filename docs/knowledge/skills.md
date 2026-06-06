@@ -9,7 +9,7 @@ surface; three reference skills (`rag`, `autoresearch`, `wiki`) plus the
 ## Skill base class
 
 ```python
-from harbor.skills import Skill, SkillKind, Example
+from stargraph.skills import Skill, SkillKind, Example
 from pydantic import BaseModel
 
 class Skill(BaseModel):
@@ -33,7 +33,7 @@ class Skill(BaseModel):
 - `utility` — pure transformation; no external side effects.
 
 Manifest validation runs through the existing pluggy `register_skills`
-hookspec at `harbor.plugin.hookspecs`. Namespace conflicts loud-fail at
+hookspec at `stargraph.plugin.hookspecs`. Namespace conflicts loud-fail at
 load (NFR-9).
 
 ## Agent-as-subgraph
@@ -44,9 +44,9 @@ by `IRRef` — that the engine compiles and pins through the same
 is `SubGraphNode`:
 
 ```python
-from harbor.graph import Graph
-from harbor.nodes import SubgraphNode
-from harbor.skills.refs.rag import rag_skill
+from stargraph.graph import Graph
+from stargraph.nodes import SubgraphNode
+from stargraph.skills.refs.rag import rag_skill
 
 graph = Graph(parent_ir).with_node(
     SubgraphNode.from_skill(rag_skill, site="step-3")
@@ -65,7 +65,7 @@ Two replay-driven contracts make composition safe:
 ## Declared output channels
 
 LangGraph #4182 — implicit parent-state mutation from a subgraph — is a
-silent-corruption bug. Harbor mitigates it by enforcing **declared output
+silent-corruption bug. Stargraph mitigates it by enforcing **declared output
 channels only**:
 
 - The skill's `state_schema` defines every field the subgraph can write.
@@ -79,7 +79,7 @@ Pair it with `bubble_events=True` (FR-24) and the parent run sees every
 transition the subgraph emits without needing to thread state by hand
 (LangGraph #2484 mitigation).
 
-## ReAct primitive — `harbor.skills.react`
+## ReAct primitive — `stargraph.skills.react`
 
 The `react` skill ships as a tool-loop subgraph with three nodes:
 
@@ -93,7 +93,7 @@ The `react` skill ships as a tool-loop subgraph with three nodes:
 ReAct is obsolete for capable models. **Termination is rule-driven**
 (AC-10.4): `max_steps`, `done` flag in tool result, `error_budget`
 exceeded. Model self-termination is never relied on; the rule pack lives
-in CLIPS and fires through `harbor.fathom`.
+in CLIPS and fires through `stargraph.fathom`.
 
 The state schema declares the four output channels:
 
@@ -113,7 +113,7 @@ across runs even when LLM output is semantically equivalent.
 
 ## Reference skills
 
-Three skills land at `harbor.skills.refs.*` — each is a real package, not
+Three skills land at `stargraph.skills.refs.*` — each is a real package, not
 a doc-only placeholder:
 
 | Skill | Kind | What it does |
@@ -125,5 +125,5 @@ a doc-only placeholder:
 Composition rule of thumb: always declare your output channels first, then
 write the subgraph against them.
 
-See [design §3.7–3.13](https://github.com/KrakenNet/harbor/blob/main/specs/harbor-knowledge/design.md)
+See [design §3.7–3.13](https://github.com/KrakenNet/stargraph/blob/main/specs/stargraph-knowledge/design.md)
 for the full Skill base, ReAct, and reference-skill specs.

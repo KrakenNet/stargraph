@@ -58,7 +58,7 @@ on `predicate`.
 ### `query(cypher, params=None) -> ResultSet`
 
 Executes `cypher` after passing it through
-[`harbor.stores.cypher.Linter.check`](#cypher-portable-subset). Returns
+[`stargraph.stores.cypher.Linter.check`](#cypher-portable-subset). Returns
 a `ResultSet` of column-keyed dicts. Out-of-subset Cypher raises
 `UnportableCypherError`.
 
@@ -89,7 +89,7 @@ Identifier-plus-kind handle. No payload.
 
 Walk returned by `expand`. `nodes[0]` is the start; `edges[i]` connects
 `nodes[i]` to `nodes[i+1]`, so `len(edges) == len(nodes) - 1`. Named
-`GraphPath` (re-exported as `Path` from `harbor.stores`) to avoid
+`GraphPath` (re-exported as `Path` from `stargraph.stores`) to avoid
 clashing with `pathlib.Path`.
 
 | Field | Type |
@@ -108,7 +108,7 @@ Cypher result envelope.
 
 ## Cypher portable subset
 
-`harbor.stores.cypher.Linter` is the single seam every Cypher string
+`stargraph.stores.cypher.Linter` is the single seam every Cypher string
 crosses before reaching RyuGraph (or, in future, Neo4j 5). The allow-list
 is implicit -- anything not matching a ban pattern passes.
 
@@ -146,7 +146,7 @@ FR-20 capability gating to decide whether a query mutates graph state
 
 ## `RyuGraphStore`
 
-Default in-tree provider (`harbor.stores.ryugraph`). RyuGraph is the
+Default in-tree provider (`stargraph.stores.ryugraph`). RyuGraph is the
 community fork of Kuzu (predictable-labs/ryugraph) after Kuzu's GitHub
 repo was archived 2025-10-10 following Apple's acquisition of Kuzu Inc.
 Python API surface (`Database` / `AsyncConnection` / `QueryResult`)
@@ -156,7 +156,7 @@ unchanged across the fork.
 
 ```python
 from pathlib import Path
-from harbor.stores import RyuGraphStore
+from stargraph.stores import RyuGraphStore
 
 store = RyuGraphStore(
     path=Path("./.ryu"),
@@ -175,8 +175,8 @@ store = RyuGraphStore(
 
 ### Dependencies
 
-Optional extra: `harbor[stores]` (`ryugraph>=25.9.2,<26`). Loaded lazily
-through `harbor.stores.__getattr__`.
+Optional extra: `stargraph[stores]` (`ryugraph>=25.9.2,<26`). Loaded lazily
+through `stargraph.stores.__getattr__`.
 
 ### Special behaviours
 

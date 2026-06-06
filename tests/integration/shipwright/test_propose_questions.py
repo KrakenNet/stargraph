@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.skills.shipwright.nodes.interview import ProposeQuestions
-from harbor.skills.shipwright.state import Question, SpecSlot, State
+from stargraph.skills.shipwright.nodes.interview import ProposeQuestions
+from stargraph.skills.shipwright.state import Question, SpecSlot, State
 
 if TYPE_CHECKING:
-    from harbor.nodes.base import ExecutionContext
+    from stargraph.nodes.base import ExecutionContext
 
 
 @pytest.mark.integration

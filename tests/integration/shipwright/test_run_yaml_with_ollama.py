@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``harbor run shipwright/graph.yaml`` against the llm-ollama container.
+"""``stargraph run shipwright/graph.yaml`` against the llm-ollama container.
 
 Skipped if the container isn't reachable. The point is to prove that the
 three Plan-1.5 affordances combine with a live LLM to actually drive the
-canonical YAML end-to-end through ``harbor run``:
+canonical YAML end-to-end through ``stargraph run``:
 
   * ``state_class`` resolves the rich Pydantic ``State``,
   * every ``module:Class`` node kind imports and runs,
@@ -26,16 +26,21 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from harbor.cli import app
+from stargraph.cli import app
 
 SHIPWRIGHT_GRAPH = (
-    Path(__file__).resolve().parents[3] / "src" / "harbor" / "skills" / "shipwright" / "graph.yaml"
+    Path(__file__).resolve().parents[3]
+    / "src"
+    / "stargraph"
+    / "skills"
+    / "shipwright"
+    / "graph.yaml"
 )
 
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_harbor_run_drives_shipwright_with_ollama(
+def test_stargraph_run_drives_shipwright_with_ollama(
     ollama_config: dict[str, str | int],
     ollama_lm: object,  # fixture's only job is the skip-if-unreachable check
     tmp_path: Path,

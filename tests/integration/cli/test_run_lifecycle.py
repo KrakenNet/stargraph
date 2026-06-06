@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Lifecycle integration tests for `harbor run` -- exit codes, flag interactions, etc."""
+"""Lifecycle integration tests for `stargraph run` -- exit codes, flag interactions, etc."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from harbor.cli import app
+from stargraph.cli import app
 
 SAMPLE_GRAPH = Path(__file__).resolve().parents[2] / "fixtures" / "sample-graph.yaml"
 

@@ -3,32 +3,32 @@
 
 Extends the engine NFR-6 walker
 (:mod:`tests.unit.test_provenance_enforcer`) which bans
-``<expr>.assert_fact(...)`` outside ``src/harbor/fathom/``. NFR-5 widens the
+``<expr>.assert_fact(...)`` outside ``src/stargraph/fathom/``. NFR-5 widens the
 contract to the knowledge layer:
 
-* **Walks** ``src/harbor/stores`` and ``src/harbor/skills`` ASTs.
+* **Walks** ``src/stargraph/stores`` and ``src/stargraph/skills`` ASTs.
 * **Allowed** writers into the ``facts`` table:
 
   - ``FathomAdapter.assert_with_provenance(...)`` (the canonical
     provenance-bearing assertion seam, design §4.5).
   - ``FactStore.apply_delta(...)`` (typed-delta path, design §4.2 / FR-29 --
-    centralised in :mod:`harbor.stores._delta`).
+    centralised in :mod:`stargraph.stores._delta`).
   - ``FactStore.pin(...)`` / ``FactStore.unpin(...)`` reached *via* the
     Protocol (callers hold a typed ``FactStore`` reference).
-  - The :class:`harbor.stores.sqlite_fact.SQLiteFactStore` implementation
+  - The :class:`stargraph.stores.sqlite_fact.SQLiteFactStore` implementation
     itself -- it is the FactStore Protocol's storage seam.
 
 * **Banned** patterns (would silently bypass lineage / provenance):
 
-  - ``<expr>.assert_fact(...)`` outside ``src/harbor/fathom/`` (NFR-6
+  - ``<expr>.assert_fact(...)`` outside ``src/stargraph/fathom/`` (NFR-6
     inherited; reasserted here for the stores+skills surface so future
     refactors that move imports across packages don't quietly drop the
     guard).
   - Direct SQL ``INSERT`` / ``UPDATE`` / ``DELETE`` against the ``facts``
-    table from any module other than ``src/harbor/stores/sqlite_fact.py``
+    table from any module other than ``src/stargraph/stores/sqlite_fact.py``
     (the FactStore impl). A skill or sibling store opening its own
     ``aiosqlite.connect(...)`` and writing to ``facts`` would skip the
-    :func:`harbor.stores._delta._validate_delta_provenance` gate.
+    :func:`stargraph.stores._delta._validate_delta_provenance` gate.
 
 The walker is purely static -- it parses Python source via :mod:`ast` and
 matches by call shape / string content, so it adds no import-time cost and
@@ -45,10 +45,10 @@ import pytest
 
 # Project root resolved relative to this test file: tests/unit/ -> tests/ -> repo root.
 _REPO_ROOT: Path = Path(__file__).resolve().parents[2]
-_SRC_HARBOR: Path = _REPO_ROOT / "src" / "harbor"
-_STORES_DIR: Path = _SRC_HARBOR / "stores"
-_SKILLS_DIR: Path = _SRC_HARBOR / "skills"
-_FATHOM_DIR: Path = _SRC_HARBOR / "fathom"
+_SRC_STARGRAPH: Path = _REPO_ROOT / "src" / "stargraph"
+_STORES_DIR: Path = _SRC_STARGRAPH / "stores"
+_SKILLS_DIR: Path = _SRC_STARGRAPH / "skills"
+_FATHOM_DIR: Path = _SRC_STARGRAPH / "fathom"
 
 # The FactStore Protocol implementation -- the one place direct SQL writes
 # to the ``facts`` table are legitimate.
@@ -154,7 +154,7 @@ def test_no_direct_assert_fact_in_stores_or_skills() -> None:
     """Ban ``.assert_fact(...)`` under ``stores`` and ``skills`` (NFR-5, extends NFR-6).
 
     The engine-wide walker in :mod:`tests.unit.test_provenance_enforcer`
-    already enforces this for everything outside ``src/harbor/fathom/``;
+    already enforces this for everything outside ``src/stargraph/fathom/``;
     we re-pin the stores and skills surfaces explicitly so a future scope
     narrowing of that walker still leaves the knowledge layer covered.
     """
@@ -179,8 +179,8 @@ def test_no_direct_assert_fact_in_stores_or_skills() -> None:
             f"  {p.relative_to(_REPO_ROOT)}:{lineno}: {what}" for p, lineno, what in violations
         )
         pytest.fail(
-            "Direct .assert_fact(...) calls found in src/harbor/stores or "
-            "src/harbor/skills (NFR-5, extends NFR-6):\n"
+            "Direct .assert_fact(...) calls found in src/stargraph/stores or "
+            "src/stargraph/skills (NFR-5, extends NFR-6):\n"
             + rendered
             + "\n\nRoute the assertion through FathomAdapter.assert_with_provenance "
             "with a 6-slot ProvenanceBundle so the wire format remains intact."
@@ -190,11 +190,11 @@ def test_no_direct_assert_fact_in_stores_or_skills() -> None:
 @pytest.mark.knowledge
 @pytest.mark.unit
 def test_no_direct_facts_table_writes_outside_fact_store_impl() -> None:
-    """Only ``src/harbor/stores/sqlite_fact.py`` may issue raw SQL writes to ``facts`` (NFR-5).
+    """Only ``src/stargraph/stores/sqlite_fact.py`` may issue raw SQL writes to ``facts`` (NFR-5).
 
     Direct ``INSERT INTO facts`` / ``UPDATE facts`` / ``DELETE FROM facts``
     from any sibling store, skill, or helper would skip the typed-delta
-    provenance gate (:func:`harbor.stores._delta._validate_delta_provenance`)
+    provenance gate (:func:`stargraph.stores._delta._validate_delta_provenance`)
     and silently corrupt the lineage column. Writers must reach the table
     via :meth:`FactStore.pin` / :meth:`FactStore.unpin` /
     :meth:`FactStore.apply_delta`, or via
@@ -220,7 +220,7 @@ def test_no_direct_facts_table_writes_outside_fact_store_impl() -> None:
         )
         pytest.fail(
             "Direct SQL writes to the `facts` table found outside "
-            "src/harbor/stores/sqlite_fact.py (NFR-5):\n"
+            "src/stargraph/stores/sqlite_fact.py (NFR-5):\n"
             + rendered
             + "\n\nRoute writes through FactStore.apply_delta (typed-delta "
             "provenance gate) or FactStore.pin/unpin via the Protocol; "

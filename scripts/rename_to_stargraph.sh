@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Staged rename: harbor -> stargraph (repo, package, CLI, env vars, configs).
+# Staged rename: stargraph -> stargraph (repo, package, CLI, env vars, configs).
 # Solo-maintainer clean break: no compat shims. Old persisted runs will not
 # replay/hash-verify after this (module paths feed graph hashes).
 #
@@ -11,7 +11,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
 # Never touched: VCS, venvs, build artifacts, runtime state, embedded worktrees
-# (.git, .venv, dist, .worktree, .harbor, .checkpoints, data, node_modules).
+# (.git, .venv, dist, .worktree, .stargraph, .checkpoints, data, node_modules).
 
 stage_preflight() {
   echo "== preflight"
@@ -23,20 +23,20 @@ stage_preflight() {
 
 stage_github() {
   echo "== github repo rename"
-  gh repo rename stargraph -R KrakenNet/harbor --yes
+  gh repo rename stargraph -R KrakenNet/stargraph --yes
   git remote set-url origin https://github.com/KrakenNet/stargraph
   git fetch origin
   echo "remote now: $(git remote get-url origin)"
 }
 
 stage_mv() {
-  echo "== git mv harbor-named paths"
-  git mv src/harbor src/stargraph
-  # Every other tracked file/dir with 'harbor' in its name (deepest first so
+  echo "== git mv stargraph-named paths"
+  git mv src/stargraph src/stargraph
+  # Every other tracked file/dir with 'stargraph' in its name (deepest first so
   # parent dir renames don't invalidate child paths).
-  git ls-files | grep -i harbor | grep -v '^src/stargraph' | awk -F/ '{print NF, $0}' | sort -rn | cut -d' ' -f2- | while read -r f; do
+  git ls-files | grep -i stargraph | grep -v '^src/stargraph' | awk -F/ '{print NF, $0}' | sort -rn | cut -d' ' -f2- | while read -r f; do
     [ -e "$f" ] || continue  # already moved with a parent dir
-    new=$(echo "$f" | sed -e 's/harbor/stargraph/g' -e 's/Harbor/Stargraph/g' -e 's/HARBOR/STARGRAPH/g')
+    new=$(echo "$f" | sed -e 's/stargraph/stargraph/g' -e 's/Stargraph/Stargraph/g' -e 's/STARGRAPH/STARGRAPH/g')
     mkdir -p "$(dirname "$new")"
     git mv "$f" "$new"
   done
@@ -45,15 +45,15 @@ stage_mv() {
 
 stage_replace() {
   echo "== content replace (3 case passes, tracked text files only)"
-  excl_re="^(\.venv|dist|\.worktree|\.harbor|\.checkpoints|data|node_modules)(/|$)"
+  excl_re="^(\.venv|dist|\.worktree|\.stargraph|\.checkpoints|data|node_modules)(/|$)"
   git ls-files | grep -vE "$excl_re" \
     | while read -r f; do
         grep -Iq . "$f" 2>/dev/null || continue   # skip binary
-        grep -qiE 'harbor' "$f" || continue
-        sed -i -e 's/harbor/stargraph/g' -e 's/Harbor/Stargraph/g' -e 's/HARBOR/STARGRAPH/g' "$f"
+        grep -qiE 'stargraph' "$f" || continue
+        sed -i -e 's/stargraph/stargraph/g' -e 's/Stargraph/Stargraph/g' -e 's/STARGRAPH/STARGRAPH/g' "$f"
       done
   echo "remaining (should be ~0):"
-  git grep -ci harbor -- . | head -20 || echo "none"
+  git grep -ci stargraph -- . | head -20 || echo "none"
 }
 
 stage_rebuild() {
@@ -62,7 +62,7 @@ stage_rebuild() {
   python3 -m venv .venv
   .venv/bin/pip install -q -e ".[dev]" 2>/dev/null || .venv/bin/pip install -q -e .
   .venv/bin/stargraph --help >/dev/null && echo "CLI 'stargraph' ok"
-  ! command -v .venv/bin/harbor >/dev/null || { echo "FATAL: old 'harbor' script still installed"; exit 1; }
+  ! command -v .venv/bin/stargraph >/dev/null || { echo "FATAL: old 'stargraph' script still installed"; exit 1; }
 }
 
 stage_test() {
@@ -73,17 +73,17 @@ stage_test() {
 stage_commit() {
   echo "== commit + push"
   git add -A
-  git commit -m "refactor!: rename harbor -> stargraph (package, CLI, env vars, configs)
+  git commit -m "refactor!: rename stargraph -> stargraph (package, CLI, env vars, configs)
 
 Clean break, no compat shims (solo deployment):
-- package src/harbor -> src/stargraph; all imports rewritten
-- CLI console script: harbor -> stargraph
-- entry-point groups: harbor.* -> stargraph.*
-- env vars: HARBOR_* -> STARGRAPH_*
-- config conventions: harbor.yaml -> stargraph.yaml, ~/.harbor -> ~/.stargraph
-- repo: KrakenNet/harbor -> KrakenNet/stargraph (redirect active)
+- package src/stargraph -> src/stargraph; all imports rewritten
+- CLI console script: stargraph -> stargraph
+- entry-point groups: stargraph.* -> stargraph.*
+- env vars: STARGRAPH_* -> STARGRAPH_*
+- config conventions: stargraph.yaml -> stargraph.yaml, ~/.stargraph -> ~/.stargraph
+- repo: KrakenNet/stargraph -> KrakenNet/stargraph (redirect active)
 
-BREAKING CHANGE: old run/checkpoint state hashed under harbor.* module
+BREAKING CHANGE: old run/checkpoint state hashed under stargraph.* module
 paths will not replay or hash-verify.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from harbor.ir import IRDocument
+from stargraph.ir import IRDocument
 
 
 @pytest.mark.integration

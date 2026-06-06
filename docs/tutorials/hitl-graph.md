@@ -3,8 +3,8 @@
 In this tutorial you'll build a graph that pauses on a risk-flag,
 emits a `WaitingForInputEvent`, persists a checkpoint, and exits
 cleanly. You'll then resume it two ways: inline from the CLI prompt
-and out-of-process via `harbor respond` against a running
-`harbor serve`.
+and out-of-process via `stargraph respond` against a running
+`stargraph serve`.
 
 ## What you'll build
 
@@ -17,14 +17,14 @@ flowchart LR
 ```
 
 `InterruptNode` is the bypass-Fathom HITL primitive (see
-`src/harbor/nodes/interrupt/interrupt_node.py`). On dispatch it raises
+`src/stargraph/nodes/interrupt/interrupt_node.py`). On dispatch it raises
 `_HitInterrupt` carrying an `InterruptAction`; the engine's loop arm
 flips state to `awaiting-input`, emits `WaitingForInputEvent`, and
 exits without driving further nodes.
 
 ## Prerequisites
 
-- Harbor installed (`uv add harbor`).
+- Stargraph installed (`uv add stargraph`).
 - A working CLI from the [first graph](first-graph.md) tutorial.
 
 ## Step 1 — Define state with the decision field
@@ -59,7 +59,7 @@ analyst over the WebSocket / `GET /v1/runs/{id}` surface.
 # gate.py
 from __future__ import annotations
 
-from harbor.nodes.interrupt.interrupt_node import (
+from stargraph.nodes.interrupt.interrupt_node import (
     InterruptNode,
     InterruptNodeConfig,
 )
@@ -67,7 +67,7 @@ from harbor.nodes.interrupt.interrupt_node import (
 
 class TriageGate(InterruptNode):
     """Zero-arg subclass so the IR's `kind:` resolver can instantiate
-    it directly via `harbor.cli.run._resolve_node_factory`.
+    it directly via `stargraph.cli.run._resolve_node_factory`.
     """
 
     def __init__(self) -> None:
@@ -151,15 +151,15 @@ rules:
 
 ## Step 4 — Run interactively (inline resume)
 
-The CLI's `HITLHandler` (see `src/harbor/cli/_prompts.py`) reads
+The CLI's `HITLHandler` (see `src/stargraph/cli/_prompts.py`) reads
 `interrupt_payload.open_questions`, prompts the operator on stdin, and
 calls `run.respond(...)` from the same process.
 
 ```bash
-uv run harbor run graph.yaml \
+uv run stargraph run graph.yaml \
   --inputs cve_id=CVE-2024-9999 \
   --inputs risk_class=high \
-  --log-file ./.harbor/audit.jsonl
+  --log-file ./.stargraph/audit.jsonl
 ```
 
 The CLI will pause:
@@ -177,11 +177,11 @@ Type `approve` and the run resumes inline, terminating at `node_ship`.
 
 To exercise the durable-wait path, run with `--non-interactive`. The
 CLI exits non-zero on the `WaitingForInputEvent`; the checkpoint
-remains in `./.harbor/run.sqlite` so the run can resume from a fresh
+remains in `./.stargraph/run.sqlite` so the run can resume from a fresh
 process later.
 
 ```bash
-uv run harbor run graph.yaml \
+uv run stargraph run graph.yaml \
   --inputs cve_id=CVE-2024-9999 \
   --inputs risk_class=high \
   --non-interactive
@@ -197,29 +197,29 @@ Confirm the run is `awaiting-input`:
 
 ```bash
 RUN_ID=...   # capture from the output
-uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite --step 1
+uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite --step 1
 ```
 
 The state JSON will include `"decision": ""` and the timeline will
 end at `node_gate` with no further transitions.
 
-## Step 6 — Resume out-of-process via `harbor respond`
+## Step 6 — Resume out-of-process via `stargraph respond`
 
 In a second terminal, boot the API:
 
 ```bash
-uv run harbor serve --db ./.harbor/run.sqlite
+uv run stargraph serve --db ./.stargraph/run.sqlite
 ```
 
-Save the analyst response as JSON and POST it via `harbor respond`.
+Save the analyst response as JSON and POST it via `stargraph respond`.
 The CLI sends `Authorization: Bypass <actor>` so the POC
 `BypassAuthProvider` attributes the response fact (see
-`src/harbor/cli/respond.py`).
+`src/stargraph/cli/respond.py`).
 
 ```bash
 echo '{"slot_answers": {"decision": "approve"}}' > approve.json
 
-uv run harbor respond "$RUN_ID" \
+uv run stargraph respond "$RUN_ID" \
   --response @approve.json \
   --actor analyst-jane
 ```
@@ -233,7 +233,7 @@ verbatim per the CLI's error envelope.
 ## Step 7 — Verify the resume
 
 ```bash
-uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite
+uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite
 ```
 
 The timeline now extends past `node_gate` to `node_ship` with

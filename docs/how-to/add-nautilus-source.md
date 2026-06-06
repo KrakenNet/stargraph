@@ -2,14 +2,14 @@
 
 ## Goal
 
-Wire a Nautilus broker source into a Harbor graph so a `BrokerNode` (or
+Wire a Nautilus broker source into a Stargraph graph so a `BrokerNode` (or
 the `nautilus.broker_request@1` tool) can dispatch agent intents
 through the broker, with the `tools:broker_request` capability gate and
 provenance envelope wired end-to-end.
 
 ## Prerequisites
 
-- Harbor installed (`pip install stargraph>=0.2`) — `nautilus-rkm>=0.1.5`
+- Stargraph installed (`pip install stargraph>=0.2`) — `nautilus-rkm>=0.1.5`
   is a core dependency.
 - A Nautilus broker config (`nautilus.yaml`) with at least one source
   declared. See [Nautilus broker integration](../serve/nautilus.md) for
@@ -20,14 +20,14 @@ provenance envelope wired end-to-end.
 
 ### 1. Author `nautilus.yaml`
 
-The broker is composition-only — Harbor imports `nautilus` lazily and
+The broker is composition-only — Stargraph imports `nautilus` lazily and
 expects a `nautilus.yaml` co-located with the deployment to declare
 sources. Use the `/nautilus new-source` skill to scaffold a source after
 an interview, then validate via the broker's own `/nautilus sources`
 listing.
 
 ```yaml
-# nautilus.yaml (broker-side config — owned by Nautilus, consumed by Harbor)
+# nautilus.yaml (broker-side config — owned by Nautilus, consumed by Stargraph)
 version: "1.0"
 sources:
   - id: kb_facts
@@ -48,7 +48,7 @@ source as enabled.
 
 ```python
 # my_app/_caps.py
-from harbor.security import Capabilities, CapabilityClaim
+from stargraph.security import Capabilities, CapabilityClaim
 
 
 CAPS = Capabilities(
@@ -59,7 +59,7 @@ CAPS = Capabilities(
 ```
 
 The bundled
-[`broker_request`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/tools/nautilus/broker_request.py)
+[`broker_request`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/tools/nautilus/broker_request.py)
 tool declares `requires_capability="tools:broker_request"`. Without
 this claim, the tool dispatcher raises `CapabilityError` before the
 broker is touched.
@@ -69,7 +69,7 @@ broker is touched.
 The graph-node form is one fixed slot per call:
 
 ```yaml
-# harbor.yaml
+# stargraph.yaml
 ir_version: "1.0.0"
 id: "graph:agent.research"
 
@@ -91,7 +91,7 @@ nodes:
 - `output_field` — state key the response is patched into.
 
 The patched payload is `BrokerResponse.model_dump(mode="json")` plus a
-`__harbor_provenance__` envelope:
+`__stargraph_provenance__` envelope:
 
 ```json
 {
@@ -99,7 +99,7 @@ The patched payload is `BrokerResponse.model_dump(mode="json")` plus a
   "sources_queried": ["kb_facts"],
   "sources_denied": [],
   "attestation": "<JWS token>",
-  "__harbor_provenance__": {
+  "__stargraph_provenance__": {
     "origin": "tool",
     "source": "nautilus",
     "external_id": "<broker request_id>"
@@ -114,7 +114,7 @@ For ReAct skills and dynamic dispatch, call the same broker from the
 
 ```python
 # inside a tool_impls table for a ReactSkill
-from harbor.tools.nautilus.broker_request import broker_request
+from stargraph.tools.nautilus.broker_request import broker_request
 
 TRIAGE = ReactSkill(
     name="triage",
@@ -128,16 +128,16 @@ TRIAGE = ReactSkill(
 
 The tool returns the same shape the node patches into state.
 
-### 5. Run the graph under `harbor serve`
+### 5. Run the graph under `stargraph serve`
 
-The broker is a lifespan-singleton — `harbor serve` loads `nautilus.yaml`
+The broker is a lifespan-singleton — `stargraph serve` loads `nautilus.yaml`
 at startup and stores the `Broker` on the FastAPI app's
 [`current_broker`][contextvars] context var. The bundled `BrokerNode`
 and `broker_request` tool both resolve through that context var; if no
-lifespan is active they raise `HarborRuntimeError`.
+lifespan is active they raise `StargraphRuntimeError`.
 
 ```bash
-harbor serve --config ./harbor-serve.yaml
+stargraph serve --config ./stargraph-serve.yaml
 # In another shell:
 curl -X POST http://localhost:8000/v1/runs \
     -H "Content-Type: application/json" \
@@ -146,21 +146,21 @@ curl -X POST http://localhost:8000/v1/runs \
 
 ## Wire it up
 
-`nautilus.yaml` lives **alongside** Harbor's serve config — the broker
-package owns the schema. Harbor's only configuration surface is:
+`nautilus.yaml` lives **alongside** Stargraph's serve config — the broker
+package owns the schema. Stargraph's only configuration surface is:
 
 1. Declaring `kind: broker` nodes (or `nautilus.broker_request@1` tool
    ids) in your IR documents.
 2. Granting `tools:broker_request` to the running deployment.
-3. Ensuring `nautilus-rkm` is installed (it's a core Harbor dependency).
+3. Ensuring `nautilus-rkm` is installed (it's a core Stargraph dependency).
 
-There is no `harbor.brokers` entry-point group — broker source
-plug-and-play is a Nautilus concern, not a Harbor concern.
+There is no `stargraph.brokers` entry-point group — broker source
+plug-and-play is a Nautilus concern, not a Stargraph concern.
 
 ## Verify
 
 ```bash
-harbor run ./harbor.yaml \
+stargraph run ./stargraph.yaml \
     --inputs agent_id="agent-1" \
     --inputs intent="find recent CVEs"
 ```
@@ -174,7 +174,7 @@ run_id=<uuid> status=done
 Inspect the broker call:
 
 ```bash
-harbor inspect <run_id> --db .harbor/run.sqlite
+stargraph inspect <run_id> --db .stargraph/run.sqlite
 # Look for the broker tool_call event with the request_id and provenance envelope.
 ```
 
@@ -184,9 +184,9 @@ Verify the JWS attestation against the broker pubkey via
 ## Troubleshooting
 
 !!! warning "Common failure modes"
-    - **`HarborRuntimeError: no current Broker`** — the run is not
-      executing inside a `harbor serve` lifespan. Either wire the broker
-      manually in your launcher or run via `harbor serve`.
+    - **`StargraphRuntimeError: no current Broker`** — the run is not
+      executing inside a `stargraph serve` lifespan. Either wire the broker
+      manually in your launcher or run via `stargraph serve`.
     - **`CapabilityError: tools:broker_request not granted`** — the
       deployment is missing the capability claim. Add it to your
       `Capabilities` instance.
@@ -202,8 +202,8 @@ Verify the JWS attestation against the broker pubkey via
 - [Nautilus broker integration](../serve/nautilus.md) — broker-side
   config + adapter list.
 - [`BrokerNode`](../reference/nodes/index.md) — graph-node reference.
-- [`broker_request` tool source](https://github.com/KrakenNet/harbor/blob/main/src/harbor/tools/nautilus/broker_request.py).
-- [`BrokerNode` source](https://github.com/KrakenNet/harbor/blob/main/src/harbor/nodes/nautilus/broker_node.py).
-- [`harbor.security.Capabilities`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/security/capabilities.py).
+- [`broker_request` tool source](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/tools/nautilus/broker_request.py).
+- [`BrokerNode` source](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/nodes/nautilus/broker_node.py).
+- [`stargraph.security.Capabilities`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/security/capabilities.py).
 
-[contextvars]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/serve/contextvars.py
+[contextvars]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/serve/contextvars.py

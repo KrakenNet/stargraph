@@ -5,7 +5,7 @@ Pins the two FR-7 contracts that the parent run cannot verify on its own:
 
 1. **Child events stream on the parent bus.** When the parent run dispatches
    a :class:`SubGraphNode`, every child's :class:`TransitionEvent` is
-   published on the parent's :class:`~harbor.runtime.bus.EventBus`, so the
+   published on the parent's :class:`~stargraph.runtime.bus.EventBus`, so the
    downstream consumers (audit log, ``inspect``, replay) see one
    interleaved stream rather than two siblings.
 2. **Provenance lineage.** Each child event carries
@@ -25,10 +25,10 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from harbor.nodes.base import ExecutionContext, NodeBase
-from harbor.nodes.subgraph import SubGraphNode
-from harbor.runtime.bus import EventBus
-from harbor.runtime.events import TransitionEvent
+from stargraph.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.subgraph import SubGraphNode
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.events import TransitionEvent
 
 
 class _MessageState(BaseModel):
@@ -68,7 +68,7 @@ class _ParentRun:
     :class:`SubGraphContext` Protocol (``run_id``, ``bus``, ``fathom``).
     Mirrors the duck-typed-context pattern used elsewhere in
     ``tests/integration/`` so the test does not stand up a full
-    :class:`harbor.graph.GraphRun`.
+    :class:`stargraph.graph.GraphRun`.
     """
 
     def __init__(self, run_id: str) -> None:

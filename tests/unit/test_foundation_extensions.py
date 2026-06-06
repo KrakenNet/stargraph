@@ -4,16 +4,16 @@
 
 These tests pin the contract for the engine's in-place foundation extensions:
 
-* ``harbor.tools.spec.SideEffects`` -- ``str`` enum with members
+* ``stargraph.tools.spec.SideEffects`` -- ``str`` enum with members
   ``none|read|write|external`` whose values are the lowercase names.
-* ``harbor.tools.spec.ReplayPolicy`` -- ``str`` enum with members
+* ``stargraph.tools.spec.ReplayPolicy`` -- ``str`` enum with members
   ``must_stub|fail_loud|recorded_result`` whose values are kebab-cased
   (``"must-stub"`` / ``"fail-loud"`` / ``"recorded-result"``).
-* :class:`harbor.ir._models.ToolSpec` is extended (FR-33) so that
+* :class:`stargraph.ir._models.ToolSpec` is extended (FR-33) so that
   ``side_effects`` accepts the :class:`SideEffects` enum (was ``bool``)
   and a new ``replay_policy`` field defaults to ``ReplayPolicy.must_stub``.
 
-This is the RED side of the FR-33 TDD cycle. ``harbor.tools.spec`` does
+This is the RED side of the FR-33 TDD cycle. ``stargraph.tools.spec`` does
 not exist yet (task 1.4 lands the GREEN implementation), so each test is
 expected to raise ``ImportError`` when invoked. The imports happen inside
 each test body so the module itself loads cleanly under ruff + pyright.
@@ -29,7 +29,7 @@ import pytest
 @pytest.mark.unit
 def test_side_effects_enum_exists() -> None:
     """``SideEffects`` is a ``str`` enum with the four documented members."""
-    from harbor.tools.spec import SideEffects  # type: ignore[import-not-found]
+    from stargraph.tools.spec import SideEffects  # type: ignore[import-not-found]
 
     # Members exist with lowercase string values.
     assert SideEffects.none.value == "none"
@@ -48,7 +48,7 @@ def test_side_effects_enum_exists() -> None:
 @pytest.mark.unit
 def test_replay_policy_enum_exists() -> None:
     """``ReplayPolicy`` is a ``str`` enum with kebab-cased values per design §3.4.2."""
-    from harbor.tools.spec import ReplayPolicy  # type: ignore[import-not-found]
+    from stargraph.tools.spec import ReplayPolicy  # type: ignore[import-not-found]
 
     # Names use Python snake_case; values are kebab-cased per design §3.4.2.
     assert ReplayPolicy.must_stub.value == "must-stub"
@@ -69,8 +69,8 @@ def test_replay_policy_enum_exists() -> None:
 @pytest.mark.unit
 def test_tool_spec_side_effects_field_is_enum_not_bool() -> None:
     """``ToolSpec.side_effects`` accepts ``SideEffects`` (FR-33: was ``bool``)."""
-    from harbor.ir._models import ToolSpec  # type: ignore[import-not-found]
-    from harbor.tools.spec import SideEffects  # type: ignore[import-not-found]
+    from stargraph.ir._models import ToolSpec  # type: ignore[import-not-found]
+    from stargraph.tools.spec import SideEffects  # type: ignore[import-not-found]
 
     spec = ToolSpec(
         name="search",
@@ -102,8 +102,8 @@ def test_tool_spec_side_effects_field_is_enum_not_bool() -> None:
 @pytest.mark.unit
 def test_tool_spec_replay_policy_defaults_to_must_stub() -> None:
     """``ToolSpec.replay_policy`` defaults to ``ReplayPolicy.must_stub`` (FR-33)."""
-    from harbor.ir._models import ToolSpec  # type: ignore[import-not-found]
-    from harbor.tools.spec import ReplayPolicy, SideEffects  # type: ignore[import-not-found]
+    from stargraph.ir._models import ToolSpec  # type: ignore[import-not-found]
+    from stargraph.tools.spec import ReplayPolicy, SideEffects  # type: ignore[import-not-found]
 
     spec = ToolSpec(
         name="search",
@@ -126,7 +126,7 @@ def test_tool_spec_replay_policy_defaults_to_must_stub() -> None:
 # Stable-ID validators (FR-33, design §3.4.1) -- slug-format enforcement
 # (lowercase start, ``[a-z0-9_\-.]`` continuation, total len 1..128) for
 # node/rule/pack ids inside an ``IRDocument``. Validators live in
-# ``harbor.ir._ids`` and are invoked from ``harbor.ir._validate.validate``
+# ``stargraph.ir._ids`` and are invoked from ``stargraph.ir._validate.validate``
 # (the canonical IR-load path). They are NOT wired through a
 # ``model_validator`` decorator on ``IRDocument`` because FR-7 / AC-13.1
 # ban Pydantic validator decorators in ``_models.py`` to keep the JSON
@@ -138,12 +138,12 @@ def test_tool_spec_replay_policy_defaults_to_must_stub() -> None:
 @pytest.mark.unit
 def test_stable_id_valid_accepts() -> None:
     """Valid lowercase slug ids (node/rule/pack) load without error (FR-33)."""
-    from harbor.ir._ids import (  # type: ignore[import-not-found]
+    from stargraph.ir._ids import (  # type: ignore[import-not-found]
         validate_node_id,
         validate_pack_id,
         validate_rule_id,
     )
-    from harbor.ir._validate import validate  # type: ignore[import-not-found]
+    from stargraph.ir._validate import validate  # type: ignore[import-not-found]
 
     # Direct validator calls return the input unchanged.
     assert validate_node_id("node_a") == "node_a"
@@ -166,8 +166,8 @@ def test_stable_id_valid_accepts() -> None:
 @pytest.mark.unit
 def test_stable_id_uppercase_rejected() -> None:
     """Uppercase chars in any id raise ``ValueError`` (FR-33)."""
-    from harbor.ir._ids import validate_node_id  # type: ignore[import-not-found]
-    from harbor.ir._validate import validate  # type: ignore[import-not-found]
+    from stargraph.ir._ids import validate_node_id  # type: ignore[import-not-found]
+    from stargraph.ir._validate import validate  # type: ignore[import-not-found]
 
     # Direct call raises ValueError.
     with pytest.raises(ValueError, match="not a valid slug"):
@@ -190,8 +190,8 @@ def test_stable_id_uppercase_rejected() -> None:
 @pytest.mark.unit
 def test_stable_id_length_overflow_rejected() -> None:
     """Ids longer than 128 chars raise ``ValueError`` (FR-33)."""
-    from harbor.ir._ids import validate_rule_id  # type: ignore[import-not-found]
-    from harbor.ir._validate import validate  # type: ignore[import-not-found]
+    from stargraph.ir._ids import validate_rule_id  # type: ignore[import-not-found]
+    from stargraph.ir._validate import validate  # type: ignore[import-not-found]
 
     overflow = "r" + "a" * 128  # 129 chars
     assert len(overflow) == 129

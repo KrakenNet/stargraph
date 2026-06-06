@@ -3,7 +3,7 @@
 
 Pins the Pydantic shape for the typed counterfactual mutation builder per
 design §3.8.2 *before* the implementation lands in task 3.33. Currently
-RED because :mod:`harbor.replay.counterfactual` (and the
+RED because :mod:`stargraph.replay.counterfactual` (and the
 ``CounterfactualMutation`` symbol it exports) does not yet exist; the
 ``importlib.import_module`` call fails first with :class:`ImportError`.
 
@@ -36,7 +36,7 @@ import pytest
 
 def _mutation_cls() -> Any:
     """Import ``CounterfactualMutation`` (TDD-RED: not yet built)."""
-    mod = importlib.import_module("harbor.replay.counterfactual")
+    mod = importlib.import_module("stargraph.replay.counterfactual")
     return mod.CounterfactualMutation
 
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.ir._backfill` (IR 1.1 ``RuleSpec.node_id``).
+"""Unit tests for :mod:`stargraph.ir._backfill` (IR 1.1 ``RuleSpec.node_id``).
 
 The IR gained an explicit ``node_id`` on :class:`RuleSpec` in 1.1.0, but
 1.0.0 documents (and many hand-authored 1.1.0 rules) leave it ``None``
@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.ir import (
+from stargraph.ir import (
     GotoAction,
     HaltAction,
     IRDocument,
@@ -34,7 +34,7 @@ from harbor.ir import (
     RuleSpec,
     backfill_rule_node_ids,
 )
-from harbor.ir._backfill import NODE_ID_PATTERN
+from stargraph.ir._backfill import NODE_ID_PATTERN
 
 
 def _doc(rules: list[RuleSpec]) -> IRDocument:

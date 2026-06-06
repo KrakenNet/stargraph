@@ -1,6 +1,6 @@
 # Replay
 
-`harbor.replay` provides the cassette and determinism machinery that lets a
+`stargraph.replay` provides the cassette and determinism machinery that lets a
 recorded run be re-executed with byte-identical outputs. This is the substrate
 counterfactuals build on (see [Counterfactuals](counterfactual.md)) and the
 testing primitive for non-deterministic upstream services.
@@ -13,7 +13,7 @@ through `args_hash` (JCS-canonical sha256) so dict-key insertion order does not
 affect cassette lookup:
 
 ```python
-from harbor.replay import ToolCallCassette, args_hash
+from stargraph.replay import ToolCallCassette, args_hash
 
 cassette = ToolCallCassette()
 
@@ -52,8 +52,8 @@ The end-to-end replay flow is:
 import json
 from pathlib import Path
 
-from harbor.graph import Graph
-from harbor.replay import ToolCallCassette
+from stargraph.graph import Graph
+from stargraph.replay import ToolCallCassette
 
 # 1. Record
 record_cassette = ToolCallCassette()
@@ -85,5 +85,5 @@ can in fact be replayed:
 - **Compiled `state_schema` is part of the graph hash** (FR-4 component c). A
   silent type widening becomes a structural-hash mismatch on resume.
 
-Comparison helpers live in `harbor.replay.compare` for diffing two
+Comparison helpers live in `stargraph.replay.compare` for diffing two
 `RunSummary` event sequences when investigating drift.

@@ -2,11 +2,11 @@
 """everything-demo run state.
 
 Single Pydantic state schema covering every field every node in
-``harbor.yaml`` reads or writes. Intentionally flat — Harbor's
+``stargraph.yaml`` reads or writes. Intentionally flat — Stargraph's
 field-merge registry (FR-11) keys on top-level attribute names, so all
 node outputs land at a single dotless key here.
 
-Pull this in via ``state_class:`` in harbor.yaml:
+Pull this in via ``state_class:`` in stargraph.yaml:
 
     state_class: "demos.everything_demo.graph.state:RunState"
 """
@@ -98,7 +98,7 @@ class RunState(BaseModel):
     skip_enrichment: bool = False
 
     # provenance envelopes patched by tool-shaped nodes
-    __harbor_provenance__: dict[str, Any] = Field(default_factory=dict)
+    __stargraph_provenance__: dict[str, Any] = Field(default_factory=dict)
 
 
 __all__ = ["HitlResponse", "RunState", "TicketHit"]

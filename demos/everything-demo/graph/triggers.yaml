@@ -2,13 +2,13 @@
 #
 # everything-demo trigger specs.
 #
-# Loaded by `harbor serve` from <harbor-config>/triggers.yaml. Three
-# trigger plugins ship with Harbor core: manual, cron, webhook. This
+# Loaded by `stargraph serve` from <stargraph-config>/triggers.yaml. Three
+# trigger plugins ship with Stargraph core: manual, cron, webhook. This
 # file declares one of each, all targeting the same graph
 # (``graph:everything-demo``).
 #
 # Manual trigger has no on-disk spec — it is the CLI/HTTP convergence
-# path (POST /v1/runs and `harbor run`); declared here only as
+# path (POST /v1/runs and `stargraph run`); declared here only as
 # documentation that it is wired.
 
 version: "1.0"
@@ -36,6 +36,6 @@ webhook:
     path: "/triggers/support"
     timestamp_window_seconds: 300
     nonce_lru_size: 10000
-    current_secret_env: "HARBOR_WEBHOOK_SECRET_CURRENT"
-    previous_secret_env: "HARBOR_WEBHOOK_SECRET_PREVIOUS"
+    current_secret_env: "STARGRAPH_WEBHOOK_SECRET_CURRENT"
+    previous_secret_env: "STARGRAPH_WEBHOOK_SECRET_PREVIOUS"
     params_extractor: "json"   # default — body parsed as JSON, becomes run params

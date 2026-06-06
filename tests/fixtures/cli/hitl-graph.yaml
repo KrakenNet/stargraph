@@ -1,4 +1,4 @@
-# Minimal HITL fixture for `harbor run` interactive lifecycle tests.
+# Minimal HITL fixture for `stargraph run` interactive lifecycle tests.
 #
 # Two echo nodes (``pre`` -> ``post``) with one rule that fires after
 # ``pre`` produces output, emitting an ``InterruptAction`` (HITL pause)

@@ -1,6 +1,6 @@
 # Test fixtures only — all values are documented test patterns or fictional.
 # Used by tests/integration/serve/test_safety_pii_patterns.py to exercise
-# the harbor.bosun.safety_pii starter rule library (FR-36, design §16.9).
+# the stargraph.bosun.safety_pii starter rule library (FR-36, design §16.9).
 
 # SSNs (test patterns; structure-valid but not real allocations)
 123-45-6789
@@ -20,6 +20,6 @@ bob+tag@sub.domain.io
 
 # Plain prose (no PII — discrimination negatives)
 The quarterly review meeting is scheduled for next Tuesday afternoon.
-Harbor's deterministic governance layer composes well with stateful agents.
+Stargraph's deterministic governance layer composes well with stateful agents.
 The build pipeline ran clean across the full integration suite this morning.
 We released the open-source policy bundle to the upstream registry.

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for `harbor.serve.auth` AuthProvider impls (Task 3.2).
+"""Unit tests for `stargraph.serve.auth` AuthProvider impls (Task 3.2).
 
 Coverage matrix (per design §5.2 + locked Decision #11):
 
@@ -46,7 +46,7 @@ from cryptography.hazmat.primitives.serialization import (
 )
 from fastapi import HTTPException
 
-from harbor.serve.auth import (
+from stargraph.serve.auth import (
     ApiKeyEntry,
     ApiKeyProvider,
     BearerJwtProvider,
@@ -184,7 +184,7 @@ async def test_bearer_jwt_valid_token_accepted(
 
     provider = BearerJwtProvider(
         jwks_url="https://issuer.example/.well-known/jwks.json",
-        audience="harbor-test",
+        audience="stargraph-test",
         issuer="https://issuer.example",
     )
 
@@ -192,7 +192,7 @@ async def test_bearer_jwt_valid_token_accepted(
     payload = {
         "sub": "robot-1",
         "iss": "https://issuer.example",
-        "aud": "harbor-test",
+        "aud": "stargraph-test",
         "iat": now,
         "exp": now + 60,
         "caps": ["runs:start", "runs:read"],
@@ -214,7 +214,7 @@ async def test_bearer_jwt_expired_rejected(monkeypatch: pytest.MonkeyPatch) -> N
 
     provider = BearerJwtProvider(
         jwks_url="https://issuer.example/.well-known/jwks.json",
-        audience="harbor-test",
+        audience="stargraph-test",
         issuer="https://issuer.example",
     )
 
@@ -222,7 +222,7 @@ async def test_bearer_jwt_expired_rejected(monkeypatch: pytest.MonkeyPatch) -> N
     payload = {
         "sub": "robot-1",
         "iss": "https://issuer.example",
-        "aud": "harbor-test",
+        "aud": "stargraph-test",
         "iat": now - 3600,
         # exp is past plus more than the leeway (30s) so decode rejects.
         "exp": now - 600,
@@ -252,7 +252,7 @@ async def test_bearer_jwt_wrong_alg_hs256_rejected(
 
     provider = BearerJwtProvider(
         jwks_url="https://issuer.example/.well-known/jwks.json",
-        audience="harbor-test",
+        audience="stargraph-test",
         issuer="https://issuer.example",
     )
 
@@ -264,7 +264,7 @@ async def test_bearer_jwt_wrong_alg_hs256_rejected(
         {
             "sub": "attacker",
             "iss": "https://issuer.example",
-            "aud": "harbor-test",
+            "aud": "stargraph-test",
             "iat": now,
             "exp": now + 60,
         },
@@ -290,7 +290,7 @@ async def test_bearer_jwt_alg_none_rejected(
 
     provider = BearerJwtProvider(
         jwks_url="https://issuer.example/.well-known/jwks.json",
-        audience="harbor-test",
+        audience="stargraph-test",
         issuer="https://issuer.example",
     )
 
@@ -299,7 +299,7 @@ async def test_bearer_jwt_alg_none_rejected(
         {
             "sub": "attacker",
             "iss": "https://issuer.example",
-            "aud": "harbor-test",
+            "aud": "stargraph-test",
             "iat": now,
             "exp": now + 60,
         },

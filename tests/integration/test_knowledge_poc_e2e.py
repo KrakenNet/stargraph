@@ -1,29 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 """POC FINAL MILESTONE -- end-to-end RAG through every store + checkpoint.
 
-Task 1.34 milestone test for ``specs/harbor-knowledge``. Exercises the
+Task 1.34 milestone test for ``specs/stargraph-knowledge``. Exercises the
 full Phase-1 knowledge stack in one ``async`` test:
 
 1. Bootstraps every store at a ``tmp_path`` root: LanceDB (vectors,
-   :class:`~harbor.stores.lancedb.LanceDBVectorStore`), Kuzu (graph,
-   :class:`~harbor.stores.ryugraph.RyuGraphStore`), and three SQLite
-   stores (:class:`~harbor.stores.sqlite_doc.SQLiteDocStore`,
-   :class:`~harbor.stores.sqlite_memory.SQLiteMemoryStore`,
-   :class:`~harbor.stores.sqlite_fact.SQLiteFactStore`).
+   :class:`~stargraph.stores.lancedb.LanceDBVectorStore`), Kuzu (graph,
+   :class:`~stargraph.stores.ryugraph.RyuGraphStore`), and three SQLite
+   stores (:class:`~stargraph.stores.sqlite_doc.SQLiteDocStore`,
+   :class:`~stargraph.stores.sqlite_memory.SQLiteMemoryStore`,
+   :class:`~stargraph.stores.sqlite_fact.SQLiteFactStore`).
 2. Seeds LanceDB with five vectors via the dependency-free
-   :class:`~harbor.stores.embeddings.FakeEmbedder` and seeds the doc
+   :class:`~stargraph.stores.embeddings.FakeEmbedder` and seeds the doc
    store with five matching documents.
 3. Adds three triples to Kuzu (alice/bob/carol facts).
-4. Runs :class:`~harbor.skills.refs.rag.RagSkill` against the query
+4. Runs :class:`~stargraph.skills.refs.rag.RagSkill` against the query
    ``"what does alice know"`` with both vector + doc store bindings;
    asserts ``retrieved`` carries hit ids drawn from BOTH stores.
-5. Promotes the alice triples into pinned :class:`~harbor.stores.fact.Fact`
-   rows via :func:`~harbor.stores.kg_promotion.PromoteTriplesToFacts`
+5. Promotes the alice triples into pinned :class:`~stargraph.stores.fact.Fact`
+   rows via :func:`~stargraph.stores.kg_promotion.PromoteTriplesToFacts`
    (which is the function-call form of the CLIPS promotion rule for
    Phase-1 POC scope -- a real CLIPS firing path lands in Phase-2).
    Asserts each promoted fact carries a ``triple_id`` lineage entry.
-6. Bootstraps :class:`~harbor.checkpoint.sqlite.SQLiteCheckpointer`
-   and writes a :class:`~harbor.checkpoint.protocol.Checkpoint` whose
+6. Bootstraps :class:`~stargraph.checkpoint.sqlite.SQLiteCheckpointer`
+   and writes a :class:`~stargraph.checkpoint.protocol.Checkpoint` whose
    ``state`` payload carries a ``vector_versions`` metadata key
    sourced from ``await tbl.version()`` on the LanceDB table.
 7. Reads the checkpoint back and confirms ``vector_versions`` is
@@ -46,28 +46,28 @@ from typing import TYPE_CHECKING, Any, cast
 import lancedb  # pyright: ignore[reportMissingTypeStubs]
 import pytest
 
-from harbor.checkpoint.protocol import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.fathom import FathomAdapter
-from harbor.ir._models import StoreRef
-from harbor.skills.refs.rag import RagSkill, RagState
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.fact import FactPattern
-from harbor.stores.graph import NodeRef
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_doc import SQLiteDocStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
-from harbor.stores.vector import Row
+from stargraph.checkpoint.protocol import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.fathom import FathomAdapter
+from stargraph.ir._models import StoreRef
+from stargraph.skills.refs.rag import RagSkill, RagState
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.fact import FactPattern
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from harbor.nodes.base import ExecutionContext
-    from harbor.stores.doc import DocStore
-    from harbor.stores.vector import VectorStore
+    from stargraph.nodes.base import ExecutionContext
+    from stargraph.stores.doc import DocStore
+    from stargraph.stores.vector import VectorStore
 
 
 pytestmark = [

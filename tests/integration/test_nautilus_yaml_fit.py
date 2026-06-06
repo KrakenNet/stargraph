@@ -4,12 +4,12 @@
 Consumes a real Nautilus rule-pack YAML (subset of HIPAA PHI access-control
 rules from ``nautilus/rule-packs/data-routing-hipaa/rules/phi-access-control.yaml``,
 copied to ``tests/fixtures/nautilus/policy.yaml`` for stable test reference)
-and probes whether the Harbor IR portable subset can express the rule shape.
+and probes whether the Stargraph IR portable subset can express the rule shape.
 
 Two outcomes are accepted:
 
-1. **Lossless fit.** Each Nautilus rule maps cleanly to a :class:`harbor.ir.RuleSpec`
-   inside an :class:`harbor.ir.IRDocument`; the document validates.
+1. **Lossless fit.** Each Nautilus rule maps cleanly to a :class:`stargraph.ir.RuleSpec`
+   inside an :class:`stargraph.ir.IRDocument`; the document validates.
 2. **Documented gap.** A field cannot be mapped (e.g. structured ``conditions``
    list, Jinja templated ``denial_reason``, ``salience_band``). The test then
    asserts that ``docs/concepts/ir.md`` carries a "Nautilus prototype gaps"
@@ -30,7 +30,7 @@ from typing import Any, cast
 import pytest
 import yaml
 
-from harbor.ir import IRDocument, NodeSpec, RuleSpec
+from stargraph.ir import IRDocument, NodeSpec, RuleSpec
 
 FIXTURE_PATH: Path = Path(__file__).parent.parent / "fixtures" / "nautilus" / "policy.yaml"
 IR_DOCS_PATH: Path = Path(__file__).parent.parent.parent / "docs" / "concepts" / "ir.md"
@@ -57,7 +57,7 @@ def test_nautilus_yaml_parseable() -> None:
 
 
 def test_nautilus_minimal_subset_maps_to_ir() -> None:
-    """Each rule's ``name`` survives into a Harbor :class:`RuleSpec`.
+    """Each rule's ``name`` survives into a Stargraph :class:`RuleSpec`.
 
     The portable subset deliberately covers only ``id`` (from Nautilus
     ``name``) and an empty ``then``. Everything else (structured
@@ -103,7 +103,7 @@ def test_nautilus_gap_recorded_in_ir_docs() -> None:
 def test_nautilus_pack_metadata_present(field: str) -> None:
     """Top-level Nautilus rule-pack metadata is present in the fixture.
 
-    These four fields are not part of the Harbor IR portable subset today;
+    These four fields are not part of the Stargraph IR portable subset today;
     the test asserts only that the fixture preserves them so future tasks
     can decide where they belong (PluginManifest vs governance pack mount
     vs out-of-scope).

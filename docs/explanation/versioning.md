@@ -1,6 +1,6 @@
 # Versioning Policy
 
-Harbor follows a strict semantic-versioning contract for the runtime, the IR schema, and the plugin ABI (FR-37). The table below tells contributors and downstream plugin authors what kind of change requires which kind of bump.
+Stargraph follows a strict semantic-versioning contract for the runtime, the IR schema, and the plugin ABI (FR-37). The table below tells contributors and downstream plugin authors what kind of change requires which kind of bump.
 
 ## Bump matrix
 

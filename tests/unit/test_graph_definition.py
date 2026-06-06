@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Deeper unit tests for :class:`harbor.graph.Graph` (FR-1, FR-2, FR-4).
+"""Deeper unit tests for :class:`stargraph.graph.Graph` (FR-1, FR-2, FR-4).
 
 Pins the FR-1/FR-2 contract surface beyond the smoke coverage in
 ``tests/unit/test_simulate.py``:
@@ -24,10 +24,10 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from harbor.errors import IRValidationError
-from harbor.errors import ValidationError as HarborValidationError
-from harbor.graph import Graph
-from harbor.ir import IRDocument, NodeSpec
+from stargraph.errors import IRValidationError
+from stargraph.errors import ValidationError as StargraphValidationError
+from stargraph.graph import Graph
+from stargraph.ir import IRDocument, NodeSpec
 
 
 def _ir(state_schema: dict[str, str] | None = None) -> IRDocument:
@@ -61,7 +61,7 @@ def test_graph_init_rejects_invalid_node_id_loudly() -> None:
         id="run:graph-def-test",
         nodes=[NodeSpec(id="Not A Slug", kind="echo")],  # spaces forbidden
     )
-    with pytest.raises((IRValidationError, HarborValidationError)):
+    with pytest.raises((IRValidationError, StargraphValidationError)):
         Graph(bad)
 
 
@@ -76,7 +76,7 @@ def test_graph_init_rejects_set_state_schema_field() -> None:
 @pytest.mark.unit
 def test_graph_init_rejects_unsupported_state_schema_type() -> None:
     """An unknown type-name in ``state_schema`` raises :class:`ValidationError`."""
-    with pytest.raises(HarborValidationError):
+    with pytest.raises(StargraphValidationError):
         Graph(_ir(state_schema={"x": "not_a_real_type"}))
 
 
@@ -135,7 +135,7 @@ def test_graph_hash_changes_when_state_schema_changes() -> None:
 @pytest.mark.unit
 def test_runtime_hash_stable_for_same_process() -> None:
     """Two graphs constructed in the same interpreter share ``runtime_hash``
-    (it depends only on ``sys.version_info`` + ``harbor.__version__``)."""
+    (it depends only on ``sys.version_info`` + ``stargraph.__version__``)."""
     g1 = Graph(_ir())
     g2 = Graph(_ir(state_schema={"x": "int"}))
     assert g1.runtime_hash == g2.runtime_hash
@@ -240,7 +240,7 @@ def test_graph_stores_ir_and_optional_wiring() -> None:
 async def test_graph_start_returns_graphrun_with_default_run_id() -> None:
     """``Graph.start(...)`` with ``run_id=None`` mints a fresh ``uuid4().hex``
     and returns a :class:`GraphRun` instance (T02)."""
-    from harbor.graph import GraphRun
+    from stargraph.graph import GraphRun
 
     g = Graph(_ir())
     run = await g.start(checkpointer=None)

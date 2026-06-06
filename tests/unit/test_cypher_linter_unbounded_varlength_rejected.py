@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.errors import UnportableCypherError
-from harbor.stores.cypher import Linter
+from stargraph.errors import UnportableCypherError
+from stargraph.stores.cypher import Linter
 
 
 @pytest.mark.knowledge

@@ -6,7 +6,7 @@ table. For accept rows the assertion is "encode produces the documented type
 and a string-decoded value (where applicable) recovers the input". For reject
 rows (``float``, ``None``, naive ``datetime``, relative ``Path``, arbitrary
 unsupported types) the assertion is "encoder raises
-:class:`harbor.errors.ValidationError` for every generated example".
+:class:`stargraph.errors.ValidationError` for every generated example".
 
 The encoder is *type-driven*: content does not affect accept/reject decisions
 for accepted types, so these properties exercise breadth over each type.
@@ -26,8 +26,8 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from harbor.errors import ValidationError
-from harbor.fathom._provenance import _sanitize_provenance_slot
+from stargraph.errors import ValidationError
+from stargraph.fathom._provenance import _sanitize_provenance_slot
 
 # Cap example budget per property; with 9+ properties this keeps wall time
 # bounded without sacrificing breadth (each strategy still hits its edges).

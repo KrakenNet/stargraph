@@ -1,11 +1,11 @@
 # WebhookTrigger
 
-`harbor.triggers.webhook.WebhookTrigger` is the HTTP-receive trigger plugin
+`stargraph.triggers.webhook.WebhookTrigger` is the HTTP-receive trigger plugin
 (design §6.4). It mounts a FastAPI `POST` route per
 [`WebhookSpec`](#webhookspec) and verifies inbound bodies against a
 Stripe-style HMAC-SHA256 signature before enqueueing a run.
 
-Source: `src/harbor/triggers/webhook.py`.
+Source: `src/stargraph/triggers/webhook.py`.
 
 ## WebhookSpec
 
@@ -17,10 +17,10 @@ Source: `src/harbor/triggers/webhook.py`.
 | `previous_secret` | `bytes \| None` | `None` | Optional rotation-grace key. **Valid for verification only.** |
 | `graph_id` | `str` | required | Target graph to enqueue when verification succeeds. |
 | `params_extractor` | `Callable[[bytes, dict], dict] \| None` | `None` | Optional `(raw_body, headers) -> params` mapper. Default = body parsed as JSON; raises 400 on malformed JSON. |
-| `timestamp_window_seconds` | `int` | `300` | ±window for `X-Harbor-Timestamp`. Set to 0 to disable (NOT recommended). |
+| `timestamp_window_seconds` | `int` | `300` | ±window for `X-Stargraph-Timestamp`. Set to 0 to disable (NOT recommended). |
 | `nonce_lru_size` | `int` | `10000` | Per-trigger nonce LRU capacity. ~1h at typical webhook traffic. |
-| `signature_header` | `str` | `"X-Harbor-Signature"` | Header carrying the HMAC digest. |
-| `timestamp_header` | `str` | `"X-Harbor-Timestamp"` | Header carrying the timestamp. |
+| `signature_header` | `str` | `"X-Stargraph-Signature"` | Header carrying the HMAC digest. |
+| `timestamp_header` | `str` | `"X-Stargraph-Timestamp"` | Header carrying the timestamp. |
 
 ## Verification gauntlet
 
@@ -28,8 +28,8 @@ Five steps, in order (FR-9.1-9.5, NFR-11):
 
 ### 1. Read raw body + headers
 
-`X-Harbor-Timestamp` (Unix epoch seconds as ASCII int) and
-`X-Harbor-Signature` (lowercase hex digest) are pulled from the request.
+`X-Stargraph-Timestamp` (Unix epoch seconds as ASCII int) and
+`X-Stargraph-Signature` (lowercase hex digest) are pulled from the request.
 
 | Outcome | Status | `detail` |
 | --- | --- | --- |
@@ -117,10 +117,10 @@ procedure:
 
 | Method | Behaviour |
 | --- | --- |
-| `init(deps)` | Stash `deps["scheduler"]`, optional `deps["audit_sink"]`, and parse `deps["webhook_specs"]`. Validates that every spec has a non-empty `current_secret`. Raises `HarborRuntimeError` on missing required keys or empty spec list. |
+| `init(deps)` | Stash `deps["scheduler"]`, optional `deps["audit_sink"]`, and parse `deps["webhook_specs"]`. Validates that every spec has a non-empty `current_secret`. Raises `StargraphRuntimeError` on missing required keys or empty spec list. |
 | `start()` | No-op (sets `_running = True`). FastAPI dispatches inbound requests synchronously. |
 | `stop()` | No-op (sets `_running = False`). Routes stop serving when the app shuts down. |
-| `routes()` | Returns one `APIRouter` carrying one `POST` route per `WebhookSpec.path`, named `harbor.triggers.webhook.<trigger_id>`. FastAPI is imported lazily so non-serve plugin hosts can still import the module. |
+| `routes()` | Returns one `APIRouter` carrying one `POST` route per `WebhookSpec.path`, named `stargraph.triggers.webhook.<trigger_id>`. FastAPI is imported lazily so non-serve plugin hosts can still import the module. |
 
 !!! note
     `Request` is imported at module-top (not under `TYPE_CHECKING`) because
@@ -139,12 +139,12 @@ BosunAuditEvent(
     run_id=f"webhook:{spec.trigger_id}",
     step=0,
     ts=datetime.now(UTC),
-    pack_id="harbor.triggers.webhook",
+    pack_id="stargraph.triggers.webhook",
     pack_version="1.0",
     fact={"kind": "webhook_signature_invalid", "timestamp": ts, "path": spec.path},
     provenance={
         "origin": "system",
-        "source": "harbor.triggers.webhook",
+        "source": "stargraph.triggers.webhook",
         "run_id": f"webhook:{spec.trigger_id}",
         "step": 0,
         "confidence": 1.0,
@@ -161,7 +161,7 @@ the event lives only in the structured request log.
 
 | Status | `detail` | Meaning |
 | --- | --- | --- |
-| 401 | `missing_headers` | One of `X-Harbor-Timestamp` / `X-Harbor-Signature` absent. |
+| 401 | `missing_headers` | One of `X-Stargraph-Timestamp` / `X-Stargraph-Signature` absent. |
 | 401 | `invalid_timestamp` | Timestamp header not a parseable int. |
 | 401 | `timestamp_out_of_window` | Outside ±`timestamp_window_seconds`. |
 | 401 | `invalid_signature` | HMAC mismatch on both current and previous secrets. Audit event emitted. |
@@ -195,7 +195,7 @@ instance.
 ## Example
 
 ```python
-from harbor.triggers.webhook import WebhookSpec, WebhookTrigger
+from stargraph.triggers.webhook import WebhookSpec, WebhookTrigger
 
 spec = WebhookSpec(
     trigger_id="webhook:nvd-mirror",
@@ -225,8 +225,8 @@ ts = int(time.time())
 body = b'{"feed": "nvd"}'
 sig = WebhookTrigger.sign(spec.current_secret, ts, body)
 # POST body with headers:
-#   X-Harbor-Timestamp: {ts}
-#   X-Harbor-Signature: {sig}
+#   X-Stargraph-Timestamp: {ts}
+#   X-Stargraph-Signature: {sig}
 ```
 
 ## See also

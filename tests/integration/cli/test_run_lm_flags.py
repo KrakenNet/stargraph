@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for harbor run --lm-* flags (DSPy LM configuration)."""
+"""Tests for stargraph run --lm-* flags (DSPy LM configuration)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import cast
 import pytest
 from typer.testing import CliRunner
 
-from harbor.cli import app
+from stargraph.cli import app
 
 SAMPLE_GRAPH = Path(__file__).resolve().parents[2] / "fixtures" / "sample-graph.yaml"
 

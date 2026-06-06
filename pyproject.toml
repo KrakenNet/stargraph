@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stargraph"
-version = "0.3.1"
+version = "0.4.0"
 description = "Stateful agent-graph framework with deterministic governance via Fathom"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -99,47 +99,47 @@ skills-rag = [
 ]
 
 [project.urls]
-Homepage = "https://harbor.krakn.ai"
-Repository = "https://github.com/KrakenNet/harbor"
-Documentation = "https://harbor.krakn.ai"
-Changelog = "https://github.com/KrakenNet/harbor/blob/main/CHANGELOG.md"
-Issues = "https://github.com/KrakenNet/harbor/issues"
+Homepage = "https://stargraph.krakn.ai"
+Repository = "https://github.com/KrakenNet/stargraph"
+Documentation = "https://stargraph.krakn.ai"
+Changelog = "https://github.com/KrakenNet/stargraph/blob/main/CHANGELOG.md"
+Issues = "https://github.com/KrakenNet/stargraph/issues"
 
 [project.scripts]
-harbor = "harbor.cli:main"
+stargraph = "stargraph.cli:main"
 
 # Public extension groups — plugins register here
-[project.entry-points."harbor"]
-# (reserved — Harbor itself does not register here; downstream plugins use it
-#  for the harbor_plugin manifest entry-point)
+[project.entry-points."stargraph"]
+# (reserved — Stargraph itself does not register here; downstream plugins use it
+#  for the stargraph_plugin manifest entry-point)
 
-# Note: harbor.{tools,skills,stores,packs,mcp_adapters} have NO core entries —
+# Note: stargraph.{tools,skills,stores,packs,mcp_adapters} have NO core entries —
 # they are entirely populated by external plugin distributions. The
-# ``harbor.mcp_adapters`` group is the discovery path for MCP-server adapter
+# ``stargraph.mcp_adapters`` group is the discovery path for MCP-server adapter
 # plugins (FR-25, design §3.3.2). Each plugin's ``register_mcp_adapters()``
-# hookimpl returns a list of :class:`harbor.plugin.types.MCPAdapterSpec`.
+# hookimpl returns a list of :class:`stargraph.plugin.types.MCPAdapterSpec`.
 
 # Built-in trigger plugins (design §6.3, FR-3/4/5). Cron + Webhook land in
 # tasks 2.10 / 2.11; manual is the simplest baseline (CLI + HTTP convergence).
-[project.entry-points."harbor.triggers"]
-manual = "harbor.triggers.manual:ManualTrigger"
-cron = "harbor.triggers.cron:CronTrigger"
-webhook = "harbor.triggers.webhook:WebhookTrigger"
+[project.entry-points."stargraph.triggers"]
+manual = "stargraph.triggers.manual:ManualTrigger"
+cron = "stargraph.triggers.cron:CronTrigger"
+webhook = "stargraph.triggers.webhook:WebhookTrigger"
 
 # Built-in Nautilus tool plugin (design §8.2, FR-45). Registry-discoverable
 # `@tool`-decorated coroutine that calls the lifespan-singleton Broker.
-[project.entry-points."harbor.tools"]
-broker_request = "harbor.tools.nautilus.broker_request:broker_request"
-servicenow_create_change_request = "harbor.tools.servicenow.create_change_request:create_change_request"
-servicenow_cmdb_query_software = "harbor.tools.servicenow.cmdb_query_software:cmdb_query_software"
-servicenow_cmdb_traverse_runs_on = "harbor.tools.servicenow.cmdb_traverse_runs_on:cmdb_traverse_runs_on"
-servicenow_cmdb_resolve_hosts = "harbor.tools.servicenow.cmdb_resolve_hosts:cmdb_resolve_hosts"
+[project.entry-points."stargraph.tools"]
+broker_request = "stargraph.tools.nautilus.broker_request:broker_request"
+servicenow_create_change_request = "stargraph.tools.servicenow.create_change_request:create_change_request"
+servicenow_cmdb_query_software = "stargraph.tools.servicenow.cmdb_query_software:cmdb_query_software"
+servicenow_cmdb_traverse_runs_on = "stargraph.tools.servicenow.cmdb_traverse_runs_on:cmdb_traverse_runs_on"
+servicenow_cmdb_resolve_hosts = "stargraph.tools.servicenow.cmdb_resolve_hosts:cmdb_resolve_hosts"
 
-# Built-in reranker plug-ins discoverable through harbor.stores._rerank_loader.
+# Built-in reranker plug-ins discoverable through stargraph.stores._rerank_loader.
 # RRFReranker is the always-available default; cross-encoder requires the
 # ``skills-rag`` extra (sentence-transformers + torch) at runtime.
-[project.entry-points."harbor.rerankers"]
-cross-encoder = "harbor.stores.rerankers:CrossEncoderReranker"
+[project.entry-points."stargraph.rerankers"]
+cross-encoder = "stargraph.stores.rerankers:CrossEncoderReranker"
 
 [dependency-groups]
 dev = [
@@ -191,10 +191,10 @@ torchvision = [{ index = "pytorch-cpu" }]
 torchaudio = [{ index = "pytorch-cpu" }]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/harbor"]
+packages = ["src/stargraph"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/harbor", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src/stargraph", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [tool.ruff]
 target-version = "py312"
@@ -209,8 +209,8 @@ ignore = []
 "tests/**/*.py" = ["S101"]  # asserts allowed in tests
 
 [tool.pyright]
-strict = ["src/harbor", "tests"]
-include = ["src/harbor", "tests"]
+strict = ["src/stargraph", "tests"]
+include = ["src/stargraph", "tests"]
 pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
@@ -219,7 +219,7 @@ reportMissingTypeStubs = "warning"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--strict-markers --cov=harbor --cov-branch -ra"
+addopts = "--strict-markers --cov=stargraph --cov-branch -ra"
 # Third-party deprecations we don't own. Keep this list narrow: each
 # entry must name an external package whose deprecation we can't fix
 # upstream, otherwise warnings remain visible.
@@ -235,8 +235,8 @@ markers = [
     "unit: fast unit tests (no external deps)",
     "integration: requires Fathom CLIPS / external services",
     "slow: long-running tests",
-    "knowledge: harbor-knowledge subsystem tests (stores, skills, retrieval, memory)",
-    "serve: harbor-serve subsystem tests (umbrella for serve-related markers)",
+    "knowledge: stargraph-knowledge subsystem tests (stores, skills, retrieval, memory)",
+    "serve: stargraph-serve subsystem tests (umbrella for serve-related markers)",
     "websocket: WebSocket / streaming tests",
     "api: FastAPI HTTP API tests",
     "trigger: trigger plugin tests (manual/cron/webhook)",
@@ -244,7 +244,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["harbor"]
+source = ["stargraph"]
 branch = true
 
 [tool.coverage.report]

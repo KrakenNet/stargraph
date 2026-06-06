@@ -6,26 +6,26 @@ surface end-to-end and verifies the three contract slices that
 ``POST /v1/runs/{id}/respond`` must satisfy:
 
 1. **InterruptNode -> WaitingForInputEvent**: a graph that contains an
-   :class:`~harbor.nodes.interrupt.InterruptNode` at step ``N`` raises
+   :class:`~stargraph.nodes.interrupt.InterruptNode` at step ``N`` raises
    the loop's typed ``_HitInterrupt`` signal on dispatch; the loop
    transitions ``state="awaiting-input"`` and emits
-   :class:`~harbor.runtime.events.WaitingForInputEvent` carrying
+   :class:`~stargraph.runtime.events.WaitingForInputEvent` carrying
    ``prompt`` / ``interrupt_payload`` / ``requested_capability`` from
    the IR config. ``GET /v1/runs/{id}`` reflects the live state lattice
    under the task-1.22 fold (``awaiting-input -> "paused"``).
 
 2. **POST /v1/runs/{id}/respond resumes**: the route flips state to
-   ``"running"``, asserts a ``harbor.evidence`` Fathom fact carrying
+   ``"running"``, asserts a ``stargraph.evidence`` Fathom fact carrying
    ``origin="user"`` / ``source=actor`` / ``data=<response-body>``
    (locked Decision #2; design §17), and emits a
-   :class:`~harbor.runtime.events.BosunAuditEvent` on the run bus with
+   :class:`~stargraph.runtime.events.BosunAuditEvent` on the run bus with
    ``fact.kind="respond"``, ``fact.actor=<actor>``, and
    ``fact.body_hash=sha256(rfc8785.dumps(response))``.
 
 3. **Audit emission (privacy boundary, AC-14.9)**: the JSONL audit
    sink captures BOTH the engine-internal ``respond`` fact (drained
    from the run bus) AND the serve-layer ``respond_orchestrated`` fact
-   (persisted via the :data:`~harbor.serve.contextvars._audit_sink_var`
+   (persisted via the :data:`~stargraph.serve.contextvars._audit_sink_var`
    contextvar). Critically, the raw response body is NEVER persisted;
    the engine fact carries ``body_hash`` only. The test asserts neither
    audit JSONL line contains the response payload's payload-bearing
@@ -33,15 +33,15 @@ surface end-to-end and verifies the three contract slices that
 
 Real wiring:
 
-* :class:`~harbor.checkpoint.sqlite.SQLiteCheckpointer` (real DB on ``tmp_path``).
-* :class:`~harbor.fathom.FathomAdapter` wrapping a real
+* :class:`~stargraph.checkpoint.sqlite.SQLiteCheckpointer` (real DB on ``tmp_path``).
+* :class:`~stargraph.fathom.FathomAdapter` wrapping a real
   :class:`fathom.Engine`. The respond path consults
-  ``run.fathom`` to assert the ``harbor.evidence`` fact; bypassing it
+  ``run.fathom`` to assert the ``stargraph.evidence`` fact; bypassing it
   with ``fathom=None`` would skip the assertion entirely (engine guard
   at run.py:532). The test queries the engine's fact store directly to
   prove the assertion landed with the locked Decision #2 shape.
-* :class:`~harbor.audit.JSONLAuditSink` wired via
-  :data:`~harbor.serve.contextvars._audit_sink_var.set(...)` so the
+* :class:`~stargraph.audit.JSONLAuditSink` wired via
+  :data:`~stargraph.serve.contextvars._audit_sink_var.set(...)` so the
   serve-layer ``respond_orchestrated`` audit lands on disk; bus events
   (including the engine's ``respond`` audit) are drained into the same
   sink by a co-task running alongside the respond POST. The terminal
@@ -62,24 +62,24 @@ import httpx
 import pytest
 import rfc8785
 
-from harbor.audit import JSONLAuditSink
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.fathom import FathomAdapter
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.base import NodeBase
-from harbor.nodes.interrupt import InterruptNode
-from harbor.nodes.interrupt.interrupt_node import InterruptNodeConfig
-from harbor.runtime.events import (
+from stargraph.audit import JSONLAuditSink
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.fathom import FathomAdapter
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.interrupt import InterruptNode
+from stargraph.nodes.interrupt.interrupt_node import InterruptNodeConfig
+from stargraph.runtime.events import (
     BosunAuditEvent,
     Event,
     WaitingForInputEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.auth import AuthContext
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.contextvars import _audit_sink_var
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.auth import AuthContext
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.contextvars import _audit_sink_var
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -103,7 +103,7 @@ _RESPONSE_BODY: dict[str, Any] = {"decision": "approve", "comment": "LGTM"}
 # on ``_origin`` / ``_source`` (AC-6.2 structural check; adapter.py:46-72).
 # Production deployments normalize email-shaped principals to a stable
 # CLIPS-safe id before they reach the respond path (the auth provider
-# is the canonical normalization site; see :mod:`harbor.serve.auth`).
+# is the canonical normalization site; see :mod:`stargraph.serve.auth`).
 # The task description's literal ``alice@example.com`` flows through
 # the HTTP request body / audit log perfectly fine, but the
 # evidence-fact ``_source`` slot needs the normalized form -- the
@@ -165,16 +165,16 @@ class _RecordingEngine:
 
     Records every :meth:`assert_fact` call (template + slot dict) so the
     test can query them after the fact. Implements the surface
-    :func:`harbor.runtime.dispatch.dispatch_node` consults
+    :func:`stargraph.runtime.dispatch.dispatch_node` consults
     (``mirror_state`` / ``evaluate`` / ``query``) plus the
     ``assert_fact`` sink that
     :meth:`FathomAdapter.assert_with_provenance` forwards to.
 
     Mirrors :class:`tests.integration.test_factstore_fathom_provenance._RecordingEngine`
-    (the harbor-knowledge spec uses the same shape) but extended with the
+    (the stargraph-knowledge spec uses the same shape) but extended with the
     three additional methods the dispatch path needs. Avoids the cost of
     booting a real Fathom :class:`fathom.Engine` (which would require
-    registering ``harbor_action`` / ``harbor.evidence`` deftemplates +
+    registering ``stargraph_action`` / ``stargraph.evidence`` deftemplates +
     a CLIPS module before it accepts the asserts).
     """
 
@@ -208,14 +208,14 @@ class _FixedActorAuthProvider:
     """Auth provider that returns a fixed ``actor`` with the standard grants.
 
     The default :class:`BypassAuthProvider` wired by
-    :func:`harbor.serve.api.create_app` returns ``actor="anonymous"``;
+    :func:`stargraph.serve.api.create_app` returns ``actor="anonymous"``;
     the FastAPI respond route calls
     ``handle_respond(..., ctx["actor"], ...)`` so the engine-internal
     ``BosunAuditEvent`` records ``"anonymous"`` regardless of any
     ``actor`` field in the request body. To exercise the locked
     Decision #2 contract end-to-end the test installs this fixture
     provider so ``_ACTOR`` flows from the auth context through to the
-    audit fact + ``harbor.evidence`` provenance bundle.
+    audit fact + ``stargraph.evidence`` provenance bundle.
     """
 
     def __init__(self, actor: str) -> None:
@@ -234,7 +234,7 @@ def _make_fathom_adapter() -> FathomAdapter:
     """:class:`FathomAdapter` wrapping a recording engine stub.
 
     Returning a real :class:`fathom.Engine` would force the test to
-    register the ``harbor_action`` and ``harbor.evidence`` deftemplates
+    register the ``stargraph_action`` and ``stargraph.evidence`` deftemplates
     + a CLIPS module before any assert lands; that is overkill for a
     respond integration test that only needs to verify the
     :meth:`assert_with_provenance` payload shape (locked Decision #2).
@@ -361,7 +361,7 @@ async def test_interrupt_node_emits_waiting_for_input(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Test 2: respond resumes; harbor.evidence asserted; bus carries body_hash    #
+# Test 2: respond resumes; stargraph.evidence asserted; bus carries body_hash    #
 # --------------------------------------------------------------------------- #
 
 
@@ -377,7 +377,7 @@ async def test_respond_asserts_evidence_and_emits_audit(tmp_path: Path) -> None:
 
     * The route returns 200 with ``status="running"`` (state-lattice
       fold for the respond happy path).
-    * A ``harbor.evidence`` fact was asserted on the wired Fathom
+    * A ``stargraph.evidence`` fact was asserted on the wired Fathom
       engine carrying ``_origin="user"`` / ``_source=<actor>`` /
       ``data=<response-body>`` (locked Decision #2 shape: raw JSON
       dict in the ``data`` slot, no envelope, no string serialization).
@@ -458,8 +458,8 @@ async def test_respond_asserts_evidence_and_emits_audit(tmp_path: Path) -> None:
         f"respond should fold state='running' onto status='running'; got {summary!r}"
     )
 
-    # ---- Assertion: harbor.evidence fact asserted with locked shape -----
-    # The respond path calls ``fathom.assert_with_provenance("harbor.evidence",
+    # ---- Assertion: stargraph.evidence fact asserted with locked shape -----
+    # The respond path calls ``fathom.assert_with_provenance("stargraph.evidence",
     # {"data": response}, provenance)`` with ``provenance.origin="user"`` and
     # ``provenance.source=<actor>`` (run.py:532-549). The adapter encodes
     # provenance into ``_origin`` / ``_source`` / ``_run_id`` / ``_step`` /
@@ -468,22 +468,25 @@ async def test_respond_asserts_evidence_and_emits_audit(tmp_path: Path) -> None:
     # records every call; we walk the recorded calls.
     engine_obj = cast("Any", fathom_adapter.engine)
     recorded = cast("list[tuple[str, dict[str, Any]]]", engine_obj.calls)
-    evidence_calls = [slots for tmpl, slots in recorded if tmpl == "harbor.evidence"]
+    evidence_calls = [slots for tmpl, slots in recorded if tmpl == "stargraph.evidence"]
     assert evidence_calls, (
-        f"expected at least one harbor.evidence assert; got recorded "
+        f"expected at least one stargraph.evidence assert; got recorded "
         f"templates {[t for t, _ in recorded]!r}"
     )
     matching = [s for s in evidence_calls if s.get("_source") == _ACTOR]
-    assert matching, f"no harbor.evidence fact carries _source={_ACTOR!r}; got {evidence_calls!r}"
+    assert matching, (
+        f"no stargraph.evidence fact carries _source={_ACTOR!r}; got {evidence_calls!r}"
+    )
     fact = matching[0]
     assert fact.get("_origin") == "user", (
-        f"harbor.evidence._origin should be 'user' (locked Decision #2); got {fact!r}"
+        f"stargraph.evidence._origin should be 'user' (locked Decision #2); got {fact!r}"
     )
-    assert fact.get("_run_id") == run_id, f"harbor.evidence._run_id mismatch: {fact!r}"
+    assert fact.get("_run_id") == run_id, f"stargraph.evidence._run_id mismatch: {fact!r}"
     # ``data`` slot carries the raw response JSON dict per locked
     # Decision #2 (no envelope, no string serialization).
     assert fact.get("data") == _RESPONSE_BODY, (
-        f"harbor.evidence.data should be the raw response dict (locked Decision #2); got {fact!r}"
+        f"stargraph.evidence.data should be the raw response dict "
+        f"(locked Decision #2); got {fact!r}"
     )
     # Confidence and timestamp slots are populated.
     assert fact.get("_confidence") is not None

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for ``harbor.fathom._provenance`` (AC-6.3, AC-6.4, AC-6.5).
+"""Unit tests for ``stargraph.fathom._provenance`` (AC-6.3, AC-6.4, AC-6.5).
 
 Exercises the 12-row coercion table in
-:func:`harbor.fathom._provenance._sanitize_provenance_slot` exhaustively --
+:func:`stargraph.fathom._provenance._sanitize_provenance_slot` exhaustively --
 each row is asserted both for its accept case (correct encoded type and
 value) and, where applicable, its rejection case (silent ``str()`` coercion
 forbidden, FR-9 / AC-6.4).
@@ -29,8 +29,8 @@ from uuid import UUID
 
 import pytest
 
-from harbor.errors import ValidationError
-from harbor.fathom._provenance import _sanitize_provenance_slot
+from stargraph.errors import ValidationError
+from stargraph.fathom._provenance import _sanitize_provenance_slot
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures

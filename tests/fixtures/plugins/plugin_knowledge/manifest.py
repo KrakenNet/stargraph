@@ -9,8 +9,8 @@ pluggy loader's collect-all hooks (``register_stores`` /
 
 from __future__ import annotations
 
-from harbor.ir import PluginManifest, SkillSpec, StoreSpec
-from harbor.plugin._markers import hookimpl
+from stargraph.ir import PluginManifest, SkillSpec, StoreSpec
+from stargraph.plugin._markers import hookimpl
 
 MANIFEST: PluginManifest = PluginManifest(
     name="plugin_knowledge",
@@ -25,8 +25,8 @@ MANIFEST: PluginManifest = PluginManifest(
 def make_manifest() -> PluginManifest:
     """Return a fresh :class:`PluginManifest` for the plugin_knowledge fixture.
 
-    Manifest factory shape compatible with the harbor plugin loader's
-    ``harbor_plugin`` entry-point contract; constructs a new instance per
+    Manifest factory shape compatible with the stargraph plugin loader's
+    ``stargraph_plugin`` entry-point contract; constructs a new instance per
     call so the zero-side-effect invariant is preserved.
     """
     return PluginManifest(

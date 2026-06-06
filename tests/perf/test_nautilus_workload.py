@@ -5,10 +5,10 @@ Phase-1 reference workload: a synthetic 6-node graph that exercises the
 three perf-relevant subsystems together so the calibration captures their
 *combined* steady-state cost rather than each in isolation:
 
-* :func:`harbor.graph.hash.structural_hash` over a 6-node IR (rules a-d).
-* Six :py:meth:`harbor.checkpoint.sqlite.SQLiteCheckpointer.write` commits
+* :func:`stargraph.graph.hash.structural_hash` over a 6-node IR (rules a-d).
+* Six :py:meth:`stargraph.checkpoint.sqlite.SQLiteCheckpointer.write` commits
   -- one per node visit including a fan-out of two parallel branches.
-* Six no-op :py:meth:`harbor.nodes.base.NodeBase.execute` dispatches
+* Six no-op :py:meth:`stargraph.nodes.base.NodeBase.execute` dispatches
   (the per-node overhead from task 5.1).
 
 The graph topology mirrors a typical agent-style flow:
@@ -19,7 +19,7 @@ The graph topology mirrors a typical agent-style flow:
 
 The "parallel" branches are simulated at the checkpoint level (one row per
 branch with ``branch_id="b0"``/``"b1"``) -- the runtime's
-:func:`harbor.runtime.parallel.execute_parallel` is not in scope for this
+:func:`stargraph.runtime.parallel.execute_parallel` is not in scope for this
 calibration; we just want the workload mix to cover branched checkpoint
 writes alongside a structural-hash + dispatch loop.
 
@@ -42,11 +42,11 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from pydantic import BaseModel
 
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph.hash import structural_hash
-from harbor.ir._models import GotoAction, HaltAction, IRDocument, NodeSpec, RuleSpec
-from harbor.nodes.base import ExecutionContext, NodeBase
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph.hash import structural_hash
+from stargraph.ir._models import GotoAction, HaltAction, IRDocument, NodeSpec, RuleSpec
+from stargraph.nodes.base import ExecutionContext, NodeBase
 
 if TYPE_CHECKING:
     from pathlib import Path

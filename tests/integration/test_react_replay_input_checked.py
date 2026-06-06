@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """ReAct per-step replay determinism (FR-35, AC-10.1, AC-10.2, NFR-4).
 
-Pins three contracts in :mod:`harbor.replay.react_cassette`:
+Pins three contracts in :mod:`stargraph.replay.react_cassette`:
 
 1. **Record schema** -- every per-step record carries the FR-35 nine-tuple
    ``(step_id, node_name, input_hash, output, model_id, prompt_hash,
@@ -9,7 +9,7 @@ Pins three contracts in :mod:`harbor.replay.react_cassette`:
 2. **Byte-identical replay** -- replay reproduces the original event
    stream exactly (output dicts hash byte-identical step-by-step).
 3. **Loud-fail on mutation** -- mutating a recorded ``input_hash`` makes
-   replay raise :class:`harbor.errors.ReplayError` (NFR-4).
+   replay raise :class:`stargraph.errors.ReplayError` (NFR-4).
 
 A fourth contract pins the tool-stub matcher: positional
 ``(node_name, step_id)`` lookup, **not** ``(tool_name, args)``. The same
@@ -28,13 +28,13 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-from harbor.errors import ReplayError
-from harbor.replay.react_cassette import (
+from stargraph.errors import ReplayError
+from stargraph.replay.react_cassette import (
     ReactStepRecord,
     ReactStepReplayCassette,
     input_hash,
 )
-from harbor.skills.react import ReactSkill, ReactState
+from stargraph.skills.react import ReactSkill, ReactState
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

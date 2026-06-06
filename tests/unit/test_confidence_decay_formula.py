@@ -10,7 +10,7 @@ constants so any future tweak to the decay curve must be intentional and
 re-anchored against design.
 
 This is the **TDD-RED** half of the FR-11 cycle.  The
-``harbor.runtime.merge`` module does not yet exist; imports are deferred
+``stargraph.runtime.merge`` module does not yet exist; imports are deferred
 inside each test body so the file parses cleanly under ruff/pyright while
 the tests themselves fail with :class:`ImportError` until task 3.11 lands
 the implementation.
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 def _decay() -> _Decay:
     """Deferred import of the not-yet-built decay function."""
-    module = cast("_MergeModule", importlib.import_module("harbor.runtime.merge"))
+    module = cast("_MergeModule", importlib.import_module("stargraph.runtime.merge"))
     return module.confidence_after_last_write_conflict
 
 

@@ -2,7 +2,7 @@
 """TDD-RED: ``GraphRun.resume(run_id, from_step=N)`` (FR-19, AC-3.2).
 
 Pins the contract for explicit-step resume *before* the implementation
-lands in task 3.26. Currently RED because :meth:`harbor.GraphRun.resume`
+lands in task 3.26. Currently RED because :meth:`stargraph.GraphRun.resume`
 raises :class:`NotImplementedError`.
 
 Cases (FR-19, AC-3.2):
@@ -16,7 +16,7 @@ Cases (FR-19, AC-3.2):
    state matches the deterministic forward result.
 3. ``test_resume_from_step_missing_checkpoint_raises`` --
    ``resume(..., from_step=99)`` for a step that was never checkpointed
-   raises :class:`harbor.errors.CheckpointError` (no silent fallback to
+   raises :class:`stargraph.errors.CheckpointError` (no silent fallback to
    latest -- "loud" per FR-6).
 """
 
@@ -27,10 +27,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor import GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.errors import CheckpointError
+from stargraph import GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.errors import CheckpointError
 
 if TYPE_CHECKING:
     from pathlib import Path

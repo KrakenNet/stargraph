@@ -4,7 +4,7 @@
 Walks the JSONL audit sink (and optionally :class:`RunHistory`) for a
 specific run or every run, then asserts that every fact line carries the
 full provenance tuple as defined by
-:class:`harbor.fathom._provenance.ProvenanceBundle`:
+:class:`stargraph.fathom._provenance.ProvenanceBundle`:
 
     (origin, source, run_id, step, confidence, timestamp)
 
@@ -16,13 +16,13 @@ Locked-decision invariants asserted:
 Exit code 0 = audit clean. Exit code 1 = at least one provenance gap was
 found; the offending event(s) are printed to stdout for triage.
 
-Spec ref: harbor-serve-and-bosun §16.7, FR-55, AC-11.2.
+Spec ref: stargraph-serve-and-bosun §16.7, FR-55, AC-11.2.
 
 Usage::
 
     python scripts/lineage_audit.py [--run-id <id>] [--audit-path <path>] [--strict]
 
-* ``--audit-path`` defaults to ``./harbor.audit.jsonl`` (the conventional
+* ``--audit-path`` defaults to ``./stargraph.audit.jsonl`` (the conventional
   POC sink path); pass ``--audit-path -`` to read from stdin for piped
   CI use.
 * ``--run-id`` filters to a single run; without the flag every line is
@@ -42,10 +42,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-# Required provenance keys per ProvenanceBundle (harbor.fathom._provenance).
+# Required provenance keys per ProvenanceBundle (stargraph.fathom._provenance).
 # This list is duplicated from the TypedDict because we only consume audit
 # JSONL bytes here -- we don't construct ProvenanceBundle instances. Keep
-# in sync with src/harbor/fathom/_provenance.py.
+# in sync with src/stargraph/fathom/_provenance.py.
 _REQUIRED_PROV_KEYS: tuple[str, ...] = (
     "origin",
     "source",
@@ -56,7 +56,7 @@ _REQUIRED_PROV_KEYS: tuple[str, ...] = (
 )
 
 # Event ``type`` values that carry a ``provenance`` field. Sourced from
-# harbor.runtime.events; only events with provenance need lineage audit
+# stargraph.runtime.events; only events with provenance need lineage audit
 # (e.g. ``artifact_written`` carries provenance, ``waiting_for_input``
 # does not -- the engine treats the latter as a control-flow signal).
 _EVENTS_WITH_PROVENANCE: frozenset[str] = frozenset(
@@ -196,7 +196,7 @@ def _check_provenance(
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="lineage_audit",
-        description="Audit Harbor JSONL audit sink for provenance gaps (FR-55, AC-11.2).",
+        description="Audit Stargraph JSONL audit sink for provenance gaps (FR-55, AC-11.2).",
     )
     parser.add_argument(
         "--run-id",
@@ -205,8 +205,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--audit-path",
-        default="harbor.audit.jsonl",
-        help="Path to the JSONL audit sink (default: ./harbor.audit.jsonl). "
+        default="stargraph.audit.jsonl",
+        help="Path to the JSONL audit sink (default: ./stargraph.audit.jsonl). "
         "Pass '-' to read from stdin.",
     )
     parser.add_argument(

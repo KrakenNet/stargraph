@@ -4,7 +4,7 @@
 Pins the FR-56 / AC-14.7 / NFR-4 contract for HITL counterfactual
 replay: a cf submitter who authored ``runs:counterfactual`` can override
 the recorded analyst response at a ``WaitingForInputEvent`` step, and
-the cf-replay engine asserts a fresh ``harbor.evidence`` fact with
+the cf-replay engine asserts a fresh ``stargraph.evidence`` fact with
 ``origin="user"`` + ``source="cf:<actor>"`` (locked Decision #2).
 
 Scope split (deliberate; documented gap):
@@ -20,7 +20,7 @@ Scope split (deliberate; documented gap):
       is distinct from a no-mutation cf-fork (proving the
       respond_payloads bytes are folded into the cf-hash pre-image).
     - The cf submitter's actor flows through
-      :func:`harbor.replay.counterfactual.apply_respond_override` to
+      :func:`stargraph.replay.counterfactual.apply_respond_override` to
       the canonical ``("cf:<actor>", payload)`` tuple — proving the
       provenance-marker prefix for the resolver matches locked
       Decision #2.
@@ -34,7 +34,7 @@ Scope split (deliberate; documented gap):
   the ``apply_respond_override`` helper exists but the loop integration
   that calls it on the cf-replay path is not yet wired. Driving the
   cf-run forward to a real "drop" terminal action requires extending
-  :mod:`harbor.graph.loop` to bind the cf-run's node_registry and
+  :mod:`stargraph.graph.loop` to bind the cf-run's node_registry and
   consult ``apply_respond_override`` at the cf-replay's
   ``WaitingForInputEvent`` step. Tracking gap: this is the natural
   extension once Phase-2 task 2.34 (cf-loop integration) lands.
@@ -52,10 +52,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor import GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.replay.counterfactual import (
+from stargraph import GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.replay.counterfactual import (
     CF_RESPOND_SOURCE_PREFIX,
     CounterfactualMutation,
     apply_respond_override,

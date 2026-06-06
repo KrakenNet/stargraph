@@ -1,0 +1,7 @@
+id: stargraph.bosun.shipwright.gaps
+version: "0.1"
+requires:
+  stargraph_facts_version: "1.0"
+  api_version: "1"
+provides:
+  - "stargraph_facts:spec_gap"

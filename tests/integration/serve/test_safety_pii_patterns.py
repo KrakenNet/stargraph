@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Integration: safety_pii pack pattern coverage (FR-36, design §16.9, §7.1).
 
-Exercises the in-tree ``harbor.bosun.safety_pii`` reference pack against a
+Exercises the in-tree ``stargraph.bosun.safety_pii`` reference pack against a
 PII corpus that mixes documented test patterns (SSN, email, credit-card
 PAN, phone) with plain prose (negative discrimination).
 
@@ -18,7 +18,7 @@ What this test asserts TODAY (independent of Phase-4 work):
 1. The PII corpus fixture is loadable + non-empty + carries a documented
    test-pattern header (no real-PII contamination).
 2. The pack manifest exists at the canonical path, parses as YAML, and
-   carries the locked ``id: harbor.bosun.safety_pii`` + ``version: "1.0"``
+   carries the locked ``id: stargraph.bosun.safety_pii`` + ``version: "1.0"``
    identity tuple.
 3. The pack documentation explicitly frames the library as a "starting
    library, not a guarantee" (locked design choice; protects against
@@ -48,7 +48,9 @@ pytestmark = pytest.mark.serve
 
 
 _CORPUS_PATH = Path(__file__).parent.parent.parent / "fixtures" / "pii_corpus.txt"
-_PACK_DIR = Path(__file__).parent.parent.parent.parent / "src" / "harbor" / "bosun" / "safety_pii"
+_PACK_DIR = (
+    Path(__file__).parent.parent.parent.parent / "src" / "stargraph" / "bosun" / "safety_pii"
+)
 _MANIFEST_PATH = _PACK_DIR / "manifest.yaml"
 
 # Lines we expect the (Phase-4) rules to flag as PII.
@@ -66,7 +68,7 @@ _EXPECTED_PII_LINES = (
 # Lines we expect the rules NOT to flag (negative discrimination).
 _EXPECTED_CLEAN_LINES = (
     "The quarterly review meeting is scheduled for next Tuesday afternoon.",
-    "Harbor's deterministic governance layer composes well with stateful agents.",
+    "Stargraph's deterministic governance layer composes well with stateful agents.",
     "The build pipeline ran clean across the full integration suite this morning.",
     "We released the open-source policy bundle to the upstream registry.",
 )
@@ -97,7 +99,7 @@ def _try_load_pii_scanner() -> Any | None:
     CLIPS-driven evaluator. This helper probes both surfaces so the test
     auto-upgrades from xfail to assert when the implementation lands.
     """
-    mod = importlib.import_module("harbor.bosun.safety_pii")
+    mod = importlib.import_module("stargraph.bosun.safety_pii")
     return getattr(mod, "scan", None)
 
 
@@ -129,13 +131,13 @@ def test_safety_pii_manifest_identity() -> None:
     assert _MANIFEST_PATH.is_file(), f"missing manifest: {_MANIFEST_PATH}"
     parsed = yaml.safe_load(_MANIFEST_PATH.read_text(encoding="utf-8"))
 
-    assert parsed["id"] == "harbor.bosun.safety_pii"
+    assert parsed["id"] == "stargraph.bosun.safety_pii"
     assert parsed["version"] == "1.0"
-    # Required-API contract: the pack declares a harbor_facts_version it
+    # Required-API contract: the pack declares a stargraph_facts_version it
     # was built against. Without this anchor the reverse-compat story
     # (design §15) has no pin to test against.
     requires = parsed.get("requires", {})
-    assert "harbor_facts_version" in requires
+    assert "stargraph_facts_version" in requires
     assert "api_version" in requires
 
 

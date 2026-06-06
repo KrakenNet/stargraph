@@ -1,0 +1,646 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stargraph.dev/schemas/ir-v1.json",
+  "$defs": {
+    "AssertAction": {
+      "additionalProperties": false,
+      "description": "Assert ``fact`` with ``slots`` (JSON-encoded slot dict in POC).",
+      "properties": {
+        "kind": {
+          "const": "assert",
+          "default": "assert",
+          "title": "Kind",
+          "type": "string"
+        },
+        "fact": {
+          "title": "Fact",
+          "type": "string"
+        },
+        "slots": {
+          "default": "",
+          "title": "Slots",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fact"
+      ],
+      "title": "AssertAction",
+      "type": "object"
+    },
+    "CheckpointBlock": {
+      "additionalProperties": false,
+      "description": "Checkpoint policy declaration (design \u00a73.1.2 step 7).\n\nTop-level IR field that declares the checkpoint cadence and\nbacking store. The CLI / serve lifespan reads this block and\nconstructs the :class:`stargraph.checkpoint.Checkpointer`. When\nomitted, the run loop uses CLI defaults\n(``./.stargraph/run.sqlite``, ``every: node-exit``).\n\nAttributes:\n    every: Cadence \u2014 currently only ``\"node-exit\"`` is supported;\n        ``\"never\"`` and ``\"step-N\"`` are reserved for future\n        phases.\n    store: DSN-style store binding. ``\"sqlite:./path.sqlite\"``\n        (file) or ``\"postgres:dsn\"`` (Phase 3+).",
+      "properties": {
+        "every": {
+          "default": "node-exit",
+          "enum": [
+            "node-exit",
+            "never"
+          ],
+          "title": "Every",
+          "type": "string"
+        },
+        "store": {
+          "default": "sqlite:./.stargraph/run.sqlite",
+          "title": "Store",
+          "type": "string"
+        }
+      },
+      "title": "CheckpointBlock",
+      "type": "object"
+    },
+    "GotoAction": {
+      "additionalProperties": false,
+      "description": "Transition to ``target`` rule/state.",
+      "properties": {
+        "kind": {
+          "const": "goto",
+          "default": "goto",
+          "title": "Kind",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "title": "GotoAction",
+      "type": "object"
+    },
+    "HaltAction": {
+      "additionalProperties": false,
+      "description": "Stop execution; ``reason`` is an operator-facing message.",
+      "properties": {
+        "kind": {
+          "const": "halt",
+          "default": "halt",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "title": "HaltAction",
+      "type": "object"
+    },
+    "InterruptAction": {
+      "additionalProperties": false,
+      "description": "Pause the run and request input (HITL primitive, FR-81, AC-14.1).\n\nSurfaces a human-in-the-loop checkpoint: the engine emits a\n``WaitingForInputEvent`` carrying ``prompt`` + ``interrupt_payload``,\npersists a checkpoint, and exits cleanly. Resume happens via\n``POST /runs/{id}/respond`` (or ``GraphRun.respond()``) gated on\n``requested_capability``. ``timeout`` bounds the wait; ``on_timeout``\nselects ``\"halt\"`` (terminal) or ``\"goto:<node_id>\"`` (resume target).\n\nPer design \u00a717 Decision #1, dispatch happens on\n``Action.kind == \"interrupt\"`` BEFORE ``translate_actions`` -- this\nvariant is a control-flow primitive, not a routing decision.",
+      "properties": {
+        "kind": {
+          "const": "interrupt",
+          "default": "interrupt",
+          "title": "Kind",
+          "type": "string"
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "interrupt_payload": {
+          "additionalProperties": true,
+          "title": "Interrupt Payload",
+          "type": "object"
+        },
+        "requested_capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Capability"
+        },
+        "timeout": {
+          "anyOf": [
+            {
+              "format": "duration",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout"
+        },
+        "on_timeout": {
+          "anyOf": [
+            {
+              "const": "halt",
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": "halt",
+          "title": "On Timeout"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "title": "InterruptAction",
+      "type": "object"
+    },
+    "MigrateBlock": {
+      "additionalProperties": false,
+      "description": "Migration descriptor for graph-hash mismatch on resume (POC: from/to ids).",
+      "properties": {
+        "from_hash": {
+          "title": "From Hash",
+          "type": "string"
+        },
+        "to_hash": {
+          "title": "To Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_hash",
+        "to_hash"
+      ],
+      "title": "MigrateBlock",
+      "type": "object"
+    },
+    "NodeSpec": {
+      "additionalProperties": false,
+      "description": "Graph node descriptor.\n\nAttributes:\n    id: Node identifier, unique within the IR.\n    kind: Either a short kind registered in\n        :data:`stargraph.cli.run._NODE_FACTORIES`\n        (``echo``/``halt``/``passthrough``/``tool``/``broker``/\n        ``write_artifact``/``interrupt``/``ml``/``subgraph``/``dspy``)\n        or a ``module.path:ClassName`` reference imported via\n        :mod:`importlib`.\n    spec: Optional subgraph file path (relative to the IR YAML)\n        for ``kind: subgraph`` nodes. Resolved by\n        :class:`stargraph.nodes.subgraph.SubGraphNode` at construction.\n        ``None`` for non-subgraph nodes.\n    config: Optional per-node config dict. Forwarded as kwargs into\n        the node factory by\n        :func:`stargraph.cli.run._build_node_registry` so concrete node\n        classes (``BrokerNode``/``MLNode``/``WriteArtifactNode``)\n        can read their own config without sub-classing per call site.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "spec": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec"
+        },
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "kind"
+      ],
+      "title": "NodeSpec",
+      "type": "object"
+    },
+    "PackMount": {
+      "additionalProperties": false,
+      "description": "Bosun rule pack mount entry (POC: id + optional version + version-compat).\n\n``requires`` (added in task 2.22 for FR-39) carries a\n:class:`PackRequires` block declaring the stargraph-facts and plugin\napi_versions the pack was authored against. ``None`` keeps full\nbackwards compatibility -- existing two-field mounts (``id`` +\n``version``) round-trip and structural-hash byte-identically.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "requires": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PackRequires"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "PackMount",
+      "type": "object"
+    },
+    "PackRequires": {
+      "additionalProperties": false,
+      "description": "Pack version-compat requirements (FR-39, design \u00a73.2, \u00a77.4).\n\nOptional sub-record on :class:`PackMount` declaring the stargraph-facts\nschema version + plugin api_version a Bosun rule pack was authored\nagainst. Both fields default to ``None`` (no requirement); when set,\n:func:`stargraph.ir._versioning.check_pack_compat` enforces them at\npack-load time, raising :class:`stargraph.errors.PackCompatError` on\nmismatch (load-fail, never silent runtime drift).",
+      "properties": {
+        "stargraph_facts_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stargraph Facts Version"
+        },
+        "api_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Api Version"
+        }
+      },
+      "title": "PackRequires",
+      "type": "object"
+    },
+    "ParallelAction": {
+      "additionalProperties": false,
+      "description": "Fan out to ``targets`` and join under ``strategy`` (all/any/race/quorum).",
+      "properties": {
+        "kind": {
+          "const": "parallel",
+          "default": "parallel",
+          "title": "Kind",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Targets",
+          "type": "array"
+        },
+        "join": {
+          "default": "",
+          "title": "Join",
+          "type": "string"
+        },
+        "strategy": {
+          "default": "all",
+          "title": "Strategy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "targets"
+      ],
+      "title": "ParallelAction",
+      "type": "object"
+    },
+    "ParallelBlock": {
+      "additionalProperties": false,
+      "description": "Top-level parallel/join declaration (POC: targets + join + strategy).",
+      "properties": {
+        "targets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Targets",
+          "type": "array"
+        },
+        "join": {
+          "default": "",
+          "title": "Join",
+          "type": "string"
+        },
+        "strategy": {
+          "default": "all",
+          "title": "Strategy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "targets"
+      ],
+      "title": "ParallelBlock",
+      "type": "object"
+    },
+    "RetractAction": {
+      "additionalProperties": false,
+      "description": "Retract facts matching ``pattern``.",
+      "properties": {
+        "kind": {
+          "const": "retract",
+          "default": "retract",
+          "title": "Kind",
+          "type": "string"
+        },
+        "pattern": {
+          "title": "Pattern",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pattern"
+      ],
+      "title": "RetractAction",
+      "type": "object"
+    },
+    "RetryAction": {
+      "additionalProperties": false,
+      "description": "Re-attempt ``target`` after ``backoff_ms`` milliseconds.",
+      "properties": {
+        "kind": {
+          "const": "retry",
+          "default": "retry",
+          "title": "Kind",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "backoff_ms": {
+          "default": 0,
+          "title": "Backoff Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "title": "RetryAction",
+      "type": "object"
+    },
+    "RuleSpec": {
+      "additionalProperties": false,
+      "description": "Single rule (POC: id + ``when`` pattern + ``then`` action list).\n\n``then`` is a list of :data:`Action` -- the discriminated union; the\nFR-11 \"no nesting\" constraint is enforced by the type itself (variants\ncannot themselves contain :data:`Action` fields).\n\nAttributes:\n    id: Rule identifier, unique within the IR.\n    when: CLIPS-style ``when`` pattern (free text; engine parses).\n    then: Discriminated-union list of routing/control actions.\n    node_id: Owning node id. Introduced in IR ``1.1.0`` for UI /\n        topology consumers (so a rule's source node is explicit\n        rather than inferred from a naming convention). Optional for\n        backward compatibility -- documents declaring\n        ``ir_version: \"1.0.0\"`` may omit it; loaders MAY fill it via\n        the ``rule_id`` prefix heuristic so downstream tools\n        (``stargraph inspect``, StarGraph topology endpoint) can assume\n        non-null. New graphs at ``1.1.0`` SHOULD declare ``node_id``\n        explicitly.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "when": {
+          "default": "",
+          "title": "When",
+          "type": "string"
+        },
+        "then": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "assert": "#/$defs/AssertAction",
+                "goto": "#/$defs/GotoAction",
+                "halt": "#/$defs/HaltAction",
+                "interrupt": "#/$defs/InterruptAction",
+                "parallel": "#/$defs/ParallelAction",
+                "retract": "#/$defs/RetractAction",
+                "retry": "#/$defs/RetryAction"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/GotoAction"
+              },
+              {
+                "$ref": "#/$defs/HaltAction"
+              },
+              {
+                "$ref": "#/$defs/ParallelAction"
+              },
+              {
+                "$ref": "#/$defs/RetryAction"
+              },
+              {
+                "$ref": "#/$defs/AssertAction"
+              },
+              {
+                "$ref": "#/$defs/RetractAction"
+              },
+              {
+                "$ref": "#/$defs/InterruptAction"
+              }
+            ]
+          },
+          "title": "Then",
+          "type": "array"
+        },
+        "node_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Node Id"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "RuleSpec",
+      "type": "object"
+    },
+    "SkillRef": {
+      "additionalProperties": false,
+      "description": "Reference to a skill by namespaced id.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "SkillRef",
+      "type": "object"
+    },
+    "StoreRef": {
+      "additionalProperties": false,
+      "description": "Lightweight reference to a store binding (POC: name + provider id).\n\n:class:`StoreSpec` is the canonical IR record for store registration\n(FR-19/FR-20, design \u00a73.16); ``StoreRef`` remains the trimmed shape used\ninside :class:`IRDocument` graphs. The :meth:`to_capabilities` helper\nyields the same ``[db.{name}:read, db.{name}:write]`` capability list\nderived by ``StoreSpec`` so policy checks can resolve from either form.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "provider"
+      ],
+      "title": "StoreRef",
+      "type": "object"
+    },
+    "ToolRef": {
+      "additionalProperties": false,
+      "description": "Reference to a tool by namespaced id (POC: bare string id + optional version).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ToolRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Top-level IR document (POC skeleton).\n\nRequired fields: ``ir_version``, ``id``, ``nodes``. All other top-level\nsections are optional with sensible empty defaults so a minimal document\n(``IRDocument(ir_version=\"1.0.0\", id=\"run:test\", nodes=[])``) constructs\nwithout further plumbing. Stable-ID validation lands in task 1.28; for\nnow ``id`` is a free-form ``str``.",
+  "properties": {
+    "ir_version": {
+      "title": "Ir Version",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/NodeSpec"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/RuleSpec"
+      },
+      "title": "Rules",
+      "type": "array"
+    },
+    "tools": {
+      "items": {
+        "$ref": "#/$defs/ToolRef"
+      },
+      "title": "Tools",
+      "type": "array"
+    },
+    "skills": {
+      "items": {
+        "$ref": "#/$defs/SkillRef"
+      },
+      "title": "Skills",
+      "type": "array"
+    },
+    "stores": {
+      "items": {
+        "$ref": "#/$defs/StoreRef"
+      },
+      "title": "Stores",
+      "type": "array"
+    },
+    "state_schema": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "State Schema",
+      "type": "object"
+    },
+    "state_class": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "State Class"
+    },
+    "parallel": {
+      "items": {
+        "$ref": "#/$defs/ParallelBlock"
+      },
+      "title": "Parallel",
+      "type": "array"
+    },
+    "governance": {
+      "items": {
+        "$ref": "#/$defs/PackMount"
+      },
+      "title": "Governance",
+      "type": "array"
+    },
+    "migrate": {
+      "items": {
+        "$ref": "#/$defs/MigrateBlock"
+      },
+      "title": "Migrate",
+      "type": "array"
+    },
+    "checkpoints": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CheckpointBlock"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "ir_version",
+    "id",
+    "nodes"
+  ],
+  "title": "IRDocument",
+  "type": "object"
+}

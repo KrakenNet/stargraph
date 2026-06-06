@@ -1,10 +1,10 @@
 module: poc
 ruleset: poc-smoke
 version: "1.0"
-# Five Fathom rules covering five Harbor action verbs.
+# Five Fathom rules covering five Stargraph action verbs.
 #
 # All rules match a single ``evidence`` fact (with provenance slots seeded by
-# ``FathomAdapter.assert_with_provenance``) and emit one ``harbor_action`` fact
+# ``FathomAdapter.assert_with_provenance``) and emit one ``stargraph_action`` fact
 # each. Salience is laid out in firing order (descending) so the POC test can
 # assert a deterministic kind sequence.
 #
@@ -30,7 +30,7 @@ rules:
       action: allow
       reason: "Phase-1 POC: emit goto when provenance _source is 'test'"
       assert:
-        - template: harbor_action
+        - template: stargraph_action
           slots:
             kind: "(sym-cat goto)"
             target: "node_a"
@@ -46,7 +46,7 @@ rules:
       action: allow
       reason: "Phase-1 POC: emit halt"
       assert:
-        - template: harbor_action
+        - template: stargraph_action
           slots:
             kind: "(sym-cat halt)"
             reason: "done"
@@ -62,7 +62,7 @@ rules:
       action: allow
       reason: "Phase-1 POC: emit parallel fan-out with create$ targets"
       assert:
-        - template: harbor_action
+        - template: stargraph_action
           slots:
             kind: "(sym-cat parallel)"
             targets: "(create$ a b c)"
@@ -80,7 +80,7 @@ rules:
       action: allow
       reason: "Phase-1 POC: emit retry"
       assert:
-        - template: harbor_action
+        - template: stargraph_action
           slots:
             kind: "(sym-cat retry)"
             target: "foo"
@@ -97,7 +97,7 @@ rules:
       action: allow
       reason: "Phase-1 POC: emit assert-action carrying a JSON-encoded slots payload"
       assert:
-        - template: harbor_action
+        - template: stargraph_action
           slots:
             kind: "(sym-cat assert)"
             fact: "marker"

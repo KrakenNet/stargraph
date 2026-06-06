@@ -21,10 +21,10 @@ so the event loop is never blocked.
 
 ## Prerequisites
 
-- `pip install 'harbor[ml]'` — adds `onnxruntime`, `joblib`,
+- `pip install 'stargraph[ml]'` — adds `onnxruntime`, `joblib`,
   `scikit-learn`, `xgboost` extras.
 - A scratch directory with an ONNX model file. The
-  `tests/fixtures/onnx_minimal.onnx` shipped with Harbor works, or
+  `tests/fixtures/onnx_minimal.onnx` shipped with Stargraph works, or
   export your own with `skl2onnx`.
 - Working knowledge of the [first graph](first-graph.md) tutorial.
 
@@ -35,7 +35,7 @@ same path):
 
 ```bash
 mkdir -p models
-cp /path/to/harbor/tests/fixtures/onnx_minimal.onnx models/clf.onnx
+cp /path/to/stargraph/tests/fixtures/onnx_minimal.onnx models/clf.onnx
 ```
 
 `MLNode` resolves the model bytes through a `file://` URI;
@@ -66,7 +66,7 @@ before the engine even reaches `execute`.
 # score.py
 from __future__ import annotations
 
-from harbor.nodes.ml import MLNode
+from stargraph.nodes.ml import MLNode
 
 
 class ScoreNode(MLNode):
@@ -122,9 +122,9 @@ rules:
 `--inputs` forwards JSON-typed values per the IR's state schema:
 
 ```bash
-uv run harbor run graph.yaml \
+uv run stargraph run graph.yaml \
   --inputs 'x=[[1.0, 2.0, 3.0, 4.0]]' \
-  --log-file ./.harbor/audit.jsonl
+  --log-file ./.stargraph/audit.jsonl
 ```
 
 Expected last line:
@@ -136,7 +136,7 @@ run_id=run-… status=done
 Inspect the predicted class:
 
 ```bash
-uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite --step 1
+uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite --step 1
 ```
 
 The state JSON will include `"y": [<class_index>]`.
@@ -144,7 +144,7 @@ The state JSON will include `"y": [<class_index>]`.
 ## The sklearn safe-load gate
 
 Sklearn estimators are typically distributed as joblib-packed binary
-files. Harbor refuses to load one by default — `MLNode.__init__`
+files. Stargraph refuses to load one by default — `MLNode.__init__`
 raises `MLNodeError("pickle disabled; set allow_unsafe_pickle=True
 to opt in")` *before* opening the file. Two reasons it stays
 default-deny:
@@ -214,5 +214,5 @@ xgboost 3.1). Use `Booster.save_model("clf.ubj")` when exporting.
   participate in cassette determinism (sklearn predictions are
   deterministic given fixed input; ONNX graphs use a single CPU EP
   to keep this true).
-- `src/harbor/ml/loaders.py` — read the per-runtime gates if you're
+- `src/stargraph/ml/loaders.py` — read the per-runtime gates if you're
   porting a non-trivial model.

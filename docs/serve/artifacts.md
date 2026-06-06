@@ -1,11 +1,11 @@
 # Artifacts
 
-Harbor's artifact store is a content-addressed (BLAKE3) store for run
+Stargraph's artifact store is a content-addressed (BLAKE3) store for run
 outputs that don't fit cleanly into the graph state shape: large
 documents, generated reports, attached files. Artifacts are written via
 `WriteArtifactNode` and read via `/v1/runs/{id}/artifacts` + `/v1/artifacts/{ref}`.
 
-The `ArtifactRef` Pydantic model (in `harbor.artifacts.base`) carries the
+The `ArtifactRef` Pydantic model (in `stargraph.artifacts.base`) carries the
 content hash, MIME type, size, and provenance bundle; it appears in the
 OpenAPI spec under `components/schemas/ArtifactRef`.
 

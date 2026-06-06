@@ -1,7 +1,7 @@
 # `MLNode`
 
 Graph node that runs a classical-ML model through one of three runtimes:
-sklearn, xgboost, or onnx. Wraps the loaders in `harbor.ml.loaders`.
+sklearn, xgboost, or onnx. Wraps the loaders in `stargraph.ml.loaders`.
 
 ## Constructor
 
@@ -71,7 +71,7 @@ All errors are [`MLNodeError`](../python/index.md):
   (`onnx session not initialised`).
 - Other runtimes reaching `_predict` with no loaded model (`model not loaded`).
 - Loader errors (sidecar skew, hash mismatch, `.bin` xgboost) propagate from
-  `harbor.ml.loaders` at construction time.
+  `stargraph.ml.loaders` at construction time.
 
 ## See also
 

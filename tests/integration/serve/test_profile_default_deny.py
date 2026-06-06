@@ -25,9 +25,9 @@ from typing import Any
 import httpx
 import pytest
 
-from harbor.serve.api import create_app
-from harbor.serve.auth import AuthContext
-from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.auth import AuthContext
+from stargraph.serve.profiles import ClearedProfile, OssDefaultProfile
 
 pytestmark = pytest.mark.serve
 

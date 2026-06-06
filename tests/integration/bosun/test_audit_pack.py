@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration: ``harbor.bosun.audit@1.0`` round-trip (FR-35, FR-38, design §7.2).
+"""Integration: ``stargraph.bosun.audit@1.0`` round-trip (FR-35, FR-38, design §7.2).
 
 Drives the audit pack through a stub graph: assert synthetic
-``harbor.transition`` and ``harbor.tool_call`` facts, run the engine,
+``stargraph.transition`` and ``stargraph.tool_call`` facts, run the engine,
 and verify ``bosun.audit`` facts are emitted. Then promotes those facts
 to typed :class:`BosunAuditEvent` instances via the seam in
-:mod:`harbor.bosun.audit` and writes them through the existing
+:mod:`stargraph.bosun.audit` and writes them through the existing
 :class:`JSONLAuditSink`. Finally, reads the JSONL log back to confirm
 the audit trail round-tripped end-to-end (single-sink invariant per
 design §7.2 + Resolved Decision #5).
@@ -20,12 +20,12 @@ from typing import TYPE_CHECKING
 import pytest
 from fathom import Engine
 
-from harbor.audit.jsonl import JSONLAuditSink
-from harbor.bosun.audit import promote_audit_facts
-from harbor.fathom import FathomAdapter
-from harbor.runtime.events import BosunAuditEvent
+from stargraph.audit.jsonl import JSONLAuditSink
+from stargraph.bosun.audit import promote_audit_facts
+from stargraph.fathom import FathomAdapter
+from stargraph.runtime.events import BosunAuditEvent
 
-from ._helpers import install_harbor_fact_stubs, load_pack_rules
+from ._helpers import install_stargraph_fact_stubs, load_pack_rules
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,7 +35,7 @@ pytestmark = pytest.mark.serve
 
 def _fresh_audit_engine() -> Engine:
     eng = Engine(default_decision="deny")
-    install_harbor_fact_stubs(eng)
+    install_stargraph_fact_stubs(eng)
     load_pack_rules(eng, "audit")
     return eng
 
@@ -45,10 +45,10 @@ def test_audit_pack_emits_facts_for_transition_and_tool_call() -> None:
     the matching ``bosun.audit`` facts (kinds ``transition`` + ``tool_call``)."""
     eng = _fresh_audit_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.transition (_run_id "r1") (_step 1) (kind "started"))'
+        '(stargraph.transition (_run_id "r1") (_step 1) (kind "started"))'
     )
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.tool_call (_run_id "r1") (_step 2) (name "broker_request"))'
+        '(stargraph.tool_call (_run_id "r1") (_step 2) (name "broker_request"))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     facts = [dict(f) for f in eng._env.find_template("bosun.audit").facts()]  # pyright: ignore[reportPrivateUsage]
@@ -67,10 +67,10 @@ def test_audit_pack_promotes_facts_to_typed_bosun_audit_events() -> None:
     asserted fact, with the right pack identity + run_id."""
     eng = _fresh_audit_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.transition (_run_id "rX") (_step 7) (kind "completed"))'
+        '(stargraph.transition (_run_id "rX") (_step 7) (kind "completed"))'
     )
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.cancel (_run_id "rX") (_step 8) (reason "user-abort"))'
+        '(stargraph.cancel (_run_id "rX") (_step 8) (reason "user-abort"))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     adapter = FathomAdapter(eng)
@@ -79,7 +79,7 @@ def test_audit_pack_promotes_facts_to_typed_bosun_audit_events() -> None:
     for ev in events:
         assert isinstance(ev, BosunAuditEvent)
         assert ev.type == "bosun_audit"
-        assert ev.pack_id == "harbor.bosun.audit"
+        assert ev.pack_id == "stargraph.bosun.audit"
         assert ev.pack_version == "1.0"
         assert ev.run_id == "rX"
     kinds = sorted(ev.fact["kind"] for ev in events)
@@ -91,7 +91,7 @@ def test_audit_pack_round_trips_through_jsonl_sink(tmp_path: Path) -> None:
     without parallel sink (single-sink invariant per Resolved Decision #5)."""
     eng = _fresh_audit_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.tool_call (_run_id "rZ") (_step 3) (name "search"))'
+        '(stargraph.tool_call (_run_id "rZ") (_step 3) (name "search"))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     adapter = FathomAdapter(eng)
@@ -114,7 +114,7 @@ def test_audit_pack_round_trips_through_jsonl_sink(tmp_path: Path) -> None:
     assert len(lines) == 1, f"expected 1 audit line; got {lines!r}"
     rec = json.loads(lines[0])
     assert rec["type"] == "bosun_audit"
-    assert rec["pack_id"] == "harbor.bosun.audit"
+    assert rec["pack_id"] == "stargraph.bosun.audit"
     assert rec["pack_version"] == "1.0"
     assert rec["run_id"] == "rZ"
     assert rec["fact"]["kind"] == "tool_call"

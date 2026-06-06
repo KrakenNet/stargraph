@@ -28,11 +28,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor import Graph, GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.errors import CheckpointError
-from harbor.ir import IRDocument, NodeSpec, SkillRef
+from stargraph import Graph, GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.errors import CheckpointError
+from stargraph.ir import IRDocument, NodeSpec, SkillRef
 
 if TYPE_CHECKING:
     from pathlib import Path

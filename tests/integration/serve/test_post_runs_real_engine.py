@@ -19,13 +19,13 @@ import anyio
 import httpx
 import pytest
 
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.base import NodeBase
-from harbor.serve.api import create_app
-from harbor.serve.profiles import OssDefaultProfile
-from harbor.serve.scheduler import Scheduler
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.base import NodeBase
+from stargraph.serve.api import create_app
+from stargraph.serve.profiles import OssDefaultProfile
+from stargraph.serve.scheduler import Scheduler
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -6,11 +6,11 @@ the side-effect classifier and the replay policy so deterministic replay (FR-21)
 and capability enforcement (NFR-7) hold uniformly across in-tree, third-party,
 and MCP-imported tools.
 
-Source: `src/harbor/tools/`.
+Source: `src/stargraph/tools/`.
 
 ## ToolSpec
 
-`harbor.ir.ToolSpec` (re-exported via `harbor.tools.ToolSpec`) is the canonical
+`stargraph.ir.ToolSpec` (re-exported via `stargraph.tools.ToolSpec`) is the canonical
 descriptor. The full Pydantic model (AC-9.4):
 
 | Field | Type | Default | Description |
@@ -31,20 +31,20 @@ descriptor. The full Pydantic model (AC-9.4):
 | `deprecated` | `bool` | `False` | Hide from selectors when `True`. |
 
 !!! note
-    `ToolSpec` is exposed lazily via `harbor.tools.__getattr__` to break a
-    circular import: `harbor.ir._models` already imports the enums from
-    `harbor.tools.spec`.
+    `ToolSpec` is exposed lazily via `stargraph.tools.__getattr__` to break a
+    circular import: `stargraph.ir._models` already imports the enums from
+    `stargraph.tools.spec`.
 
 ## SideEffects
 
-`harbor.tools.SideEffects` is a `StrEnum` (FR-33, design 3.4.2). Members are
+`stargraph.tools.SideEffects` is a `StrEnum` (FR-33, design 3.4.2). Members are
 plain lowercase strings on the wire.
 
 | Value | When to use |
 | --- | --- |
 | `none` | Pure function. No I/O, no globals, no clock. Safe to re-execute infinitely. |
 | `read` | Reads external state but does not mutate (filesystem read, HTTP `GET`, vector lookup, broker query). |
-| `write` | Mutates state owned by Harbor (Checkpointer, store write, artifact write). |
+| `write` | Mutates state owned by Stargraph (Checkpointer, store write, artifact write). |
 | `external` | Mutates state owned by a third party (HTTP `POST`, MCP tool call, LLM completion). |
 
 The classifier feeds the runtime's replay router and the cost/risk surface that
@@ -52,7 +52,7 @@ Bosun packs reason about.
 
 ## ReplayPolicy
 
-`harbor.tools.ReplayPolicy` (FR-33, FR-21, NFR-8) is a `StrEnum` with
+`stargraph.tools.ReplayPolicy` (FR-33, FR-21, NFR-8) is a `StrEnum` with
 kebab-cased values.
 
 | Value | Semantics |
@@ -78,13 +78,13 @@ trade availability for safety on a read path.
 
 ## `@tool` decorator
 
-`harbor.tools.tool` binds a callable to a `ToolSpec`. The wrapped callable
+`stargraph.tools.tool` binds a callable to a `ToolSpec`. The wrapped callable
 keeps its original calling convention (sync or async, positional or keyword)
 and gains a `wrapper.spec` attribute (Open Q8 resolution: callable wrapper,
 not a descriptor).
 
 ```python
-from harbor.tools import SideEffects, tool
+from stargraph.tools import SideEffects, tool
 
 @tool(
     name="broker_request",
@@ -136,14 +136,14 @@ annotation becomes `{}` (any value).
 
 A single string is normalised to a one-element list and stored on
 `ToolSpec.permissions`. `None` becomes `[]`. The runtime consults the
-capability gate (`harbor.security.Capabilities.check`) before invocation;
+capability gate (`stargraph.security.Capabilities.check`) before invocation;
 unauthorised calls raise `CapabilityError` and never reach the underlying
 callable.
 
 ## Wiring a tool into IR
 
 Tools enter the IR via the plugin manifest entry-point group
-`harbor.tools` (see [Plugin manifest](plugin-manifest.md)). The graph YAML
+`stargraph.tools` (see [Plugin manifest](plugin-manifest.md)). The graph YAML
 references the tool by its registry key:
 
 ```yaml
@@ -165,21 +165,21 @@ the capability gate, validates `state`-derived inputs against
 
 ## Nautilus broker tool
 
-`harbor.tools.nautilus` ships one in-tree registry-discoverable tool:
+`stargraph.tools.nautilus` ships one in-tree registry-discoverable tool:
 
 | Tool | Module | Side-effects | Required capability |
 | --- | --- | --- | --- |
-| `nautilus.broker_request@1` | `harbor.tools.nautilus.broker_request` | `read` | `tools:broker_request` |
+| `nautilus.broker_request@1` | `stargraph.tools.nautilus.broker_request` | `read` | `tools:broker_request` |
 
 `broker_request(*, agent_id: str, intent: str) -> dict` resolves the
-lifespan-singleton `nautilus.Broker` via `harbor.serve.contextvars.current_broker`,
+lifespan-singleton `nautilus.Broker` via `stargraph.serve.contextvars.current_broker`,
 calls `Broker.arequest`, and returns `BrokerResponse.model_dump(mode="json")`
-plus a `__harbor_provenance__` envelope:
+plus a `__stargraph_provenance__` envelope:
 
 ```json
 {
   "...": "broker response fields",
-  "__harbor_provenance__": {
+  "__stargraph_provenance__": {
     "origin": "tool",
     "source": "nautilus",
     "external_id": "<broker request_id>"
@@ -195,12 +195,12 @@ consumers that pattern-match on the bundle work the same against either form.
     Use `nautilus.broker_request@1` (this tool) inside a ReAct skill or
     sub-graph dispatcher where the call site is dynamic.
 
-Raises `HarborRuntimeError` if no `Broker` is registered (lifespan factory
+Raises `StargraphRuntimeError` if no `Broker` is registered (lifespan factory
 did not run, or `nautilus.yaml` was missing at startup).
 
 ## See also
 
-- [Plugin manifest](plugin-manifest.md) — entry-point group `harbor.tools`.
+- [Plugin manifest](plugin-manifest.md) — entry-point group `stargraph.tools`.
 - [IR Schema](ir-schema.md) — wire format for `ToolSpec`.
 - [Adapters](adapters/index.md) — DSPy and MCP seams that bind external
-  callables as Harbor tools/nodes.
+  callables as Stargraph tools/nodes.

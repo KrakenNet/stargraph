@@ -3,9 +3,9 @@
 
 Pins:
 
-* :class:`harbor.plugin.types.BosunAction` exists with three minimal-viable
+* :class:`stargraph.plugin.types.BosunAction` exists with three minimal-viable
   fields (``action_kind: str``, ``target: str``, ``payload: dict[str, Any]``).
-* It is exported via ``harbor.plugin.types.__all__``.
+* It is exported via ``stargraph.plugin.types.__all__``.
 * It is a real :class:`pydantic.BaseModel` round-tripping through
   ``model_dump`` / ``model_validate``.
 """
@@ -23,18 +23,18 @@ def test_bosun_action_model_round_trip() -> None:
     through ``model_dump`` / ``model_validate`` (T20)."""
     from pydantic import BaseModel
 
-    from harbor.plugin.types import BosunAction
+    from stargraph.plugin.types import BosunAction
 
     assert issubclass(BosunAction, BaseModel)
     action = BosunAction(
         action_kind="tool_call",
-        target="harbor.tools.web.fetch",
+        target="stargraph.tools.web.fetch",
         payload={"url": "https://example.com"},
     )
     dump = action.model_dump()
     assert dump == {
         "action_kind": "tool_call",
-        "target": "harbor.tools.web.fetch",
+        "target": "stargraph.tools.web.fetch",
         "payload": {"url": "https://example.com"},
     }
     BosunAction.model_validate(dump)  # raises on shape mismatch
@@ -44,8 +44,8 @@ def test_bosun_action_model_round_trip() -> None:
 def test_authorize_action_accepts_bosun_action_instance() -> None:
     """A pluggy plugin returning a typed :class:`BosunAction` round-trips
     through ``authorize_action`` (T20)."""
-    from harbor.plugin import hookspecs
-    from harbor.plugin.types import BosunAction
+    from stargraph.plugin import hookspecs
+    from stargraph.plugin.types import BosunAction
 
     # Symbol export check (Stage 7 fix: scaffolder generated a vars(dict)
     # call that raised TypeError before reaching the hasattr short-circuit).

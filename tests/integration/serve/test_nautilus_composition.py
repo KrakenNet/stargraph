@@ -9,10 +9,10 @@ two composition variants and asserts the same invariants hold in both:
    resolves to :class:`tests.fixtures.nautilus_stub.StubBrokerNode`
    (canned :class:`nautilus.BrokerResponse`). The graph drives through
    `write_record` (real :class:`WriteArtifactNode` against a
-   :class:`harbor.artifacts.fs.FilesystemArtifactStore`), emitting an
-   :class:`~harbor.runtime.events.ArtifactWrittenEvent`, then halts at
+   :class:`stargraph.artifacts.fs.FilesystemArtifactStore`), emitting an
+   :class:`~stargraph.runtime.events.ArtifactWrittenEvent`, then halts at
    the InterruptNode at `approval_gate`, emitting a
-   :class:`~harbor.runtime.events.WaitingForInputEvent`. The test
+   :class:`~stargraph.runtime.events.WaitingForInputEvent`. The test
    issues ``POST /v1/runs/{id}/respond`` to release the gate and
    asserts the route returns 200 with state="running".
 
@@ -70,28 +70,28 @@ import pytest
 import yaml
 from tests.fixtures.nautilus_stub import StubBrokerNode
 
-from harbor.artifacts.fs import FilesystemArtifactStore
-from harbor.audit import JSONLAuditSink
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.fathom import FathomAdapter
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument
-from harbor.nodes.artifacts import WriteArtifactNode
-from harbor.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
-from harbor.nodes.base import NodeBase
-from harbor.nodes.interrupt import InterruptNode
-from harbor.nodes.interrupt.interrupt_node import InterruptNodeConfig
-from harbor.nodes.nautilus.broker_node import BrokerNodeConfig
-from harbor.runtime.events import (
+from stargraph.artifacts.fs import FilesystemArtifactStore
+from stargraph.audit import JSONLAuditSink
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.fathom import FathomAdapter
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument
+from stargraph.nodes.artifacts import WriteArtifactNode
+from stargraph.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.interrupt import InterruptNode
+from stargraph.nodes.interrupt.interrupt_node import InterruptNodeConfig
+from stargraph.nodes.nautilus.broker_node import BrokerNodeConfig
+from stargraph.runtime.events import (
     ArtifactWrittenEvent,
     Event,
     WaitingForInputEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.auth import AuthContext
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.contextvars import _audit_sink_var
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.auth import AuthContext
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.contextvars import _audit_sink_var
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -132,7 +132,7 @@ class _RecordingEngine:
 
     Mirrors :class:`tests.integration.serve.test_hitl_respond._RecordingEngine`:
     records every :meth:`assert_fact` call so the test can introspect
-    the ``harbor.evidence`` payload, while satisfying the
+    the ``stargraph.evidence`` payload, while satisfying the
     ``mirror_state`` / ``evaluate`` / ``query`` surface the dispatch
     path consults.
     """
@@ -198,7 +198,7 @@ def _build_node_registry(ir: IRDocument) -> dict[str, NodeBase]:
     * ``stub_broker`` / ``broker`` -> :class:`StubBrokerNode` (the
       composition test contrast is "broker step present" vs. "broker
       step absent"; both fixtures use the stub for end-to-end driving
-      since the real :class:`harbor.nodes.nautilus.BrokerNode` requires
+      since the real :class:`stargraph.nodes.nautilus.BrokerNode` requires
       the lifespan singleton, out of scope here).
     * ``interrupt`` -> :class:`InterruptNode`
     * ``write_artifact`` -> :class:`WriteArtifactNode`
@@ -244,7 +244,7 @@ def _attach_write_context(
 ) -> None:
     """Monkey-patch the :class:`WriteArtifactContext` Protocol surface.
 
-    The Phase-1 :class:`harbor.nodes.base.ExecutionContext` Protocol
+    The Phase-1 :class:`stargraph.nodes.base.ExecutionContext` Protocol
     only pins ``run_id``; :class:`WriteArtifactNode` additionally
     requires ``step`` / ``bus`` / ``artifact_store`` / ``is_replay`` /
     ``fathom``. ``run.bus`` and ``run.fathom`` exist on the handle;
@@ -369,7 +369,7 @@ async def _run_composition(
     )
 
     # Issue the respond POST to release the gate. The respond path
-    # transitions state to "running" and asserts a harbor.evidence
+    # transitions state to "running" and asserts a stargraph.evidence
     # fact via the wired Fathom adapter; the cf-loop replay past the
     # interrupt is a documented Phase-2 task 2.34 gap (cf 3.23/3.24
     # progress notes). The composition test's assertion bar is "respond

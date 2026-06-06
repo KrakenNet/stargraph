@@ -1,6 +1,6 @@
 # Concepts
 
-Theory-oriented explanations of Harbor's model: the IR, the plugin system, and the provenance/replay guarantees.
+Theory-oriented explanations of Stargraph's model: the IR, the plugin system, and the provenance/replay guarantees.
 
 - [IR and schema](ir.md)
 - [Plugin model](plugins.md)

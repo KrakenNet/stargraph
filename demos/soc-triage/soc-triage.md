@@ -17,11 +17,11 @@
 [SIEM webhook -- new alert]
              │
              ▼
-[harbor.triggers.webhook]
+[stargraph.triggers.webhook]
              │  Validates payload schema; emits TriggerEvent.
              │
              ▼
-[harbor.security.capabilities  -- gate alerts.read]
+[stargraph.security.capabilities  -- gate alerts.read]
              │
              ▼
 [ContextHydrationNode]
@@ -62,13 +62,13 @@
              │
              ▼
 [ActionDispatch]
-             │  Translates harbor_action facts into typed Action instances:
+             │  Translates stargraph_action facts into typed Action instances:
              │    AutoRemediateAction | InterruptAction | EscalateAction
              ▼
 [WriteArtifactNode]
              │  Case note as BLAKE3 content-addressable PDF.
              ▼
-[harbor.audit.JSONLAuditSink]
+[stargraph.audit.JSONLAuditSink]
              │  Every step Ed25519-signed:
              │    alert_id, retrieved_context, model_hash, ruleset_hash,
              │    rule_firings, action, operator (if HITL).
@@ -83,11 +83,11 @@
        └────────────┬──────────────┘
                     │
                     ▼
-            harbor replay --run-id 8821
+            stargraph replay --run-id 8821
             (byte-identical reproduction)
                     │
                     ▼
-            harbor counterfactual --mutate 'asset.tier=prod'
+            stargraph counterfactual --mutate 'asset.tier=prod'
             (shows what would have happened)
 
 =============================================================================
@@ -95,14 +95,14 @@
 =============================================================================
 
 - Direct analog to atr/, instantly recognizable to enterprise security.
-- Exercises every distinctive Harbor feature without being contrived.
+- Exercises every distinctive Stargraph feature without being contrived.
 - Auditor story is the entire pitch: nobody else can replay decisions
   cryptographically months later.
 - Bosun signed packs let SOC managers update policy without redeploying
   the agent -- a real operational requirement.
 
 =============================================================================
-                         HARBOR CAPABILITIES EXERCISED
+                         STARGRAPH CAPABILITIES EXERCISED
 =============================================================================
 
   Triggers:      webhook (SIEM)
@@ -111,7 +111,7 @@
   Nodes:         Retrieval (RRF), ML, DSPy, Custom (ContextHydration), Artifact
   Tools:         Nautilus broker_request, Slack/PD/ServiceNow @tool
   ML registry:   sha256-pinned severity classifier
-  Fathom:        CLIPS rules, harbor_action mirror, InterruptAction
+  Fathom:        CLIPS rules, stargraph_action mirror, InterruptAction
   Bosun:         Signed 'soc-policy' pack + 'budgets' pack
   Capabilities:  Capability gate before any state read
   Replay:        Cassettes + counterfactual
@@ -124,7 +124,7 @@
 
   demos/soc-triage/
     README.md
-    harbor.yaml
+    stargraph.yaml
     bosun-packs/
       soc-policy/                 -- signed; the 4 rules above
       budgets/                    -- per-alert token / $ caps

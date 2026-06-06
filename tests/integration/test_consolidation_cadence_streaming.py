@@ -2,7 +2,7 @@
 """Consolidation-cadence streaming integration test (FR-29, AC-5.2).
 
 Exercises the streaming ``every: 1`` cadence: each episodic put triggers
-an immediate :meth:`harbor.stores.sqlite_memory.SQLiteMemoryStore.consolidate`
+an immediate :meth:`stargraph.stores.sqlite_memory.SQLiteMemoryStore.consolidate`
 call. Mirrors the Phase-4 cadence-dispatcher contract via a minimal
 in-test helper (the auto-wiring into ``MemoryStore.put`` lands later -- see
 the docstring on ``test_consolidation_cadence_batch``); this test pins
@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.memory import ConsolidationRule, Episode, MemoryDelta
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.memory import ConsolidationRule, Episode, MemoryDelta
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from pathlib import Path

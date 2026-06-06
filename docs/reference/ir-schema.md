@@ -1,12 +1,12 @@
 # IR Schema Reference
 
-The Harbor intermediate representation (IR) is a portable, JSON-serializable
+The Stargraph intermediate representation (IR) is a portable, JSON-serializable
 description of an executable graph plus its rules, tools, skills, stores,
 governance packs, and migration metadata. Every IR Pydantic type subclasses
 [`IRBase`](#irbase), which pins `extra='forbid'` so unknown keys are rejected
 at load time (FR-6, AC-9.1).
 
-The canonical entry points live in `harbor.ir`:
+The canonical entry points live in `stargraph.ir`:
 
 | Symbol                        | Purpose                                                                  |
 | ----------------------------- | ------------------------------------------------------------------------ |
@@ -15,7 +15,7 @@ The canonical entry points live in `harbor.ir`:
 | `dumps_canonical`             | `partial(dumps, hashable=True)`: sort keys for content-addressable hash. |
 | `loads(text, model=IRDocument)` | Parse JSON to an `IRBase` subclass via `model_validate_json`.          |
 | `validate(ir)`                | Eager structured validation; returns `list[ValidationError]`, never raises. |
-| `HARBOR_IR_VERSION`           | The `MAJOR.MINOR.PATCH` IR version this Harbor build understands.        |
+| `STARGRAPH_IR_VERSION`           | The `MAJOR.MINOR.PATCH` IR version this Stargraph build understands.        |
 
 !!! info "IR is the wire format"
     Every persisted graph (Bosun packs, sample fixtures, replay payloads)
@@ -27,7 +27,7 @@ The canonical entry points live in `harbor.ir`:
 
 ## `IRBase`
 
-Parent class for every Harbor IR Pydantic model. Subclasses inherit
+Parent class for every Stargraph IR Pydantic model. Subclasses inherit
 `extra='forbid'` so unknown keys raise on `model_validate`. This is the
 single place to wire any future portable-subset config knob.
 
@@ -38,7 +38,7 @@ single place to wire any future portable-subset config knob.
 Per FR-7 / AC-13.1, IR records may not carry `computed_field` or
 `model_validator` decorators (cross-language portability constraint).
 Validation that needs cross-field context (slug enforcement, version
-divergence) lives in [`harbor.ir._validate`](#validation-gates).
+divergence) lives in [`stargraph.ir._validate`](#validation-gates).
 
 ---
 
@@ -49,7 +49,7 @@ and `nodes`; every other section defaults to an empty list / dict.
 
 | Field          | Type                  | Required | Default    | Description                                                                |
 | -------------- | --------------------- | -------- | ---------- | -------------------------------------------------------------------------- |
-| `ir_version`   | `str`                 | yes      | _req._     | `MAJOR.MINOR.PATCH`. Major divergence from `HARBOR_IR_VERSION` is rejected.|
+| `ir_version`   | `str`                 | yes      | _req._     | `MAJOR.MINOR.PATCH`. Major divergence from `STARGRAPH_IR_VERSION` is rejected.|
 | `id`           | `str`                 | yes      | _req._     | Document identifier (free-form `str` in POC).                              |
 | `nodes`        | `list[NodeSpec]`      | yes      | _req._     | Graph nodes.                                                               |
 | `rules`        | `list[RuleSpec]`      | no       | `[]`       | Top-level rule definitions.                                                |
@@ -80,7 +80,7 @@ state_schema:
 governance:
   - id: "pack.bosun.routing"
     version: "1.0.0"
-    requires: { harbor_facts_version: "1.0", api_version: "1" }
+    requires: { stargraph_facts_version: "1.0", api_version: "1" }
 ```
 
 ---
@@ -97,14 +97,14 @@ the surface with IO and config blocks.
 
 ```yaml
 - id: "classify"
-  kind: "harbor_extra.nodes:DSPyClassifyNode"
+  kind: "stargraph_extra.nodes:DSPyClassifyNode"
 ```
 
 ---
 
 ## Edges and routing
 
-Harbor's IR has no explicit `EdgeSpec` model. Routing is expressed two ways:
+Stargraph's IR has no explicit `EdgeSpec` model. Routing is expressed two ways:
 
 1. **Static fall-through** -- the engine walks `nodes` in declaration order
    when no rule fires.
@@ -173,7 +173,7 @@ pair derived by `StoreSpec.effective_capabilities()`.
 
 ```yaml
 stores:
-  - { name: "kb", provider: "harbor.stores.qdrant" }
+  - { name: "kb", provider: "stargraph.stores.qdrant" }
 ```
 
 ### `StoreSpec`
@@ -228,7 +228,7 @@ idempotency keys, deprecation flow -- see the
 | `deprecated`      | `bool`                | no       | `false`              | Marks the tool deprecated.                                           |
 
 The legacy v0.1 `side_effects: bool` shape is up-converted by
-`harbor.ir._migrate.coerce_legacy_tool_spec` (`True` -> `SideEffects.write`,
+`stargraph.ir._migrate.coerce_legacy_tool_spec` (`True` -> `SideEffects.write`,
 `False` -> `SideEffects.none`) with a one-shot `DeprecationWarning`.
 
 ---
@@ -295,10 +295,10 @@ Packs are the unit of mounted Bosun governance.
 
 | Field                    | Type          | Required | Default | Description                                                                  |
 | ------------------------ | ------------- | -------- | ------- | ---------------------------------------------------------------------------- |
-| `harbor_facts_version`   | `str \| None` | no       | `None`  | Required harbor-facts schema version (e.g. `"1.0"`).                         |
+| `stargraph_facts_version`   | `str \| None` | no       | `None`  | Required stargraph-facts schema version (e.g. `"1.0"`).                         |
 | `api_version`            | `str \| None` | no       | `None`  | Required plugin api_version (e.g. `"1"`).                                    |
 
-`harbor.ir._versioning.check_pack_compat` enforces both fields at
+`stargraph.ir._versioning.check_pack_compat` enforces both fields at
 pack-load time and raises `PackCompatError` on mismatch -- silent
 runtime drift is impossible (FR-6 force-loud). Comparison is
 **pinned-string equality** in the POC; semver-aware matching is
@@ -354,17 +354,17 @@ CLIPS deftemplate descriptors used to type rule facts.
 
 ## Versioning and compatibility
 
-`harbor.ir._versioning` owns the IR version this build understands and
+`stargraph.ir._versioning` owns the IR version this build understands and
 the major-divergence check (FR-35, AC-19.2).
 
-* `HARBOR_IR_VERSION = "1.0.0"` -- the single source of truth.
+* `STARGRAPH_IR_VERSION = "1.0.0"` -- the single source of truth.
 * `parse_version(s)` -- splits `MAJOR.MINOR.PATCH` into a 3-tuple of
   ints; rejects malformed values.
 * `check_version(ir)` -- returns a single `version_mismatch`
   `ValidationError` when the document's major differs from
-  `HARBOR_IR_VERSION`. Missing / non-string `ir_version` is left to
+  `STARGRAPH_IR_VERSION`. Missing / non-string `ir_version` is left to
   Pydantic upstream and skipped here.
-* `check_pack_compat(pack_mount, harbor_facts_version, api_version)` --
+* `check_pack_compat(pack_mount, stargraph_facts_version, api_version)` --
   load-time gate for `PackMount.requires` (raises `PackCompatError`).
 
 A major bump signals a breaking schema change: callers should treat
@@ -384,7 +384,7 @@ imported from `_models.py` to keep the JSON Schema round-trip pure
 
 ## Validation gates
 
-`harbor.ir.validate(ir)` is the single eager-validation entry point
+`stargraph.ir.validate(ir)` is the single eager-validation entry point
 (FR-17, FR-18, AC-12.1, AC-12.2, AC-12.5). It accepts a JSON string or
 an already-decoded dict and returns `list[ValidationError]` -- empty on
 success, populated on failure. **It never raises.**
@@ -405,14 +405,14 @@ The gate runs in this order:
 2. **Pydantic structural validation** (`IRDocument.model_validate`) --
    catches missing required fields, unknown keys (`extra='forbid'`),
    discriminator/tag mismatches, type/pattern errors, and bound
-   violations. All Pydantic errors are mapped through `_to_harbor_error`.
+   violations. All Pydantic errors are mapped through `_to_stargraph_error`.
 3. **Stable-ID slug enforcement** (FR-33) -- every `node.id`,
    `rule.id`, and `governance[*].id` is run through
    `validate_node_id` / `validate_rule_id` / `validate_pack_id`. ID
    errors are returned as a batch and short-circuit the version check.
 4. **Major-version divergence** (`check_version`) -- single
    `version_mismatch` error when `ir_version`'s major differs from
-   `HARBOR_IR_VERSION`.
+   `STARGRAPH_IR_VERSION`.
 
 <!-- TODO: verify whether cypher linting and namespace-conflict checks are wired into validate() in this build, or whether they live exclusively in the plugin loader and store registry. -->
 
@@ -420,7 +420,7 @@ The gate runs in this order:
 
 ## ID generation
 
-`harbor.ir._ids` owns ID utilities (FR-30, FR-31, FR-33, design §3.4.1).
+`stargraph.ir._ids` owns ID utilities (FR-30, FR-31, FR-33, design §3.4.1).
 
 ### Run + checkpoint identifiers
 
@@ -464,8 +464,8 @@ The `kind` argument is reserved for future per-kind namespace prefixes
 
 ## Serialization seam (`_dumps.py`)
 
-Every JSON serialization of an IR type inside `src/harbor/` flows
-through `harbor.ir.dumps` / `dumps_canonical` / `loads`. This is the
+Every JSON serialization of an IR type inside `src/stargraph/` flows
+through `stargraph.ir.dumps` / `dumps_canonical` / `loads`. This is the
 only module that calls `model_dump` / `model_validate_json` /
 `json.dumps` on IR types (FR-15, AC-11.4) so the wire shape stays
 deterministic and round-trip-stable (AC-11.1, AC-11.2).
@@ -482,7 +482,7 @@ declared field order is preserved -- callers that care about hash
 stability must use `dumps_canonical`.
 
 ```python
-from harbor.ir import IRDocument, dumps, dumps_canonical, loads
+from stargraph.ir import IRDocument, dumps, dumps_canonical, loads
 
 doc = IRDocument(ir_version="1.0.0", id="graph:demo", nodes=[])
 wire = dumps(doc)                  # human-readable, declaration order

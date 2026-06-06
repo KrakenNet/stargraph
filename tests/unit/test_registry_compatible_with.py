@@ -23,9 +23,9 @@ from typing import Any
 
 import pytest
 
-from harbor.ir._models import ReplayPolicy, ToolSpec
-from harbor.registry import ToolRegistry
-from harbor.tools.spec import SideEffects
+from stargraph.ir._models import ReplayPolicy, ToolSpec
+from stargraph.registry import ToolRegistry
+from stargraph.tools.spec import SideEffects
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

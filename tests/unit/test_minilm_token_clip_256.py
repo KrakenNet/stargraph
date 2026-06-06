@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-GREEN: MiniLM input token clip at 256 (FR-15, AC-11).
 
-Asserts :meth:`harbor.stores.embeddings.MiniLMEmbedder.embed` truncates
-inputs longer than :data:`harbor.stores.embeddings.MINILM_MAX_TOKENS`
+Asserts :meth:`stargraph.stores.embeddings.MiniLMEmbedder.embed` truncates
+inputs longer than :data:`stargraph.stores.embeddings.MINILM_MAX_TOKENS`
 (256) before calling ``SentenceTransformer.encode``, and emits a
 ``minilm.input_clipped`` warning so operators can spot the truncation
 in structured logs.
@@ -28,7 +28,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from harbor.stores.embeddings import MINILM_MAX_TOKENS, MINILM_NDIMS, MiniLMEmbedder
+from stargraph.stores.embeddings import MINILM_MAX_TOKENS, MINILM_NDIMS, MiniLMEmbedder
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

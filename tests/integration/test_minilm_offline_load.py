@@ -2,7 +2,7 @@
 """Integration: MiniLM offline-mode load (FR-15, AC-11).
 
 Phase-3 integration coverage for mode 2 of the
-:class:`harbor.stores.embeddings.MiniLMEmbedder` loader. Sets
+:class:`stargraph.stores.embeddings.MiniLMEmbedder` loader. Sets
 ``HF_HUB_OFFLINE=1``, then attempts construction without a pre-staged
 HF cache and asserts the loader propagates the
 ``huggingface_hub`` cache-miss error rather than reaching for the
@@ -24,7 +24,7 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
-from harbor.stores.embeddings import MiniLMEmbedder
+from stargraph.stores.embeddings import MiniLMEmbedder
 
 pytestmark = [
     pytest.mark.knowledge,

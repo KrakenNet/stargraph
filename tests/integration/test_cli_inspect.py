@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration tests for ``harbor run --inspect``, ``harbor inspect`` and
-``harbor simulate`` (FR-8, FR-9, FR-29, design §3.10).
+"""Integration tests for ``stargraph run --inspect``, ``stargraph inspect`` and
+``stargraph simulate`` (FR-8, FR-9, FR-29, design §3.10).
 
-Each test invokes the installed ``harbor`` console-script via subprocess
+Each test invokes the installed ``stargraph`` console-script via subprocess
 to exercise the same bind path operators see at the shell. ``--inspect``
 must skip checkpoint and audit-log writes entirely; ``inspect`` must
 filter audit records by ``run_id`` and force-loud on no-match.
@@ -22,9 +22,9 @@ SAMPLE_GRAPH: Path = REPO_ROOT / "tests" / "fixtures" / "sample-graph.yaml"
 
 
 def _run(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Invoke the ``harbor`` console-script, capturing stdout/stderr."""
+    """Invoke the ``stargraph`` console-script, capturing stdout/stderr."""
     return subprocess.run(
-        ["harbor", *args],
+        ["stargraph", *args],
         capture_output=True,
         check=check,
         cwd=REPO_ROOT,
@@ -33,13 +33,13 @@ def _run(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
 
 
 def test_run_inspect_prints_trace_and_skips_checkpoint(tmp_path: Path) -> None:
-    """``harbor run --inspect`` must print the rule trace and write nothing.
+    """``stargraph run --inspect`` must print the rule trace and write nothing.
 
-    The cwd is ``tmp_path`` so any accidental ``./.harbor/`` checkpoint
+    The cwd is ``tmp_path`` so any accidental ``./.stargraph/`` checkpoint
     side effect is observable as a stray directory.
     """
     result = subprocess.run(
-        ["harbor", "run", "--inspect", str(SAMPLE_GRAPH)],
+        ["stargraph", "run", "--inspect", str(SAMPLE_GRAPH)],
         capture_output=True,
         check=True,
         cwd=tmp_path,
@@ -55,26 +55,26 @@ def test_run_inspect_prints_trace_and_skips_checkpoint(tmp_path: Path) -> None:
     assert "graph_hash=" in out, out
 
     # No side-effects on disk.
-    assert not (tmp_path / ".harbor").exists(), "inspect mode must not write checkpoint"
+    assert not (tmp_path / ".stargraph").exists(), "inspect mode must not write checkpoint"
     assert list(tmp_path.iterdir()) == [], "inspect mode must not touch cwd"
 
 
 def test_inspect_help_exits_zero() -> None:
-    """``harbor inspect --help`` must exit 0 (subcommand is registered)."""
+    """``stargraph inspect --help`` must exit 0 (subcommand is registered)."""
     result = _run("inspect", "--help")
     assert result.returncode == 0, result.stderr
     assert "run_id" in result.stdout.lower()
 
 
 def test_simulate_help_exits_zero() -> None:
-    """``harbor simulate --help`` must exit 0 (subcommand is registered)."""
+    """``stargraph simulate --help`` must exit 0 (subcommand is registered)."""
     result = _run("simulate", "--help")
     assert result.returncode == 0, result.stderr
     assert "--fixtures" in strip_ansi(result.stdout)
 
 
 def test_simulate_runs_and_prints_trace(tmp_path: Path) -> None:
-    """``harbor simulate --fixtures`` must print a per-rule firing trace."""
+    """``stargraph simulate --fixtures`` must print a per-rule firing trace."""
     fixtures = tmp_path / "fixtures.yaml"
     fixtures.write_text("node_a: {}\nnode_b: {}\n", encoding="utf-8")
     result = _run("simulate", str(SAMPLE_GRAPH), "--fixtures", str(fixtures))
@@ -83,10 +83,10 @@ def test_simulate_runs_and_prints_trace(tmp_path: Path) -> None:
 
 
 def test_inspect_filters_by_run_id(tmp_path: Path) -> None:
-    """``harbor inspect <run_id> --log-file`` round-trips a real audit log.
+    """``stargraph inspect <run_id> --log-file`` round-trips a real audit log.
 
-    Drives ``harbor run --log-file`` end-to-end first to produce a real
-    JSONL audit log, then invokes ``harbor inspect`` with the run-id
+    Drives ``stargraph run --log-file`` end-to-end first to produce a real
+    JSONL audit log, then invokes ``stargraph inspect`` with the run-id
     parsed from the run's stdout and asserts every emitted line carries
     the same ``run_id``.
     """
@@ -94,7 +94,7 @@ def test_inspect_filters_by_run_id(tmp_path: Path) -> None:
     checkpoint_db = tmp_path / "ck.sqlite"
     run_result = subprocess.run(
         [
-            "harbor",
+            "stargraph",
             "run",
             str(SAMPLE_GRAPH),
             "--log-file",
@@ -120,7 +120,7 @@ def test_inspect_filters_by_run_id(tmp_path: Path) -> None:
 
 
 def test_inspect_force_loud_on_no_match(tmp_path: Path) -> None:
-    """``harbor inspect`` exits 1 when no audit record matches (FR-6)."""
+    """``stargraph inspect`` exits 1 when no audit record matches (FR-6)."""
     log_file = tmp_path / "empty.jsonl"
     log_file.write_text("", encoding="utf-8")
     result = _run("inspect", "no-such-run", "--log-file", str(log_file), check=False)

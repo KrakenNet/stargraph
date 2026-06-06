@@ -2,7 +2,7 @@
 """TDD-RED→GREEN: ``WaitingForInputEvent`` cassette/override semantics (FR-86, AC-14.7, NFR-4).
 
 Pins the cf-replay decision rule at a step that emitted a
-:class:`~harbor.runtime.events.WaitingForInputEvent`:
+:class:`~stargraph.runtime.events.WaitingForInputEvent`:
 
 1. **Default (no override)**: ``mutation.respond_payloads`` is ``None``
    or has no entry for ``step_n`` -- the helper returns ``None`` and the
@@ -20,19 +20,19 @@ Pins the cf-replay decision rule at a step that emitted a
    pre-image).
 
 The tests deliberately do not depend on a step-by-step replay engine
-(none exists yet -- see :meth:`harbor.GraphRun.counterfactual` which
+(none exists yet -- see :meth:`stargraph.GraphRun.counterfactual` which
 only applies ``state_overrides`` at the fork step). They pin the
 helper contract that a future cf-replay engine will consume.
 """
 
 from __future__ import annotations
 
-from harbor.replay import (
+from stargraph.replay import (
     CounterfactualMutation,
     apply_respond_override,
     derived_graph_hash,
 )
-from harbor.replay.counterfactual import CF_RESPOND_SOURCE_PREFIX
+from stargraph.replay.counterfactual import CF_RESPOND_SOURCE_PREFIX
 
 
 def test_no_override_returns_none_for_cassette_replay() -> None:
@@ -72,7 +72,7 @@ def test_override_payload_is_raw_dict_not_envelope() -> None:
     assert result is not None
     payload, _ = result
     # The payload is the raw dict, not wrapped (no envelope, no
-    # serialization). Downstream cf-replay asserts a ``harbor.evidence``
+    # serialization). Downstream cf-replay asserts a ``stargraph.evidence``
     # fact with ``data=<this dict>`` -- same shape as live ``respond``.
     assert payload is raw_response or payload == raw_response
 

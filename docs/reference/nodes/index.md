@@ -20,8 +20,8 @@ never mutate state in place.
 | [`broker`](broker.md) | `BrokerNode` | Calls `nautilus.Broker.arequest`. | `read` | re-execute |
 
 The `kind` strings above are the IR-level node-factory keys; the registry resolves
-each one to a concrete class. See [`harbor.cli.run._NODE_FACTORIES`][cli-factories]
-for the POC `echo` / `halt` / `dspy` path and `harbor.serve.lifecycle` for the
+each one to a concrete class. See [`stargraph.cli.run._NODE_FACTORIES`][cli-factories]
+for the POC `echo` / `halt` / `dspy` path and `stargraph.serve.lifecycle` for the
 production registration table.
 
 ## Side-effect classification

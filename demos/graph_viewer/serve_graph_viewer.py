@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """Lightweight serve script for the graph-viewer demo.
 
-Loads one or more harbor.yaml files, builds topology JSON from the IR,
+Loads one or more stargraph.yaml files, builds topology JSON from the IR,
 and serves both the API and the static viewer UI.
 
 Usage:
 
     uv run --no-project python -m demos.graph_viewer.serve_graph_viewer \
-        --graph demos/sentinel_dark_watch/graph/harbor.yaml
+        --graph demos/sentinel_dark_watch/graph/stargraph.yaml
 
     # or multiple graphs:
     uv run --no-project python -m demos.graph_viewer.serve_graph_viewer \
-        --graph demos/sentinel_dark_watch/graph/harbor.yaml \
-        --graph demos/everything-demo/graph/harbor.yaml
+        --graph demos/sentinel_dark_watch/graph/stargraph.yaml \
+        --graph demos/everything-demo/graph/stargraph.yaml
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from harbor.ir._models import IRDocument
+from stargraph.ir._models import IRDocument
 
 _NODE_ID_RE = re.compile(r"\(node-id\s*\(id\s+([A-Za-z0-9_\-:.]+)\s*\)\s*\)")
 _PHASE_RE = re.compile(r"^#\s*-{3,}\s*(.+?)\s*-{3,}\s*$")
@@ -210,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="serve_graph_viewer",
-        description="Harbor graph viewer — interactive IR visualizer.",
+        description="Stargraph graph viewer — interactive IR visualizer.",
     )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=9100)
@@ -224,14 +224,14 @@ def main(argv: list[str] | None = None) -> int:
         "--upstream",
         default=None,
         help=(
-            "URL of an upstream harbor serve (e.g. http://localhost:9000). "
+            "URL of an upstream stargraph serve (e.g. http://localhost:9000). "
             "When set, /api/runs* routes proxy to upstream /v1/runs* and the "
             "WS /api/runs/{id}/stream forwards from upstream /v1/runs/{id}/stream."
         ),
     )
     args = parser.parse_args(argv)
 
-    from harbor.graph.definition import Graph
+    from stargraph.graph.definition import Graph
 
     topologies: dict[str, dict[str, Any]] = {}
 
@@ -247,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
             f"(nodes={len(ir_doc.nodes)}, rules={len(ir_doc.rules)}, hash={graph_obj.graph_hash[:12]})"
         )
 
-    app = FastAPI(title="harbor-graph-viewer")
+    app = FastAPI(title="stargraph-graph-viewer")
     app.add_middleware(
         CORSMiddleware,
         allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
@@ -284,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             ir_doc = IRDocument.model_validate(_yaml.safe_load(raw))
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"invalid harbor.yaml: {exc}") from exc
+            raise HTTPException(status_code=400, detail=f"invalid stargraph.yaml: {exc}") from exc
         graph_obj = Graph(ir=ir_doc)
         topo = _topology_for(ir_doc, raw, graph_obj.graph_hash)
         topologies[ir_doc.id] = topo

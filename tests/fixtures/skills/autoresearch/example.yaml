@@ -5,7 +5,7 @@
 # Minimal IRDocument referenced by `AutoresearchSkill.subgraph` once Phase-2
 # wiring loads it through `SubGraphNode`. POC scope: gather (stub web fetch
 # + RagSkill vector retrieval) -> assemble. State schema mirrors
-# `harbor.skills.refs.autoresearch.AutoresearchState` field names
+# `stargraph.skills.refs.autoresearch.AutoresearchState` field names
 # (FR-23 declared-output channels).
 ir_version: "1.0.0"
 id: "skill:autoresearch.example"

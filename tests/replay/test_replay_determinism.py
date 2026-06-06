@@ -10,8 +10,8 @@ same recording. The contract per design §3.8.5:
   runs (canonical-JSON SHA-256 of the per-step ``state`` dict).
 * The event sequence is byte-identical when normalized to drop the
   wall-clock fields the shims do *not* cover (``ts`` on
-  :class:`harbor.runtime.events.EventBase`, ``run_duration_ms`` on
-  :class:`~harbor.runtime.events.ResultEvent`).
+  :class:`stargraph.runtime.events.EventBase`, ``run_duration_ms`` on
+  :class:`~stargraph.runtime.events.ResultEvent`).
 
 The "LLM call" is stubbed by a node that consumes the determinism
 shims directly (``now()``, ``random()``, ``uuid4()``); no network,
@@ -30,13 +30,13 @@ from typing import TYPE_CHECKING, Any
 import anyio
 import pytest
 
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.ir._models import HaltAction
-from harbor.nodes.base import NodeBase
-from harbor.replay import determinism
-from harbor.runtime.events import ResultEvent
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.ir._models import HaltAction
+from stargraph.nodes.base import NodeBase
+from stargraph.replay import determinism
+from stargraph.runtime.events import ResultEvent
 
 if TYPE_CHECKING:
     from pathlib import Path

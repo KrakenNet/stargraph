@@ -3,14 +3,14 @@
 
 Pins the contract for hash-mismatch handling on resume *before* the
 implementation lands in task 3.26. Currently RED because
-:meth:`harbor.GraphRun.resume` raises :class:`NotImplementedError`.
+:meth:`stargraph.GraphRun.resume` raises :class:`NotImplementedError`.
 
 Cases (FR-20, NFR-9, AC-3.1):
 
 1. ``test_resume_refuses_on_graph_hash_mismatch`` -- when the persisted
    checkpoint's ``graph_hash`` does not match the parent ``Graph``'s
    current ``graph_hash``, ``resume`` raises
-   :class:`harbor.errors.CheckpointError` with ``context`` containing
+   :class:`stargraph.errors.CheckpointError` with ``context`` containing
    ``expected_hash``, ``actual_hash``, and ``migrate_available=False``.
 2. ``test_resume_hash_mismatch_error_carries_structured_context`` --
    the error's ``context`` dict surfaces the three structured keys so
@@ -18,7 +18,7 @@ Cases (FR-20, NFR-9, AC-3.1):
    "Error is structured ... with ``expected_hash``, ``actual_hash``,
    ``migrate_available: bool``").
 3. ``test_resume_passes_when_ir_migrate_block_applies`` -- when the
-   parent ``Graph``'s IR carries a :class:`~harbor.ir.MigrateBlock`
+   parent ``Graph``'s IR carries a :class:`~stargraph.ir.MigrateBlock`
    whose ``from_hash`` matches the checkpoint's stored ``graph_hash``
    and ``to_hash`` matches the current graph hash, ``resume`` succeeds
    (the migrate block "applies"; FR-20 + NFR-9).
@@ -31,11 +31,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor import Graph, GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.errors import CheckpointError
-from harbor.ir import IRDocument, MigrateBlock, NodeSpec
+from stargraph import Graph, GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.errors import CheckpointError
+from stargraph.ir import IRDocument, MigrateBlock, NodeSpec
 
 if TYPE_CHECKING:
     from pathlib import Path

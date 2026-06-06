@@ -1,21 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 """Value-bearing fact taxonomy (design §4.3, Learning A).
 
-Pins the classification table from design §4.3 that splits Harbor's fact
+Pins the classification table from design §4.3 that splits Stargraph's fact
 templates into **value-bearing** (must carry the 6-slot
-:class:`~harbor.fathom.ProvenanceBundle`) and **metadata-only** (control
+:class:`~stargraph.fathom.ProvenanceBundle`) and **metadata-only** (control
 plane / telemetry / debug; no state-derivation, no provenance contract
 required by FR-3).
 
 The taxonomy itself is enforced statically by
 :mod:`tests.unit.test_provenance_enforcer` (no ``.assert_fact(...)`` outside
-``src/harbor/fathom/``). This integration test does two things on top:
+``src/stargraph/fathom/``). This integration test does two things on top:
 
 1. **Schema pin** -- the ``_TAXONOMY`` table mirrors design §4.3 verbatim;
    if a classification ever changes, this test is the canonical place to
    reflect that.
 2. **Provenance contract sanity** -- when a value-bearing fact template is
-   asserted through :meth:`~harbor.fathom.FathomAdapter.assert_with_provenance`,
+   asserted through :meth:`~stargraph.fathom.FathomAdapter.assert_with_provenance`,
    all 6 provenance slots (``_origin _source _run_id _step _confidence
    _timestamp``) reach the underlying ``engine.assert_fact`` call. When a
    metadata-only template is asserted directly through ``engine.assert_fact``
@@ -33,23 +33,23 @@ from unittest.mock import MagicMock
 import fathom
 import pytest
 
-from harbor.fathom import FathomAdapter, ProvenanceBundle
+from stargraph.fathom import FathomAdapter, ProvenanceBundle
 
 # Design §4.3 verbatim taxonomy. ``True`` = value-bearing (FR-3 mandates the
 # 6-slot ProvenanceBundle); ``False`` = metadata-only (telemetry / control
 # plane / debug; no state-derivation, no provenance contract).
 _TAXONOMY: dict[str, bool] = {
-    "harbor.tool-result": True,
-    "harbor.tool-call": True,
-    "harbor.evidence": True,
-    "harbor.tokens-used": False,
-    "harbor.transition": False,
-    "harbor.checkpoint": False,
-    "harbor.error": False,
-    "harbor.heartbeat": False,
-    # ``harbor.disagreement`` is value-bearing in v1.x but deferred in v1
+    "stargraph.tool-result": True,
+    "stargraph.tool-call": True,
+    "stargraph.evidence": True,
+    "stargraph.tokens-used": False,
+    "stargraph.transition": False,
+    "stargraph.checkpoint": False,
+    "stargraph.error": False,
+    "stargraph.heartbeat": False,
+    # ``stargraph.disagreement`` is value-bearing in v1.x but deferred in v1
     # (epic decision 11). Listed for table completeness.
-    "harbor.disagreement": True,
+    "stargraph.disagreement": True,
 }
 
 _REQUIRED_PROV_SLOTS: frozenset[str] = frozenset(
@@ -77,17 +77,17 @@ def test_taxonomy_table_matches_design_section_4_3() -> None:
     design §4.3 in the same commit.
     """
     expected_value_bearing = {
-        "harbor.tool-result",
-        "harbor.tool-call",
-        "harbor.evidence",
-        "harbor.disagreement",
+        "stargraph.tool-result",
+        "stargraph.tool-call",
+        "stargraph.evidence",
+        "stargraph.disagreement",
     }
     expected_metadata = {
-        "harbor.tokens-used",
-        "harbor.transition",
-        "harbor.checkpoint",
-        "harbor.error",
-        "harbor.heartbeat",
+        "stargraph.tokens-used",
+        "stargraph.transition",
+        "stargraph.checkpoint",
+        "stargraph.error",
+        "stargraph.heartbeat",
     }
     actual_value_bearing = {t for t, vb in _TAXONOMY.items() if vb}
     actual_metadata = {t for t, vb in _TAXONOMY.items() if not vb}
@@ -135,7 +135,7 @@ def test_metadata_template_does_not_require_provenance_at_engine_layer(
     contain the 6 provenance underscore-slots.
 
     (The AST-walker enforcer in ``test_provenance_enforcer.py`` still bans
-    ``.assert_fact(...)`` calls in modules outside ``src/harbor/fathom/``;
+    ``.assert_fact(...)`` calls in modules outside ``src/stargraph/fathom/``;
     this test asserts only that the wire format itself is unconstrained for
     metadata templates.)
     """
@@ -174,10 +174,10 @@ def test_runtime_classifier_routes_by_taxonomy() -> None:
     :meth:`assert_with_provenance` (value-bearing) or (b) forwards directly
     to the metadata sink without provenance (metadata-only).
     """
-    import harbor.fathom as _fathom_pkg
+    import stargraph.fathom as _fathom_pkg
 
     # Marker symbol; the future runtime classifier will export it.
     assert hasattr(_fathom_pkg, "emit_by_taxonomy"), (
-        "TODO: implement harbor.fathom.emit_by_taxonomy as the per-template "
+        "TODO: implement stargraph.fathom.emit_by_taxonomy as the per-template "
         "router described in design §4.3."
     )

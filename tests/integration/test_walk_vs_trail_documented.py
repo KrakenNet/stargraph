@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Walk-vs-trail divergence documented test (FR-12, AC-9.5).
 
-Pins the Protocol-level documentation that Harbor's portable Cypher
+Pins the Protocol-level documentation that Stargraph's portable Cypher
 subset returns *walks* (vertices and edges may repeat) under Kuzu, while
 Neo4j 5 Cypher returns *trails* (edges unique). Per design §3.2 / AC-9.5
 this divergence MUST be acknowledged at the GraphStore Protocol level so
@@ -11,12 +11,12 @@ providers.
 Three checks:
 
 1. :func:`test_graphstore_docstring_mentions_walk_and_trail` -- the
-   :class:`~harbor.stores.graph.GraphStore` Protocol docstring (or the
-   :mod:`harbor.stores.graph` module docstring) names both ``walk`` and
+   :class:`~stargraph.stores.graph.GraphStore` Protocol docstring (or the
+   :mod:`stargraph.stores.graph` module docstring) names both ``walk`` and
    ``trail`` so the divergence cannot regress silently.
 2. :func:`test_is_trail_flagged_kuzu_only` -- the docstring flags trail
    filtering as provider-specific / Kuzu-only (no ``is_trail`` flag is
-   exposed by :class:`~harbor.stores.ryugraph.RyuGraphStore`).
+   exposed by :class:`~stargraph.stores.ryugraph.RyuGraphStore`).
 3. :func:`test_walk_pattern_returns_potentially_more_results` -- a small
    triangle ``a -> b -> a`` with ``hops=2`` exercises the cycle so the
    walk-semantics expectation (potentially more paths than under trail)
@@ -30,9 +30,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores import graph as graph_module
-from harbor.stores.graph import GraphStore, NodeRef
-from harbor.stores.ryugraph import RyuGraphStore
+from stargraph.stores import graph as graph_module
+from stargraph.stores.graph import GraphStore, NodeRef
+from stargraph.stores.ryugraph import RyuGraphStore
 
 if TYPE_CHECKING:
     from pathlib import Path

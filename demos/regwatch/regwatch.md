@@ -13,7 +13,7 @@
 
 =============================================================================
 
-[harbor.triggers.cron  -- 04:00 daily]
+[stargraph.triggers.cron  -- 04:00 daily]
              │
              ▼
 [FetchRegFeedsTool]
@@ -25,7 +25,7 @@
              │  Per source, extracts (rule_id, section, body, effective_date).
              │  Each fact stamped with full ProvenanceBundle:
              │    origin=fda.gov/..., captured_at=ISO, author='FDA',
-             │    contributor=Harbor pipeline.
+             │    contributor=Stargraph pipeline.
              │
              ▼
 [DiffNode]
@@ -74,7 +74,7 @@
              │  Saves message-id for audit chain.
              │
              ▼
-[harbor.audit.JSONLAuditSink]
+[stargraph.audit.JSONLAuditSink]
              Ed25519-signed: feeds_fetched, deltas, citations, brief_hash,
              email_message_id, ruleset_hash.
 
@@ -92,13 +92,13 @@
 - Real, recurring, expensive problem with a budget line.
 - Compliance buyers are allergic to "AI suggestions" without provenance.
   This pipeline IS provenance.
-- The on-prem / air-gap variant lights up Harbor's signed-policy +
+- The on-prem / air-gap variant lights up Stargraph's signed-policy +
   pinned-weights story for buyers that can't move data off-prem.
 - 5-minute investment for the user (point at 5 feeds, list 50 policies);
   hours of compliance work saved per day.
 
 =============================================================================
-                         HARBOR CAPABILITIES EXERCISED
+                         STARGRAPH CAPABILITIES EXERCISED
 =============================================================================
 
   Triggers:      cron (daily)
@@ -121,7 +121,7 @@
 
   demos/regwatch/
     README.md
-    harbor.yaml
+    stargraph.yaml
     bosun-packs/
       compliance-policy/          -- signed
     config/

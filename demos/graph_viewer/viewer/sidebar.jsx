@@ -100,7 +100,7 @@ window.Sidebar = function Sidebar({ topology, onHighlightNodes, showPhases, onTo
 
   return h('div', { className: 'sidebar' }, [
     h('div', { className: 'sidebar-header' }, [
-      h('h1', { className: 'sidebar-title' }, 'Harbor Graph'),
+      h('h1', { className: 'sidebar-title' }, 'Stargraph Graph'),
       h('div', { className: 'sidebar-graph-id mono' }, topology.graph_id),
     ]),
 
@@ -233,7 +233,7 @@ window.Sidebar = function Sidebar({ topology, onHighlightNodes, showPhases, onTo
             h('span', { className: 'entity-id mono' }, g.id),
             g.version ? h('span', { className: 'entity-version' }, 'v' + g.version) : null,
             g.requires ? h('div', { className: 'entity-meta' },
-              'facts=' + (g.requires.harbor_facts_version || '?') +
+              'facts=' + (g.requires.stargraph_facts_version || '?') +
               ' api=' + (g.requires.api_version || '?')
             ) : null,
           ]);

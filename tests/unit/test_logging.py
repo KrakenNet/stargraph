@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.logging` (AC-3.3, AC-3.4, NFR-6).
+"""Unit tests for :mod:`stargraph.logging` (AC-3.3, AC-3.4, NFR-6).
 
 Covers:
 
@@ -18,8 +18,8 @@ from typing import Any
 
 import pytest
 
-from harbor.logging import get_logger, run_context
-from harbor.logging._context import get_node_id, get_run_id, get_step
+from stargraph.logging import get_logger, run_context
+from stargraph.logging._context import get_node_id, get_run_id, get_step
 
 
 def _last_json_line(captured: str) -> dict[str, Any]:
@@ -33,7 +33,7 @@ def _last_json_line(captured: str) -> dict[str, Any]:
 @pytest.mark.unit
 def test_get_logger_returns_logger_with_event_method() -> None:
     """:func:`get_logger` returns a logger exposing the standard level methods."""
-    log = get_logger("harbor.test")
+    log = get_logger("stargraph.test")
 
     # Structlog bound loggers expose info/warning/error/debug callables.
     for method in ("info", "warning", "error", "debug"):
@@ -43,15 +43,15 @@ def test_get_logger_returns_logger_with_event_method() -> None:
 @pytest.mark.unit
 def test_log_emits_json_with_correlation_fields(capsys: pytest.CaptureFixture[str]) -> None:
     """Inside :func:`run_context`, every event includes run_id / step / node_id."""
-    log = get_logger("harbor.test")
+    log = get_logger("stargraph.test")
 
     with run_context("run-abc", 5, "node-xyz"):
-        log.info("greeting", who="harbor")
+        log.info("greeting", who="stargraph")
 
     payload = _last_json_line(capsys.readouterr().out)
 
     assert payload["event"] == "greeting"
-    assert payload["who"] == "harbor"
+    assert payload["who"] == "stargraph"
     assert payload["run_id"] == "run-abc"
     assert payload["step"] == 5
     assert payload["node_id"] == "node-xyz"
@@ -65,7 +65,7 @@ def test_log_outside_run_context_omits_correlation_fields(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """With no active run_context, correlation keys are absent from the payload."""
-    log = get_logger("harbor.test")
+    log = get_logger("stargraph.test")
 
     log.info("naked")
 
@@ -131,7 +131,7 @@ def test_nested_run_context_emits_inner_then_outer_in_logs(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Two log lines from nested blocks each carry the right correlation IDs."""
-    log = get_logger("harbor.test")
+    log = get_logger("stargraph.test")
 
     with run_context("outer", 1, "n-out"):
         with run_context("inner", 2, "n-in"):

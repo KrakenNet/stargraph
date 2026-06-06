@@ -1,9 +1,9 @@
 # Tutorial: Your First Graph
 
-In this tutorial you'll assemble the smallest useful Harbor graph: two
+In this tutorial you'll assemble the smallest useful Stargraph graph: two
 nodes, one routing rule, one Pydantic state field. You will execute it
-with `harbor run`, inspect the resulting checkpoint database with
-`harbor inspect`, and learn how the IR YAML maps onto the runtime.
+with `stargraph run`, inspect the resulting checkpoint database with
+`stargraph inspect`, and learn how the IR YAML maps onto the runtime.
 
 ## What you'll build
 
@@ -14,7 +14,7 @@ flowchart LR
     node_b --> done((done))
 ```
 
-Two nodes, both built on `EchoNode` from `harbor.nodes.base`. The first
+Two nodes, both built on `EchoNode` from `stargraph.nodes.base`. The first
 copies the seeded `message` field through state; the second is a marker
 terminal that triggers `kind: halt` from the rule pack and ends the run
 cleanly. There is no LLM, no store, no tool call — the goal is to see
@@ -24,21 +24,21 @@ checkpoints, and emit events.
 ## Prerequisites
 
 - Python 3.13+
-- `uv add harbor` (or `pip install harbor`)
-- A working directory you don't mind littering with `./.harbor/`
+- `uv add stargraph` (or `pip install stargraph`)
+- A working directory you don't mind littering with `./.stargraph/`
 
 ## Step 1 — Create the project
 
 ```bash
-mkdir hello-harbor && cd hello-harbor
+mkdir hello-stargraph && cd hello-stargraph
 uv init --bare
-uv add harbor
+uv add stargraph
 ```
 
 Verify the CLI is on `$PATH`:
 
 ```bash
-uv run harbor --help
+uv run stargraph --help
 ```
 
 You should see the seven subcommands: `run`, `inspect`, `simulate`,
@@ -46,7 +46,7 @@ You should see the seven subcommands: `run`, `inspect`, `simulate`,
 
 ## Step 2 — Declare the state model
 
-Save this as `state.py`. Harbor's IR loader can either compile a flat
+Save this as `state.py`. Stargraph's IR loader can either compile a flat
 `state_schema:` map (primitives only) or load an existing Pydantic
 `BaseModel` via `state_class: module.path:ClassName`. The latter scales
 to richer state, so we'll use it from the start.
@@ -67,13 +67,13 @@ class HelloState(BaseModel):
 ## Step 3 — Author the graph
 
 Save this as `graph.yaml`. Two nodes (`echo` and `halt`, both backed by
-`EchoNode` per `harbor.cli.run._NODE_FACTORIES`), one routing rule that
+`EchoNode` per `stargraph.cli.run._NODE_FACTORIES`), one routing rule that
 fires on the start step, one halting rule.
 
 ```yaml
 # graph.yaml
 ir_version: "1.0.0"
-id: "run:hello-harbor"
+id: "run:hello-stargraph"
 state_class: "state:HelloState"
 nodes:
   - id: node_a
@@ -95,9 +95,9 @@ rules:
 
 !!! note "Where these kinds come from"
     `kind: echo` and `kind: halt` map to `EchoNode` via the static
-    factory table in `src/harbor/cli/run.py`. For your own nodes,
+    factory table in `src/stargraph/cli/run.py`. For your own nodes,
     use the `module.path:ClassName` form (e.g.
-    `harbor.nodes.dspy:DSPyNode`) — the resolver imports it
+    `stargraph.nodes.dspy:DSPyNode`) — the resolver imports it
     dynamically.
 
 ## Step 4 — Smoke-check with `--inspect`
@@ -107,7 +107,7 @@ zero-value fixtures. `--inspect` skips node execution and only walks
 the rule firings.
 
 ```bash
-uv run harbor run graph.yaml --inspect
+uv run stargraph run graph.yaml --inspect
 ```
 
 Expected output (the graph hash will vary):
@@ -125,7 +125,7 @@ before going further.
 ## Step 5 — Execute end-to-end
 
 ```bash
-uv run harbor run graph.yaml --inputs message=hello --log-file ./.harbor/audit.jsonl
+uv run stargraph run graph.yaml --inputs message=hello --log-file ./.stargraph/audit.jsonl
 ```
 
 Expected stdout (run id will vary):
@@ -139,20 +139,20 @@ run_id=run-… status=done
 
 The CLI writes:
 
-- `./.harbor/run.sqlite` — checkpoint database (default path; override
+- `./.stargraph/run.sqlite` — checkpoint database (default path; override
   with `--checkpoint`).
-- `./.harbor/runs/<run_id>/` — per-run artifact directory.
-- `./.harbor/audit.jsonl` — per-event JSONL audit log (because we
+- `./.stargraph/runs/<run_id>/` — per-run artifact directory.
+- `./.stargraph/audit.jsonl` — per-event JSONL audit log (because we
   passed `--log-file`).
 
 ## Step 6 — Inspect the run
 
-Pull the run id from the last stdout line and feed it to `harbor inspect`.
+Pull the run id from the last stdout line and feed it to `stargraph inspect`.
 
 ```bash
-RUN_ID=$(uv run harbor run graph.yaml --inputs message=hello \
-  --log-file ./.harbor/audit.jsonl --no-summary | tail -1 | cut -d= -f2 | cut -d' ' -f1)
-uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite
+RUN_ID=$(uv run stargraph run graph.yaml --inputs message=hello \
+  --log-file ./.stargraph/audit.jsonl --no-summary | tail -1 | cut -d= -f2 | cut -d' ' -f1)
+uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite
 ```
 
 You'll see one row per checkpointed step with `(step, transition_type,
@@ -160,14 +160,14 @@ node_id, tool_calls, rule_firings)`. To dump the canonical state at a
 specific step:
 
 ```bash
-uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite --step 1
+uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite --step 1
 ```
 
 This prints the IR-canonical state dict as JSON. To diff CLIPS facts
 between two steps:
 
 ```bash
-uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite --diff 0 1
+uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite --diff 0 1
 ```
 
 ## Step 7 — Add a smoke test
@@ -206,6 +206,6 @@ def test_routing_targets_exist():
 - [Reference → nodes / base](../reference/nodes/base.md) — the
   `NodeBase` ABC every custom node implements.
 - [Engine → checkpointer](../engine/checkpointer.md) — how the SQLite
-  database in `./.harbor/run.sqlite` is laid out.
+  database in `./.stargraph/run.sqlite` is laid out.
 - [Tutorial: Add a Fathom rule pack](fathom-rules.md) — layer
   deterministic governance onto this graph.

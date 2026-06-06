@@ -4,7 +4,7 @@
 Pins three guarantees the design relies on:
 
 1. The three reference-skill modules (``rag``, ``autoresearch``, ``wiki``)
-   are importable under ``harbor.skills.refs.*`` -- this is the FR-32/33/34
+   are importable under ``stargraph.skills.refs.*`` -- this is the FR-32/33/34
    public surface.
 2. The package directory is locatable via :mod:`importlib.resources` so
    wheel-installed users (not just editable installs) can introspect it.
@@ -25,9 +25,9 @@ pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 
 
 _REFS_MODULES = (
-    "harbor.skills.refs.rag",
-    "harbor.skills.refs.autoresearch",
-    "harbor.skills.refs.wiki",
+    "stargraph.skills.refs.rag",
+    "stargraph.skills.refs.autoresearch",
+    "stargraph.skills.refs.wiki",
 )
 
 _FIXTURE_NAMES = ("rag", "autoresearch", "wiki")
@@ -41,12 +41,12 @@ def test_reference_skill_modules_importable(module_name: str) -> None:
 
 
 def test_refs_package_resource_root_accessible() -> None:
-    """``harbor.skills.refs`` resolves via :mod:`importlib.resources`.
+    """``stargraph.skills.refs`` resolves via :mod:`importlib.resources`.
 
     Pins the wheel-install path: the package must be reachable through
     the resources API, not just by editable-install filesystem lookup.
     """
-    root = files("harbor.skills.refs")
+    root = files("stargraph.skills.refs")
     init_resource = root.joinpath("__init__.py")
     assert init_resource.is_file()
 

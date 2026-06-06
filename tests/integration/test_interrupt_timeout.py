@@ -5,17 +5,17 @@ Pins the loop-side timeout policy for HITL pauses per design §9.5:
 
 1. ``timeout=timedelta(milliseconds=N)`` + no respond -> after roughly
    ``N`` ms (±100ms NFR-22 budget) the loop emits
-   :class:`~harbor.runtime.events.InterruptTimeoutEvent` carrying the
+   :class:`~stargraph.runtime.events.InterruptTimeoutEvent` carrying the
    configured ``on_timeout`` policy.
 2. ``on_timeout="halt"`` (the default when only ``timeout`` is set) ->
    the run transitions to ``state="failed"`` and emits a terminal
-   :class:`~harbor.runtime.events.ResultEvent` with ``status="failed"``.
+   :class:`~stargraph.runtime.events.ResultEvent` with ``status="failed"``.
 3. ``on_timeout="goto:<node_id>"`` -> the loop resumes execution at the
    named node *as if the InterruptAction were never present*, and the
    run exits cleanly through the normal terminal path.
 
-The tests use a fresh :class:`~harbor.graph.GraphRun` driven via
-``run.start()`` (the same surface :class:`~harbor.serve.api` uses).
+The tests use a fresh :class:`~stargraph.graph.GraphRun` driven via
+``run.start()`` (the same surface :class:`~stargraph.serve.api` uses).
 ``anyio.fail_after`` bounds the total wall time so a regression that
 makes timeout never fire trips the test instead of hanging CI.
 """
@@ -29,13 +29,13 @@ from typing import TYPE_CHECKING, Any
 import anyio
 import pytest
 
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.base import NodeBase
-from harbor.nodes.interrupt import InterruptNode
-from harbor.nodes.interrupt.interrupt_node import InterruptNodeConfig
-from harbor.runtime.events import (
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.interrupt import InterruptNode
+from stargraph.nodes.interrupt.interrupt_node import InterruptNodeConfig
+from stargraph.runtime.events import (
     InterruptTimeoutEvent,
     ResultEvent,
     WaitingForInputEvent,

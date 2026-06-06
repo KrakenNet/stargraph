@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.plugin._manifest` (FR-19, FR-20, AC-15.1-4).
+"""Unit tests for :mod:`stargraph.plugin._manifest` (FR-19, FR-20, AC-15.1-4).
 
 Covers the manifest pre-validation primitives the loader relies on:
 
 * :func:`_load_and_validate_manifest` requires the dist to expose a
-  ``harbor_plugin`` entry-point factory; it raises :class:`PluginLoadError`
+  ``stargraph_plugin`` entry-point factory; it raises :class:`PluginLoadError`
   with the dist name when missing or when the factory returns a
   non-:class:`PluginManifest` value.
 * :func:`_enforce_api_version` rejects manifests whose major
-  ``api_version`` does not match :data:`HARBOR_API_VERSION_MAJOR`,
+  ``api_version`` does not match :data:`STARGRAPH_API_VERSION_MAJOR`,
   including malformed values.
 * :func:`_detect_namespace_conflict` raises with both contributing dist
   names so operators can pick the offender to uninstall.
@@ -36,10 +36,10 @@ _FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "plugins"
 if str(_FIXTURES_DIR) not in sys.path:
     sys.path.insert(0, str(_FIXTURES_DIR))
 
-from harbor.errors import PluginLoadError  # noqa: E402
-from harbor.ir import PluginManifest  # noqa: E402
-from harbor.plugin._manifest import (  # noqa: E402
-    HARBOR_API_VERSION_MAJOR,
+from stargraph.errors import PluginLoadError  # noqa: E402
+from stargraph.ir import PluginManifest  # noqa: E402
+from stargraph.plugin._manifest import (  # noqa: E402
+    STARGRAPH_API_VERSION_MAJOR,
     _detect_namespace_conflict,
     _enforce_api_version,
     _load_and_validate_manifest,
@@ -54,7 +54,7 @@ alpha_manifest: ModuleType = importlib.import_module("plugin_alpha.manifest")
 class _FakeDist:
     """Minimal stand-in for :class:`importlib.metadata.Distribution`.
 
-    Only the ``name`` attribute is read by the Harbor loader; everything
+    Only the ``name`` attribute is read by the Stargraph loader; everything
     else on the real ``Distribution`` API is irrelevant for stage-1
     discovery.
     """
@@ -83,7 +83,7 @@ def _make_ep(name: str, value: str, group: str, dist_name: str) -> EntryPoint:
 def _patch_entry_points(eps: list[EntryPoint]) -> Any:
     """Return a context manager patching :func:`importlib.metadata.entry_points`.
 
-    The Harbor manifest module imports ``entry_points`` at module scope;
+    The Stargraph manifest module imports ``entry_points`` at module scope;
     patch the bound name on the module so calls inside
     :func:`_load_and_validate_manifest` see the synthetic data.
     """
@@ -94,7 +94,7 @@ def _patch_entry_points(eps: list[EntryPoint]) -> Any:
             out = [ep for ep in out if ep.name == name]
         return out
 
-    return patch("harbor.plugin._manifest.entry_points", fake_entry_points)
+    return patch("stargraph.plugin._manifest.entry_points", fake_entry_points)
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ def test_manifest_factory_is_zero_side_effect() -> None:
 
 
 def test_enforce_api_version_accepts_matching_major() -> None:
-    """A manifest whose api_version major matches Harbor's loads cleanly."""
+    """A manifest whose api_version major matches Stargraph's loads cleanly."""
     m = PluginManifest(
         name="ok",
         version="0.1",
@@ -137,7 +137,7 @@ def test_enforce_api_version_accepts_matching_major() -> None:
 
 
 def test_enforce_api_version_rejects_major_mismatch() -> None:
-    """``api_version="2"`` is rejected when Harbor major is 1."""
+    """``api_version="2"`` is rejected when Stargraph major is 1."""
     bad = PluginManifest.model_construct(
         name="bad",
         version="0.1",
@@ -152,7 +152,7 @@ def test_enforce_api_version_rejects_major_mismatch() -> None:
     assert "incompatible" in err.message
     assert err.context["dist"] == "bad"
     assert err.context["api_version"] == "2"
-    assert err.context["harbor_major"] == HARBOR_API_VERSION_MAJOR
+    assert err.context["stargraph_major"] == STARGRAPH_API_VERSION_MAJOR
 
 
 def test_enforce_api_version_rejects_malformed_value() -> None:
@@ -236,9 +236,9 @@ def test_detect_namespace_conflict_two_dists_raise_with_both_names() -> None:
 def test_load_and_validate_manifest_happy_path() -> None:
     """End-to-end: factory loads, returns PluginManifest, api_version OK."""
     ep = _make_ep(
-        name="harbor_plugin",
+        name="stargraph_plugin",
         value="plugin_alpha.manifest:make_manifest",
-        group="harbor",
+        group="stargraph",
         dist_name="alpha",
     )
     with _patch_entry_points([ep]):
@@ -249,11 +249,11 @@ def test_load_and_validate_manifest_happy_path() -> None:
 
 
 def test_load_and_validate_manifest_missing_factory_raises() -> None:
-    """Dist with plugin entries but no harbor_plugin factory is rejected."""
+    """Dist with plugin entries but no stargraph_plugin factory is rejected."""
     with _patch_entry_points([]), pytest.raises(PluginLoadError) as exc_info:
         _load_and_validate_manifest("alpha")
     err = exc_info.value
-    assert "no harbor_plugin" in err.message
+    assert "no stargraph_plugin" in err.message
     assert err.context["dist"] == "alpha"
 
 
@@ -261,9 +261,9 @@ def test_load_and_validate_manifest_factory_returns_non_manifest_raises() -> Non
     """Factory must return a :class:`PluginManifest`, not arbitrary objects."""
     # The fixture below is a callable the EntryPoint will resolve.
     ep = _make_ep(
-        name="harbor_plugin",
+        name="stargraph_plugin",
         value=f"{__name__}:_returns_dict_factory",
-        group="harbor",
+        group="stargraph",
         dist_name="bogus",
     )
     with _patch_entry_points([ep]), pytest.raises(PluginLoadError) as exc_info:
@@ -281,9 +281,9 @@ def _returns_dict_factory() -> dict[str, Any]:  # pyright: ignore[reportUnusedFu
 def test_load_and_validate_manifest_propagates_api_version_mismatch() -> None:
     """Stage-1 also enforces api_version; mismatched major bubbles up."""
     ep = _make_ep(
-        name="harbor_plugin",
+        name="stargraph_plugin",
         value=f"{__name__}:_returns_v2_manifest",
-        group="harbor",
+        group="stargraph",
         dist_name="future",
     )
     with _patch_entry_points([ep]), pytest.raises(PluginLoadError) as exc_info:

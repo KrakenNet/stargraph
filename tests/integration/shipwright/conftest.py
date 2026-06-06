@@ -13,7 +13,7 @@ import pytest
 
 @pytest.fixture(scope="session")
 def shipwright_dir() -> Path:
-    return Path(__file__).resolve().parents[3] / "src" / "harbor" / "skills" / "shipwright"
+    return Path(__file__).resolve().parents[3] / "src" / "stargraph" / "skills" / "shipwright"
 
 
 @pytest.fixture

@@ -7,17 +7,17 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from harbor.skills.shipwright.nodes.verify import VerifySmoke
-from harbor.skills.shipwright.state import State
+from stargraph.skills.shipwright.nodes.verify import VerifySmoke
+from stargraph.skills.shipwright.state import State
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from harbor.nodes.base import ExecutionContext
+    from stargraph.nodes.base import ExecutionContext
 
 
 pytestmark = pytest.mark.skipif(
-    shutil.which("harbor") is None, reason="harbor CLI not installed in test env"
+    shutil.which("stargraph") is None, reason="stargraph CLI not installed in test env"
 )
 
 
@@ -35,7 +35,9 @@ SMOKE_FIXTURES_EMPTY = "{}\n"
 
 @pytest.mark.integration
 async def test_smoke_runs_on_minimal_graph(tmp_path: Path) -> None:
-    state = State(artifact_files={"harbor.yaml": SMOKE_IR_YAML, "fixtures.yaml": SMOKE_FIXTURES_OK})
+    state = State(
+        artifact_files={"stargraph.yaml": SMOKE_IR_YAML, "fixtures.yaml": SMOKE_FIXTURES_OK}
+    )
     out = await VerifySmoke(work_dir=tmp_path).execute(
         state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
     )
@@ -46,7 +48,7 @@ async def test_smoke_runs_on_minimal_graph(tmp_path: Path) -> None:
 @pytest.mark.integration
 async def test_smoke_fails_on_missing_fixture(tmp_path: Path) -> None:
     state = State(
-        artifact_files={"harbor.yaml": SMOKE_IR_YAML, "fixtures.yaml": SMOKE_FIXTURES_EMPTY}
+        artifact_files={"stargraph.yaml": SMOKE_IR_YAML, "fixtures.yaml": SMOKE_FIXTURES_EMPTY}
     )
     out = await VerifySmoke(work_dir=tmp_path).execute(
         state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))

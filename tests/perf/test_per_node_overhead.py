@@ -2,7 +2,7 @@
 """Per-node overhead calibration (NFR-3, design §3.1.5).
 
 Measures the wall-clock cost of one ``NodeBase.execute()`` dispatch with a
-no-op body, taken as the lower bound on Harbor's per-step overhead. The
+no-op body, taken as the lower bound on Stargraph's per-step overhead. The
 budget is a soft target: the test prints ``p50/p95/p99`` to stdout and
 ``xfails`` (rather than fails) when the p99 exceeds the budget so the spec
 phase keeps moving forward; the calibration record lands in commit history
@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from harbor.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.base import ExecutionContext, NodeBase
 
 
 class _NoopState(BaseModel):

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-"""RetrievalNode per-branch ``harbor.transition`` emission test (FR-26, Task 3.30).
+"""RetrievalNode per-branch ``stargraph.transition`` emission test (FR-26, Task 3.30).
 
-The Phase-1 :class:`~harbor.nodes.retrieval.RetrievalNode` calls
+The Phase-1 :class:`~stargraph.nodes.retrieval.RetrievalNode` calls
 ``ctx.emit_event(payload)`` once per branch when the supplied
-:class:`~harbor.nodes.base.ExecutionContext` exposes that hook (see
-the docstring on :class:`harbor.nodes.retrieval.RetrievalNode`). The
+:class:`~stargraph.nodes.base.ExecutionContext` exposes that hook (see
+the docstring on :class:`stargraph.nodes.retrieval.RetrievalNode`). The
 Phase-1 :class:`ExecutionContext` Protocol does NOT yet declare
 ``emit_event``; concrete contexts may attach it ad-hoc. This test
 pins the contract that **when** ``emit_event`` is wired, exactly one
-``harbor.transition`` payload per branch is dispatched.
+``stargraph.transition`` payload per branch is dispatched.
 
 If the production :class:`ExecutionContext` is later tightened to a
 typed event sink (Phase-2), this test should continue to pass --
@@ -24,14 +24,14 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from pydantic import BaseModel
 
-from harbor.ir._models import StoreRef
-from harbor.nodes.retrieval import RetrievalNode
-from harbor.stores.vector import Hit
+from stargraph.ir._models import StoreRef
+from stargraph.nodes.retrieval import RetrievalNode
+from stargraph.stores.vector import Hit
 
 if TYPE_CHECKING:
-    from harbor.nodes.base import ExecutionContext
-    from harbor.stores.doc import DocStore
-    from harbor.stores.vector import VectorStore
+    from stargraph.nodes.base import ExecutionContext
+    from stargraph.stores.doc import DocStore
+    from stargraph.stores.vector import VectorStore
 
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
@@ -89,7 +89,7 @@ class _StubVectorStore:
 
 
 async def test_emits_one_transition_fact_per_branch() -> None:
-    """One :code:`harbor.transition` payload per declared store."""
+    """One :code:`stargraph.transition` payload per declared store."""
     store_a = _StubVectorStore([Hit(id="a1", score=0.0, metadata={})])
     store_b = _StubVectorStore(
         [Hit(id="b1", score=0.0, metadata={}), Hit(id="b2", score=0.0, metadata={})],
@@ -121,13 +121,13 @@ async def test_emits_one_transition_fact_per_branch() -> None:
     assert set(by_store.keys()) == {"alpha", "beta"}
 
     alpha = by_store["alpha"]
-    assert alpha["kind"] == "harbor.transition"
+    assert alpha["kind"] == "stargraph.transition"
     assert alpha["provider"] == "lancedb"
     assert alpha["n_hits"] == 1
     assert isinstance(alpha["ts"], str) and alpha["ts"]
 
     beta = by_store["beta"]
-    assert beta["kind"] == "harbor.transition"
+    assert beta["kind"] == "stargraph.transition"
     assert beta["provider"] == "lancedb"
     assert beta["n_hits"] == 2
 

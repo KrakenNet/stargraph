@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Portable-subset AST walker for ``harbor.ir._models`` (FR-10, FR-11).
+"""Portable-subset AST walker for ``stargraph.ir._models`` (FR-10, FR-11).
 
-This test parses ``src/harbor/ir/_models.py`` with :mod:`ast` (no runtime
+This test parses ``src/stargraph/ir/_models.py`` with :mod:`ast` (no runtime
 import) and enforces two independent portable-subset rules. Each rule lives
 in its own ``test_*`` function so a failure points cleanly at the violated
 contract:
@@ -41,7 +41,7 @@ import ast
 from pathlib import Path
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
-IR_MODELS_FILE: Path = PROJECT_ROOT / "src" / "harbor" / "ir" / "_models.py"
+IR_MODELS_FILE: Path = PROJECT_ROOT / "src" / "stargraph" / "ir" / "_models.py"
 
 # Pydantic ``Field(...)`` kwargs that impose a *schema constraint* (rather than
 # merely supplying a default). Any of these in a bare ``Field(...)`` default
@@ -102,7 +102,7 @@ _CONTAINER_NAMES: frozenset[str] = frozenset(
 
 
 def _load_models_ast() -> ast.Module:
-    """Parse ``src/harbor/ir/_models.py`` once per call (cheap; small file)."""
+    """Parse ``src/stargraph/ir/_models.py`` once per call (cheap; small file)."""
     return ast.parse(
         IR_MODELS_FILE.read_text(encoding="utf-8"),
         filename=str(IR_MODELS_FILE),

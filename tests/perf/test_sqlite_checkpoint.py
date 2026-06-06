@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SQLite checkpoint commit calibration (NFR-3).
 
-Times :py:meth:`harbor.checkpoint.sqlite.SQLiteCheckpointer.write` -- which
+Times :py:meth:`stargraph.checkpoint.sqlite.SQLiteCheckpointer.write` -- which
 issues an ``INSERT OR REPLACE`` plus a ``COMMIT`` against the WAL -- across
 100 sequential commits and reports p50/p95/p99 latencies in milliseconds.
 
@@ -23,8 +23,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
 
 if TYPE_CHECKING:
     from pathlib import Path

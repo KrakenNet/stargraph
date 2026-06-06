@@ -3,8 +3,8 @@
 
 Drives sustained event throughput through the WebSocket
 ``/v1/runs/{id}/stream`` route end-to-end: producer pushes a deterministic
-burst onto the run's :class:`~harbor.runtime.bus.EventBus`, the
-:class:`~harbor.serve.broadcast.EventBroadcaster` fans events out to a
+burst onto the run's :class:`~stargraph.runtime.bus.EventBus`, the
+:class:`~stargraph.serve.broadcast.EventBroadcaster` fans events out to a
 single WS subscriber, and the test asserts:
 
 1. **No event loss** -- exactly N events are received in arrival order
@@ -37,11 +37,11 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from harbor.runtime.bus import EventBus
-from harbor.runtime.events import TransitionEvent
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.events import TransitionEvent
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

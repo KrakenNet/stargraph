@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.skills.salience import RuleBasedScorer, SalienceScorer
+from stargraph.skills.salience import RuleBasedScorer, SalienceScorer
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

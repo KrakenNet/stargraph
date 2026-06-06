@@ -1,7 +1,7 @@
-# STRIDE Threat Model — Harbor v1
+# STRIDE Threat Model — Stargraph v1
 
 **Status**: v1 (cleared-mode + OSS-default).
-**Spec ref**: `harbor-serve-and-bosun` §12.1 (FR-61, FR-62, AC-8.1, AC-8.2).
+**Spec ref**: `stargraph-serve-and-bosun` §12.1 (FR-61, FR-62, AC-8.1, AC-8.2).
 **Locked decisions**: #2 (cf-respond source prefix), #5 (single-process invariant).
 
 This document enumerates the 36 STRIDE cells across 6 attack surfaces.
@@ -20,7 +20,7 @@ work plans an SBOM-gated reload path.
 |---|---------|-------------|
 | 1 | HTTP API | FastAPI routes mounted under `/v1/*`. Auth = profile-driven. |
 | 2 | WebSocket stream | `/v1/runs/{id}/stream` (SSE-equivalent over WS). |
-| 3 | Plugin loader | Entry-point discovery (`harbor.plugins`) + Bosun pack loader. |
+| 3 | Plugin loader | Entry-point discovery (`stargraph.plugins`) + Bosun pack loader. |
 | 4 | IR loader | YAML graph documents authored by humans or LLM-generated. |
 | 5 | State + Checkpointer | SQLite checkpointer, run history, audit-sink coupling. |
 | 6 | Replay engine | cf-fork mutation overlay + diff renderer. |
@@ -31,67 +31,67 @@ work plans an SBOM-gated reload path.
 
 | Surface | Mitigation / Gap |
 |---------|------------------|
-| HTTP API | mTLS in cleared profile (`harbor.serve.auth:MtlsProvider`); BearerJWT (JWKS-pinned) in OSS-default. Bypass-provider rejected at startup when `profile.allow_anonymous=False`. |
-| WebSocket | Auth header carried in upgrade request; same provider chain as HTTP. Anonymous WS connections refused under cleared (`harbor.serve.api:websocket_endpoint`). |
-| Plugin loader | Pack signing alg-strict: only Ed25519 accepted; `none`/HS256/RS256 rejected at load (`harbor.bosun.signing:verify`). Static pubkey allow-list + TOFU first-pin (FR-21). |
+| HTTP API | mTLS in cleared profile (`stargraph.serve.auth:MtlsProvider`); BearerJWT (JWKS-pinned) in OSS-default. Bypass-provider rejected at startup when `profile.allow_anonymous=False`. |
+| WebSocket | Auth header carried in upgrade request; same provider chain as HTTP. Anonymous WS connections refused under cleared (`stargraph.serve.api:websocket_endpoint`). |
+| Plugin loader | Pack signing alg-strict: only Ed25519 accepted; `none`/HS256/RS256 rejected at load (`stargraph.bosun.signing:verify`). Static pubkey allow-list + TOFU first-pin (FR-21). |
 | IR loader | n/a — by construction. The IR loader has no notion of identity; it consumes already-parsed YAML. Author identity is upstream (git, signing). |
 | State + Checkpointer | n/a — by construction. The checkpointer is identity-blind; it persists what the engine commits. Spoofing is upstream (the actor that emitted the fact). |
-| Replay engine | cf-respond facts forced to `source="cf:<actor>"` per locked Decision #2. The cf-mutation cannot impersonate a real user (`harbor.serve.respond:cf_respond`). |
+| Replay engine | cf-respond facts forced to `source="cf:<actor>"` per locked Decision #2. The cf-mutation cannot impersonate a real user (`stargraph.serve.respond:cf_respond`). |
 
 ### Tampering
 
 | Surface | Mitigation / Gap |
 |---------|------------------|
-| HTTP API | TLS terminates at the edge (Envoy/nginx in cleared, FastAPI direct in OSS). Body validation via Pydantic 422. Rate-limiter prevents tampering-via-amplification (`harbor.serve.ratelimit`). |
-| WebSocket | WS frames are read-only on the server side (events flow out, never in). Slow-consumer disconnects with 1011 prevent backpressure tampering (`harbor.serve.broadcast:_emit_with_timeout`). |
+| HTTP API | TLS terminates at the edge (Envoy/nginx in cleared, FastAPI direct in OSS). Body validation via Pydantic 422. Rate-limiter prevents tampering-via-amplification (`stargraph.serve.ratelimit`). |
+| WebSocket | WS frames are read-only on the server side (events flow out, never in). Slow-consumer disconnects with 1011 prevent backpressure tampering (`stargraph.serve.broadcast:_emit_with_timeout`). |
 | Plugin loader | **GAP**: Fathom-pack hot-reload absent (AC-8.3). Tampering with a pack on disk requires a serve restart to take effect — the running process is immune to in-place pack mutation. Post-1.0: SBOM-gated reload with re-verification of signatures + capability deltas. |
 | IR loader | YAML safe-load only (`yaml.safe_load`); no `!!python/object` exec. Schema validation via Pydantic before any handler dispatches. Cap-grant audit for IR-declared capabilities. |
-| State + Checkpointer | Checkpoint rows immutable post-commit (append-only schema with `step` PK). Audit-sink fsync on every write (`harbor.audit.jsonl:write`). JSONL signing key (Ed25519) for tamper-evident logs. |
-| Replay engine | cf-fork copies parent rows by reference; does not mutate parent state. Mutation overlay validated before fork-step seek (`harbor.replay.counterfactual:apply_mutation`). |
+| State + Checkpointer | Checkpoint rows immutable post-commit (append-only schema with `step` PK). Audit-sink fsync on every write (`stargraph.audit.jsonl:write`). JSONL signing key (Ed25519) for tamper-evident logs. |
+| Replay engine | cf-fork copies parent rows by reference; does not mutate parent state. Mutation overlay validated before fork-step seek (`stargraph.replay.counterfactual:apply_mutation`). |
 
 ### Repudiation
 
 | Surface | Mitigation / Gap |
 |---------|------------------|
-| HTTP API | Every authenticated request emits a `request_audit` event with `(actor, capability, route, status)`. JSONL sink is fsync'd. Audit-sink mandatory under cleared (`harbor.serve.profiles:ClearedProfile.audit_sink_required=True`). |
+| HTTP API | Every authenticated request emits a `request_audit` event with `(actor, capability, route, status)`. JSONL sink is fsync'd. Audit-sink mandatory under cleared (`stargraph.serve.profiles:ClearedProfile.audit_sink_required=True`). |
 | WebSocket | WS connect/disconnect emits audit events. Per-frame events carry `actor` lineage. |
-| Plugin loader | Pack-load events recorded with pack hash + signature verification result (`harbor.bosun.loader`). |
+| Plugin loader | Pack-load events recorded with pack hash + signature verification result (`stargraph.bosun.loader`). |
 | IR loader | IR-document hash recorded in run-history `graph_hash` field. Determinism guarantee (FR-93): same IR + state -> same graph_hash. |
-| State + Checkpointer | Provenance bundle on every fact: `(origin, source, run_id, step, confidence, timestamp)` per `harbor.fathom._provenance:ProvenanceBundle`. Lineage audit script (`scripts/lineage_audit.py`) gates CI. |
+| State + Checkpointer | Provenance bundle on every fact: `(origin, source, run_id, step, confidence, timestamp)` per `stargraph.fathom._provenance:ProvenanceBundle`. Lineage audit script (`scripts/lineage_audit.py`) gates CI. |
 | Replay engine | cf-run-id minted as `cf-<uuid>`; parent linkage stored in `runs_history.parent_run_id`. cf-respond facts carry `source="cf:<actor>"` so they're never confused with parent-run respond facts. |
 
 ### Information disclosure
 
 | Surface | Mitigation / Gap |
 |---------|------------------|
-| HTTP API | TLS for all external traffic. CORS denies cross-origin in cleared. PII-scrubbing in error envelopes (`harbor.serve.api:_redact_error`). Profile-conditional default-deny on read routes (cleared). |
+| HTTP API | TLS for all external traffic. CORS denies cross-origin in cleared. PII-scrubbing in error envelopes (`stargraph.serve.api:_redact_error`). Profile-conditional default-deny on read routes (cleared). |
 | WebSocket | Same TLS posture. WS frames carry only typed `Event` shapes — no internal exception traces leak. |
 | Plugin loader | Pack contents are filesystem-readable (not over-the-wire). Pack-internal secrets are operator responsibility (POSIX file mode 0600 recommended; documented in air-gap guide). |
 | IR loader | n/a — by construction. The IR document is a public contract; no secrets in IR. |
-| State + Checkpointer | HITL audit hashes the response body, not its content (`harbor.serve.respond:_compute_body_hash`). Checkpoint rows are stored as opaque bytes — never logged. SQLite file mode 0600 in cleared (documented in air-gap guide). |
-| Replay engine | cf-fork is per-process; no cross-run leakage (`harbor.replay.counterfactual` rate-limiter scoped per actor). cf-mutation values not echoed to logs unless `--log-level=debug`. |
+| State + Checkpointer | HITL audit hashes the response body, not its content (`stargraph.serve.respond:_compute_body_hash`). Checkpoint rows are stored as opaque bytes — never logged. SQLite file mode 0600 in cleared (documented in air-gap guide). |
+| Replay engine | cf-fork is per-process; no cross-run leakage (`stargraph.replay.counterfactual` rate-limiter scoped per actor). cf-mutation values not echoed to logs unless `--log-level=debug`. |
 
 ### Denial of service
 
 | Surface | Mitigation / Gap |
 |---------|------------------|
-| HTTP API | Per-actor rate-limiter (`harbor.serve.ratelimit:TokenBucket`, design §5.5). Connection cap. Body-size cap (FastAPI default + custom dep). |
-| WebSocket | Slow-consumer disconnects with WS code 1011 + 5s emit timeout (`harbor.serve.broadcast`). Prevents single slow client from blocking broadcast. |
+| HTTP API | Per-actor rate-limiter (`stargraph.serve.ratelimit:TokenBucket`, design §5.5). Connection cap. Body-size cap (FastAPI default + custom dep). |
+| WebSocket | Slow-consumer disconnects with WS code 1011 + 5s emit timeout (`stargraph.serve.broadcast`). Prevents single slow client from blocking broadcast. |
 | Plugin loader | Pack-load is one-shot at startup — no DoS surface during request handling. Bosun rule-eval CPU bounded by CLIPS rule-fact count caps (per pack). |
 | IR loader | YAML parse depth/size limits via `yaml.safe_load` defaults. IR document size capped pre-load. |
-| State + Checkpointer | SQLite single-writer-lock guarantees no contention storm. Audit-sink rotates at 100 MiB to bound disk usage. **GAP**: no per-run wall-clock cap in v1 — runaway IR can hang a run indefinitely; operator kill via `harbor cancel <run_id>`. Post-1.0: `--max-run-duration` profile knob. |
-| Replay engine | cf-rate-limiter = 1 cf-fork per actor per minute (`harbor.serve.api:_cf_rate_limiter`). Prevents cf-amplification DoS. |
+| State + Checkpointer | SQLite single-writer-lock guarantees no contention storm. Audit-sink rotates at 100 MiB to bound disk usage. **GAP**: no per-run wall-clock cap in v1 — runaway IR can hang a run indefinitely; operator kill via `stargraph cancel <run_id>`. Post-1.0: `--max-run-duration` profile knob. |
+| Replay engine | cf-rate-limiter = 1 cf-fork per actor per minute (`stargraph.serve.api:_cf_rate_limiter`). Prevents cf-amplification DoS. |
 
 ### Elevation of privilege
 
 | Surface | Mitigation / Gap |
 |---------|------------------|
-| HTTP API | Capability gate at route boundary (`harbor.serve.api:require`). Cleared profile = default-deny on the 7 mutation routes (cancel/pause/respond/cf/artifacts r+w/broker). Capability-deny audit emission verified (task 3.22). |
+| HTTP API | Capability gate at route boundary (`stargraph.serve.api:require`). Cleared profile = default-deny on the 7 mutation routes (cancel/pause/respond/cf/artifacts r+w/broker). Capability-deny audit emission verified (task 3.22). |
 | WebSocket | WS read-only — no privilege escalation surface. Capability check on connect (read-runs cap required). |
 | Plugin loader | **GAP**: Fathom-pack hot-reload absent (AC-8.3) — a tampered pack with elevated capability declarations cannot take effect mid-run; serve restart required. Post-1.0: SBOM-gated reload with capability-delta review. Pack signing prevents on-disk tampering from succeeding without operator complicity. |
 | IR loader | IR-declared capabilities checked against `Capabilities` instance pinned by profile. Cleared profile pins a stricter set. No `!!python/object` exec route. |
 | State + Checkpointer | `--allow-side-effects` startup gate under cleared (task 2.37) — refuses to start unless operator explicitly opts in. Replay-mode side-effect blocker is independent of this gate. |
-| Replay engine | Replay isolation: cf-runs do NOT trigger external side effects (`harbor.replay.counterfactual:_replay_ctx`). HITL `respond` rate-limited per actor + scoped to the parent run's actors. |
+| Replay engine | Replay isolation: cf-runs do NOT trigger external side effects (`stargraph.replay.counterfactual:_replay_ctx`). HITL `respond` rate-limited per actor + scoped to the parent run's actors. |
 
 ## Trigger trust boundaries
 
@@ -102,9 +102,9 @@ the trust axis:
 
 | Trigger | Trust posture | Code reference |
 |---------|---------------|----------------|
-| **`webhook`** | **Untrusted by default**, HMAC-gated. Body validated, signature verified against the per-source secret before enqueue. Replay window enforced. | [`src/harbor/triggers/webhook.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/webhook.py) |
-| **`cron`** | **Trusts nothing external** (good). Schedule is operator-authored at deploy time; trigger fires from the in-process scheduler with no caller identity to spoof. | [`src/harbor/triggers/cron.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/cron.py) |
-| **`manual.enqueue`** | **Trusts the caller** (Python API). Anyone with import access can synthesize a run; HTTP-equivalent gating happens at `POST /v1/runs` (capability gate via profile). Use only inside trusted entry points. | [`src/harbor/triggers/manual.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/manual.py) |
+| **`webhook`** | **Untrusted by default**, HMAC-gated. Body validated, signature verified against the per-source secret before enqueue. Replay window enforced. | [`src/stargraph/triggers/webhook.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/webhook.py) |
+| **`cron`** | **Trusts nothing external** (good). Schedule is operator-authored at deploy time; trigger fires from the in-process scheduler with no caller identity to spoof. | [`src/stargraph/triggers/cron.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/cron.py) |
+| **`manual.enqueue`** | **Trusts the caller** (Python API). Anyone with import access can synthesize a run; HTTP-equivalent gating happens at `POST /v1/runs` (capability gate via profile). Use only inside trusted entry points. | [`src/stargraph/triggers/manual.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/manual.py) |
 
 The HTTP `POST /v1/runs` route shares the manual trigger's enqueue
 path but is gated by the capability check before it lands there;
@@ -139,13 +139,13 @@ What the pin does **not** cover:
   anything signed by it loads. Rotation is operator-driven; there is
   no automatic revocation feed in v1.
 
-Source: [`src/harbor/bosun/signing.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/bosun/signing.py),
+Source: [`src/stargraph/bosun/signing.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/bosun/signing.py),
 plus the alg-strict guard documented in [how-to/bosun-pack.md](../how-to/bosun-pack.md).
 
 ## Documented gaps (post-1.0 work)
 
 1. **Fathom-pack hot-reload** (AC-8.3) — present in 2 cells (Tampering × Plugin loader, Elevation × Plugin loader). Mitigation: serve restart for any pack mutation. Post-1.0: SBOM-gated reload.
-2. **Per-run wall-clock cap** (DoS × State+Checkpointer) — operator-driven via `harbor cancel`. Post-1.0: profile-level `--max-run-duration` knob.
+2. **Per-run wall-clock cap** (DoS × State+Checkpointer) — operator-driven via `stargraph cancel`. Post-1.0: profile-level `--max-run-duration` knob.
 
 ## How to use this document
 

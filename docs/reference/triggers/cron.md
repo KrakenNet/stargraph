@@ -1,6 +1,6 @@
 # CronTrigger
 
-`harbor.triggers.cron.CronTrigger` is the cron-driven trigger plugin. One
+`stargraph.triggers.cron.CronTrigger` is the cron-driven trigger plugin. One
 instance owns N [`CronSpec`](#cronspec) rows; on `start` it spawns one
 background `asyncio.Task` per spec that loops:
 
@@ -11,7 +11,7 @@ background `asyncio.Task` per spec that loops:
 4. Enqueue via `Scheduler.enqueue`.
 5. Repeat.
 
-Source: `src/harbor/triggers/cron.py`.
+Source: `src/stargraph/triggers/cron.py`.
 
 ## CronSpec
 
@@ -28,8 +28,8 @@ Source: `src/harbor/triggers/cron.py`.
 
 | Method | Behaviour |
 | --- | --- |
-| `init(deps)` | Stash `deps["scheduler"]` and parse `deps["cron_specs"]`. Eagerly resolves each `tz` and constructs a `cronsim.CronSim` so bad config fails fast at startup. Raises `HarborRuntimeError` if `deps` is missing required keys or the spec list is empty. |
-| `start()` | Idempotent. Spawns one `asyncio.Task` per spec, named `harbor.triggers.cron.<trigger_id>`. |
+| `init(deps)` | Stash `deps["scheduler"]` and parse `deps["cron_specs"]`. Eagerly resolves each `tz` and constructs a `cronsim.CronSim` so bad config fails fast at startup. Raises `StargraphRuntimeError` if `deps` is missing required keys or the spec list is empty. |
+| `start()` | Idempotent. Spawns one `asyncio.Task` per spec, named `stargraph.triggers.cron.<trigger_id>`. |
 | `stop()` | Idempotent. Cancels each fire-loop task. The Protocol's `stop` is sync; awaiting cancellations belongs in the async lifespan dispatcher. |
 | `routes()` | Returns `[]`. Cron has no HTTP surface. |
 
@@ -90,7 +90,7 @@ returns cleanly.
 ## Example
 
 ```yaml
-# harbor.yaml fragment
+# stargraph.yaml fragment
 triggers:
   cron:
     - trigger_id: cron:nightly-cve-feed
@@ -103,7 +103,7 @@ triggers:
 ```
 
 ```python
-from harbor.triggers.cron import CronSpec, CronTrigger
+from stargraph.triggers.cron import CronSpec, CronTrigger
 
 trigger = CronTrigger()
 trigger.init({

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration: ``harbor.bosun.safety_pii@1.0`` round-trip (FR-36, design §7.1).
+"""Integration: ``stargraph.bosun.safety_pii@1.0`` round-trip (FR-36, design §7.1).
 
-Loads the pack rules + injects ``harbor.evidence`` facts carrying SSN,
+Loads the pack rules + injects ``stargraph.evidence`` facts carrying SSN,
 email, credit-card, and phone patterns. Asserts ``bosun.violation``
 facts are emitted with the right ``kind`` + ``severity`` per pattern.
 Negative case: a clean prose evidence fact emits no violations.
@@ -43,7 +43,7 @@ def test_pii_patterns_emit_violations(text: str, expected_kind: str) -> None:
     # Escape double-quotes inside the string literal for CLIPS safety.
     safe = text.replace('"', '\\"')
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        f'(harbor.evidence (run_id "r1") (step 1) (text "{safe}"))'
+        f'(stargraph.evidence (run_id "r1") (step 1) (text "{safe}"))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     viols = [dict(v) for v in eng._env.find_template("bosun.violation").facts()]  # pyright: ignore[reportPrivateUsage]
@@ -57,7 +57,7 @@ def test_clean_text_emits_no_violation() -> None:
     """Plain prose without PII patterns → no ``bosun.violation``."""
     eng = _fresh_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.evidence (run_id "r1") (step 1) (text "The quarterly review is scheduled."))'
+        '(stargraph.evidence (run_id "r1") (step 1) (text "The quarterly review is scheduled."))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     viols = list(eng._env.find_template("bosun.violation").facts())  # pyright: ignore[reportPrivateUsage]
@@ -68,7 +68,7 @@ def test_multiple_pii_in_one_evidence_fires_multiple_violations() -> None:
     """Multiple PII patterns in one evidence text → one violation per pattern."""
     eng = _fresh_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.evidence (run_id "r1") (step 1) '
+        '(stargraph.evidence (run_id "r1") (step 1) '
         '(text "alice@example.com 123-45-6789 and 555-123-4567"))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]

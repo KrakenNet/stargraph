@@ -35,8 +35,8 @@ neo4j_pkg = pytest.importorskip(
     reason="neo4j python driver not installed",
 )
 
-from harbor.stores.graph import NodeRef  # noqa: E402
-from harbor.stores.ryugraph import RyuGraphStore  # noqa: E402
+from stargraph.stores.graph import NodeRef  # noqa: E402
+from stargraph.stores.ryugraph import RyuGraphStore  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -156,7 +156,7 @@ def _seed_neo4j(driver: Any) -> None:
 
     We use plain ``MERGE`` writes here -- they're inside the linter
     allow-list but we route them through the driver directly because
-    Neo4j's session API (not Harbor's GraphStore) is the SUT for the
+    Neo4j's session API (not Stargraph's GraphStore) is the SUT for the
     other engine.
     """
     with driver.session() as session:  # pyright: ignore[reportUnknownMemberType]

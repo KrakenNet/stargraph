@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """KG fact-promotion rule integration tests (FR-30 / AC-6.x).
 
-Pins the Phase-1 POC behaviour of :func:`harbor.stores.kg_promotion.PromoteTriplesToFacts`
--- the function-call form of the YAML ``(action.assert (harbor.evidence ...))``
+Pins the Phase-1 POC behaviour of :func:`stargraph.stores.kg_promotion.PromoteTriplesToFacts`
+-- the function-call form of the YAML ``(action.assert (stargraph.evidence ...))``
 rule. Exercises the full pipeline with real Kuzu + SQLite stores plus a
 recording :class:`fathom.Engine` stand-in:
 
 * :func:`test_yaml_action_assert_evidence` -- one triple in, one pinned
-  ``Fact`` out, and the recording engine sees a ``harbor.evidence``
+  ``Fact`` out, and the recording engine sees a ``stargraph.evidence``
   ``assert_fact`` call (the POC analogue of the YAML rule firing).
 * :func:`test_provenance_quadruple` -- the promoted fact's lineage carries
   the (triple_id, rule_id, agent_id, promotion_ts) quadruple per AC-6.2.
@@ -20,12 +20,12 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.fathom import FathomAdapter
-from harbor.stores.fact import FactPattern
-from harbor.stores.graph import NodeRef
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
+from stargraph.fathom import FathomAdapter
+from stargraph.stores.fact import FactPattern
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,7 +51,7 @@ _FILTER_CYPHER = (
 
 
 async def test_yaml_action_assert_evidence(tmp_path: Path) -> None:
-    """Promotion rule fires once per matched triple and pins a ``harbor.evidence`` fact."""
+    """Promotion rule fires once per matched triple and pins a ``stargraph.evidence`` fact."""
     graph_store = RyuGraphStore(tmp_path / "graph")
     fact_store = SQLiteFactStore(tmp_path / "facts.sqlite")
     await graph_store.bootstrap()
@@ -71,7 +71,7 @@ async def test_yaml_action_assert_evidence(tmp_path: Path) -> None:
         fact_store,
         adapter,
         filter_cypher=_FILTER_CYPHER,
-        rule_id="harbor_evidence_v1",
+        rule_id="stargraph_evidence_v1",
         agent_id="kg-promo-agent",
     )
 
@@ -108,7 +108,7 @@ async def test_provenance_quadruple(tmp_path: Path) -> None:
         fact_store,
         adapter,
         filter_cypher=_FILTER_CYPHER,
-        rule_id="harbor_evidence_v1",
+        rule_id="stargraph_evidence_v1",
         agent_id="kg-promo-agent",
     )
 
@@ -122,7 +122,7 @@ async def test_provenance_quadruple(tmp_path: Path) -> None:
     assert isinstance(triple_id, str) and triple_id
     assert "alice" in triple_id and "knows" in triple_id and "carol" in triple_id
 
-    assert entry.get("rule_id") == "harbor_evidence_v1"
+    assert entry.get("rule_id") == "stargraph_evidence_v1"
     assert entry.get("agent_id") == "kg-promo-agent"
 
     promotion_ts = entry.get("promotion_ts")

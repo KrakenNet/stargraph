@@ -4,7 +4,7 @@
 Verifies the full Pydantic state -> DSPy module -> Pydantic state cycle
 through :class:`DSPyNode.execute`:
 
-1. Harbor state-field values are projected to DSPy signature input names
+1. Stargraph state-field values are projected to DSPy signature input names
    per ``signature_map``.
 2. The wrapped DSPy module returns a result.
 3. :meth:`DSPyNode._project_outputs` hands back a dict the execution loop
@@ -26,11 +26,11 @@ from pydantic import BaseModel
 # Skip cleanly if dspy isn't installed (matches loud-fallback test pattern).
 pytest.importorskip("dspy", reason="dspy required for FR-5/FR-25 round-trip tests")
 
-from harbor.adapters.dspy import bind
+from stargraph.adapters.dspy import bind
 
 
 class _RoundTripState(BaseModel):
-    """Minimal harbor run-state model used by the round-trip test."""
+    """Minimal stargraph run-state model used by the round-trip test."""
 
     user_query: str
     answer: str = ""
@@ -42,7 +42,7 @@ class _EchoModule:
     Returns a plain dict keyed by the DSPy signature *output* name
     (``answer_text``), which :class:`DSPyNode._project_outputs` passes
     through unchanged. The test then confirms the returned dict is mergeable
-    into the harbor state model.
+    into the stargraph state model.
     """
 
     def __call__(self, **kwargs: Any) -> dict[str, Any]:
@@ -59,8 +59,8 @@ class _Ctx:
 async def test_round_trip_pydantic_state_through_dspy_module() -> None:
     """State -> module -> state round-trip via ``signature_map`` (FR-5/FR-25).
 
-    Harbor state field ``user_query`` projects to DSPy input ``question``;
-    the module returns ``answer_text``, which the harbor state field
+    Stargraph state field ``user_query`` projects to DSPy input ``question``;
+    the module returns ``answer_text``, which the stargraph state field
     ``answer`` would receive via the field-merge registry. The test asserts
     the dict ``DSPyNode.execute`` returns is shaped for that merge path.
     """
@@ -69,19 +69,19 @@ async def test_round_trip_pydantic_state_through_dspy_module() -> None:
         signature_map={"user_query": "question"},
     )
 
-    state = _RoundTripState(user_query="what is harbor?")
+    state = _RoundTripState(user_query="what is stargraph?")
     result = await node.execute(state, _Ctx())
 
     # The module's output dict round-trips through ``_project_outputs`` so
     # the execution loop receives a dict ready for the field-merge registry.
     assert isinstance(result, dict)
-    assert result == {"answer_text": "echo:what is harbor?"}
+    assert result == {"answer_text": "echo:what is stargraph?"}
 
-    # Confirm the result is mergeable into the harbor state model -- i.e.
+    # Confirm the result is mergeable into the stargraph state model -- i.e.
     # the round-trip closes the loop on a real Pydantic instance, not just
-    # a bag of values. We rename the DSPy output to the harbor field here
+    # a bag of values. We rename the DSPy output to the stargraph field here
     # because Phase-2 ``signature_map`` only projects inputs; the
     # field-merge registry (FR-11) handles output renaming end-to-end.
     merged = state.model_copy(update={"answer": result["answer_text"]})
-    assert merged.answer == "echo:what is harbor?"
-    assert merged.user_query == "what is harbor?"
+    assert merged.answer == "echo:what is stargraph?"
+    assert merged.user_query == "what is stargraph?"

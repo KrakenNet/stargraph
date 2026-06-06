@@ -5,16 +5,16 @@ Drives a graph that contains :class:`WriteArtifactNode`, then exercises
 both artifact-side HTTP routes through the FastAPI serve surface:
 
 1. ``GET /v1/runs/{id}/artifacts`` returns ``list[ArtifactRef]`` (the
-   :class:`~harbor.artifacts.ArtifactRef` Pydantic record dumped via
+   :class:`~stargraph.artifacts.ArtifactRef` Pydantic record dumped via
    ``model_dump(mode="json")``). The Phase-1/2 surface returns a flat
    list rather than a wrapped envelope (``{"artifacts": [...]}``); the
    test asserts the actual contract per
-   :file:`src/harbor/serve/api.py:1090-1109`.
+   :file:`src/stargraph/serve/api.py:1090-1109`.
 
 2. ``GET /v1/artifacts/{artifact_id}`` returns the raw bytes the
-   :class:`~harbor.nodes.artifacts.WriteArtifactNode` wrote.
+   :class:`~stargraph.nodes.artifacts.WriteArtifactNode` wrote.
    Content-Type is ``application/octet-stream`` per the documented POC
-   gap in :file:`src/harbor/serve/api.py:1137-1147` -- the route does
+   gap in :file:`src/stargraph/serve/api.py:1137-1147` -- the route does
    not yet walk the sidecar to recover the persisted ``content_type``;
    the design comment explicitly flags the Phase-3 polish work
    ("``stat(artifact_id) -> ArtifactRef``" Protocol extension). The
@@ -22,7 +22,7 @@ both artifact-side HTTP routes through the FastAPI serve surface:
    learning so a future task can extend it without churn.
 
 3. ``GET /v1/artifacts/{unknown_id}`` returns 404 per the
-   :class:`~harbor.errors.ArtifactNotFound` -> HTTP 404 mapping.
+   :class:`~stargraph.errors.ArtifactNotFound` -> HTTP 404 mapping.
 
 4. ``GET /v1/artifacts/{id}`` under :class:`ClearedProfile` without an
    ``artifacts:read`` capability grant returns 403 per the locked
@@ -34,10 +34,10 @@ both artifact-side HTTP routes through the FastAPI serve surface:
 
 Real wiring:
 
-* :class:`~harbor.artifacts.fs.FilesystemArtifactStore` (real on-disk
+* :class:`~stargraph.artifacts.fs.FilesystemArtifactStore` (real on-disk
   store rooted at ``tmp_path``).
-* :class:`~harbor.nodes.artifacts.WriteArtifactNode` driven by a
-  freshly-bootstrapped :class:`~harbor.graph.GraphRun`. We use the
+* :class:`~stargraph.nodes.artifacts.WriteArtifactNode` driven by a
+  freshly-bootstrapped :class:`~stargraph.graph.GraphRun`. We use the
   task-1.30 monkey-patch convention (``run.step``,
   ``run.artifact_store``, ``run.is_replay``) so the
   :class:`WriteArtifactContext` Protocol surface is satisfied.
@@ -46,7 +46,7 @@ Real wiring:
 
 Audit emission on artifact-access (the spec's ``actor + artifact_id``
 audit entry, AC-15.6) is a documented Phase-3 polish gap: the routes
-in :file:`src/harbor/serve/api.py:1090-1147` do not yet emit a
+in :file:`src/stargraph/serve/api.py:1090-1147` do not yet emit a
 :class:`BosunAuditEvent` on access. The audit-sink contextvar wiring
 exists (mirrors lifecycle/respond); only the route-side emission is
 missing. Documented as a learning rather than a TASK_MODIFICATION_REQUEST
@@ -64,21 +64,21 @@ import anyio
 import httpx
 import pytest
 
-from harbor.artifacts.fs import FilesystemArtifactStore
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.artifacts import WriteArtifactNode
-from harbor.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
-from harbor.nodes.base import NodeBase
-from harbor.runtime.events import (
+from stargraph.artifacts.fs import FilesystemArtifactStore
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.artifacts import WriteArtifactNode
+from stargraph.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
+from stargraph.nodes.base import NodeBase
+from stargraph.runtime.events import (
     ArtifactWrittenEvent,
     Event,
     ResultEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.auth import AuthContext
-from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.auth import AuthContext
+from stargraph.serve.profiles import ClearedProfile, OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -171,7 +171,7 @@ def _attach_write_context(
 
     Mirrors :file:`tests/integration/serve/test_poc_milestone_six_events.py`
     (task 1.30 fixture pattern). The Phase-1
-    :class:`~harbor.nodes.base.ExecutionContext` Protocol only pins
+    :class:`~stargraph.nodes.base.ExecutionContext` Protocol only pins
     ``run_id``; :class:`WriteArtifactNode` additionally requires
     ``step`` / ``bus`` / ``artifact_store`` / ``is_replay`` /
     ``fathom``. ``run.bus`` and ``run.fathom`` already exist on the

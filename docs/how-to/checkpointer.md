@@ -1,31 +1,31 @@
 # How to Persist with a Checkpointer
 
-Attach a checkpointer so a Harbor graph can pause, resume, and replay.
+Attach a checkpointer so a Stargraph graph can pause, resume, and replay.
 This guide covers the v1 shipped path (`SQLiteCheckpointer`) and the
 contract for writing your own driver.
 
 ## TL;DR — use the SQLite driver
 
-The shipped driver is `harbor.checkpoint.sqlite.SQLiteCheckpointer`. It
-uses `aiosqlite` + WAL mode and is the default for `harbor run`:
+The shipped driver is `stargraph.checkpoint.sqlite.SQLiteCheckpointer`. It
+uses `aiosqlite` + WAL mode and is the default for `stargraph run`:
 
 ```bash
-harbor run my-graph.yaml --checkpoint /var/harbor/run.sqlite
+stargraph run my-graph.yaml --checkpoint /var/stargraph/run.sqlite
 ```
 
-If `--checkpoint` is omitted, the CLI defaults to `./.harbor/run.sqlite`.
+If `--checkpoint` is omitted, the CLI defaults to `./.stargraph/run.sqlite`.
 
 ## Wire it imperatively (Python)
 
 ```python
-from harbor.graph import Graph
-from harbor.ir._models import IRDocument
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph
+from stargraph.ir._models import IRDocument
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
 
 ir = IRDocument(...)        # loaded or constructed elsewhere
 graph = Graph(ir)
 
-checkpointer = SQLiteCheckpointer("/var/harbor/run.sqlite")
+checkpointer = SQLiteCheckpointer("/var/stargraph/run.sqlite")
 await checkpointer.bootstrap()                    # idempotent schema setup
 
 run = await graph.start(checkpointer=checkpointer)
@@ -34,14 +34,14 @@ summary = await run.start()
 
 Bootstrap is idempotent — call it once per process at startup. The
 checkpointer is `asyncio.shield`-wrapped at the engine boundary
-(`harbor.runtime.dispatch`), so a cancelled run cannot tear a
+(`stargraph.runtime.dispatch`), so a cancelled run cannot tear a
 checkpoint row in half.
 
 ## The `Checkpointer` Protocol
 
 If you want a different store (postgres, S3-backed sqlite, custom),
 implement the structural Protocol at
-[`src/harbor/checkpoint/protocol.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/checkpoint/protocol.py):
+[`src/stargraph/checkpoint/protocol.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/checkpoint/protocol.py):
 
 ```python
 class Checkpointer(Protocol):
@@ -56,14 +56,14 @@ class Checkpointer(Protocol):
 Pin your implementation to the Protocol at type-check time:
 
 ```python
-from harbor.checkpoint.protocol import Checkpointer
+from stargraph.checkpoint.protocol import Checkpointer
 
 _: type[Checkpointer] = MyCustomCheckpointer    # mypy / pyright check
 ```
 
 ## Distribution: imperative-only in v1
 
-There is **no `harbor.checkpointers` entry-point group** in v1.x. Pass
+There is **no `stargraph.checkpointers` entry-point group** in v1.x. Pass
 your checkpointer instance into `Graph.start(checkpointer=...)`
 directly. A discovery-based plugin path (entry-point group +
 `--checkpointer <name>` CLI flag) is on the post-1.0 roadmap; track
@@ -83,6 +83,6 @@ checkpoint and the loaded graph raise `CheckpointError` loudly (FR-20).
 
 ## Replay
 
-The `harbor replay` CLI reconstructs a run from its checkpoint
+The `stargraph replay` CLI reconstructs a run from its checkpoint
 sequence, optionally with a counterfactual mutation overlay. See
 [Replay](../engine/replay.md) for the full surface.

@@ -6,12 +6,12 @@ seam (design §3.4 / §4.2):
 
 * Pydantic enforces presence of ``source_episode_ids`` / ``promotion_ts``
   / ``rule_id`` / ``confidence`` on every variant at construction.
-* :func:`harbor.stores._delta._validate_delta_provenance` rejects empty
+* :func:`stargraph.stores._delta._validate_delta_provenance` rejects empty
   ``source_episode_ids`` / ``replaces`` post-construction (raises
-  :class:`harbor.errors.ConsolidationRuleError`).
-* :class:`harbor.stores.memory.NoopDelta` does *not* require ``replaces``
+  :class:`stargraph.errors.ConsolidationRuleError`).
+* :class:`stargraph.stores.memory.NoopDelta` does *not* require ``replaces``
   -- it is audit-only.
-* The :data:`harbor.stores.memory.MemoryDelta` discriminated union routes
+* The :data:`stargraph.stores.memory.MemoryDelta` discriminated union routes
   on ``kind`` so JSON round-trips land in the right concrete model.
 """
 
@@ -23,9 +23,9 @@ from typing import Any
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from harbor.errors import ConsolidationRuleError
-from harbor.stores._delta import _validate_delta_provenance
-from harbor.stores.memory import (
+from stargraph.errors import ConsolidationRuleError
+from stargraph.stores._delta import _validate_delta_provenance
+from stargraph.stores.memory import (
     AddDelta,
     DeleteDelta,
     MemoryDelta,

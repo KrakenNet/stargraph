@@ -2,14 +2,14 @@
 
 ## Goal
 
-Bind a Model Context Protocol (MCP) server's tool catalogue as Harbor
+Bind a Model Context Protocol (MCP) server's tool catalogue as Stargraph
 [`ToolSpec`][toolspec] records and have every `call_tool` invocation
 gated through three controls: schema validation, capability check, and
 output sanitization.
 
 ## Prerequisites
 
-- Harbor installed (`pip install stargraph>=0.2`) — `mcp>=1.0` is a core
+- Stargraph installed (`pip install stargraph>=0.2`) — `mcp>=1.0` is a core
   dependency.
 - An MCP server you can launch over stdio (e.g.
   `mcp-server-filesystem`, `mcp-server-postgres`).
@@ -19,14 +19,14 @@ output sanitization.
 
 ### 1. Define the capabilities you grant
 
-Harbor's MCP adapter is **default-deny** at the per-tool level. Build a
+Stargraph's MCP adapter is **default-deny** at the per-tool level. Build a
 [`Capabilities`][capabilities] instance with explicit
 [`CapabilityClaim`][capabilities] entries that match the tool's
 declared `permissions`:
 
 ```python
 # my_app/_mcp_wire.py
-from harbor.security import Capabilities, CapabilityClaim
+from stargraph.security import Capabilities, CapabilityClaim
 
 
 CAPS = Capabilities(
@@ -38,7 +38,7 @@ CAPS = Capabilities(
 ```
 
 The MCP adapter ships a tiny static permission map
-(`harbor.adapters.mcp._TOOL_PERMISSIONS`); per-deployment permission
+(`stargraph.adapters.mcp._TOOL_PERMISSIONS`); per-deployment permission
 declarations are deferred to v1.1 (config plumbing TBD).
 
 ### 2. Bind the server
@@ -51,7 +51,7 @@ Two paths into `bind`: a real stdio session via
 # my_app/_mcp_wire.py (continued)
 from mcp import StdioServerParameters
 
-from harbor.adapters import mcp as mcp_adapter
+from stargraph.adapters import mcp as mcp_adapter
 
 
 async def bind_filesystem_mcp() -> list:
@@ -72,7 +72,7 @@ and translates each MCP `Tool` into a `ToolSpec` with `namespace="mcp"`,
 ### 3. Call tools through the gated path
 
 ```python
-from harbor.adapters.mcp import call_tool
+from stargraph.adapters.mcp import call_tool
 
 
 async def use_secret_reader(session, tool_specs):
@@ -102,7 +102,7 @@ Each returned `ToolSpec` is registry-shaped and routes through the same
 runtime executor as `@tool`-decorated callables:
 
 ```yaml
-# harbor.yaml
+# stargraph.yaml
 nodes:
   - id: read_secret
     kind: my_app.nodes:McpToolNode
@@ -121,17 +121,17 @@ graph.)
 Two paths, depending on whether you want the adapter discovered
 automatically or wired imperatively.
 
-### Pluggable: register under `harbor.mcp_adapters`
+### Pluggable: register under `stargraph.mcp_adapters`
 
-Ship your adapter as a plugin. The Harbor loader scans the
-`harbor.mcp_adapters` entry-point group at startup; your hookimpl
+Ship your adapter as a plugin. The Stargraph loader scans the
+`stargraph.mcp_adapters` entry-point group at startup; your hookimpl
 returns one or more `MCPAdapterSpec` records, and serve / engine
 wiring drives `bind()` against each at the appropriate lifespan
 point.
 
 ```toml
 # pyproject.toml
-[project.entry-points."harbor.mcp_adapters"]
+[project.entry-points."stargraph.mcp_adapters"]
 filesystem = "my_plugin.mcp_adapters:filesystem_module"
 ```
 
@@ -140,8 +140,8 @@ filesystem = "my_plugin.mcp_adapters:filesystem_module"
 import pluggy
 from mcp import StdioServerParameters
 
-from harbor.plugin._markers import PROJECT
-from harbor.plugin.types import MCPAdapterSpec
+from stargraph.plugin._markers import PROJECT
+from stargraph.plugin.types import MCPAdapterSpec
 
 hookimpl = pluggy.HookimplMarker(PROJECT)
 
@@ -161,7 +161,7 @@ def register_mcp_adapters() -> list[MCPAdapterSpec]:
 ```
 
 Aggregate all registered adapters with
-`harbor.adapters.mcp.collect_mcp_adapters(pm)` — that's the helper
+`stargraph.adapters.mcp.collect_mcp_adapters(pm)` — that's the helper
 serve / engine wiring drives at lifespan time.
 
 ### Imperative: hand-rolled wiring
@@ -210,12 +210,12 @@ you wired through `_TOOL_PERMISSIONS`.
 ## See also
 
 - [Adapters: MCP](../reference/adapters/mcp.md)
-- [`harbor.adapters.mcp`][adapter] source.
-- [`harbor.security.Capabilities`][capabilities].
+- [`stargraph.adapters.mcp`][adapter] source.
+- [`stargraph.security.Capabilities`][capabilities].
 - [Build a tool plugin](write-tool-plugin.md) — for native (non-MCP)
   tools.
 
-[toolspec]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/ir/_models.py
-[capabilities]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/security/capabilities.py
-[errors]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/errors/__init__.py
-[adapter]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/adapters/mcp.py
+[toolspec]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/ir/_models.py
+[capabilities]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/security/capabilities.py
+[errors]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/errors/__init__.py
+[adapter]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/adapters/mcp.py

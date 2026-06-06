@@ -9,7 +9,7 @@ Two scenarios:
   manager and aggregates the collect-all hook.
 * :func:`test_namespace_conflict_loud_fail` -- two distributions
   registering a store with the same ``name`` raise
-  :class:`NamespaceConflictError` (harbor-knowledge design §4.5: name
+  :class:`NamespaceConflictError` (stargraph-knowledge design §4.5: name
   uniqueness is invariant; collision is loud-fail).
 """
 
@@ -29,11 +29,11 @@ _FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "plugins"
 if str(_FIXTURES_DIR) not in sys.path:
     sys.path.insert(0, str(_FIXTURES_DIR))
 
-from harbor.errors import NamespaceConflictError  # noqa: E402
-from harbor.ir import StoreSpec  # noqa: E402
-from harbor.plugin._markers import hookimpl  # noqa: E402
-from harbor.plugin.loader import build_plugin_manager  # noqa: E402
-from harbor.registry import StoreRegistry  # noqa: E402
+from stargraph.errors import NamespaceConflictError  # noqa: E402
+from stargraph.ir import StoreSpec  # noqa: E402
+from stargraph.plugin._markers import hookimpl  # noqa: E402
+from stargraph.plugin.loader import build_plugin_manager  # noqa: E402
+from stargraph.registry import StoreRegistry  # noqa: E402
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 
@@ -65,8 +65,8 @@ def _patch_eps(eps: list[EntryPoint]) -> Any:
         return out
 
     return _StackedPatch(
-        patch("harbor.plugin.loader.entry_points", fake_entry_points),
-        patch("harbor.plugin._manifest.entry_points", fake_entry_points),
+        patch("stargraph.plugin.loader.entry_points", fake_entry_points),
+        patch("stargraph.plugin._manifest.entry_points", fake_entry_points),
     )
 
 
@@ -110,18 +110,18 @@ def test_registry_discovery() -> None:
     """A custom ``register_stores`` hookimpl appears in ``list_stores()``."""
     eps = [
         _ep(
-            "harbor_plugin",
+            "stargraph_plugin",
             "plugin_knowledge.manifest:make_manifest",
-            "harbor",
+            "stargraph",
             "plugin_knowledge",
         ),
         # The manifest module *itself* carries the @hookimpl-decorated
-        # ``register_stores`` -- registering it as a harbor.stores
+        # ``register_stores`` -- registering it as a stargraph.stores
         # entry-point lets pluggy discover the hookimpl during stage 2.
         _ep(
             "stores",
             "plugin_knowledge.manifest",
-            "harbor.stores",
+            "stargraph.stores",
             "plugin_knowledge",
         ),
     ]

@@ -11,7 +11,7 @@ memory writes.
 - A working [tool plugin](write-tool-plugin.md) — the agent's
   function-call surface.
 - A [Skill](build-skill.md) — the agent's manifest and `state_schema`.
-- A [`harbor.yaml`](build-graph.md) graph for the orchestration layer.
+- A [`stargraph.yaml`](build-graph.md) graph for the orchestration layer.
 - Familiarity with [Plugin Model](../concepts/plugins.md) and
   [Skills](../knowledge/skills.md).
 
@@ -19,8 +19,8 @@ memory writes.
 
 ### 1. Pick the agent shape
 
-Harbor's canonical agent shape is the `ReactSkill` think → act → observe
-loop ([`harbor.skills.react`][react]). It sub-classes `Skill` only to
+Stargraph's canonical agent shape is the `ReactSkill` think → act → observe
+loop ([`stargraph.skills.react`][react]). It sub-classes `Skill` only to
 fix `kind=SkillKind.agent`, `state_schema=ReactState`, and `max_steps`;
 everything else (tools, system prompt, declared outputs) flows from the
 parent `Skill` contract.
@@ -29,7 +29,7 @@ parent `Skill` contract.
 # src/my_agents/triage/_agent.py
 from typing import Any
 
-from harbor.skills import ReactSkill
+from stargraph.skills import ReactSkill
 
 
 def llm_stub(state: Any, ctx: Any) -> dict[str, Any]:
@@ -59,20 +59,20 @@ it is distinct from `tools` (manifest tool ids) so the engine can swap
 recorded cassettes during replay.
 
 **Verify:** `python -c "import asyncio; from my_agents.triage._agent
-import TRIAGE; from harbor.skills import ReactState; print(asyncio.run(
+import TRIAGE; from stargraph.skills import ReactState; print(asyncio.run(
 TRIAGE.run(ReactState())))"` runs the loop without raising.
 
 ### 2. Wrap the agent in a graph
 
-The skill's `subgraph` field points at a `harbor.yaml` document the
+The skill's `subgraph` field points at a `stargraph.yaml` document the
 engine mounts as a `SubGraphNode`:
 
 ```yaml
-# src/my_agents/triage/harbor.yaml
+# src/my_agents/triage/stargraph.yaml
 ir_version: "1.0.0"
 id: "skill:triage"
 
-state_class: "harbor.skills.react:ReactState"
+state_class: "stargraph.skills.react:ReactState"
 
 nodes:
   - id: think
@@ -151,13 +151,13 @@ returns a `SkillSpec` with `kind="agent"` and `subgraph=<path>`.
 
 ```toml
 # pyproject.toml
-[project.entry-points."harbor"]
-harbor_plugin = "my_agents._plugin:harbor_plugin"
+[project.entry-points."stargraph"]
+stargraph_plugin = "my_agents._plugin:stargraph_plugin"
 
-[project.entry-points."harbor.skills"]
+[project.entry-points."stargraph.skills"]
 triage = "my_agents.triage._pack"
 
-[project.entry-points."harbor.tools"]
+[project.entry-points."stargraph.tools"]
 grep_logs = "my_agents.triage._tools:register"
 ```
 
@@ -165,7 +165,7 @@ grep_logs = "my_agents.triage._tools:register"
 
 ```bash
 pip install -e .
-harbor run src/my_agents/triage/harbor.yaml --inputs alert_id=1234
+stargraph run src/my_agents/triage/stargraph.yaml --inputs alert_id=1234
 ```
 
 Expected end-of-run output:
@@ -177,7 +177,7 @@ run_id=<uuid> status=done
 Inspect the timeline:
 
 ```bash
-harbor inspect <run_id> --db .harbor/run.sqlite
+stargraph inspect <run_id> --db .stargraph/run.sqlite
 ```
 
 Each think → act → observe iteration shows up as a step, with tool
@@ -187,7 +187,7 @@ calls in the `tool_calls` column and the trajectory in
 ## Troubleshooting
 
 !!! warning "Common failure modes"
-    - **`HarborRuntimeError: ReactSkill._think requires an llm_stub
+    - **`StargraphRuntimeError: ReactSkill._think requires an llm_stub
       callable`** — the production model wiring isn't installed; supply
       `llm_stub=` for tests or wire the engine model registry.
     - **State write rejected** — the engine `SubGraphNode` translator
@@ -206,5 +206,5 @@ calls in the `tool_calls` column and the trajectory in
 - [HITL serve docs](../serve/hitl.md) — `respond` API surface.
 - [`ReactSkill`][react] source.
 
-[react]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/skills/react.py
-[interrupt]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/ir/_models.py
+[react]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/skills/react.py
+[interrupt]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/ir/_models.py

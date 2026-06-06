@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """JSON Schema validation of store configs at bootstrap (FR-19, NFR-9).
 
-:func:`harbor.plugin._config.validate_config` enforces the
-:class:`harbor.ir.StoreSpec`.config_schema contract before the engine
+:func:`stargraph.plugin._config.validate_config` enforces the
+:class:`stargraph.ir.StoreSpec`.config_schema contract before the engine
 hands a config payload to a provider. Validation failures surface as
-:class:`harbor.errors.ValidationError` with ``path`` / ``schema_path``
+:class:`stargraph.errors.ValidationError` with ``path`` / ``schema_path``
 in the structured context (NFR-9 loud-fail).
 
 Empty schemas (the StoreSpec default) accept any payload.
@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.errors import ValidationError
-from harbor.plugin._config import validate_config
+from stargraph.errors import ValidationError
+from stargraph.plugin._config import validate_config
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

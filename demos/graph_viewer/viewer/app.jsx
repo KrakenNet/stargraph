@@ -15,7 +15,7 @@ function DataSourceBar({ onLoadTopology, loading, error, graphList }) {
     var reader = new FileReader();
     reader.onload = function(ev) {
       try {
-        var topology = window.parseHarborYaml(ev.target.result);
+        var topology = window.parseStargraphYaml(ev.target.result);
         onLoadTopology(topology, 'file');
       } catch (err) {
         onLoadTopology(null, 'file', err.message);
@@ -59,7 +59,7 @@ function DataSourceBar({ onLoadTopology, loading, error, graphList }) {
     var reader = new FileReader();
     reader.onload = function(ev) {
       try {
-        var topology = window.parseHarborYaml(ev.target.result);
+        var topology = window.parseStargraphYaml(ev.target.result);
         onLoadTopology(topology, 'file');
       } catch (err) {
         onLoadTopology(null, 'file', err.message);
@@ -111,7 +111,7 @@ function DataSourceBar({ onLoadTopology, loading, error, graphList }) {
         style: { display: 'none' },
       }),
       h('div', { className: 'drop-text', onClick: function() { fileRef.current.click(); } },
-        'Drop harbor.yaml here or click to browse'),
+        'Drop stargraph.yaml here or click to browse'),
     ]) : null,
 
     mode === 'serve' ? h('div', { className: 'serve-connect' }, [
@@ -380,8 +380,8 @@ function App() {
             })
           : h('div', { className: 'graph-empty' }, [
               h('div', { className: 'graph-empty-icon' }, '🔍'),
-              h('div', { className: 'graph-empty-text' }, 'Load a harbor.yaml to explore'),
-              h('div', { className: 'graph-empty-hint' }, 'Upload a file or connect to a running harbor serve instance'),
+              h('div', { className: 'graph-empty-text' }, 'Load a stargraph.yaml to explore'),
+              h('div', { className: 'graph-empty-hint' }, 'Upload a file or connect to a running stargraph serve instance'),
             ]),
       ]),
       h(window.DetailPanel, {

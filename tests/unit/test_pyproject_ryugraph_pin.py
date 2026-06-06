@@ -3,8 +3,8 @@
 
 RyuGraph is the community fork of Kuzu (predictable-labs/ryugraph) after
 Kuzu's GitHub repository was archived 2025-10-10 following Apple's
-acquisition of Kuzu Inc. Harbor abstracts the property-graph backend
-behind the :class:`harbor.stores.graph.GraphStore` Protocol so the swap
+acquisition of Kuzu Inc. Stargraph abstracts the property-graph backend
+behind the :class:`stargraph.stores.graph.GraphStore` Protocol so the swap
 itself was a one-module rename. We carry a calver-bounded pin
 (``>=25.9.2,<26``) and document the swap rationale inline; this test
 guards both the pin and the rationale comment so a future bump cannot

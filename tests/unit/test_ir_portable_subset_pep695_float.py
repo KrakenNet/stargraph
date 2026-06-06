@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Portable-subset AST walker for ``harbor.ir._models`` (FR-7, FR-8, FR-9).
+"""Portable-subset AST walker for ``stargraph.ir._models`` (FR-7, FR-8, FR-9).
 
 This test enforces three independent bans on the IR Pydantic model module by
 parsing it with :mod:`ast` (no runtime import). Each assertion lives in its
@@ -31,7 +31,7 @@ import ast
 from pathlib import Path
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
-IR_MODELS_FILE: Path = PROJECT_ROOT / "src" / "harbor" / "ir" / "_models.py"
+IR_MODELS_FILE: Path = PROJECT_ROOT / "src" / "stargraph" / "ir" / "_models.py"
 
 _FORBIDDEN_DECORATORS: frozenset[str] = frozenset(
     {"computed_field", "field_validator", "model_validator"},
@@ -39,7 +39,7 @@ _FORBIDDEN_DECORATORS: frozenset[str] = frozenset(
 
 
 def _load_models_ast() -> ast.Module:
-    """Parse ``src/harbor/ir/_models.py`` once per call (cheap; tiny file)."""
+    """Parse ``src/stargraph/ir/_models.py`` once per call (cheap; tiny file)."""
     return ast.parse(
         IR_MODELS_FILE.read_text(encoding="utf-8"),
         filename=str(IR_MODELS_FILE),

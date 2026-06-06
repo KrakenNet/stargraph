@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.skills.refs.autoresearch import (
+from stargraph.skills.refs.autoresearch import (
     _AutoresearchSummarySignature,  # pyright: ignore[reportPrivateUsage]
 )
 
@@ -23,7 +23,7 @@ async def test_autoresearch_summary_routes_through_dspy_signature() -> None:
     the returned ``WikiEntry.summary`` contains no ``"POC stub summary"`` literal (T10)."""
     import dspy  # type: ignore[import-untyped]
 
-    from harbor.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
+    from stargraph.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
 
     class _StandinLM(dspy.LM):  # pyright: ignore[reportUnknownMemberType]
         def __init__(self) -> None:
@@ -48,7 +48,7 @@ async def test_autoresearch_summary_raises_when_lm_not_configured() -> None:
     ``AdapterFallbackError`` rather than silently degrading (T10)."""
     import dspy  # type: ignore[import-untyped]
 
-    from harbor.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
+    from stargraph.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
 
     with dspy.context(lm=None):  # pyright: ignore[reportUnknownMemberType]
         skill = AutoresearchSkill(

@@ -23,7 +23,7 @@
                     (source_url, captured_at, author, doc_id, line_range)
              │
              ▼
-[harbor serve  -- /v1/runs POST]
+[stargraph serve  -- /v1/runs POST]
              │
              ├──► [Auth: API key + capability gate (docs.read)]
              ├──► [Rate limit]
@@ -45,7 +45,7 @@
                     BLAKE3 content-addressable artifact
              │
              ▼
-[harbor.audit.JSONLAuditSink]
+[stargraph.audit.JSONLAuditSink]
              Ed25519-signed record:
              question, retrieved_chunks, answer, citations, ruleset_hash
              │
@@ -65,7 +65,7 @@
 - Sellable to legal/compliance because every answer is auditable.
 
 =============================================================================
-                         HARBOR CAPABILITIES EXERCISED
+                         STARGRAPH CAPABILITIES EXERCISED
 =============================================================================
 
   Skills:        rag (reference skill)
@@ -85,7 +85,7 @@
 
   demos/internal-docs-qa/
     README.md              -- run instructions + screenshots
-    harbor.yaml            -- graph definition, stores, skills
+    stargraph.yaml            -- graph definition, stores, skills
     docs/
       handbook/            -- 30 sample employee handbook pages
       runbooks/            -- 12 sample SRE runbooks

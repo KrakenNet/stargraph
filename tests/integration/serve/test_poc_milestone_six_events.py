@@ -10,7 +10,7 @@ This is the **Phase 1 POC gate**. Failure here halts Phase 2 entry per
    loop's ``_HitInterrupt`` arm raises a ``WaitingForInputEvent`` and
    transitions to ``state="awaiting-input"``.
 3. All 6 new typed :data:`Event` variants flow through
-   :class:`~harbor.audit.JSONLAuditSink` transparently. The sink uses
+   :class:`~stargraph.audit.JSONLAuditSink` transparently. The sink uses
    ``pydantic.TypeAdapter[Event]`` dispatch (design §3.12, §4.3) so no
    per-variant code is needed -- the union-encoded line carries the
    ``type`` Literal and a JSONL replay reader recovers the variant.
@@ -18,9 +18,9 @@ This is the **Phase 1 POC gate**. Failure here halts Phase 2 entry per
    ``POST /pause``, ``POST /cancel`` and emits the matching events (the
    broadcaster fan-out is the WS surface; the test consumes ``run.bus``
    directly because the broadcaster is not driven here).
-5. :class:`~harbor.nodes.artifacts.WriteArtifactNode` writes
+5. :class:`~stargraph.nodes.artifacts.WriteArtifactNode` writes
    BLAKE3-addressed content and emits a typed
-   :class:`~harbor.runtime.events.ArtifactWrittenEvent`.
+   :class:`~stargraph.runtime.events.ArtifactWrittenEvent`.
 
 The 6 variants, mapped to test invocations:
 
@@ -60,17 +60,17 @@ import anyio.lowlevel
 import httpx
 import pytest
 
-from harbor.artifacts.fs import FilesystemArtifactStore
-from harbor.audit import JSONLAuditSink
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.artifacts import WriteArtifactNode
-from harbor.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
-from harbor.nodes.base import NodeBase
-from harbor.nodes.interrupt import InterruptNode
-from harbor.nodes.interrupt.interrupt_node import InterruptNodeConfig
-from harbor.runtime.events import (
+from stargraph.artifacts.fs import FilesystemArtifactStore
+from stargraph.audit import JSONLAuditSink
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.artifacts import WriteArtifactNode
+from stargraph.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.interrupt import InterruptNode
+from stargraph.nodes.interrupt.interrupt_node import InterruptNodeConfig
+from stargraph.runtime.events import (
     ArtifactWrittenEvent,
     BosunAuditEvent,
     Event,
@@ -80,9 +80,9 @@ from harbor.runtime.events import (
     RunPausedEvent,
     WaitingForInputEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path

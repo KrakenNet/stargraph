@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase-3 integration test (task 3.11): cancel/pause/resume + NFR-17 perf.
 
-Drives long-running stub graphs through :func:`harbor.serve.api.create_app`
+Drives long-running stub graphs through :func:`stargraph.serve.api.create_app`
 and exercises three lifecycle scenarios:
 
 1. **Pause -> ``state=paused``**: ``POST /v1/runs/{id}/pause`` emits a
@@ -41,19 +41,19 @@ import anyio.lowlevel
 import httpx
 import pytest
 
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.base import NodeBase
-from harbor.runtime.events import (
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.base import NodeBase
+from stargraph.runtime.events import (
     ResultEvent,
     RunCancelledEvent,
     RunPausedEvent,
     TransitionEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path

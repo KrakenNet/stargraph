@@ -2,7 +2,7 @@
 """FR-23 / AC-3.3 -- skill subgraph deterministic replay + declared-output gate.
 
 Pins two halves of the FR-23 skill-subgraph contract that the engine's
-:class:`harbor.nodes.SubGraphNode` and :class:`harbor.skills.base.Skill`
+:class:`stargraph.nodes.SubGraphNode` and :class:`stargraph.skills.base.Skill`
 together enforce:
 
 1. **Deterministic replay through SubGraphNode.** Running the same skill
@@ -24,7 +24,7 @@ together enforce:
 The fixtures here intentionally re-use the same lightweight stubs as
 :mod:`tests.integration.test_subgraph_node` so the FR-23 contract can
 be exercised in isolation, without standing up a full
-:class:`harbor.graph.GraphRun`.
+:class:`stargraph.graph.GraphRun`.
 """
 
 from __future__ import annotations
@@ -34,11 +34,11 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from pydantic import BaseModel
 
-from harbor.nodes.base import ExecutionContext, NodeBase
-from harbor.nodes.subgraph import SubGraphNode
-from harbor.runtime.bus import EventBus
-from harbor.runtime.events import TransitionEvent
-from harbor.skills.base import Skill, SkillKind
+from stargraph.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.subgraph import SubGraphNode
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.events import TransitionEvent
+from stargraph.skills.base import Skill, SkillKind
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

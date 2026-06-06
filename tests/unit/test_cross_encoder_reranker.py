@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :class:`harbor.stores.rerankers.CrossEncoderReranker`.
+"""Unit tests for :class:`stargraph.stores.rerankers.CrossEncoderReranker`.
 
 Resolves TODO #17 (Findings from docs build, 2026-05-04): the reranker
 is no longer a NotImplementedError stub — it ships a real
 sentence-transformers ``CrossEncoder``-backed implementation behind
 the ``skills-rag`` extra and is registered under the
-``harbor.rerankers`` entry-point group as ``cross-encoder``.
+``stargraph.rerankers`` entry-point group as ``cross-encoder``.
 
 Tests use a fake ``_encoder`` so the assertions do not depend on
 loading a real model (saves ~150MB of weights + several seconds per
@@ -21,9 +21,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from harbor.errors import HarborRuntimeError
-from harbor.stores.rerankers import CrossEncoderReranker, Reranker
-from harbor.stores.vector import Hit
+from stargraph.errors import StargraphRuntimeError
+from stargraph.stores.rerankers import CrossEncoderReranker, Reranker
+from stargraph.stores.vector import Hit
 
 pytestmark = [pytest.mark.unit, pytest.mark.knowledge]
 
@@ -137,9 +137,9 @@ async def test_cross_encoder_raises_loudly_when_query_missing() -> None:
     rr, _ = _make_reranker_with_fake_encoder()
     hits = [[Hit(id="a", score=1.0, metadata={"text": "doc"})]]
 
-    with pytest.raises(HarborRuntimeError, match="requires a non-empty 'query'"):
+    with pytest.raises(StargraphRuntimeError, match="requires a non-empty 'query'"):
         await rr.fuse(hits, k=1, query=None)
-    with pytest.raises(HarborRuntimeError, match="requires a non-empty 'query'"):
+    with pytest.raises(StargraphRuntimeError, match="requires a non-empty 'query'"):
         await rr.fuse(hits, k=1, query="")
 
 
@@ -158,17 +158,17 @@ def test_cross_encoder_lazy_import_raises_when_extras_missing(
     rr = CrossEncoderReranker()
     monkeypatch.setitem(sys.modules, "sentence_transformers", None)
     with pytest.raises(
-        HarborRuntimeError,
+        StargraphRuntimeError,
         match=r"requires the 'skills-rag' extra",
     ):
         rr._load_encoder()  # pyright: ignore[reportPrivateUsage]
 
 
 def test_cross_encoder_registered_under_rerankers_entry_point_group() -> None:
-    """``harbor.rerankers:cross-encoder`` resolves to the class."""
+    """``stargraph.rerankers:cross-encoder`` resolves to the class."""
     from importlib.metadata import entry_points
 
-    matches = [ep for ep in entry_points(group="harbor.rerankers") if ep.name == "cross-encoder"]
-    assert matches, "cross-encoder entry point not registered under harbor.rerankers"
+    matches = [ep for ep in entry_points(group="stargraph.rerankers") if ep.name == "cross-encoder"]
+    assert matches, "cross-encoder entry point not registered under stargraph.rerankers"
     cls: Any = matches[0].load()
     assert cls is CrossEncoderReranker

@@ -3,7 +3,7 @@
 
 Locks the design §5.4 / FR-65 / AC-8.5 contract: when the cleared
 profile's default-deny gate refuses a capability, the gate emits a
-:class:`~harbor.runtime.events.BosunAuditEvent` with
+:class:`~stargraph.runtime.events.BosunAuditEvent` with
 ``fact["kind"] == "capability_denied"`` to the wired audit sink before
 raising the 403. The sink writes one canonical line to the JSONL audit
 file (``deps["audit_sink"]``) so a downstream SIEM can correlate the
@@ -19,7 +19,7 @@ Cases covered (FR-65, FR-69, AC-8.5):
 3. ``runs:pause`` denied under cleared profile → 403 + audit entry
    shape mirrors case 1 but with ``capability="runs:pause"``.
 
-The audit sink is a real :class:`harbor.audit.jsonl.JSONLAuditSink`
+The audit sink is a real :class:`stargraph.audit.jsonl.JSONLAuditSink`
 pointed at a tmp_path file so the JSONL bytes are inspected directly
 (no double layer of mocks). The auth provider is a no-grant stub so
 the cleared-vs-oss profile divergence is the only behavioral switch.
@@ -33,10 +33,10 @@ from typing import TYPE_CHECKING, Any
 import httpx
 import pytest
 
-from harbor.audit.jsonl import JSONLAuditSink
-from harbor.serve.api import create_app
-from harbor.serve.auth import AuthContext
-from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
+from stargraph.audit.jsonl import JSONLAuditSink
+from stargraph.serve.api import create_app
+from stargraph.serve.auth import AuthContext
+from stargraph.serve.profiles import ClearedProfile, OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path

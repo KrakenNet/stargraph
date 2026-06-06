@@ -1,6 +1,6 @@
 # Plugin Model
 
-Harbor uses a two-stage plugin loader built on `importlib.metadata` entry points and `pluggy` hooks. Distributions register under one of four groups: `harbor.tools`, `harbor.skills`, `harbor.stores`, or `harbor.packs`. Each distribution exposes a single `harbor_plugin()` callable plus a stdlib-only `PluginManifest` so Harbor can check `api_version` **before** importing the module.
+Stargraph uses a two-stage plugin loader built on `importlib.metadata` entry points and `pluggy` hooks. Distributions register under one of four groups: `stargraph.tools`, `stargraph.skills`, `stargraph.stores`, or `stargraph.packs`. Each distribution exposes a single `stargraph_plugin()` callable plus a stdlib-only `PluginManifest` so Stargraph can check `api_version` **before** importing the module.
 
 ## Why two stages
 

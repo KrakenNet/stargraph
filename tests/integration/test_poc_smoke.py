@@ -4,12 +4,12 @@
 Drives a fresh ``fathom.Engine`` through ``FathomAdapter`` end-to-end:
 
 1. Loads five rules from ``tests/fixtures/fathom/rules/poc_5rules.yaml`` (one
-   per Harbor action verb in {goto, halt, parallel, retry, assert}, with one
+   per Stargraph action verb in {goto, halt, parallel, retry, assert}, with one
    ``when`` clause referencing the provenance slot ``_source``).
 2. Asserts a single ``evidence`` fact via :py:meth:`FathomAdapter.assert_with_provenance`
-   carrying a populated :class:`harbor.fathom.ProvenanceBundle`.
+   carrying a populated :class:`stargraph.fathom.ProvenanceBundle`.
 3. Calls :py:meth:`FathomAdapter.evaluate`, which fires the ruleset and reads
-   the resulting ``harbor_action`` facts back through :func:`harbor.fathom.extract_actions`.
+   the resulting ``stargraph_action`` facts back through :func:`stargraph.fathom.extract_actions`.
 4. Asserts the exact ordered Action sequence (descending salience) and prints
    ``POC ALL GREEN`` so the verify gate (``grep -q``) can detect success.
 
@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from harbor.fathom import (
+from stargraph.fathom import (
     AssertAction,
     FathomAdapter,
     GotoAction,
@@ -38,7 +38,7 @@ RULES_PATH: Path = (
 
 
 def test_poc_smoke_five_rules_all_green(adapter: FathomAdapter) -> None:
-    """Five rules, one provenance-bearing fact, five ordered Harbor actions."""
+    """Five rules, one provenance-bearing fact, five ordered Stargraph actions."""
     # Load the five-rule ruleset against the pre-seeded engine. Templates and
     # the ``poc`` module are wired in the ``adapter`` fixture (see conftest.py).
     adapter.engine.load_rules(str(RULES_PATH))

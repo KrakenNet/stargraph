@@ -7,9 +7,9 @@ store's bootstrap path is partly covered by ``tests/unit/artifacts/test_fs.py``
 (NFR-15 unit case). This integration file pins the **dual-module contract**:
 both refuse consistently when the same network-FS detector returns ``True``.
 
-Mocks the public seam ``harbor.checkpoint.sqlite.is_network_fs`` and
-``harbor.artifacts.fs.is_network_fs`` (both imported at module top from
-``harbor.checkpoint.migrations._network_fs``) to force-detect a network
+Mocks the public seam ``stargraph.checkpoint.sqlite.is_network_fs`` and
+``stargraph.artifacts.fs.is_network_fs`` (both imported at module top from
+``stargraph.checkpoint.migrations._network_fs``) to force-detect a network
 filesystem regardless of the actual ``tmp_path`` location.
 """
 
@@ -20,9 +20,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.artifacts.fs import FilesystemArtifactStore
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.errors import ArtifactStoreError, CheckpointError
+from stargraph.artifacts.fs import FilesystemArtifactStore
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.errors import ArtifactStoreError, CheckpointError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,8 +36,8 @@ def _force_network_fs(monkeypatch: pytest.MonkeyPatch) -> None:
     def _always_true(_path: Path) -> bool:
         return True
 
-    monkeypatch.setattr("harbor.checkpoint.sqlite.is_network_fs", _always_true)
-    monkeypatch.setattr("harbor.artifacts.fs.is_network_fs", _always_true)
+    monkeypatch.setattr("stargraph.checkpoint.sqlite.is_network_fs", _always_true)
+    monkeypatch.setattr("stargraph.artifacts.fs.is_network_fs", _always_true)
 
 
 def test_checkpointer_refuses_nfs_at_bootstrap(
@@ -79,7 +79,7 @@ def test_artifact_store_refuses_nfs_at_bootstrap(
 def test_both_modules_refuse_consistently(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Single test exercising both bootstrap paths under the same patched seam.
 
-    The integration angle: when an operator deploys Harbor on a network-FS
+    The integration angle: when an operator deploys Stargraph on a network-FS
     mount by mistake, BOTH the durable-state surface (checkpointer) and the
     durable-output surface (artifact store) must refuse before any side
     effect lands. This test asserts both refusals fire from a single
@@ -123,8 +123,8 @@ def test_all_documented_network_fs_kinds_refused(
     def _always_true(_path: Path) -> bool:
         return True
 
-    monkeypatch.setattr("harbor.checkpoint.sqlite.is_network_fs", _always_true)
-    monkeypatch.setattr("harbor.artifacts.fs.is_network_fs", _always_true)
+    monkeypatch.setattr("stargraph.checkpoint.sqlite.is_network_fs", _always_true)
+    monkeypatch.setattr("stargraph.artifacts.fs.is_network_fs", _always_true)
 
     cp = SQLiteCheckpointer(tmp_path / "x.db")
     store = FilesystemArtifactStore(tmp_path / "x-store")

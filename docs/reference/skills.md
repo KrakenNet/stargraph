@@ -1,13 +1,13 @@
 # Skills
 
-Reference for `harbor.skills` — the `Skill` base class, the `SkillKind` taxonomy, the salience scorer protocol, and the in-tree reference skills (RAG, Shipwright).
+Reference for `stargraph.skills` — the `Skill` base class, the `SkillKind` taxonomy, the salience scorer protocol, and the in-tree reference skills (RAG, Shipwright).
 
 See also: [PluginManifest](plugin-manifest.md), [Hookspec catalog](hookspecs.md), [Reference skills knowledge](../knowledge/reference-skills.md), [Skills knowledge](../knowledge/skills.md).
 
 ## Public surface
 
 ```python
-from harbor.skills import (
+from stargraph.skills import (
     Example,
     ReactSkill, ReactState, ReactStep, ToolCallRecord,
     RuleBasedScorer, SalienceContext, SalienceScorer,
@@ -18,7 +18,7 @@ from harbor.skills import (
 
 ## Skill model
 
-`harbor.skills.base.Skill` is a `pydantic.BaseModel` (FR-21..FR-24). The plugin loader pre-validates each instance and registers it via [`register_skills`](hookspecs.md#register_skills-listskillspec).
+`stargraph.skills.base.Skill` is a `pydantic.BaseModel` (FR-21..FR-24). The plugin loader pre-validates each instance and registers it via [`register_skills`](hookspecs.md#register_skills-listskillspec).
 
 | Field | Type | Default | Purpose |
 |-------|------|---------|---------|
@@ -41,7 +41,7 @@ from harbor.skills import (
 
 ### `SkillKind` enum
 
-`harbor.skills.base.SkillKind` is a `StrEnum`:
+`stargraph.skills.base.SkillKind` is a `StrEnum`:
 
 | Value | Meaning |
 |-------|---------|
@@ -64,8 +64,8 @@ Carried in `Skill.examples`. Used both for documentation and for downstream eval
 Skills register through the standard pluggy hookspec:
 
 ```python
-from harbor.plugin import hookimpl
-from harbor.skills import Skill, SkillKind
+from stargraph.plugin import hookimpl
+from stargraph.skills import Skill, SkillKind
 from pydantic import BaseModel
 
 class MyState(BaseModel):
@@ -87,7 +87,7 @@ def register_skills() -> list[Skill]:
 The plugin loader (see [PluginManifest](plugin-manifest.md)) pre-validates each instance and pre-checks namespace conflicts before any `register_skills` hookimpl executes its module body.
 
 !!! note "SkillSpec vs Skill"
-    `harbor.ir.SkillSpec` is the **portable IR** record — no Pydantic validators, no Python-only types, safe to serialise across languages. `harbor.skills.Skill` is the **runtime** Pydantic class with validators, computed fields, and `state_schema: type[BaseModel]`. Hookspecs declare `list[SkillSpec]` for IR portability; the registry accepts both shapes in the runtime path.
+    `stargraph.ir.SkillSpec` is the **portable IR** record — no Pydantic validators, no Python-only types, safe to serialise across languages. `stargraph.skills.Skill` is the **runtime** Pydantic class with validators, computed fields, and `state_schema: type[BaseModel]`. Hookspecs declare `list[SkillSpec]` for IR portability; the registry accepts both shapes in the runtime path.
 
 ## state_schema and declared output channels
 
@@ -109,7 +109,7 @@ When `True`, events emitted inside the skill subgraph bubble to the parent graph
 
 ## ReactSkill (POC)
 
-`harbor.skills.react.ReactSkill` (design §3.9, FR-25, AC-7.5, AC-10.4) is the in-tree think → act → observe tool-loop reference skill.
+`stargraph.skills.react.ReactSkill` (design §3.9, FR-25, AC-7.5, AC-10.4) is the in-tree think → act → observe tool-loop reference skill.
 
 ### `ToolCallRecord`
 
@@ -165,7 +165,7 @@ Termination order (whichever fires first):
 
 ## Salience scoring
 
-`harbor.skills.salience` provides the pluggable scorer used to gate episodic → semantic memory consolidation (FR-31, design §3.6). Episodes scoring below a caller-chosen threshold are filtered before the consolidation rule body fires, so noise never gets promoted (AC-5.5).
+`stargraph.skills.salience` provides the pluggable scorer used to gate episodic → semantic memory consolidation (FR-31, design §3.6). Episodes scoring below a caller-chosen threshold are filtered before the consolidation rule body fires, so noise never gets promoted (AC-5.5).
 
 ### `SalienceScorer` Protocol
 
@@ -202,28 +202,28 @@ score = w_recency * exp(-Δt / τ)
 
 ## refs subpackage
 
-`harbor.skills.refs` ships the in-tree reference `Skill` implementations (FR-32..FR-34):
+`stargraph.skills.refs` ships the in-tree reference `Skill` implementations (FR-32..FR-34):
 
 | Module | Skill | Status |
 |--------|-------|--------|
-| `harbor.skills.refs.rag` | `RagSkill` (retrieval + LLM-stub answer assembly) | POC (FR-32 / AC-7.1) |
-| `harbor.skills.refs.autoresearch` | autoresearch reference | <!-- TODO: verify status (FR-33) --> |
-| `harbor.skills.refs.wiki` | wiki reference | <!-- TODO: verify status (FR-34) --> |
+| `stargraph.skills.refs.rag` | `RagSkill` (retrieval + LLM-stub answer assembly) | POC (FR-32 / AC-7.1) |
+| `stargraph.skills.refs.autoresearch` | autoresearch reference | <!-- TODO: verify status (FR-33) --> |
+| `stargraph.skills.refs.wiki` | wiki reference | <!-- TODO: verify status (FR-34) --> |
 
-`RagSkill` composes `harbor.nodes.retrieval.RetrievalNode` (vector + doc fan-out) with a deterministic LLM stub and an answer-assembly step. Capability requirements declared on the manifest: `db.vectors:read`, `db.docs:read`, `llm.generate`. Subgraph IR lives at `tests/fixtures/skills/rag/example.yaml`; Phase 2 loads it via `Skill.subgraph` and routes execution through `SubGraphNode`.
+`RagSkill` composes `stargraph.nodes.retrieval.RetrievalNode` (vector + doc fan-out) with a deterministic LLM stub and an answer-assembly step. Capability requirements declared on the manifest: `db.vectors:read`, `db.docs:read`, `llm.generate`. Subgraph IR lives at `tests/fixtures/skills/rag/example.yaml`; Phase 2 loads it via `Skill.subgraph` and routes execution through `SubGraphNode`.
 
 For the bigger picture and rationale see [Reference skills knowledge](../knowledge/reference-skills.md) and [Skills knowledge](../knowledge/skills.md).
 
 ## Shipwright skill example
 
-`harbor.skills.shipwright` is the canonical "skill bundle" example — a Harbor graph that authors Harbor graphs from a brief. It lives in `src/harbor/skills/shipwright/` and is structured like a real out-of-tree plugin so contributors can copy the layout.
+`stargraph.skills.shipwright` is the canonical "skill bundle" example — a Stargraph graph that authors Stargraph graphs from a brief. It lives in `src/stargraph/skills/shipwright/` and is structured like a real out-of-tree plugin so contributors can copy the layout.
 
 | File | Role |
 |------|------|
 | `manifest.yaml` | Skill identity (`id`, `version`, `kind: workflow`, `description`, `state_schema` reference). |
-| `harbor.yaml` | Graph definition: `state` reference, node list (`triage_gate`, `parse_brief`, `gap_check`, `propose_questions`, `human_input`, `synthesize_graph`, `verify_static`, `verify_tests`, `verify_smoke`, `fix_loop`), Bosun rule packs, governance packs, store providers, checkpoint config. |
-| `_pack.py` | Loader for `harbor.bosun.shipwright.*` sub-packs. Splits `rules.clp` into top-level constructs and feeds each to `fathom.Engine._env.build` for precise compile-error attribution. Mirrors `tests/integration/bosun/_helpers.py` so production nodes (`GapCheck`, `FixLoop`) and tests share one canonical loader. |
-| `state.py` | The `State` Pydantic model referenced from `manifest.yaml#state_schema` and `harbor.yaml#state`. |
+| `stargraph.yaml` | Graph definition: `state` reference, node list (`triage_gate`, `parse_brief`, `gap_check`, `propose_questions`, `human_input`, `synthesize_graph`, `verify_static`, `verify_tests`, `verify_smoke`, `fix_loop`), Bosun rule packs, governance packs, store providers, checkpoint config. |
+| `_pack.py` | Loader for `stargraph.bosun.shipwright.*` sub-packs. Splits `rules.clp` into top-level constructs and feeds each to `fathom.Engine._env.build` for precise compile-error attribution. Mirrors `tests/integration/bosun/_helpers.py` so production nodes (`GapCheck`, `FixLoop`) and tests share one canonical loader. |
+| `state.py` | The `State` Pydantic model referenced from `manifest.yaml#state_schema` and `stargraph.yaml#state`. |
 | `nodes/` | Per-node modules (`triage`, `parse`, `interview`, `synthesize`, `verify`, `fix`). |
 | `templates/` | Prompt fragments and rendered output templates. |
 | `graph.yaml` | Companion graph artifact. |
@@ -231,16 +231,16 @@ For the bigger picture and rationale see [Reference skills knowledge](../knowled
 Snippet from `manifest.yaml`:
 
 ```yaml
-id: harbor.skills.shipwright
+id: stargraph.skills.shipwright
 version: "0.1.0"
 kind: workflow
 description: |
-  Shipwright — a Harbor graph that authors Harbor graphs from a brief.
+  Shipwright — a Stargraph graph that authors Stargraph graphs from a brief.
   Interview-driven (rules + LLM dual-truth), verified end-to-end, replayable.
-state_schema: harbor.skills.shipwright.state:State
+state_schema: stargraph.skills.shipwright.state:State
 ```
 
-Snippet from `harbor.yaml`:
+Snippet from `stargraph.yaml`:
 
 ```yaml
 name: shipwright
@@ -248,14 +248,14 @@ state: ./state.py:State
 
 nodes:
   - name: gap_check
-    type: harbor.skills.shipwright.nodes.interview:GapCheck
+    type: stargraph.skills.shipwright.nodes.interview:GapCheck
   - name: human_input
-    type: harbor.nodes.human_input
+    type: stargraph.nodes.human_input
     expected_input_schema_from: open_questions
 
 rules:
-  - pack: harbor.bosun.shipwright.gaps
-  - pack: harbor.bosun.shipwright.edits
+  - pack: stargraph.bosun.shipwright.gaps
+  - pack: stargraph.bosun.shipwright.edits
 
 stores:
   doc: sqlite:./.shipwright/docs.db

@@ -9,7 +9,7 @@ Coverage:
 * ``is_chained_log`` shape detection;
 * ``_build_audit_sink`` -- chain-write default, legacy fallback for
   existing unchained logs (with warning), resume for chained logs;
-* ``harbor verify-audit`` CLI -- exit 0 valid / 1 user error / 2 broken.
+* ``stargraph verify-audit`` CLI -- exit 0 valid / 1 user error / 2 broken.
 """
 
 from __future__ import annotations
@@ -22,15 +22,15 @@ import orjson
 from fathom.chained_log import load_or_create_key, verify_chain
 from typer.testing import CliRunner
 
-from harbor.audit.jsonl import (
+from stargraph.audit.jsonl import (
     ChainedJSONLAuditSink,
     JSONLAuditSink,
     is_chained_log,
     unwrap_audit_record,
 )
-from harbor.cli import app
-from harbor.cli.run import _build_audit_sink  # pyright: ignore[reportPrivateUsage]
-from harbor.runtime.events import TokenEvent
+from stargraph.cli import app
+from stargraph.cli.run import _build_audit_sink  # pyright: ignore[reportPrivateUsage]
+from stargraph.runtime.events import TokenEvent
 
 if TYPE_CHECKING:
     from pathlib import Path

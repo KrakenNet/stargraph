@@ -8,7 +8,7 @@ stage-1 validation cannot accidentally pull tool code into ``sys.modules``
 
 from __future__ import annotations
 
-from harbor.ir import PluginManifest
+from stargraph.ir import PluginManifest
 
 # Module-level counter that the manifest-factory zero-side-effect test
 # inspects: the factory must be a pure constructor of a fresh

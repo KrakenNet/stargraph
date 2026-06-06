@@ -8,9 +8,9 @@ created: 2026-05-26
 
 ## Overview
 
-Maritime SAR surveillance pipeline built on Harbor (graph engine) and Nautilus (data broker). Sentinel-1 SAR tiles flow through YOLO-OBB vessel detection, AIS correlation flags dark vessels, DSPy agents enrich with geo-context and draft intel reports, analysts review/correct via Streamlit, and a nightly retrain sub-graph closes the self-improvement loop. Architecture mirrors CVE-rem: `docker-compose.yml` + `bootstrap.py` + `harbor.yaml` IR + Pydantic state + real node implementations + `serve_sdw.py` + `nautilus.yaml`.
+Maritime SAR surveillance pipeline built on Stargraph (graph engine) and Nautilus (data broker). Sentinel-1 SAR tiles flow through YOLO-OBB vessel detection, AIS correlation flags dark vessels, DSPy agents enrich with geo-context and draft intel reports, analysts review/correct via Streamlit, and a nightly retrain sub-graph closes the self-improvement loop. Architecture mirrors CVE-rem: `docker-compose.yml` + `bootstrap.py` + `stargraph.yaml` IR + Pydantic state + real node implementations + `serve_sdw.py` + `nautilus.yaml`.
 
-Two Harbor graphs: a main pipeline graph (`harbor.yaml`) handling ingest-through-reporting, and a retrain sub-graph (`retrain.yaml`) handling correction collection, model fine-tuning, champion/challenger promotion. The retrain graph is invoked via `SubGraphNode` from the main graph's cron trigger or manually via `make retrain`. Streamlit UI is fully decoupled -- talks to `harbor serve` REST/WS on port 9001. All geo dependencies (`rasterio`, `geopandas`, `shapely`, `ultralytics`) are gated behind a new `[sdw]` extra in the monorepo `pyproject.toml`.
+Two Stargraph graphs: a main pipeline graph (`stargraph.yaml`) handling ingest-through-reporting, and a retrain sub-graph (`retrain.yaml`) handling correction collection, model fine-tuning, champion/challenger promotion. The retrain graph is invoked via `SubGraphNode` from the main graph's cron trigger or manually via `make retrain`. Streamlit UI is fully decoupled -- talks to `stargraph serve` REST/WS on port 9001. All geo dependencies (`rasterio`, `geopandas`, `shapely`, `ultralytics`) are gated behind a new `[sdw]` extra in the monorepo `pyproject.toml`.
 
 ## Architecture Diagram
 
@@ -22,7 +22,7 @@ graph TB
         LLM[llm-shim 41001]
     end
 
-    subgraph HarborServe["harbor serve :9001"]
+    subgraph StargraphServe["stargraph serve :9001"]
         API[FastAPI REST/WS]
         Loop[Graph Loop]
         CP[SQLite Checkpointer]
@@ -72,9 +72,9 @@ graph TB
     Chip --> AR
 ```
 
-## Harbor Graph Design
+## Stargraph Graph Design
 
-### Main Pipeline Graph (`graph/harbor.yaml`)
+### Main Pipeline Graph (`graph/stargraph.yaml`)
 
 ```yaml
 ir_version: "1.0.0"
@@ -126,12 +126,12 @@ tools:
     version: "1"
 
 governance:
-  - id: harbor.bosun.budgets
+  - id: stargraph.bosun.budgets
     version: "1.0"
-    requires: { harbor_facts_version: "1.0", api_version: "1" }
-  - id: harbor.bosun.audit
+    requires: { stargraph_facts_version: "1.0", api_version: "1" }
+  - id: stargraph.bosun.audit
     version: "1.0"
-    requires: { harbor_facts_version: "1.0", api_version: "1" }
+    requires: { stargraph_facts_version: "1.0", api_version: "1" }
   # v2: domain-specific packs (sdw.routing, sdw.active_learning) deferred
 
 stores: []  # v2 — real store providers deferred
@@ -268,7 +268,7 @@ rules:
 
 ### Nightly Retrain Cron Trigger (AC-9.1)
 
-The retrain sub-graph runs nightly via a cron trigger, matching CVE-rem's triggered graph pattern. `serve_sdw.py` registers the retrain schedule using APScheduler (already available via `harbor serve` internals). Alternatively, an external cron job can `curl -X POST` the run endpoint.
+The retrain sub-graph runs nightly via a cron trigger, matching CVE-rem's triggered graph pattern. `serve_sdw.py` registers the retrain schedule using APScheduler (already available via `stargraph serve` internals). Alternatively, an external cron job can `curl -X POST` the run endpoint.
 
 ```python
 # In serve_sdw.py — register nightly retrain schedule
@@ -382,7 +382,7 @@ class ModelMetrics(BaseModel):
     trained_at: str = ""
 
 
-# --- Top-level state (flat attrs — Harbor field-merge keys on these) ---
+# --- Top-level state (flat attrs — Stargraph field-merge keys on these) ---
 
 class SdwState(BaseModel):
     """Main pipeline state. Flat top-level; sub-models as values."""
@@ -535,7 +535,7 @@ The node queries Nautilus Postgres adapter via `BrokerNode` with intent: `"AIS p
 | **External deps** | PostGIS (`eez_boundaries`, `ports`, `coastlines`), LLM via DSPy |
 | **Error handling** | If LLM unavailable, populate structured fields from PostGIS only; `geo_summary` = templated fallback |
 
-**Why NodeBase, not DSPyNode**: Harbor's `DSPyNode` only projects state fields to DSPy signature inputs and projects outputs back — it cannot interleave deterministic PostGIS queries before the DSPy call. `GeoContextNode` needs a custom `execute()` that runs PostGIS first, then calls the DSPy module.
+**Why NodeBase, not DSPyNode**: Stargraph's `DSPyNode` only projects state fields to DSPy signature inputs and projects outputs back — it cannot interleave deterministic PostGIS queries before the DSPy call. `GeoContextNode` needs a custom `execute()` that runs PostGIS first, then calls the DSPy module.
 
 Two-step process within `execute()`:
 1. **PostGIS queries** (deterministic): `ST_Contains` for EEZ, `ST_Distance` for port/coast distances. Populates structured geo fields on each detection.
@@ -833,8 +833,8 @@ services:
     image: postgis/postgis:16-3.4
     container_name: sdw-postgis
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-harbor}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harbor}
+      POSTGRES_USER: ${POSTGRES_USER:-stargraph}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stargraph}
       POSTGRES_DB: ${POSTGRES_DB:-sdw}
     ports:
       - "${POSTGRES_PORT:-5441}:5432"
@@ -949,11 +949,11 @@ async def main():
 import streamlit as st
 import requests
 
-HARBOR_URL = os.environ.get("HARBOR_URL", "http://localhost:9001")
+STARGRAPH_URL = os.environ.get("STARGRAPH_URL", "http://localhost:9001")
 
 # Trigger new pipeline run
 def trigger_run(tile_ids: list[str]):
-    resp = requests.post(f"{HARBOR_URL}/v1/runs", json={
+    resp = requests.post(f"{STARGRAPH_URL}/v1/runs", json={
         "graph_id": "graph:sdw-pipeline",
         "state": {"tile_queue": tile_ids}
     })
@@ -961,7 +961,7 @@ def trigger_run(tile_ids: list[str]):
 
 # Submit analyst review
 def submit_review(run_id: str, corrections: list[dict]):
-    requests.post(f"{HARBOR_URL}/v1/runs/{run_id}/respond", json={
+    requests.post(f"{STARGRAPH_URL}/v1/runs/{run_id}/respond", json={
         "decision": "approve",
         "corrections": corrections
     })
@@ -1039,11 +1039,11 @@ demos/sentinel_dark_watch/
 ├── bootstrap.py                  # idempotent provisioning
 ├── nautilus.yaml                 # Nautilus broker config
 ├── capabilities.py               # engine-side capability profile
-├── serve_sdw.py                  # harbor serve wrapper
+├── serve_sdw.py                  # stargraph serve wrapper
 ├── ais_ingest.py                 # AIS WebSocket daemon
 ├── graph/
 │   ├── __init__.py
-│   ├── harbor.yaml               # main pipeline IR
+│   ├── stargraph.yaml               # main pipeline IR
 │   ├── retrain.yaml              # retrain sub-graph IR
 │   ├── state.py                  # SdwState, RetrainState
 │   └── nodes.py                  # all node implementations
@@ -1172,15 +1172,15 @@ test:
 | AIS integration | Direct WebSocket in graph vs buffer daemon | Buffer daemon + Postgres | Nautilus is request/response only. Buffer pattern matches Nautilus postgres adapter. Graph stays reactive. |
 | Sub-graph for retrain | Single monolithic graph vs separate retrain sub-graph | Separate `retrain.yaml` | Retrain is independently triggerable (cron or manual). Different state model. SubGraphNode connects when triggered from main pipeline. |
 | Spatial database | Plain Postgres + in-memory shapely vs PostGIS | PostGIS | `ST_Contains`, `ST_Distance`, GIST indexes needed for performant spatial queries on EEZ boundaries and AIS positions. |
-| UI framework | Gradio vs Streamlit | Streamlit | Folium map integration via `streamlit-folium`. More control over layout. Decoupled from harbor serve (REST/WS). |
+| UI framework | Gradio vs Streamlit | Streamlit | Folium map integration via `streamlit-folium`. More control over layout. Decoupled from stargraph serve (REST/WS). |
 | Risk scoring | ML-based vs rule-based | Rule-based | Explainable for investors. No second model to train. Weights configurable. |
 | Tile storage | S3 vs local filesystem + Git LFS | Local + Git LFS | Demo runs offline. Small test set (~2-3 tiles) fits in LFS. Full dataset downloaded by `prepare_dataset.py`. |
-| Model registry DB | Shared Postgres vs SQLite | SQLite (Harbor default) | ModelRegistry is SQLite-backed by design. No reason to override for a demo. |
+| Model registry DB | Shared Postgres vs SQLite | SQLite (Stargraph default) | ModelRegistry is SQLite-backed by design. No reason to override for a demo. |
 | Coastline data | GSHHG vs Natural Earth | Natural Earth | Smaller download, shapefile format, easily loaded by geopandas. Sufficient resolution for land-mask filtering. |
 
 ## Performance Considerations
 
-- **ONNX inference**: Harbor's `get_onnx_session()` caches sessions by `(model_id, version)`. Thread-safe CPU EP. Expect <100ms/patch GPU, <2s/patch CPU.
+- **ONNX inference**: Stargraph's `get_onnx_session()` caches sessions by `(model_id, version)`. Thread-safe CPU EP. Expect <100ms/patch GPU, <2s/patch CPU.
 - **Tiling**: 640x640 patches from a 29400x24400 scene yields ~2000 patches. At <2s/patch CPU = ~67 min. GPU cuts to ~3.5 min. Demo uses pre-tiled small scenes (10-20 patches each).
 - **PostGIS queries**: GIST indexes on geometry columns. EEZ point-in-polygon: <10ms per detection. Port distance: <10ms.
 - **AIS correlation**: Index on `ais_positions(ts)` + GIST on `geom`. Windowed query should be <50ms.
@@ -1197,11 +1197,11 @@ test:
 
 Based on CVE-rem codebase analysis:
 
-1. **`state_class:` in harbor.yaml** → `"demos.sentinel_dark_watch.graph.state:SdwState"` (colon-separated module:class)
+1. **`state_class:` in stargraph.yaml** → `"demos.sentinel_dark_watch.graph.state:SdwState"` (colon-separated module:class)
 2. **Node `kind:` format** → `"demos.sentinel_dark_watch.graph.nodes:ClassName"` (Python import path)
 3. **`bootstrap.py` pattern** → `_wait_tcp()` + `_wait_http_health()` for Docker health, then SQL DDL, then seed data. `_load_env()` from `.env` at module top.
 4. **Run via uv** → `uv run --no-project python -m demos.sentinel_dark_watch.bootstrap`
-5. **`serve_*.py` pattern** → Argparse wrapper that imports `harbor.serve.api.create_app`, pins capabilities, starts uvicorn.
+5. **`serve_*.py` pattern** → Argparse wrapper that imports `stargraph.serve.api.create_app`, pins capabilities, starts uvicorn.
 6. **Fathom rules syntax** → `?n <- (node-id (id <node_id>)) (state (<field> <value>))` with `then: [{ kind: goto, target: <next> }]`
 7. **HITL gates** → `kind: interrupt` with `timeout: null`, `on_timeout: "noop"`, followed by `branch_resp_*` passthrough for response routing
 8. **`.env.example`** → All env vars with sensible defaults for Docker compose. DSN format: `postgresql://user:pass@localhost:port/db`
@@ -1237,13 +1237,13 @@ sdw = [
 1. Rename `demos/sentinel-dark-watch/` → `demos/sentinel_dark_watch/`. Create directory structure + `__init__.py` files.
 2. Create `docker-compose.yml` (PostGIS + Redis + llm-shim). Create `.env.example`.
 3. Create `graph/state.py` with `SdwState` and `RetrainState`.
-4. Create `graph/harbor.yaml` (main pipeline IR) and `graph/retrain.yaml` (retrain sub-graph IR).
+4. Create `graph/stargraph.yaml` (main pipeline IR) and `graph/retrain.yaml` (retrain sub-graph IR).
 5. Create `bootstrap.py` — wait for Docker health, provision PostGIS schema (all tables), pre-load EEZ/port/coastline data, pre-stage fixture AIS data.
 6. Create `graph/nodes.py` — implement all 12+ node classes. Start with PassthroughNode + SARIngestNode + YOLOInferenceNode.
 7. Create `nautilus.yaml` — configure postgres source for AIS buffer + geo data + detections.
 8. Create `ais_ingest.py` — AIS WebSocket daemon with mock fallback.
 9. Create `mocks/llm-shim/` — OpenAI-compatible server with maritime canned responses.
-10. Create `serve_sdw.py` — harbor serve wrapper with capability profile.
+10. Create `serve_sdw.py` — stargraph serve wrapper with capability profile.
 11. Create `capabilities.py` — SDW capability profile.
 12. Create `scripts/prepare_dataset.py` — xView3 tiling + label conversion.
 13. Create `scripts/train_detector.py` — YOLO fine-tune + ONNX export + ModelRegistry registration.

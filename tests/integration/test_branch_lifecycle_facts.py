@@ -7,24 +7,24 @@ Asserts the three behaviours required by ``requirements.md §FR-13`` and
 1. A parallel block with 3 branches emits 3 :class:`BranchStartedEvent` and
    3 :class:`BranchCompletedEvent` (or :class:`BranchCancelledEvent`) into
    ``run.stream()`` -- one per branch fork/join.
-2. ``harbor.transition`` facts are emitted via the Fathom adapter on each
+2. ``stargraph.transition`` facts are emitted via the Fathom adapter on each
    branch start, completion, and cancellation transition.
-3. ``harbor.evidence(kind="last-write-conflict")`` is emitted on an
+3. ``stargraph.evidence(kind="last-write-conflict")`` is emitted on an
    un-reduced parallel write that resolves through the ``last-write``
    strategy.
 
-This is the [TDD-RED] half: :mod:`harbor.runtime.parallel` ships
+This is the [TDD-RED] half: :mod:`stargraph.runtime.parallel` ships
 :func:`execute_parallel` (from task 3.9) but does NOT yet wire
 :class:`BranchStartedEvent` / :class:`BranchCompletedEvent` /
 :class:`BranchCancelledEvent` into the run's :class:`EventBus`, nor does
-it stamp ``harbor.transition`` / ``harbor.evidence`` facts via the
+it stamp ``stargraph.transition`` / ``stargraph.evidence`` facts via the
 :class:`FathomAdapter` at branch boundaries. Tests fail because the
 public surface for ``execute_parallel(..., bus=, fathom=)`` (or
 equivalent emit hook) does not exist; the [TDD-GREEN] follow-up
 (task 3.16) wires the emissions.
 
 Test fixture style mirrors :mod:`tests.integration.test_parallel_cancellation`:
-- Imports ``harbor.runtime.parallel`` via :func:`importlib.import_module`
+- Imports ``stargraph.runtime.parallel`` via :func:`importlib.import_module`
   to keep pyright strict-mode green when the surface is missing.
 - Uses lightweight stub bus + fathom recorders rather than a full
   ``Graph`` end-to-end. The full IR-driven run-loop integration lands in
@@ -44,14 +44,14 @@ import pytest
 
 
 def _import_parallel() -> Any:
-    """Deferred-import helper for ``harbor.runtime.parallel`` (RED-safe)."""
-    return importlib.import_module("harbor.runtime.parallel")
+    """Deferred-import helper for ``stargraph.runtime.parallel`` (RED-safe)."""
+    return importlib.import_module("stargraph.runtime.parallel")
 
 
 class _RecordingBus:
     """Minimal in-memory event recorder.
 
-    Mirrors the :class:`harbor.runtime.bus.EventBus` send surface enough
+    Mirrors the :class:`stargraph.runtime.bus.EventBus` send surface enough
     that ``execute_parallel`` can publish without spinning a real anyio
     stream. Records every send for post-hoc assertion.
     """
@@ -71,7 +71,7 @@ class _RecordingFathom:
     """Minimal Fathom adapter recorder.
 
     Captures every ``assert_with_provenance(template, slots, provenance)``
-    call so the test can assert ``harbor.transition`` / ``harbor.evidence``
+    call so the test can assert ``stargraph.transition`` / ``stargraph.evidence``
     emits at branch boundaries without depending on the full CLIPS engine.
     """
 
@@ -88,10 +88,10 @@ class _RecordingFathom:
         self.facts.append((template, slots))
 
     def transitions(self) -> list[dict[str, Any]]:
-        return [slots for tpl, slots in self.facts if tpl == "harbor.transition"]
+        return [slots for tpl, slots in self.facts if tpl == "stargraph.transition"]
 
     def evidence(self) -> list[dict[str, Any]]:
-        return [slots for tpl, slots in self.facts if tpl == "harbor.evidence"]
+        return [slots for tpl, slots in self.facts if tpl == "stargraph.evidence"]
 
 
 def _make_factory(value: int, delay: float = 0.0) -> Any:
@@ -144,12 +144,12 @@ async def test_three_branches_emit_started_and_completed_events() -> None:
 
 
 @pytest.mark.asyncio
-async def test_branch_transitions_emit_harbor_transition_facts() -> None:
-    """FR-13 case 2: ``harbor.transition`` facts at start / complete / cancel.
+async def test_branch_transitions_emit_stargraph_transition_facts() -> None:
+    """FR-13 case 2: ``stargraph.transition`` facts at start / complete / cancel.
 
     Per design §3.7.1, every branch lifecycle transition (``-> started``,
     ``-> completed``, ``-> cancelled``) MUST be reflected as a
-    ``harbor.transition`` fact via the Fathom adapter. We use a ``race``
+    ``stargraph.transition`` fact via the Fathom adapter. We use a ``race``
     strategy so at least one branch is cancelled (loser of the race) and
     we can observe the cancel-side transition fact.
     """
@@ -190,12 +190,12 @@ async def test_branch_transitions_emit_harbor_transition_facts() -> None:
 
 
 @pytest.mark.asyncio
-async def test_last_write_conflict_emits_harbor_evidence_fact() -> None:
-    """FR-13 case 3: un-reduced last-write conflict emits harbor.evidence.
+async def test_last_write_conflict_emits_stargraph_evidence_fact() -> None:
+    """FR-13 case 3: un-reduced last-write conflict emits stargraph.evidence.
 
     Combined with task 3.11's confidence-decay test: an un-reduced field
     written by multiple parallel branches under the ``last-write``
-    strategy MUST emit a ``harbor.evidence(kind="last-write-conflict")``
+    strategy MUST emit a ``stargraph.evidence(kind="last-write-conflict")``
     fact carrying the decayed confidence per design §3.6.3.
 
     The merge module already exposes :func:`build_last_write_conflict_evidence`
@@ -204,7 +204,7 @@ async def test_last_write_conflict_emits_harbor_evidence_fact() -> None:
     resolves a conflict. The RED contract: the parallel executor does not
     yet accept a ``conflicts=`` argument (or equivalent merge-context
     handle) that would let it emit the evidence fact -- the test fails
-    at ``TypeError`` or at the missing ``harbor.evidence`` fact.
+    at ``TypeError`` or at the missing ``stargraph.evidence`` fact.
     """
     parallel = _import_parallel()
     execute_parallel = parallel.execute_parallel
@@ -226,7 +226,7 @@ async def test_last_write_conflict_emits_harbor_evidence_fact() -> None:
         step=0,
         # The RED-only kwarg: a conflict descriptor the GREEN path uses
         # to drive ``build_last_write_conflict_evidence`` and emit the
-        # ``harbor.evidence`` fact. Task 3.16 GREEN defines the shape.
+        # ``stargraph.evidence`` fact. Task 3.16 GREEN defines the shape.
         conflicts=[
             {
                 "field": "result",
@@ -239,7 +239,7 @@ async def test_last_write_conflict_emits_harbor_evidence_fact() -> None:
     evidence = fathom.evidence()
     last_write = [slots for slots in evidence if slots.get("kind") == "last-write-conflict"]
     assert len(last_write) >= 1, (
-        f"expected >=1 harbor.evidence(kind=last-write-conflict), got {evidence}"
+        f"expected >=1 stargraph.evidence(kind=last-write-conflict), got {evidence}"
     )
     payload = last_write[0]
     assert payload.get("field") == "result"
@@ -254,7 +254,7 @@ def test_envelope_shape_for_branch_events_unused_helper() -> None:
     three branch lifecycle types (FR-14) the GREEN wiring will publish.
     Fails loudly if the vocabulary regresses.
     """
-    from harbor.runtime.events import (
+    from stargraph.runtime.events import (
         BranchCancelledEvent,
         BranchCompletedEvent,
         BranchStartedEvent,

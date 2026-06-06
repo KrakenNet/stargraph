@@ -14,8 +14,8 @@ from typing import cast
 import pytest
 from pydantic import BaseModel
 
-from harbor.errors import IRValidationError
-from harbor.graph.hash import _state_schema_signature  # pyright: ignore[reportPrivateUsage]
+from stargraph.errors import IRValidationError
+from stargraph.graph.hash import _state_schema_signature  # pyright: ignore[reportPrivateUsage]
 
 pytestmark = pytest.mark.unit
 

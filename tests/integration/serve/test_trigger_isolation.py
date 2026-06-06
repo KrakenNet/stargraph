@@ -2,12 +2,12 @@
 """Phase-3 integration test (task 3.15): per-plugin try/except trigger isolation.
 
 Verifies the locked design §6.3 contract: when one trigger plugin
-raises in :func:`~harbor.plugin.hookspecs.trigger_init` (or any of
+raises in :func:`~stargraph.plugin.hookspecs.trigger_init` (or any of
 the four lifecycle hooks), the other registered triggers MUST still
 initialise / start / stop / contribute routes. Pluggy's default
 behaviour is to halt iteration on the first exception; the per-plugin
 isolation lives in
-:func:`harbor.plugin.triggers_dispatcher.dispatch_trigger_lifecycle`
+:func:`stargraph.plugin.triggers_dispatcher.dispatch_trigger_lifecycle`
 which iterates the plugin list directly with a per-plugin
 ``try/except`` (loader-side defence in depth, FR-2, AC-12.2).
 
@@ -17,9 +17,9 @@ This test exercises the dispatcher against a synthetic
 * One **failing** plugin: ``trigger_init`` raises a synthetic
   :class:`RuntimeError`.
 * Three working plugins: stand-ins for the
-  :class:`~harbor.triggers.manual.ManualTrigger`,
-  :class:`~harbor.triggers.cron.CronTrigger`, and
-  :class:`~harbor.triggers.webhook.WebhookTrigger` lifecycle surfaces.
+  :class:`~stargraph.triggers.manual.ManualTrigger`,
+  :class:`~stargraph.triggers.cron.CronTrigger`, and
+  :class:`~stargraph.triggers.webhook.WebhookTrigger` lifecycle surfaces.
   We use simple stand-in plugin objects (each with a ``trigger_init``
   attribute) rather than importing the real plugin modules because
   the real cron/webhook plugins require a running asyncio loop and
@@ -32,7 +32,7 @@ The test asserts:
    plugin's exception (it returns a :class:`DispatchResult` list with
    ``success=False`` for the failing plugin and ``success=True`` for
    the three working stand-ins).
-2. The structlog ``harbor.plugin.triggers`` logger emitted a
+2. The structlog ``stargraph.plugin.triggers`` logger emitted a
    ``trigger_lifecycle_failed`` event for the failing plugin's failure
    (captured via :func:`structlog.testing.capture_logs`).
 3. ``trigger_routes`` collection is similarly isolated: a synthetic
@@ -50,8 +50,8 @@ import pluggy
 import pytest
 from structlog.testing import capture_logs
 
-from harbor.plugin._markers import PROJECT
-from harbor.plugin.triggers_dispatcher import (
+from stargraph.plugin._markers import PROJECT
+from stargraph.plugin.triggers_dispatcher import (
     collect_trigger_routes,
     dispatch_trigger_lifecycle,
 )
@@ -67,7 +67,7 @@ pytestmark = [pytest.mark.serve, pytest.mark.trigger, pytest.mark.integration]
 class _FailingTriggerPlugin:
     """Trigger plugin whose ``trigger_init`` always raises.
 
-    Mirrors the shape :func:`harbor.plugin.triggers_dispatcher.dispatch_trigger_lifecycle`
+    Mirrors the shape :func:`stargraph.plugin.triggers_dispatcher.dispatch_trigger_lifecycle`
     iterates: any object exposing a ``trigger_init`` callable counts.
     The structural-typing match means we do NOT need pluggy hookimpl
     decorators here; the dispatcher reads the attribute via
@@ -153,7 +153,7 @@ def test_failing_trigger_init_does_not_block_other_triggers() -> None:
        :class:`RuntimeError`.
     3. The 3 working plugin stand-ins each have ``success=True`` and
        were *actually visited* (their ``init_calls`` list grew).
-    4. The structlog ``harbor.plugin.triggers`` logger emitted a
+    4. The structlog ``stargraph.plugin.triggers`` logger emitted a
        ``trigger_lifecycle_failed`` log line for the failing plugin
        (captured via :func:`structlog.testing.capture_logs`).
     """

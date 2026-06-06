@@ -21,7 +21,7 @@ pytestmark = pytest.mark.integration
 def test_cli_serve_uses_uvicorn_server_class(
     monkeypatch: pytest.MonkeyPatch, tmp_path: object
 ) -> None:
-    """``harbor serve`` boots via ``uvicorn.Config(...) + uvicorn.Server(cfg).run()``.
+    """``stargraph serve`` boots via ``uvicorn.Config(...) + uvicorn.Server(cfg).run()``.
 
     Hand-rolled stand-in classes (no ``unittest.mock``) capture the boot
     call shape and short-circuit the run loop.
@@ -29,7 +29,7 @@ def test_cli_serve_uses_uvicorn_server_class(
     import uvicorn
     from typer.testing import CliRunner
 
-    from harbor.cli import app
+    from stargraph.cli import app
 
     seen: dict[str, object] = {}
 

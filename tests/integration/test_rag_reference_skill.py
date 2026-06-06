@@ -3,7 +3,7 @@
 
 Task 3.42 / FR-32 / AC-7.1 / NFR-4. Bootstraps real LanceDB and
 SQLiteDoc stores under ``tmp_path``, seeds them, drives
-:class:`harbor.skills.refs.rag.RagSkill.run`, and asserts the
+:class:`stargraph.skills.refs.rag.RagSkill.run`, and asserts the
 retrieved hits, answer string, and sources list all round-trip
 through both branches without any live network.
 """
@@ -14,19 +14,19 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from harbor.ir._models import StoreRef
-from harbor.skills.refs.rag import RagSkill, RagState
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.sqlite_doc import SQLiteDocStore
-from harbor.stores.vector import Row
+from stargraph.ir._models import StoreRef
+from stargraph.skills.refs.rag import RagSkill, RagState
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from harbor.nodes.base import ExecutionContext
-    from harbor.stores.doc import DocStore
-    from harbor.stores.vector import VectorStore
+    from stargraph.nodes.base import ExecutionContext
+    from stargraph.stores.doc import DocStore
+    from stargraph.stores.vector import VectorStore
 
 
 pytestmark = [

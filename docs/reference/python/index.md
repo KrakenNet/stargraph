@@ -1,11 +1,11 @@
 # Python API Reference
 
-Auto-generated reference for the public `harbor` Python package.
+Auto-generated reference for the public `stargraph` Python package.
 
 > TODO: once the public API stabilizes, populate this page with `mkdocstrings` directives, e.g.
 >
 > ```markdown
-> ::: harbor.runtime
+> ::: stargraph.runtime
 >     options:
 >       show_source: true
 > ```

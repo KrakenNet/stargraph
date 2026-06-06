@@ -107,14 +107,14 @@ rather than restricted scalars.
 
 ## `SQLiteFactStore`
 
-Default in-tree provider (`harbor.stores.sqlite_fact`). POC scope of
+Default in-tree provider (`stargraph.stores.sqlite_fact`). POC scope of
 FR-6 / FR-13 / FR-30.
 
 ### Constructor
 
 ```python
 from pathlib import Path
-from harbor.stores import SQLiteFactStore
+from stargraph.stores import SQLiteFactStore
 
 store = SQLiteFactStore(path=Path("./.facts"))
 await store.bootstrap()
@@ -164,11 +164,11 @@ stores:
 ## `PromoteTriplesToFacts`
 
 Graph→fact promotion path (FR-30 / AC-6.x, design §3.13). Lives at
-`harbor.stores.kg_promotion`. Mirrors `apply_delta` for the graph side:
+`stargraph.stores.kg_promotion`. Mirrors `apply_delta` for the graph side:
 selects rows from a portable Cypher query and pins each as a `Fact`.
 
 ```python
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
 
 facts = await PromoteTriplesToFacts(
     graph_store, fact_store, fathom_adapter,

@@ -1,8 +1,8 @@
-# Air-Gap Deployment Guide — Harbor v1
+# Air-Gap Deployment Guide — Stargraph v1
 
-**Audience**: Cleared-mode operators deploying Harbor to a network-isolated
+**Audience**: Cleared-mode operators deploying Stargraph to a network-isolated
 environment.
-**Spec ref**: `harbor-serve-and-bosun` §12.3, §17 Decision #5 (FR-66, AC-4.3,
+**Spec ref**: `stargraph-serve-and-bosun` §12.3, §17 Decision #5 (FR-66, AC-4.3,
 AC-4.4, NFR-6).
 **Companion doc**: `docs/knowledge/air-gap.md` (knowledge-stack offline staging).
 
@@ -14,7 +14,7 @@ filesystem requirement, and UTC timezone recommendations.
 ## Why air-gap?
 
 Cleared deployments operate behind one-way diodes or fully isolated
-LANs. Harbor's design pins zero outbound dependencies at run time:
+LANs. Stargraph's design pins zero outbound dependencies at run time:
 
 - **Zero outbound HTTP** at run time once the wheelhouse + embedding
   weights are staged. Audit, replay, and HITL all stay local.
@@ -31,16 +31,16 @@ part of your release artifact.
 
 ```bash
 # On the build host (network-attached):
-cd /path/to/harbor
+cd /path/to/stargraph
 uv lock                                    # pin transitive versions
 uv pip wheel \
     --only-binary=:all: \
     -r <(uv export) \
     -d ./wheelhouse/
 
-# Optional: include harbor itself as a wheel in the bundle.
+# Optional: include stargraph itself as a wheel in the bundle.
 uv build --wheel
-cp dist/harbor-*.whl ./wheelhouse/
+cp dist/stargraph-*.whl ./wheelhouse/
 ```
 
 The `--only-binary=:all:` flag refuses any sdists; sdist-only deps
@@ -55,7 +55,7 @@ release-bundle/
 ├── models/
 │   └── all-MiniLM-L6-v2/      # HF snapshot (see §2)
 ├── hf_manifest.sha256          # weights pinning manifest
-├── harbor.toml                 # operator config (mTLS paths, etc.)
+├── stargraph.toml                 # operator config (mTLS paths, etc.)
 └── README.md                   # operator runbook excerpt
 ```
 
@@ -65,7 +65,7 @@ release-bundle/
 uv pip install \
     --no-index \
     --find-links ./wheelhouse/ \
-    harbor
+    stargraph
 ```
 
 `--no-index` blocks PyPI lookups; `--find-links` points at the local
@@ -74,7 +74,7 @@ distribution` error rather than a silent network reach-out.
 
 ## 2. Embedding-model weights pinning
 
-Harbor's knowledge stack uses `sentence-transformers/all-MiniLM-L6-v2`
+Stargraph's knowledge stack uses `sentence-transformers/all-MiniLM-L6-v2`
 by default (384-dim, symmetric). Pre-stage the weights on the build
 host, compute SHA-256 hashes, ship as part of the bundle.
 
@@ -93,7 +93,7 @@ find . -type f -exec sha256sum {} \; > ../../hf_manifest.sha256
 
 ```bash
 export HF_HUB_OFFLINE=1
-export HF_HOME=/srv/harbor/models   # contains all-MiniLM-L6-v2/
+export HF_HOME=/srv/stargraph/models   # contains all-MiniLM-L6-v2/
 
 # Verify manifest before serve start:
 cd $HF_HOME
@@ -111,10 +111,10 @@ Two recommended topologies; pick by deployment posture.
 
 ### 3a. Edge proxy (Envoy or nginx) — primary recommendation
 
-Run Harbor on `localhost:8000` (HTTP), terminate mTLS at the edge.
+Run Stargraph on `localhost:8000` (HTTP), terminate mTLS at the edge.
 The proxy validates client certs against a pinned CA bundle and
 forwards the verified subject into a header (`X-Client-Cert-Subject`)
-that `harbor.serve.auth:MtlsProvider` consumes.
+that `stargraph.serve.auth:MtlsProvider` consumes.
 
 **Envoy config sketch**:
 
@@ -139,7 +139,7 @@ listeners:
         route_config:
           virtual_hosts:
           - routes:
-            - route: { cluster: harbor_local }
+            - route: { cluster: stargraph_local }
               match: { prefix: "/" }
         http_filters:
         - name: envoy.filters.http.router
@@ -171,29 +171,29 @@ server {
 For deployments where introducing a proxy is itself a compliance
 issue (e.g. SCIF with frozen package list), FastAPI handles mTLS
 directly via uvicorn's `--ssl-*` flags. The cryptography backend is
-the same `cryptography` lib already pinned by Harbor.
+the same `cryptography` lib already pinned by Stargraph.
 
 ```bash
-harbor serve \
+stargraph serve \
     --profile cleared \
     --port 443 \
-    --tls-cert /etc/harbor/server.crt \
-    --tls-key /etc/harbor/server.key \
-    --tls-ca-cert /etc/harbor/client-ca.crt \
+    --tls-cert /etc/stargraph/server.crt \
+    --tls-key /etc/stargraph/server.key \
+    --tls-ca-cert /etc/stargraph/client-ca.crt \
     --tls-require-client-cert
 ```
 
-`harbor.serve.auth:MtlsProvider` reads the verified peer cert from
+`stargraph.serve.auth:MtlsProvider` reads the verified peer cert from
 the ASGI scope (`scope["transport"].get_extra_info("peercert")`).
 
 Code refs:
-- `harbor.serve.auth:MtlsProvider` — both topologies converge here.
-- `harbor.serve.lifecycle:_validate_tls_paths` — startup-time path
+- `stargraph.serve.auth:MtlsProvider` — both topologies converge here.
+- `stargraph.serve.lifecycle:_validate_tls_paths` — startup-time path
   validation (file exists, mode 0600, owner check).
 
 ## 4. Single-process invariant
 
-Harbor v1 is **single-process per deployment** (locked Decision #5).
+Stargraph v1 is **single-process per deployment** (locked Decision #5).
 No multi-worker uvicorn (`--workers N` refused under cleared), no
 ProcessPoolExecutor for graph evaluation, no thread pool with shared
 state across workers.
@@ -205,19 +205,19 @@ state across workers.
 - **Audit cohesion**: a single JSONL audit sink with a single fsync'd
   fd is the source of truth. Multi-worker would require sink
   consolidation; v1 ships zero such infrastructure.
-- **Capacity model**: scale via multiple Harbor *instances* (each
+- **Capacity model**: scale via multiple Stargraph *instances* (each
   with its own checkpointer + audit sink), not multiple workers per
   instance. Use a load balancer or message-queue dispatcher upstream.
 
-The CLI enforces this: `harbor serve --profile cleared --workers 4`
+The CLI enforces this: `stargraph serve --profile cleared --workers 4`
 exits with code 2 and the message `cleared profile rejects --workers
 > 1 (locked Decision #5)`.
 
 ## 5. POSIX-local-only filesystems
 
-Harbor refuses to start when the configured state directory lives on
+Stargraph refuses to start when the configured state directory lives on
 NFS, SMB, AFP, or any other network filesystem (task 3.31, FR-31).
-Lookup is via `statfs(2)` magic-number table (`harbor.serve.lifecycle
+Lookup is via `statfs(2)` magic-number table (`stargraph.serve.lifecycle
 :_check_local_fs`).
 
 **Rationale**:
@@ -232,11 +232,11 @@ Lookup is via `statfs(2)` magic-number table (`harbor.serve.lifecycle
 
 **Migration path**: stage state on local SSD, replicate via
 filesystem-level snapshots (LVM, ZFS) or a backup rsync into network
-storage. Never run Harbor *on* the network mount.
+storage. Never run Stargraph *on* the network mount.
 
 ## 6. UTC timezone recommendation
 
-Harbor's audit, provenance, and cf-hash subsystems use UTC for every
+Stargraph's audit, provenance, and cf-hash subsystems use UTC for every
 recorded timestamp (`datetime.now(UTC)` everywhere). Running the
 serve process in a non-UTC timezone is **allowed** but adds skew
 complexity:
@@ -252,74 +252,74 @@ env), keep wallclock NTP-synced, and use a local-TZ converter at
 log-aggregation time if operators want local timestamps.
 
 ```ini
-# /etc/systemd/system/harbor.service
+# /etc/systemd/system/stargraph.service
 [Service]
 Environment=TZ=UTC
-Environment=HARBOR_PROFILE=cleared
+Environment=STARGRAPH_PROFILE=cleared
 Environment=HF_HUB_OFFLINE=1
-Environment=HF_HOME=/srv/harbor/models
-ExecStart=/srv/harbor/.venv/bin/harbor serve \
+Environment=HF_HOME=/srv/stargraph/models
+ExecStart=/srv/stargraph/.venv/bin/stargraph serve \
     --profile cleared \
     --port 443 \
-    --tls-cert /etc/harbor/server.crt \
-    --tls-key /etc/harbor/server.key \
-    --tls-ca-cert /etc/harbor/client-ca.crt
+    --tls-cert /etc/stargraph/server.crt \
+    --tls-key /etc/stargraph/server.key \
+    --tls-ca-cert /etc/stargraph/client-ca.crt
 ```
 
 ## 7. Worked example: zero to serve
 
 Assuming a fresh air-gapped host with the release bundle staged at
-`/srv/harbor/`:
+`/srv/stargraph/`:
 
 ```bash
 # 1. Verify weights manifest.
-cd /srv/harbor/models
-sha256sum -c /srv/harbor/hf_manifest.sha256
+cd /srv/stargraph/models
+sha256sum -c /srv/stargraph/hf_manifest.sha256
 
-# 2. Create venv + install Harbor offline.
-cd /srv/harbor
+# 2. Create venv + install Stargraph offline.
+cd /srv/stargraph
 python3 -m venv .venv
 source .venv/bin/activate
-pip install --no-index --find-links ./wheelhouse/ harbor
+pip install --no-index --find-links ./wheelhouse/ stargraph
 
 # 3. Verify install (no network reach-out).
-HARBOR_PROFILE=cleared harbor --help
+STARGRAPH_PROFILE=cleared stargraph --help
 
 # 4. Create state directory on local FS (refuse network mounts).
-install -d -m 0700 -o harbor -g harbor /srv/harbor/state
+install -d -m 0700 -o stargraph -g stargraph /srv/stargraph/state
 
-# 5. Configure mTLS paths in harbor.toml.
-cat > /etc/harbor/harbor.toml <<'TOML'
+# 5. Configure mTLS paths in stargraph.toml.
+cat > /etc/stargraph/stargraph.toml <<'TOML'
 [serve.cleared]
 auth_provider = "mtls"
-tls_cert = "/etc/harbor/server.crt"
-tls_key = "/etc/harbor/server.key"
-tls_ca_cert = "/etc/harbor/client-ca.crt"
-state_dir = "/srv/harbor/state"
-audit_path = "/srv/harbor/state/harbor.audit.jsonl"
+tls_cert = "/etc/stargraph/server.crt"
+tls_key = "/etc/stargraph/server.key"
+tls_ca_cert = "/etc/stargraph/client-ca.crt"
+state_dir = "/srv/stargraph/state"
+audit_path = "/srv/stargraph/state/stargraph.audit.jsonl"
 TOML
 
 # 6. Start serve.
-TZ=UTC HF_HUB_OFFLINE=1 HF_HOME=/srv/harbor/models \
-    harbor serve --profile cleared --port 443 \
-        --tls-cert /etc/harbor/server.crt \
-        --tls-key /etc/harbor/server.key \
-        --tls-ca-cert /etc/harbor/client-ca.crt \
+TZ=UTC HF_HUB_OFFLINE=1 HF_HOME=/srv/stargraph/models \
+    stargraph serve --profile cleared --port 443 \
+        --tls-cert /etc/stargraph/server.crt \
+        --tls-key /etc/stargraph/server.key \
+        --tls-ca-cert /etc/stargraph/client-ca.crt \
         --tls-require-client-cert
 ```
 
 The first request (`curl --cert client.pem --cacert server-ca.pem
-https://harbor.local:443/v1/health`) should return `{"status":"ok"}`
+https://stargraph.local:443/v1/health`) should return `{"status":"ok"}`
 with no outbound network observable on `tcpdump -i any not port 443`.
 
 ## 8. Failure modes + diagnostics
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `harbor serve` exits with `nfs/smb refused at bootstrap` | state_dir on a network mount | Move state_dir to local SSD |
+| `stargraph serve` exits with `nfs/smb refused at bootstrap` | state_dir on a network mount | Move state_dir to local SSD |
 | `MiniLMEmbedder` raises `LocalEntryNotFoundError` | weights not staged | Re-extract `models/` and verify manifest |
 | `cleared profile rejects --workers > 1` | multi-worker attempt | Use a single worker (Decision #5) |
-| `pack signature verification failed` | pack signed with wrong key or alg | Check `harbor.toml` allow-list; alg must be Ed25519 |
+| `pack signature verification failed` | pack signed with wrong key or alg | Check `stargraph.toml` allow-list; alg must be Ed25519 |
 | TLS handshake fails with `unknown ca` | client cert not in client-ca.crt | Re-issue client cert from the pinned CA |
 
 ## 9. Cross-references
@@ -329,4 +329,4 @@ with no outbound network observable on `tcpdump -i any not port 443`.
   mitigations.
 - `docs/security/sign-off.md` — pre-release rubric (covers NFS
   refusal, --allow-side-effects gate, mTLS posture).
-- `docs/reference/cli.md` — full `harbor serve` flag reference.
+- `docs/reference/cli.md` — full `stargraph serve` flag reference.

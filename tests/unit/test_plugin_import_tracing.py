@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Cold-import tracing for the Harbor plugin loader (NFR-7).
+"""Cold-import tracing for the Stargraph plugin loader (NFR-7).
 
 NFR-7: stage-1 manifest validation must NOT import any tool / skill /
 store / pack module from any plugin distribution. Importing them is
@@ -45,9 +45,9 @@ _FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "plugins"
 if str(_FIXTURES_DIR) not in sys.path:
     sys.path.insert(0, str(_FIXTURES_DIR))
 
-from harbor.errors import PluginLoadError  # noqa: E402
-from harbor.ir import PluginManifest  # noqa: E402, TC001
-from harbor.plugin.loader import build_plugin_manager  # noqa: E402
+from stargraph.errors import PluginLoadError  # noqa: E402
+from stargraph.ir import PluginManifest  # noqa: E402, TC001
+from stargraph.plugin.loader import build_plugin_manager  # noqa: E402
 
 # Modules whose import we want to monitor. These names match the values
 # in the synthetic EntryPoints below.
@@ -91,8 +91,8 @@ def _patch_eps(eps: list[EntryPoint]) -> Any:
         return out
 
     return _StackedPatch(
-        patch("harbor.plugin.loader.entry_points", fake),
-        patch("harbor.plugin._manifest.entry_points", fake),
+        patch("stargraph.plugin.loader.entry_points", fake),
+        patch("stargraph.plugin._manifest.entry_points", fake),
     )
 
 
@@ -176,18 +176,18 @@ def _purge_synthetic_modules() -> Any:  # pyright: ignore[reportUnusedFunction]
 def _two_dists_eps() -> list[EntryPoint]:
     """Build the canonical two-dist EntryPoint list used by every test."""
     return [
-        _ep("alpha_tools", "plugin_alpha.tools", "harbor.tools", "alpha"),
+        _ep("alpha_tools", "plugin_alpha.tools", "stargraph.tools", "alpha"),
         _ep(
-            "harbor_plugin",
+            "stargraph_plugin",
             "plugin_alpha.manifest:make_manifest",
-            "harbor",
+            "stargraph",
             "alpha",
         ),
-        _ep("beta_skills", "plugin_beta.skills", "harbor.skills", "beta"),
+        _ep("beta_skills", "plugin_beta.skills", "stargraph.skills", "beta"),
         _ep(
-            "harbor_plugin",
+            "stargraph_plugin",
             "plugin_beta.manifest:make_manifest",
-            "harbor",
+            "stargraph",
             "beta",
         ),
     ]
@@ -267,18 +267,18 @@ def test_aborted_load_never_imports_tool_modules() -> None:
         assert name not in sys.modules
 
     eps = [
-        _ep("alpha_tools", "plugin_alpha.tools", "harbor.tools", "alpha"),
+        _ep("alpha_tools", "plugin_alpha.tools", "stargraph.tools", "alpha"),
         _ep(
-            "harbor_plugin",
+            "stargraph_plugin",
             "plugin_alpha.manifest:make_manifest",
-            "harbor",
+            "stargraph",
             "alpha",
         ),
-        _ep("beta_skills", "plugin_beta.skills", "harbor.skills", "beta"),
+        _ep("beta_skills", "plugin_beta.skills", "stargraph.skills", "beta"),
         _ep(
-            "harbor_plugin",
+            "stargraph_plugin",
             f"{__name__}:_factory_that_raises",
-            "harbor",
+            "stargraph",
             "beta",
         ),
     ]

@@ -20,7 +20,7 @@ Cases covered (FR-27, FR-69, AC-8.5, NFR-4):
    step-1 ``state`` did NOT change (cf write went to ``cf-<uuid>``,
    not back to the parent ``run_id``).
 
-The test drives :meth:`harbor.GraphRun.counterfactual` directly (the
+The test drives :meth:`stargraph.GraphRun.counterfactual` directly (the
 HTTP route ``POST /v1/runs/{id}/counterfactual`` is the same code
 path; we exercise the engine API for tighter assertions on
 in-memory state).
@@ -33,10 +33,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor import GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.replay.counterfactual import CounterfactualMutation
+from stargraph import GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.replay.counterfactual import CounterfactualMutation
 
 if TYPE_CHECKING:
     from pathlib import Path

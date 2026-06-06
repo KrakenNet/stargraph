@@ -36,7 +36,7 @@ Scope split (deliberate; documented gap, mirrors task 3.23):
 
 Spec-vs-implementation drift (logged as a learning): the task spec
 references ``mutation.tool_outputs`` but the implemented field on
-:class:`harbor.replay.counterfactual.CounterfactualMutation` is
+:class:`stargraph.replay.counterfactual.CounterfactualMutation` is
 ``node_output_overrides``. The implementation field is the source of
 truth (the mutation model is shipped + validated; the spec wording is
 a holdover from an earlier draft).
@@ -49,10 +49,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor import GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.replay.counterfactual import (
+from stargraph import GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.replay.counterfactual import (
     CounterfactualMutation,
     derived_graph_hash,
 )

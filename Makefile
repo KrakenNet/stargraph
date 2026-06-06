@@ -39,14 +39,14 @@ test-serve:
 
 lint-serve:
 	uv run ruff check \
-		src/harbor/serve \
-		src/harbor/bosun \
-		src/harbor/nodes/nautilus \
-		src/harbor/nodes/interrupt \
-		src/harbor/nodes/artifacts \
-		src/harbor/tools/nautilus \
-		src/harbor/artifacts \
-		src/harbor/triggers
+		src/stargraph/serve \
+		src/stargraph/bosun \
+		src/stargraph/nodes/nautilus \
+		src/stargraph/nodes/interrupt \
+		src/stargraph/nodes/artifacts \
+		src/stargraph/tools/nautilus \
+		src/stargraph/artifacts \
+		src/stargraph/triggers
 
 regen-openapi:
 	uv run python scripts/regen_openapi.py

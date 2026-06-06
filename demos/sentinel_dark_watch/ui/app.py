@@ -1,7 +1,7 @@
 """Sentinel Dark Watch — Streamlit UI.
 
 Four-tab interface: Live Map, Detection Review, Metrics Dashboard, Pipeline Status.
-Communicates with Harbor serve API (REST + WebSocket) — no direct graph imports.
+Communicates with Stargraph serve API (REST + WebSocket) — no direct graph imports.
 """
 
 from __future__ import annotations
@@ -35,10 +35,10 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-HARBOR_URL = os.environ.get("HARBOR_URL", "http://localhost:9001")
+STARGRAPH_URL = os.environ.get("STARGRAPH_URL", "http://localhost:9001")
 POSTGRES_DSN = os.environ.get(
     "POSTGRES_DSN",
-    "postgresql://harbor:harbor@localhost:5441/sdw",
+    "postgresql://stargraph:stargraph@localhost:5441/sdw",
 )
 
 # Strait of Hormuz center
@@ -55,7 +55,7 @@ RISK_COLORS = {
 
 
 # ---------------------------------------------------------------------------
-# Harbor API helpers
+# Stargraph API helpers
 # ---------------------------------------------------------------------------
 def trigger_run(tile_ids: list[str]) -> dict[str, Any]:
     """POST /v1/runs — start a new pipeline run for given tile IDs."""
@@ -63,9 +63,9 @@ def trigger_run(tile_ids: list[str]) -> dict[str, Any]:
         return {"error": "requests not installed"}
     try:
         resp = requests.post(
-            f"{HARBOR_URL}/v1/runs",
+            f"{STARGRAPH_URL}/v1/runs",
             json={
-                "graph": "harbor.yaml",
+                "graph": "stargraph.yaml",
                 "initial_state": {"tile_queue": tile_ids},
             },
             timeout=30,
@@ -82,7 +82,7 @@ def get_detections(run_id: str) -> list[dict[str, Any]]:
         return []
     try:
         resp = requests.get(
-            f"{HARBOR_URL}/v1/runs/{run_id}",
+            f"{STARGRAPH_URL}/v1/runs/{run_id}",
             timeout=15,
         )
         resp.raise_for_status()
@@ -98,7 +98,7 @@ def submit_review(run_id: str, corrections: list[dict[str, Any]]) -> dict[str, A
         return {"error": "requests not installed"}
     try:
         resp = requests.post(
-            f"{HARBOR_URL}/v1/runs/{run_id}/respond",
+            f"{STARGRAPH_URL}/v1/runs/{run_id}/respond",
             json={"corrections": corrections},
             timeout=30,
         )
@@ -109,11 +109,11 @@ def submit_review(run_id: str, corrections: list[dict[str, Any]]) -> dict[str, A
 
 
 def get_run_ids() -> list[str]:
-    """Fetch recent run IDs from Harbor."""
+    """Fetch recent run IDs from Stargraph."""
     if requests is None:
         return []
     try:
-        resp = requests.get(f"{HARBOR_URL}/v1/runs", timeout=10)
+        resp = requests.get(f"{STARGRAPH_URL}/v1/runs", timeout=10)
         resp.raise_for_status()
         runs = resp.json()
         if isinstance(runs, list):
@@ -129,7 +129,7 @@ def get_ais_tracks() -> list[dict[str, Any]]:
         return []
     try:
         resp = requests.get(
-            f"{HARBOR_URL}/v1/data/ais_tracks",
+            f"{STARGRAPH_URL}/v1/data/ais_tracks",
             timeout=10,
         )
         resp.raise_for_status()
@@ -173,7 +173,7 @@ def main() -> None:
         layout="wide",
     )
     st.title("Sentinel Dark Watch")
-    st.caption("Maritime dark-vessel detection pipeline — powered by Harbor")
+    st.caption("Maritime dark-vessel detection pipeline — powered by Stargraph")
 
     tab_map, tab_review, tab_metrics, tab_pipeline = st.tabs(
         ["Live Map", "Detection Review", "Metrics Dashboard", "Pipeline Status"]
@@ -380,7 +380,7 @@ def _render_pipeline_status() -> None:
         # Fetch run state for current node + pipeline phase
         if requests is not None:
             try:
-                resp = requests.get(f"{HARBOR_URL}/v1/runs/{run_id}", timeout=10)
+                resp = requests.get(f"{STARGRAPH_URL}/v1/runs/{run_id}", timeout=10)
                 resp.raise_for_status()
                 run_data = resp.json()
                 state = run_data.get("state", {})
@@ -456,7 +456,7 @@ def _render_pipeline_status() -> None:
         if requests is not None:
             try:
                 resp = requests.get(
-                    f"{HARBOR_URL}/v1/runs/{run_id}/events",
+                    f"{STARGRAPH_URL}/v1/runs/{run_id}/events",
                     timeout=10,
                 )
                 resp.raise_for_status()
@@ -548,7 +548,7 @@ def _render_detection_review() -> None:
                 chip_ref = det.get("chip_artifact_ref", "")
                 if chip_ref:
                     st.image(
-                        f"{HARBOR_URL}/v1/artifacts/{chip_ref}",
+                        f"{STARGRAPH_URL}/v1/artifacts/{chip_ref}",
                         caption=f"SAR Chip — {det_id}",
                         use_container_width=True,
                     )

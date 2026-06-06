@@ -3,8 +3,8 @@
 # Phase 1 VE2: 2-node graph, sqlite checkpoint, expected events:
 # TransitionEvent + ResultEvent.
 #
-# Minimal IRDocument fixture for the harbor-engine Phase 1 POC milestone
-# (task 1.29: `harbor run tests/fixtures/sample-graph.yaml` runs this graph
+# Minimal IRDocument fixture for the stargraph-engine Phase 1 POC milestone
+# (task 1.29: `stargraph run tests/fixtures/sample-graph.yaml` runs this graph
 # end-to-end with sqlite checkpoint + JSONL log). Two nodes -- ``node_a``
 # (echo input) transitions to ``node_b`` (halt). One Pydantic field in the
 # state schema (``message: str``); see ``tests/fixtures/sample_state.py``

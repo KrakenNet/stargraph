@@ -18,9 +18,9 @@ import numpy as np
 import pytest
 import sklearn
 
-from harbor.errors import IncompatibleModelHashError
-from harbor.ml.loaders import load_sklearn_model
-from harbor.nodes.ml import MLNode
+from stargraph.errors import IncompatibleModelHashError
+from stargraph.ml.loaders import load_sklearn_model
+from stargraph.nodes.ml import MLNode
 
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 

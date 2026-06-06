@@ -1,6 +1,6 @@
 # v1 limits — stub-vs-real boundaries
 
-Harbor v1 ships a working core (Phase 0–5) plus a handful of intentionally
+Stargraph v1 ships a working core (Phase 0–5) plus a handful of intentionally
 narrow stubs to keep the surface honest while later phases land. This page
 catalogs every place where what's documented in design and what's wired
 in code diverge, so callers don't trip on them.
@@ -18,17 +18,17 @@ The serve API's `POST /v1/runs` handler currently returns
 a stub for graph-id round-tripping; the route does not invoke the engine
 loop.
 
-- Source: [`src/harbor/serve/api.py:705`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/serve/api.py#L705)
-- Workaround: drive runs via `harbor run --checkpoint <db>` and read run
+- Source: [`src/stargraph/serve/api.py:705`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/serve/api.py#L705)
+- Workaround: drive runs via `stargraph run --checkpoint <db>` and read run
   state from the SQLite checkpointer directly. The CLI path is real;
   only the HTTP convenience handler is stubbed.
 
 ### Manual trigger run id is synthetic
 
-`harbor.triggers.manual.enqueue` returns `f"poc-{graph_id}"` for the same
+`stargraph.triggers.manual.enqueue` returns `f"poc-{graph_id}"` for the same
 reason as the serve handler — both share the placeholder.
 
-- Source: [`src/harbor/triggers/manual.py:129`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/manual.py#L129)
+- Source: [`src/stargraph/triggers/manual.py:129`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/manual.py#L129)
 
 ### `awaiting-input` resume requires a cold restart
 
@@ -42,10 +42,10 @@ The supported resume path is cold restart via
 `GraphRun.resume(checkpoint)` from a new process. Warm in-process
 resume is **not** implemented in v1.
 
-- Source: [`src/harbor/graph/loop.py:81-94`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/graph/loop.py#L81-L94) (module docstring)
+- Source: [`src/stargraph/graph/loop.py:81-94`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/graph/loop.py#L81-L94) (module docstring)
 - Supported flow: stop the process when you see
   `WaitingForInputEvent` → call `GraphRun.respond()` to record the
-  response → restart with `harbor run --resume <checkpoint>`.
+  response → restart with `stargraph run --resume <checkpoint>`.
 
 ## Storage and replay
 
@@ -58,13 +58,13 @@ cassette is wired to surface a recorded `ArtifactRef`. The replay
 contract for write-side-effect nodes is currently false on any graph
 that uses artifact writes.
 
-- Source: [`src/harbor/nodes/artifacts/write_artifact_node.py:115-124`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/nodes/artifacts/write_artifact_node.py#L115-L124)
+- Source: [`src/stargraph/nodes/artifacts/write_artifact_node.py:115-124`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/nodes/artifacts/write_artifact_node.py#L115-L124)
 - Workaround: don't replay graphs that contain `WriteArtifactNode`
   (or set `replay_policy="fail_loud"` to make the wiring gap loud).
 
 ### ~~Cypher portable-subset linter is regex, not AST~~ (resolved)
 
-The linter at `harbor.stores.cypher` now parses every Cypher string
+The linter at `stargraph.stores.cypher` now parses every Cypher string
 via graphglot's neo4j dialect AST. Parse errors translate to
 `UnportableCypherError`; AST walkers reject banned procedure
 namespaces (`apoc`/`gds`/`db`), unbounded variable-length paths,
@@ -80,11 +80,11 @@ runtime contract.
 
 ## Plugins and entry-points
 
-### `harbor.checkpointers` entry-point group is unverified
+### `stargraph.checkpointers` entry-point group is unverified
 
 The how-to guide at [`how-to/checkpointer.md`](../how-to/checkpointer.md)
-references a `harbor.checkpointers` entry-point group, but no consumer
-in `src/harbor/` reads from that group today. Distribution path for
+references a `stargraph.checkpointers` entry-point group, but no consumer
+in `src/stargraph/` reads from that group today. Distribution path for
 third-party checkpointer plugins is undefined in v1.x.
 
 - Implication: write a custom checkpointer by passing a
@@ -93,19 +93,19 @@ third-party checkpointer plugins is undefined in v1.x.
 
 ### ~~MCP adapter has no entry-point group~~ (resolved)
 
-The `harbor.mcp_adapters` entry-point group now exists. Plugins
+The `stargraph.mcp_adapters` entry-point group now exists. Plugins
 register a `register_mcp_adapters() -> list[MCPAdapterSpec]` hookimpl;
 serve / engine wiring drives
-[`harbor.adapters.mcp.collect_mcp_adapters(pm)`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/adapters/mcp.py)
+[`stargraph.adapters.mcp.collect_mcp_adapters(pm)`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/adapters/mcp.py)
 to aggregate them. See
 [`how-to/add-mcp-server.md`](../how-to/add-mcp-server.md) for the
 plugin path; imperative wiring still works for ad-hoc cases.
 
-### `harbor.brokers` group does not exist
+### `stargraph.brokers` group does not exist
 
-References to a `harbor.brokers` group in design notes are aspirational.
+References to a `stargraph.brokers` group in design notes are aspirational.
 The Nautilus broker is the only broker integration today and it lives
-in `src/harbor/tools/nautilus/`.
+in `src/stargraph/tools/nautilus/`.
 
 ## IR
 
@@ -120,7 +120,7 @@ to look up or list.
   them from `RuleSpec.then` (Fathom `goto`/`halt`/`parallel` actions)
   and from the `nodes` ordering for fall-through.
 
-### `harbor.ir._validate` runs four stages
+### `stargraph.ir._validate` runs four stages
 
 The IR validator runs four passes (schema, type, capability, rule
 integrity). Two checks live elsewhere:
@@ -133,11 +133,11 @@ integrity). Two checks live elsewhere:
 Design notes hint at IR-level placement; until that consolidation lands,
 running `IRDocument.model_validate(...)` is not a complete preflight.
 
-### ~~`harbor.plugin.hookspecs` has `Any` placeholders~~ (resolved)
+### ~~`stargraph.plugin.hookspecs` has `Any` placeholders~~ (resolved)
 
 Phase-2 backfill landed. `PluginManager`, `ToolCall`, `ToolResult`,
 `StoreSpec`, `PackSpec` now resolve to real types in
-[`harbor.plugin.types`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/plugin/types.py)
+[`stargraph.plugin.types`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/plugin/types.py)
 and the hookspec module imports them. The catalog at
 [`reference/plugin-manifest.md`](plugin-manifest.md) is authoritative.
 
@@ -149,12 +149,12 @@ one-line change.
 
 ### `CrossEncoderReranker` is a stub
 
-The `harbor.rerankers` entry-point group ships no concrete reranker
+The `stargraph.rerankers` entry-point group ships no concrete reranker
 plugins. `RetrievalQuery(mode="hybrid")` defaults to RRF (sound, no
 reranker required). The cross-encoder claim in design is not currently
 backed by code.
 
-- Source: [`src/harbor/stores/rerankers.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/stores/rerankers.py)
+- Source: [`src/stargraph/stores/rerankers.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/stores/rerankers.py)
 - Implication: stick with `mode="hybrid"` (RRF) or `mode="vector"` until
   a reranker plugin ships.
 
@@ -162,15 +162,15 @@ backed by code.
 
 ### DSPy fallback needle is a verbatim string match
 
-`harbor.adapters.dspy.FALLBACK_NEEDLE` is the literal warning text
+`stargraph.adapters.dspy.FALLBACK_NEEDLE` is the literal warning text
 DSPy emits when JSONAdapter fallback fires. The CI canary at
-[`tests/integration/test_dspy_loud_fallback.py::test_fallback_needle_present_in_installed_dspy`](https://github.com/KrakenNet/harbor/blob/main/tests/integration/test_dspy_loud_fallback.py)
+[`tests/integration/test_dspy_loud_fallback.py::test_fallback_needle_present_in_installed_dspy`](https://github.com/KrakenNet/stargraph/blob/main/tests/integration/test_dspy_loud_fallback.py)
 asserts the needle is still present in the installed `dspy.adapters`
 package. If a DSPy patch-bump rewords the warning the canary fails
 loudly with a "needle drifted" message; update `FALLBACK_NEEDLE` and
 re-test.
 
-- Source: [`src/harbor/adapters/dspy.py:47`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/adapters/dspy.py#L47)
+- Source: [`src/stargraph/adapters/dspy.py:47`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/adapters/dspy.py#L47)
 
 ## What is real
 

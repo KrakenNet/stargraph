@@ -5,8 +5,8 @@ Per FR-20 / NFR-6 / AC-8: a cleared deployment
 (``Capabilities(default_deny=True, ...)`` whose ``granted`` set does
 not include ``db.vectors:read``) must refuse any operation that
 requires that capability. The runtime tool-execution path
-(:func:`harbor.runtime.tool_exec.execute_tool`) is the canonical
-gate site -- step 2 raises :class:`harbor.errors.CapabilityError`
+(:func:`stargraph.runtime.tool_exec.execute_tool`) is the canonical
+gate site -- step 2 raises :class:`stargraph.errors.CapabilityError`
 when the gate denies.
 """
 
@@ -17,11 +17,11 @@ from typing import Any
 
 import pytest
 
-from harbor.errors import CapabilityError
-from harbor.runtime.tool_exec import RunContext, execute_tool
-from harbor.security.capabilities import Capabilities, CapabilityClaim
-from harbor.tools.decorator import tool
-from harbor.tools.spec import SideEffects
+from stargraph.errors import CapabilityError
+from stargraph.runtime.tool_exec import RunContext, execute_tool
+from stargraph.security.capabilities import Capabilities, CapabilityClaim
+from stargraph.tools.decorator import tool
+from stargraph.tools.spec import SideEffects
 
 
 @tool(

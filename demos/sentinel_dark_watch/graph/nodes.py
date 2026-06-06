@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Sentinel Dark Watch — graph node implementations.
 
-Each node subclasses :class:`harbor.nodes.base.NodeBase` and returns a
+Each node subclasses :class:`stargraph.nodes.base.NodeBase` and returns a
 dict of state-field mutations merged by the execution loop.
 """
 
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from demos.sentinel_dark_watch.db import get_pg_dsn
-from harbor.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.base import ExecutionContext, NodeBase
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -663,7 +663,7 @@ class AISCorrelationNode(NodeBase):
             rows: list[Any] = []
             broker_used = False
             try:
-                from harbor.serve.contextvars import current_broker
+                from stargraph.serve.contextvars import current_broker
                 broker = current_broker()
                 response = await broker.arequest(
                     agent_id="sdw-pipeline",
@@ -1336,7 +1336,7 @@ class AnalystReviewNode(NodeBase):
     from the analyst response are written to the Postgres ``corrections``
     table.
 
-    Matches the :class:`harbor.nodes.interrupt.InterruptNode` pattern
+    Matches the :class:`stargraph.nodes.interrupt.InterruptNode` pattern
     exactly: raise ``_HitInterrupt(InterruptAction(...))``.
     """
 
@@ -1379,8 +1379,8 @@ class AnalystReviewNode(NodeBase):
                 "detection_ids": [d.detection_id for d in detections],
             }
 
-            from harbor.graph.loop import _HitInterrupt  # pyright: ignore[reportPrivateUsage]
-            from harbor.ir._models import InterruptAction
+            from stargraph.graph.loop import _HitInterrupt  # pyright: ignore[reportPrivateUsage]
+            from stargraph.ir._models import InterruptAction
 
             action = InterruptAction(
                 prompt=prompt,
@@ -1392,7 +1392,7 @@ class AnalystReviewNode(NodeBase):
             raise _HitInterrupt(action)
         except Exception as exc:
             # Re-raise _HitInterrupt — it's not an error
-            from harbor.graph.loop import _HitInterrupt  # pyright: ignore[reportPrivateUsage]
+            from stargraph.graph.loop import _HitInterrupt  # pyright: ignore[reportPrivateUsage]
 
             if isinstance(exc, _HitInterrupt):
                 raise
@@ -1668,7 +1668,7 @@ class RetrainTrainNode(NodeBase):
     """Shell out to ``scripts/train_detector.py`` to fine-tune the YOLO model.
 
     Captures the new model path and mAP from stdout, then registers the
-    new version in :class:`harbor.ml.registry.ModelRegistry`.
+    new version in :class:`stargraph.ml.registry.ModelRegistry`.
 
     If the train script is unavailable or fails, placeholder metrics are
     set so the rest of the retrain sub-graph can still evaluate
@@ -1745,7 +1745,7 @@ class RetrainTrainNode(NodeBase):
 
             # Register in ModelRegistry
             try:
-                from harbor.ml.registry import ModelRegistry
+                from stargraph.ml.registry import ModelRegistry
 
                 registry = ModelRegistry()
                 await registry.register(
@@ -1797,7 +1797,7 @@ class ChampionChallengerNode(NodeBase):
             champion_map50 = 0.0
 
             try:
-                from harbor.ml.registry import ModelRegistry
+                from stargraph.ml.registry import ModelRegistry
 
                 registry = ModelRegistry()
                 entry = await registry.load_alias("sdw-detector", "production")
@@ -1826,7 +1826,7 @@ class ChampionChallengerNode(NodeBase):
                     champion_map50,
                 )
                 try:
-                    from harbor.ml.registry import ModelRegistry as _ModelReg
+                    from stargraph.ml.registry import ModelRegistry as _ModelReg
 
                     reg = _ModelReg()
                     await reg.alias("sdw-detector", challenger_version, "production")

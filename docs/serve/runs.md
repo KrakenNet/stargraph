@@ -3,8 +3,8 @@
 `runs_history` is the SQLite table that records every run's lifecycle
 metadata: `(run_id, status, graph_hash, trigger_source, started_at,
 finished_at, duration_ms, parent_run_id)`. The `RunHistory` class
-(`harbor.serve.history:RunHistory`) is the read+write API; the
-`/v1/runs` listing route + `harbor inspect <run_id>` CLI both consume it.
+(`stargraph.serve.history:RunHistory`) is the read+write API; the
+`/v1/runs` listing route + `stargraph inspect <run_id>` CLI both consume it.
 
 The companion `pending_runs` table holds the durable scheduler queue;
 both tables share the same SQLite database file as the checkpointer

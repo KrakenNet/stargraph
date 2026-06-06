@@ -1,11 +1,11 @@
-// Client-side harbor.yaml to topology JSON parser.
+// Client-side stargraph.yaml to topology JSON parser.
 // Used when user uploads a file directly (no serve backend).
 // Mirrors the server-side _topology_for logic.
 
-window.parseHarborYaml = function(rawText) {
+window.parseStargraphYaml = function(rawText) {
   const doc = jsyaml.load(rawText);
   if (!doc || !doc.nodes) {
-    throw new Error('Invalid harbor.yaml: missing "nodes" section');
+    throw new Error('Invalid stargraph.yaml: missing "nodes" section');
   }
 
   const nodes = (doc.nodes || []).map(function(n) {

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit: ``harbor replay <run_id>`` counterfactual + diff (task 4.8).
+"""Unit: ``stargraph replay <run_id>`` counterfactual + diff (task 4.8).
 
 Per design §3.1 (``replay.py`` row), the CLI is a thin wrapper over the
-engine's ``GraphRun.counterfactual`` + ``harbor.replay.compare``
+engine's ``GraphRun.counterfactual`` + ``stargraph.replay.compare``
 surfaces. The CLI surface:
 
-    harbor replay <run_id> --db <path> [--mutation @file.json]
+    stargraph replay <run_id> --db <path> [--mutation @file.json]
                   [--from-step N] [--diff]
 
 * ``--mutation @file.json`` -- loads a CounterfactualMutation from
@@ -37,9 +37,9 @@ from pathlib import Path  # noqa: TC003 -- runtime use by pytest fixture type
 import pytest
 from typer.testing import CliRunner
 
-from harbor.checkpoint.protocol import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.cli import app
+from stargraph.checkpoint.protocol import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.cli import app
 
 _runner = CliRunner()
 
@@ -96,7 +96,7 @@ def fixtured_parent(tmp_path: Path) -> tuple[Path, Path, str]:
 
 @pytest.mark.unit
 def test_replay_help_mentions_counterfactual() -> None:
-    """``harbor replay --help`` mentions counterfactual (verify cmd)."""
+    """``stargraph replay --help`` mentions counterfactual (verify cmd)."""
     result = _runner.invoke(app, ["replay", "--help"])
     assert result.exit_code == 0, result.output
     assert "counterfactual" in result.output.lower()
@@ -106,7 +106,7 @@ def test_replay_help_mentions_counterfactual() -> None:
 def test_replay_emits_diff_against_parent(
     fixtured_parent: tuple[Path, Path, str],
 ) -> None:
-    """``harbor replay <run_id> --mutation @f.json --diff`` renders a RunDiff."""
+    """``stargraph replay <run_id> --mutation @f.json --diff`` renders a RunDiff."""
     db_path, mutation_path, run_id = fixtured_parent
     result = _runner.invoke(
         app,
@@ -156,5 +156,5 @@ def test_replay_from_step_accepted(
     )
     assert result.exit_code == 0, result.output + str(result.exception)
     # Without --diff, the cf-run-id should still be on stdout so
-    # operators can pipe it into a follow-up `harbor inspect`.
+    # operators can pipe it into a follow-up `stargraph inspect`.
     assert "cf-" in result.output

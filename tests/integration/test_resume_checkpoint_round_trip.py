@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.checkpoint.protocol import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
+from stargraph.checkpoint.protocol import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
 
 if TYPE_CHECKING:
     from pathlib import Path

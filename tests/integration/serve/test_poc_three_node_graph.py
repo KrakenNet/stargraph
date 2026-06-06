@@ -2,26 +2,26 @@
 """POC integration smoke -- 3-node graph: Interrupt -> Respond -> WriteArtifact.
 
 Drives a minimal 3-node IR through the FastAPI serve surface
-(:func:`harbor.serve.api.create_app`) end-to-end:
+(:func:`stargraph.serve.api.create_app`) end-to-end:
 
-1. ``approval_gate`` -- :class:`harbor.nodes.interrupt.InterruptNode` raises
+1. ``approval_gate`` -- :class:`stargraph.nodes.interrupt.InterruptNode` raises
    the loop's typed ``_HitInterrupt`` signal carrying an
    :class:`InterruptAction` payload. The loop transitions
    ``state="awaiting-input"`` and emits
-   :class:`~harbor.runtime.events.WaitingForInputEvent`.
+   :class:`~stargraph.runtime.events.WaitingForInputEvent`.
 2. ``passthrough`` -- a tiny inline :class:`NodeBase` that returns an empty
    patch. The 3-node graph's middle hop, exercising the post-respond resume
    path. (No FathomBranchNode-shaped passthrough exists in-tree yet.)
-3. ``writer`` -- :class:`harbor.nodes.artifacts.WriteArtifactNode` reads
+3. ``writer`` -- :class:`stargraph.nodes.artifacts.WriteArtifactNode` reads
    ``state.content_to_write`` (bytes), persists via the wired
    :class:`FilesystemArtifactStore`, and emits
-   :class:`~harbor.runtime.events.ArtifactWrittenEvent`.
+   :class:`~stargraph.runtime.events.ArtifactWrittenEvent`.
 
 Documented gaps (Phase 1 cold-restart contract; design §4.1 + loop.py
 docstring):
 
 * :meth:`GraphRun.respond` flips state from ``"awaiting-input"`` back to
-  ``"running"``, but :func:`harbor.graph.loop.execute` has already exited
+  ``"running"``, but :func:`stargraph.graph.loop.execute` has already exited
   via the ``_HitInterrupt`` arm. Resume is the cold-restart path through
   :meth:`GraphRun.resume` (not yet wired through ``POST /respond``). For
   this POC test the post-respond resume is exercised by manually
@@ -50,23 +50,23 @@ import httpx
 import pytest
 from blake3 import blake3
 
-from harbor.artifacts.fs import FilesystemArtifactStore
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.artifacts import WriteArtifactNode
-from harbor.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
-from harbor.nodes.base import NodeBase
-from harbor.nodes.interrupt import InterruptNode
-from harbor.nodes.interrupt.interrupt_node import InterruptNodeConfig
-from harbor.runtime.events import (
+from stargraph.artifacts.fs import FilesystemArtifactStore
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.artifacts import WriteArtifactNode
+from stargraph.nodes.artifacts.write_artifact_node import WriteArtifactNodeConfig
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.interrupt import InterruptNode
+from stargraph.nodes.interrupt.interrupt_node import InterruptNodeConfig
+from stargraph.runtime.events import (
     ArtifactWrittenEvent,
     ResultEvent,
     WaitingForInputEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -109,7 +109,7 @@ def _build_three_node_graph() -> Graph:
     """Build the 3-node IR + compiled :class:`Graph` for the POC fixture.
 
     State schema carries the artifact payload as ``bytes``; the IR
-    type-name policy (:data:`harbor.graph.definition._TYPE_MAP`) supports
+    type-name policy (:data:`stargraph.graph.definition._TYPE_MAP`) supports
     ``str/int/bool/bytes`` -- ``bytes`` is the natural fit for an
     artifact's pre-write payload.
     """
@@ -187,7 +187,7 @@ async def _drive_run_until(
       caller can keep emitting (e.g. :meth:`GraphRun.respond` publishes
       a :class:`BosunAuditEvent` on the same bus).
 
-    The interrupt arm of :func:`harbor.graph.loop.execute` returns a
+    The interrupt arm of :func:`stargraph.graph.loop.execute` returns a
     :class:`RunSummary` and exits the loop (cold-restart contract);
     after that the drive task is done but the bus stays open for the
     serve-layer respond audit emission.
@@ -278,7 +278,7 @@ async def test_poc_three_node_graph_interrupt_respond_write(tmp_path: Path) -> N
     app = create_app(OssDefaultProfile(), deps=deps)
 
     # Drive the run + drain the bus until the interrupt boundary. The
-    # interrupt-arm of :func:`harbor.graph.loop.execute` transitions
+    # interrupt-arm of :func:`stargraph.graph.loop.execute` transitions
     # ``run.state="awaiting-input"``, emits :class:`WaitingForInputEvent`,
     # and returns cleanly (cold-restart contract). The drainer cancels
     # the task group on first WaitingForInputEvent so the bus stays
@@ -316,7 +316,7 @@ async def test_poc_three_node_graph_interrupt_respond_write(tmp_path: Path) -> N
     assert run.state == "running", f"run.state after respond: {run.state!r}"
 
     # --- Phase 3: manually drive the post-respond resume tail --------------
-    # Documented gap: :func:`harbor.graph.loop.execute` has already exited
+    # Documented gap: :func:`stargraph.graph.loop.execute` has already exited
     # via the ``_HitInterrupt`` arm above. Resume is cold-restart only --
     # the in-process resume hook for ``POST /respond`` is not wired
     # (loop.py docstring "Resume-from-respond hook"). For this POC we

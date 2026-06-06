@@ -1,6 +1,6 @@
-# Contributing to Harbor
+# Contributing to Stargraph
 
-Thanks for contributing! Harbor is licensed under Apache-2.0 and accepts contributions under the Developer Certificate of Origin (DCO) — no CLA required.
+Thanks for contributing! Stargraph is licensed under Apache-2.0 and accepts contributions under the Developer Certificate of Origin (DCO) — no CLA required.
 
 ## Sign-off (DCO)
 
@@ -16,8 +16,8 @@ This appends `Signed-off-by: Your Name <you@example.com>` to the commit message,
 
 Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/).
 
-    git clone https://github.com/KrakenNet/harbor
-    cd harbor
+    git clone https://github.com/KrakenNet/stargraph
+    cd stargraph
     uv sync --group dev
     uv run pre-commit install
     uv run pytest -m unit
@@ -31,4 +31,4 @@ Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/).
 
 ## License
 
-By contributing, you agree your contributions are licensed under Apache-2.0 (see LICENSE). The DCO sign-off serves as the legal record of provenance — Harbor does not require a separate CLA.
+By contributing, you agree your contributions are licensed under Apache-2.0 (see LICENSE). The DCO sign-off serves as the legal record of provenance — Stargraph does not require a separate CLA.

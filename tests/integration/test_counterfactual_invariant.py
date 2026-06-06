@@ -3,9 +3,9 @@
 
 Pins the formal Temporal-style "cannot change the past" invariant per
 design §4.2 *before* the counterfactual implementation lands in task
-3.33. Currently RED because :meth:`harbor.GraphRun.counterfactual`
+3.33. Currently RED because :meth:`stargraph.GraphRun.counterfactual`
 raises :class:`NotImplementedError` and
-:func:`harbor.replay.counterfactual.derived_graph_hash` does not yet
+:func:`stargraph.replay.counterfactual.derived_graph_hash` does not yet
 exist (its module import fails first).
 
 Proof shape (design §4.2, 7-step):
@@ -32,10 +32,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor import GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.errors import CheckpointError
+from stargraph import GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.errors import CheckpointError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -47,8 +47,8 @@ if TYPE_CHECKING:
 
 
 def _cf_module() -> Any:
-    """Import ``harbor.replay.counterfactual`` (TDD-RED: not yet built)."""
-    return importlib.import_module("harbor.replay.counterfactual")
+    """Import ``stargraph.replay.counterfactual`` (TDD-RED: not yet built)."""
+    return importlib.import_module("stargraph.replay.counterfactual")
 
 
 def _sha256_bytes(path: Path) -> str:
@@ -131,8 +131,8 @@ def test_derived_hash_carries_cf_prefix_signature() -> None:
     """Step 5: ``derived_hash`` is the cf-prefix-derived 64-char hex digest.
 
     Per design §3.8.3 the derived hash is sha256 over a
-    ``b"harbor-cf-v1\\x00..."`` byte sequence. The on-the-wire artifact
-    is the 64-char hex digest -- not the literal "harbor-cf-v1" string
+    ``b"stargraph-cf-v1\\x00..."`` byte sequence. The on-the-wire artifact
+    is the 64-char hex digest -- not the literal "stargraph-cf-v1" string
     prefix. We pin both: digest length and that it is *not* the original
     hash (i.e. domain separation actually fired).
     """
@@ -164,7 +164,7 @@ async def test_original_checkpoints_returned_unchanged(tmp_path: Path) -> None:
     ckpt = await cp.read_at_step("run-orig", 1)
     assert ckpt is not None
     assert ckpt.state["counter"] == 1, "cf must not mutate original checkpoint"
-    assert not ckpt.graph_hash.startswith("harbor-cf-v1"), (
+    assert not ckpt.graph_hash.startswith("stargraph-cf-v1"), (
         "original checkpoint must keep original graph_hash, not cf-derived"
     )
 
@@ -184,7 +184,7 @@ async def test_resume_refuses_cf_prefixed_checkpoint(tmp_path: Path) -> None:
 
     # Plant a cf-prefixed checkpoint under the *original* run_id (the
     # bug we are guarding against).
-    cf_graph_hash = "harbor-cf-v1" + "0" * 52  # 64-char value with cf-prefix
+    cf_graph_hash = "stargraph-cf-v1" + "0" * 52  # 64-char value with cf-prefix
     await cp.write(
         _make_checkpoint(
             run_id="run-orig",

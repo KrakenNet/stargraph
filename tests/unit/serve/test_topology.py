@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.serve.topology` (IR -> UI projection).
+"""Unit tests for :mod:`stargraph.serve.topology` (IR -> UI projection).
 
 :func:`derive_topology` walks an :class:`IRDocument`'s rules, attributes
 each rule to its owning node (via :func:`backfill_rule_node_ids` for
@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.ir import (
+from stargraph.ir import (
     AssertAction,
     GotoAction,
     HaltAction,
@@ -42,8 +42,8 @@ from harbor.ir import (
     RetryAction,
     RuleSpec,
 )
-from harbor.ir._models import InterruptAction
-from harbor.serve.topology import derive_topology
+from stargraph.ir._models import InterruptAction
+from stargraph.serve.topology import derive_topology
 
 
 def _nodes(*ids: str) -> list[NodeSpec]:

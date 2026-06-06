@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for `harbor.bosun.signing` (Task 3.3).
+"""Unit tests for `stargraph.bosun.signing` (Task 3.3).
 
 Scope per task 3.3 spec: ≥4 cases focused on what is **not** already
 covered by ``test_signing_roundtrip.py`` (sign/verify roundtrip, tamper
@@ -9,7 +9,7 @@ header rejection, static-trust-store unlisted-key fail).
 
 The remaining unsealed corners — addressed here:
 
-1. **SHA-256 fallback under FIPS** — when ``HARBOR_FIPS_MODE=1`` is
+1. **SHA-256 fallback under FIPS** — when ``STARGRAPH_FIPS_MODE=1`` is
    set, the signed JWT's payload ``alg`` field is ``SHA-256`` not
    ``BLAKE3``. The tree-hash uses :func:`hashlib.sha256` instead of
    :class:`blake3.blake3`. Round-trips inside a single FIPS context.
@@ -43,13 +43,13 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from harbor.bosun.signing import (
+from stargraph.bosun.signing import (
     PackSignatureError,
     StaticTrustStore,
     sign_pack,
     verify_pack,
 )
-from harbor.serve.profiles import ClearedProfile
+from stargraph.serve.profiles import ClearedProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -76,7 +76,7 @@ def _keypair() -> tuple[bytes, bytes, str]:
 def test_sign_payload_alg_field_is_sha256_under_fips(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Under ``HARBOR_FIPS_MODE=1`` the JWT payload ``alg`` field is SHA-256.
+    """Under ``STARGRAPH_FIPS_MODE=1`` the JWT payload ``alg`` field is SHA-256.
 
     The JWT header ``alg`` is always ``EdDSA`` (signing algorithm); the
     *payload* ``alg`` records the tree-hash algorithm choice. FIPS mode
@@ -85,7 +85,7 @@ def test_sign_payload_alg_field_is_sha256_under_fips(
     payload — verify_pack would also pass, but reading the payload
     directly is the most precise assertion of the algo recorded.
     """
-    monkeypatch.setenv("HARBOR_FIPS_MODE", "1")
+    monkeypatch.setenv("STARGRAPH_FIPS_MODE", "1")
 
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -104,7 +104,7 @@ def test_sign_payload_alg_field_is_sha256_under_fips(
 @pytest.mark.unit
 def test_fips_mode_roundtrip_verify(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Sign + verify a pack under FIPS mode: same tree-hash algo end-to-end."""
-    monkeypatch.setenv("HARBOR_FIPS_MODE", "1")
+    monkeypatch.setenv("STARGRAPH_FIPS_MODE", "1")
 
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -200,11 +200,11 @@ def test_fips_signed_pack_fails_verify_in_blake3_mode(
     priv_pem, pub_pem, key_id = _keypair()
 
     # Sign under FIPS.
-    monkeypatch.setenv("HARBOR_FIPS_MODE", "1")
+    monkeypatch.setenv("STARGRAPH_FIPS_MODE", "1")
     token = sign_pack(pack, priv_pem, key_id)
 
     # Verify with FIPS off — different tree-hash algorithm.
-    monkeypatch.delenv("HARBOR_FIPS_MODE", raising=False)
+    monkeypatch.delenv("STARGRAPH_FIPS_MODE", raising=False)
     trust = StaticTrustStore({key_id: pub_pem})
     with pytest.raises(PackSignatureError) as excinfo:
         verify_pack(pack, token, trust, ClearedProfile())

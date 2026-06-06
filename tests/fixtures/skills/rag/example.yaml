@@ -4,7 +4,7 @@
 #
 # Minimal IRDocument referenced by `RagSkill.subgraph` once Phase-2 wiring
 # loads it through `SubGraphNode`. POC scope: retrieve -> llm_stub ->
-# assemble. State schema mirrors `harbor.skills.refs.rag.RagState` field
+# assemble. State schema mirrors `stargraph.skills.refs.rag.RagState` field
 # names (FR-23 declared-output channels).
 ir_version: "1.0.0"
 id: "skill:rag.example"

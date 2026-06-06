@@ -13,7 +13,7 @@ def get_pg_dsn() -> str:
     """Return the Postgres DSN from ``POSTGRES_DSN`` env var or default."""
     return os.environ.get(
         "POSTGRES_DSN",
-        "postgresql://harbor:harbor@localhost:5441/sdw",
+        "postgresql://stargraph:stargraph@localhost:5441/sdw",
     )
 
 

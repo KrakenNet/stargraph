@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """FR-1 runtime loop integration -- sequential 3-node graph + ``action.halt``.
 
-End-to-end exercise of :func:`harbor.graph.loop.execute` with a real
-:class:`~harbor.graph.Graph` / :class:`~harbor.graph.GraphRun` pair, an
-in-memory :class:`~harbor.checkpoint.sqlite.SQLiteCheckpointer`, and a
-minimal stub Fathom adapter that emits a :class:`~harbor.ir.HaltAction`
+End-to-end exercise of :func:`stargraph.graph.loop.execute` with a real
+:class:`~stargraph.graph.Graph` / :class:`~stargraph.graph.GraphRun` pair, an
+in-memory :class:`~stargraph.checkpoint.sqlite.SQLiteCheckpointer`, and a
+minimal stub Fathom adapter that emits a :class:`~stargraph.ir.HaltAction`
 on the third tick (``action.halt`` exit per FR-1 / design §3.1.2 step 9).
 
 Asserts (AC-1.1, AC-2.1 -- AC-2.4):
@@ -13,9 +13,9 @@ Asserts (AC-1.1, AC-2.1 -- AC-2.4):
    ``0 -> 1 -> 2 -> 3`` as the loop walks ``n0 -> n1 -> n2`` and
    ``trail`` accumulates the visited ids.
 2. The bus emits events in canonical order: three
-   :class:`~harbor.runtime.events.TransitionEvent` (one per node tick)
+   :class:`~stargraph.runtime.events.TransitionEvent` (one per node tick)
    followed by exactly one terminal
-   :class:`~harbor.runtime.events.ResultEvent`.
+   :class:`~stargraph.runtime.events.ResultEvent`.
 3. The terminal :class:`ResultEvent` carries ``status="done"`` and
    ``final_state`` mirrors the post-merge state (``step_count == 3``,
    ``trail == "n0,n1,n2"``).
@@ -30,12 +30,12 @@ from typing import TYPE_CHECKING, Any
 import anyio
 import pytest
 
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.ir._models import HaltAction
-from harbor.nodes.base import NodeBase
-from harbor.runtime.events import ResultEvent, TransitionEvent
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.ir._models import HaltAction
+from stargraph.nodes.base import NodeBase
+from stargraph.runtime.events import ResultEvent, TransitionEvent
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -78,9 +78,9 @@ class _HaltOnNthFathom:
     Returns ``[]`` from :meth:`mirror_state` so the mirror scheduler is a
     no-op, swallows :meth:`assert_with_provenance` calls (none arrive
     given the empty mirror specs), and emits a single
-    :class:`~harbor.ir.HaltAction` from :meth:`evaluate` once the call
+    :class:`~stargraph.ir.HaltAction` from :meth:`evaluate` once the call
     counter reaches ``halt_after``. The action vocabulary translator
-    routes that into :class:`~harbor.runtime.action.HaltAction`, so the
+    routes that into :class:`~stargraph.runtime.action.HaltAction`, so the
     loop terminates with ``status="done"`` (FR-1 / §3.1.2 step 9).
     """
 

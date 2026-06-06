@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :class:`harbor.triggers.webhook.WebhookTrigger` (FR-5, FR-9.1-9.5).
+"""Unit tests for :class:`stargraph.triggers.webhook.WebhookTrigger` (FR-5, FR-9.1-9.5).
 
 Covers the full HMAC-verification gauntlet:
 
@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from fastapi import HTTPException
 
-from harbor.triggers.webhook import WebhookSpec, WebhookTrigger
+from stargraph.triggers.webhook import WebhookSpec, WebhookTrigger
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -112,8 +112,8 @@ def _signed_request(*, secret: bytes, body: bytes, timestamp: int | None = None)
     ts = timestamp if timestamp is not None else int(time.time())
     sig = WebhookTrigger.sign(secret, ts, body)
     headers = {
-        "x-harbor-signature": sig,
-        "x-harbor-timestamp": str(ts),
+        "x-stargraph-signature": sig,
+        "x-stargraph-timestamp": str(ts),
     }
     return _StubRequest(body, headers)
 
@@ -162,7 +162,7 @@ async def test_hmac_fails_on_tampered_body(shared_secret: bytes) -> None:
     tampered_body = b'{"event":"DOOM"}'
     req = _StubRequest(
         tampered_body,
-        {"x-harbor-signature": sig, "x-harbor-timestamp": str(ts)},
+        {"x-stargraph-signature": sig, "x-stargraph-timestamp": str(ts)},
     )
     with pytest.raises(HTTPException) as excinfo:
         await trig._handle_request(req, spec)  # pyright: ignore[reportPrivateUsage]
@@ -186,7 +186,7 @@ async def test_hmac_fails_on_tampered_signature(shared_secret: bytes) -> None:
     tampered_sig = ("0" if real_sig[0] != "0" else "1") + real_sig[1:]
     req = _StubRequest(
         body,
-        {"x-harbor-signature": tampered_sig, "x-harbor-timestamp": str(ts)},
+        {"x-stargraph-signature": tampered_sig, "x-stargraph-timestamp": str(ts)},
     )
     with pytest.raises(HTTPException) as excinfo:
         await trig._handle_request(req, spec)  # pyright: ignore[reportPrivateUsage]
@@ -211,7 +211,7 @@ async def test_nonce_replay_rejects_second_send(shared_secret: bytes) -> None:
     body = b'{"event":"replay"}'
     ts = int(time.time())
     sig = WebhookTrigger.sign(shared_secret, ts, body)
-    headers = {"x-harbor-signature": sig, "x-harbor-timestamp": str(ts)}
+    headers = {"x-stargraph-signature": sig, "x-stargraph-timestamp": str(ts)}
 
     # First send: passes.
     first = await trig._handle_request(_StubRequest(body, headers), spec)  # pyright: ignore[reportPrivateUsage]

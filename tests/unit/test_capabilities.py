@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.security.capabilities` (NFR-7, design §3.11).
+"""Unit tests for :mod:`stargraph.security.capabilities` (NFR-7, design §3.11).
 
 Covers the default-deny capability gate:
 
@@ -20,9 +20,9 @@ from decimal import Decimal
 
 import pytest
 
-from harbor.ir._models import ToolSpec
-from harbor.security import Capabilities, CapabilityClaim
-from harbor.tools import ReplayPolicy, SideEffects
+from stargraph.ir._models import ToolSpec
+from stargraph.security import Capabilities, CapabilityClaim
+from stargraph.tools import ReplayPolicy, SideEffects
 
 
 def _spec(*permissions: str) -> ToolSpec:

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.tools.decorator` (FR-26, design 3.4.3).
+"""Unit tests for :mod:`stargraph.tools.decorator` (FR-26, design 3.4.3).
 
 Covers two key behaviors of the ``@tool`` decorator:
 
@@ -17,7 +17,7 @@ from typing import cast
 
 import pytest
 
-from harbor.tools import ReplayPolicy, SideEffects, tool
+from stargraph.tools import ReplayPolicy, SideEffects, tool
 
 
 @pytest.mark.unit
@@ -206,7 +206,9 @@ def test_derive_input_schema_from_basemodel_subclass() -> None:
     converted via ``.model_json_schema(mode="serialization")`` (T19)."""
     from pydantic import BaseModel
 
-    from harbor.tools.decorator import _derive_input_schema  # pyright: ignore[reportPrivateUsage]
+    from stargraph.tools.decorator import (
+        _derive_input_schema,  # pyright: ignore[reportPrivateUsage]
+    )
 
     class _Inputs(BaseModel):
         query: str
@@ -223,7 +225,9 @@ def test_derive_input_schema_from_basemodel_subclass() -> None:
 @pytest.mark.unit
 def test_derive_input_schema_from_dict_unchanged() -> None:
     """``input_schema`` already a dict is returned unchanged (T19)."""
-    from harbor.tools.decorator import _derive_input_schema  # pyright: ignore[reportPrivateUsage]
+    from stargraph.tools.decorator import (
+        _derive_input_schema,  # pyright: ignore[reportPrivateUsage]
+    )
 
     given = {"type": "object", "properties": {"x": {"type": "string"}}}
 
@@ -237,7 +241,9 @@ def test_derive_input_schema_from_dict_unchanged() -> None:
 def test_derive_input_schema_from_signature_unchanged() -> None:
     """``input_schema=None`` falls through to the ``TypeAdapter`` signature path
     -- existing behavior preserved (T19)."""
-    from harbor.tools.decorator import _derive_input_schema  # pyright: ignore[reportPrivateUsage]
+    from stargraph.tools.decorator import (
+        _derive_input_schema,  # pyright: ignore[reportPrivateUsage]
+    )
 
     def _fn(x: str, y: int = 0) -> None: ...
 

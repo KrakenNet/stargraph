@@ -35,7 +35,7 @@ required.
 
 | Method | Behaviour |
 |---|---|
-| `bootstrap()` | Idempotent. Creates the table + writes the FR-8 5-tuple drift gate `(model_id, revision, content_hash, ndims, schema_v)` into a sidecar `_harbor_meta` table. On re-entry, mismatch raises `IncompatibleEmbeddingHashError`. |
+| `bootstrap()` | Idempotent. Creates the table + writes the FR-8 5-tuple drift gate `(model_id, revision, content_hash, ndims, schema_v)` into a sidecar `_stargraph_meta` table. On re-entry, mismatch raises `IncompatibleEmbeddingHashError`. |
 | `health()` | Returns `StoreHealth` with `fragment_count`, `embedding_hash`, `fs_type`, `lock_state`. NFS/SMB/CIFS surfaces a warning. |
 | `migrate(plan)` | v1: `add_column` only. Narrows / renames / drops raise `MigrationNotSupported`. |
 
@@ -108,14 +108,14 @@ via `id` if they need the raw embedding.
 
 ## `LanceDBVectorStore`
 
-Default in-tree provider (`harbor.stores.lancedb`). POC scope of FR-2 /
+Default in-tree provider (`stargraph.stores.lancedb`). POC scope of FR-2 /
 FR-8 / FR-10 / FR-16.
 
 ### Constructor
 
 ```python
 from pathlib import Path
-from harbor.stores import LanceDBVectorStore, MiniLMEmbedder
+from stargraph.stores import LanceDBVectorStore, MiniLMEmbedder
 
 store = LanceDBVectorStore(
     path=Path("./.lance"),
@@ -134,16 +134,16 @@ store = LanceDBVectorStore(
 
 ### Dependencies
 
-Optional extra: `harbor[stores]` (`lancedb`, `pyarrow`, plus `ryugraph`
+Optional extra: `stargraph[stores]` (`lancedb`, `pyarrow`, plus `ryugraph`
 for the graph half). The provider is loaded lazily through
-`harbor.stores.__getattr__` -- importing `harbor.stores` without the
+`stargraph.stores.__getattr__` -- importing `stargraph.stores` without the
 extra installed is fine as long as the symbol is not referenced.
 
 ### Special behaviours
 
 - **Embed-hash drift gate (FR-8)** -- `bootstrap()` writes the 5-tuple
   `(model_id, revision, content_hash, ndims, schema_v)` into a sidecar
-  `_harbor_meta` table. Subsequent `bootstrap()` calls verify the tuple;
+  `_stargraph_meta` table. Subsequent `bootstrap()` calls verify the tuple;
   drift raises `IncompatibleEmbeddingHashError` (force-loud).
 - **Single-writer lock (FR-9)** -- every write path
   (`bootstrap` / `upsert` / `delete` / `cleanup_old_versions`) wraps
@@ -164,7 +164,7 @@ stores:
   vector: lancedb:./.lance
 ```
 
-Path is interpreted relative to the `harbor.yaml` directory.
+Path is interpreted relative to the `stargraph.yaml` directory.
 
 ## Errors raised
 

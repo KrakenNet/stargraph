@@ -19,7 +19,7 @@
 #
 #   1. TransitionEvent(from=<start>, to=node_a)
 #   2. TransitionEvent(from=node_a,  to=node_b)
-#   3. ToolCallEvent(node=node_b, kind="dspy", module="harbor.tests.dspy_stub")
+#   3. ToolCallEvent(node=node_b, kind="dspy", module="stargraph.tests.dspy_stub")
 #   4. ToolResultEvent(node=node_b, ok=true, projected_outputs={"answer": ...})
 #   5. TransitionEvent(from=node_b,  to=node_c)
 #   6. TransitionEvent(from=node_c,  to=node_d)

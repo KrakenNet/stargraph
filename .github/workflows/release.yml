@@ -28,7 +28,7 @@ jobs:
     # PyPI's trusted-publisher config typically pins to a GitHub environment
     # so secrets/approvals can gate the publish. Configure on PyPI:
     #   https://pypi.org/manage/project/stargraph/settings/publishing/
-    # with: owner=KrakenNet, repo=harbor, workflow=release.yml, environment=pypi.
+    # with: owner=KrakenNet, repo=stargraph, workflow=release.yml, environment=pypi.
     # The OIDC handshake fails (and the action falls back to looking for a
     # token) if any of those four don't match the run's GITHUB_* claims.
     environment:

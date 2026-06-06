@@ -7,7 +7,7 @@ provenance slot value -- both of which feed CLIPS as bare symbols.
 
 Hypothesis generates arbitrary text via :func:`hypothesis.strategies.text`,
 filters to the *non-matching* subset (``not _IDENT_RE.match(s)``), and
-asserts the adapter raises :class:`harbor.errors.ValidationError` for each
+asserts the adapter raises :class:`stargraph.errors.ValidationError` for each
 example. The conjugate property -- matching identifiers pass -- is also
 asserted to pin the regex's accept side.
 """
@@ -23,11 +23,11 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from harbor.errors import ValidationError
-from harbor.fathom import FathomAdapter
+from stargraph.errors import ValidationError
+from stargraph.fathom import FathomAdapter
 
 if TYPE_CHECKING:
-    from harbor.fathom._provenance import ProvenanceBundle
+    from stargraph.fathom._provenance import ProvenanceBundle
 
 # Local copy of the adapter's identifier regex (FR-15 / AC-6.5 contract).
 # A pin asserts the patterns match -- if the adapter's source ever drifts,
@@ -181,7 +181,7 @@ def test_local_ident_re_matches_adapter_pattern() -> None:
     from pathlib import Path as _Path
 
     adapter_src = (
-        _Path(__file__).resolve().parents[2] / "src" / "harbor" / "fathom" / "_adapter.py"
+        _Path(__file__).resolve().parents[2] / "src" / "stargraph" / "fathom" / "_adapter.py"
     ).read_text(encoding="utf-8")
     assert _IDENT_PATTERN in adapter_src, (
         f"adapter regex pattern {_IDENT_PATTERN!r} not found in _adapter.py"

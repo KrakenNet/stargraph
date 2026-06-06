@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for ``harbor run --live-broker`` (S7a).
+"""Tests for ``stargraph run --live-broker`` (S7a).
 
 When the flag is set, ``cmd`` must wrap the run loop in
-:func:`harbor.serve.lifecycle.broker_lifespan` so the lifespan-singleton
+:func:`stargraph.serve.lifecycle.broker_lifespan` so the lifespan-singleton
 :class:`nautilus.Broker` is wired around the run. Soft-fails (no
 ``nautilus.yaml``) still complete the run; the contextvar simply stays
 ``None`` and offline-mode broker callers fall back to envelopes.
@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 import typer
 from typer.testing import CliRunner
 
-import harbor.cli.run as run_mod
-from harbor.cli.run import cmd
+import stargraph.cli.run as run_mod
+from stargraph.cli.run import cmd
 from tests.fixtures.ansi import strip_ansi
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ def test_live_broker_flag_invokes_broker_lifespan(
         finally:
             calls.append("exit")
 
-    import harbor.serve.lifecycle as lifecycle_mod
+    import stargraph.serve.lifecycle as lifecycle_mod
 
     monkeypatch.setattr(lifecycle_mod, "broker_lifespan", _fake_lifespan)
 
@@ -83,7 +83,7 @@ def test_no_live_broker_skips_broker_lifespan(
         finally:
             calls.append("exited")
 
-    import harbor.serve.lifecycle as lifecycle_mod
+    import stargraph.serve.lifecycle as lifecycle_mod
 
     monkeypatch.setattr(lifecycle_mod, "broker_lifespan", _fake_lifespan)
 
@@ -113,19 +113,19 @@ def test_live_broker_flag_help_listed() -> None:
 
 
 def test_live_broker_imports_lazily(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``harbor.serve.lifecycle`` must NOT be in ``sys.modules`` when --live-broker
-    is unset (lazy import keeps cold ``harbor run`` light).
+    """``stargraph.serve.lifecycle`` must NOT be in ``sys.modules`` when --live-broker
+    is unset (lazy import keeps cold ``stargraph run`` light).
     """
     import importlib
     import sys
 
     # Force eviction so the test reflects a cold import path.
     for mod_name in list(sys.modules):
-        if mod_name.startswith("harbor.serve.lifecycle"):
+        if mod_name.startswith("stargraph.serve.lifecycle"):
             del sys.modules[mod_name]
 
     # Sanity: cli.run import alone should not pull serve.lifecycle.
     importlib.reload(run_mod)
-    assert "harbor.serve.lifecycle" not in sys.modules, (
-        "harbor.cli.run is eagerly importing serve.lifecycle; should be lazy"
+    assert "stargraph.serve.lifecycle" not in sys.modules, (
+        "stargraph.cli.run is eagerly importing serve.lifecycle; should be lazy"
     )

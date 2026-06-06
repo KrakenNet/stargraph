@@ -40,7 +40,7 @@ Per child, a `TransitionEvent` is published on the parent's bus with:
 | `bus` | `Any` (must expose `async send(event, *, fathom=...)`) |
 | `fathom` | `Any` (optional `FathomAdapter`) |
 
-The real `harbor.graph.run.GraphRun` satisfies this surface; tests pass
+The real `stargraph.graph.run.GraphRun` satisfies this surface; tests pass
 duck-typed contexts.
 
 ## State contract

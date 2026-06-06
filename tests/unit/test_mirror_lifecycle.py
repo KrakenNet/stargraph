@@ -2,7 +2,7 @@
 """Mirror lifecycle scheduler -- bucket semantics + boundary retraction (FR-2, FR-13).
 
 Pins the engine-side enforcement of ``Mirror.lifecycle`` semantics
-(:class:`harbor.runtime.mirror_lifecycle.MirrorScheduler`):
+(:class:`stargraph.runtime.mirror_lifecycle.MirrorScheduler`):
 
 * ``"step"`` mirrors are retracted at every node boundary
   (``retract_step()``); they do not bleed across nodes.
@@ -14,7 +14,7 @@ Pins the engine-side enforcement of ``Mirror.lifecycle`` semantics
   step retraction and the persist call so introspection still works.
 * The ``run`` bucket is held for the lifetime of the scheduler instance
   (engine drops the scheduler with the run; per-run identity is enforced
-  upstream in :mod:`harbor.graph.run`).
+  upstream in :mod:`stargraph.graph.run`).
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from __future__ import annotations
 import fathom
 import pytest
 
-from harbor.runtime.mirror_lifecycle import MirrorScheduler
+from stargraph.runtime.mirror_lifecycle import MirrorScheduler
 
 
 def _spec(template: str = "tpl", value: str = "v") -> fathom.AssertSpec:
@@ -237,7 +237,7 @@ async def test_persist_pinned_propagates_pin_error() -> None:
 @pytest.mark.unit
 def test_assert_spec_to_fact_deterministic_id() -> None:
     """Two identical ``AssertSpec``s yield ``Fact``s with identical ``id`` (T13)."""
-    from harbor.runtime.mirror_lifecycle import (
+    from stargraph.runtime.mirror_lifecycle import (
         _assert_spec_to_fact,  # pyright: ignore[reportPrivateUsage]
     )
 

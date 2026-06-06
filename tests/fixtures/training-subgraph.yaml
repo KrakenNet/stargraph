@@ -15,7 +15,7 @@
 #      via the ``ml.register`` tool. Side-effect: ``write``; replay policy
 #      ``must-stub`` (idempotent insert is fine, but determinism wants a
 #      recorded outcome).
-#   3. ``infer_node`` -- a regular :class:`harbor.nodes.ml.MLNode` over the
+#   3. ``infer_node`` -- a regular :class:`stargraph.nodes.ml.MLNode` over the
 #      registered artifact. Inference is declared ``side_effects=none`` so
 #      replay re-executes natively unless the registered ``content_hash``
 #      changed (registry mismatch -> :class:`IncompatibleModelHashError`,

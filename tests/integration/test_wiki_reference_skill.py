@@ -2,7 +2,7 @@
 """End-to-end test for ``WikiSkill`` markdown output format.
 
 Task 3.42 / FR-34 / AC-7.3 / NFR-4. Drives the reference
-:class:`harbor.skills.refs.wiki.WikiSkill` and asserts the produced
+:class:`stargraph.skills.refs.wiki.WikiSkill` and asserts the produced
 markdown has the documented structure (``# topic`` heading,
 ``## Claims`` block with bracketed citations, and a trailing
 ``## Sources`` block keyed by numeric markers).
@@ -14,7 +14,7 @@ import re
 
 import pytest
 
-from harbor.skills.refs.wiki import WikiSkill, WikiState
+from stargraph.skills.refs.wiki import WikiSkill, WikiState
 
 pytestmark = [
     pytest.mark.knowledge,

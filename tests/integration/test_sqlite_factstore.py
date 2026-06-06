@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration tests for :class:`harbor.stores.sqlite_fact.SQLiteFactStore` (FR-6, FR-13).
+"""Integration tests for :class:`stargraph.stores.sqlite_fact.SQLiteFactStore` (FR-6, FR-13).
 
 Covers four observable behaviours task 3.20 calls out:
 
@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.fact import Fact, FactPattern
-from harbor.stores.memory import AddDelta, DeleteDelta, NoopDelta, UpdateDelta
-from harbor.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.fact import Fact, FactPattern
+from stargraph.stores.memory import AddDelta, DeleteDelta, NoopDelta, UpdateDelta
+from stargraph.stores.sqlite_fact import SQLiteFactStore
 
 if TYPE_CHECKING:
     from pathlib import Path

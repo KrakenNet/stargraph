@@ -3,13 +3,13 @@
 
 Pins the *exact* byte layout for the cf-derived graph hash per design
 §3.8.3 *before* the implementation lands in task 3.33. Currently RED
-because :mod:`harbor.replay.counterfactual` does not yet exist; the
+because :mod:`stargraph.replay.counterfactual` does not yet exist; the
 ``importlib.import_module`` call fails first with :class:`ImportError`.
 
 Byte sequence under test (design §3.8.3, Learning E):
 
     sha256(
-        b"harbor-cf-v1"        # 12-byte domain tag
+        b"stargraph-cf-v1"        # 12-byte domain tag
         + b"\\x00"             # 1-byte separator
         + original_hash.encode("ascii")   # 64 bytes hex
         + b"\\x00"             # 1-byte separator
@@ -44,15 +44,15 @@ _ORIGINAL_HASH = "a" * 64  # plausible 64-char hex sha256
 
 
 def _module() -> Any:
-    """Import ``harbor.replay.counterfactual`` (TDD-RED: not yet built)."""
-    return importlib.import_module("harbor.replay.counterfactual")
+    """Import ``stargraph.replay.counterfactual`` (TDD-RED: not yet built)."""
+    return importlib.import_module("stargraph.replay.counterfactual")
 
 
 def _expected(original: str, mutation: Any) -> str:
     """Re-compute the design §3.8.3 byte sequence locally (cross-check)."""
     canonical = rfc8785.dumps(mutation.model_dump(exclude_none=True, mode="json"))
     h = hashlib.sha256()
-    h.update(b"harbor-cf-v1")
+    h.update(b"stargraph-cf-v1")
     h.update(b"\x00")
     h.update(original.encode("ascii"))
     h.update(b"\x00")

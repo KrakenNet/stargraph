@@ -2,7 +2,7 @@
 """Structural-hash incorporates ``PackMount.requires.*`` (FR-40, AC-3.5).
 
 Pins task 2.24's structural-hash extension. Two PackMount-bearing IR
-docs that differ ONLY in ``requires.harbor_facts_version`` (or
+docs that differ ONLY in ``requires.stargraph_facts_version`` (or
 ``requires.api_version``) must produce different ``graph_hash`` values
 -- otherwise a downstream pack version bump could quietly resume a
 checkpointed run against an incompatible host.
@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.graph.hash import structural_hash
-from harbor.ir._models import (
+from stargraph.graph.hash import structural_hash
+from stargraph.ir._models import (
     IRDocument,
     NodeSpec,
     PackMount,
@@ -33,7 +33,9 @@ def _build_ir(governance: list[PackMount]) -> IRDocument:
     via model_copy before returning. Mirrors Graph.__init__:384 pattern, since
     structural_hash now force-louds on raw dict state_schema (FR-6).
     """
-    from harbor.graph.definition import _compile_state_schema  # pyright: ignore[reportPrivateUsage]
+    from stargraph.graph.definition import (
+        _compile_state_schema,  # pyright: ignore[reportPrivateUsage]
+    )
 
     ir = IRDocument(
         ir_version="1.0.0",
@@ -46,14 +48,14 @@ def _build_ir(governance: list[PackMount]) -> IRDocument:
 
 
 @pytest.mark.unit
-def test_pack_requires_harbor_facts_version_changes_structural_hash() -> None:
-    """Two IR docs identical except for ``requires.harbor_facts_version`` differ."""
+def test_pack_requires_stargraph_facts_version_changes_structural_hash() -> None:
+    """Two IR docs identical except for ``requires.stargraph_facts_version`` differ."""
     ir_a = _build_ir(
         [
             PackMount(
                 id="bosun.budgets",
                 version="1.0",
-                requires=PackRequires(harbor_facts_version="1.0", api_version="1"),
+                requires=PackRequires(stargraph_facts_version="1.0", api_version="1"),
             )
         ]
     )
@@ -62,7 +64,7 @@ def test_pack_requires_harbor_facts_version_changes_structural_hash() -> None:
             PackMount(
                 id="bosun.budgets",
                 version="1.0",
-                requires=PackRequires(harbor_facts_version="2.0", api_version="1"),
+                requires=PackRequires(stargraph_facts_version="2.0", api_version="1"),
             )
         ]
     )
@@ -79,7 +81,7 @@ def test_pack_requires_api_version_changes_structural_hash() -> None:
             PackMount(
                 id="bosun.audit",
                 version="1.0",
-                requires=PackRequires(harbor_facts_version="1.0", api_version="1"),
+                requires=PackRequires(stargraph_facts_version="1.0", api_version="1"),
             )
         ]
     )
@@ -88,7 +90,7 @@ def test_pack_requires_api_version_changes_structural_hash() -> None:
             PackMount(
                 id="bosun.audit",
                 version="1.0",
-                requires=PackRequires(harbor_facts_version="1.0", api_version="2"),
+                requires=PackRequires(stargraph_facts_version="1.0", api_version="2"),
             )
         ]
     )
@@ -125,7 +127,7 @@ def test_pack_requires_partial_only_one_field_set_changes_hash() -> None:
             PackMount(
                 id="bosun.x",
                 version="1.0",
-                requires=PackRequires(harbor_facts_version="1.0"),
+                requires=PackRequires(stargraph_facts_version="1.0"),
             )
         ]
     )
@@ -149,12 +151,12 @@ def test_pack_requires_governance_pack_id_order_independent() -> None:
     pm1 = PackMount(
         id="bosun.a",
         version="1.0",
-        requires=PackRequires(harbor_facts_version="1.0", api_version="1"),
+        requires=PackRequires(stargraph_facts_version="1.0", api_version="1"),
     )
     pm2 = PackMount(
         id="bosun.b",
         version="1.0",
-        requires=PackRequires(harbor_facts_version="1.0", api_version="1"),
+        requires=PackRequires(stargraph_facts_version="1.0", api_version="1"),
     )
     h_ab = structural_hash(_build_ir([pm1, pm2]), rule_pack_versions=[])
     h_ba = structural_hash(_build_ir([pm2, pm1]), rule_pack_versions=[])

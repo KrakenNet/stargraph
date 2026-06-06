@@ -5,7 +5,7 @@
 # Minimal IRDocument referenced by `WikiSkill.subgraph` once Phase-2
 # wiring loads it through `SubGraphNode`. POC scope: autoresearch
 # (subgraph) -> format (tool) -> halt. State schema mirrors
-# `harbor.skills.refs.wiki.WikiState` field names (FR-23
+# `stargraph.skills.refs.wiki.WikiState` field names (FR-23
 # declared-output channels).
 ir_version: "1.0.0"
 id: "skill:wiki.example"

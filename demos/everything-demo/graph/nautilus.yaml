@@ -3,10 +3,10 @@
 # everything-demo Nautilus broker config.
 #
 # Place this file at one of:
-#   - <harbor-config>/nautilus.yaml  (resolved via HARBOR_CONFIG_DIR or ~/.config/harbor/)
-#   - or pass --config-dir <dir-containing-this-file> to `harbor serve`
+#   - <stargraph-config>/nautilus.yaml  (resolved via STARGRAPH_CONFIG_DIR or ~/.config/stargraph/)
+#   - or pass --config-dir <dir-containing-this-file> to `stargraph serve`
 #
-# Harbor's lifespan factory (harbor.serve.lifecycle.broker_lifespan)
+# Stargraph's lifespan factory (stargraph.serve.lifecycle.broker_lifespan)
 # detects this file and calls Broker.from_config(yaml_path); when
 # absent, BrokerNode + broker_request tool fail loudly at first call.
 #
@@ -47,5 +47,5 @@ routing:
     "*": soc_sor
 
 attestation:
-  signing_key: "ed25519://harbor-broker"
+  signing_key: "ed25519://stargraph-broker"
   audit_chain: "jsonl:./.audit-broker.jsonl"

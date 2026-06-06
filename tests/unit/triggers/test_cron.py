@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :class:`harbor.triggers.cron.CronTrigger` (FR-4).
+"""Unit tests for :class:`stargraph.triggers.cron.CronTrigger` (FR-4).
 
 Covers cronsim integration, IANA TZ handling, idempotency-key shape,
 DST behaviour, eager validation, and the trigger→scheduler enqueue
@@ -16,8 +16,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import cronsim
 import pytest
 
-from harbor.errors import HarborRuntimeError
-from harbor.triggers.cron import CronSpec, CronTrigger
+from stargraph.errors import StargraphRuntimeError
+from stargraph.triggers.cron import CronSpec, CronTrigger
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -157,14 +157,14 @@ def test_invalid_tz_fails_at_init() -> None:
 def test_init_requires_scheduler() -> None:
     """``deps['scheduler']`` is required."""
     trig = CronTrigger()
-    with pytest.raises(HarborRuntimeError, match="requires deps"):
+    with pytest.raises(StargraphRuntimeError, match="requires deps"):
         trig.init({"cron_specs": [_spec()]})
 
 
 def test_init_requires_specs() -> None:
     """``deps['cron_specs']`` is required and must be non-empty."""
     trig = CronTrigger()
-    with pytest.raises(HarborRuntimeError, match="cron_specs"):
+    with pytest.raises(StargraphRuntimeError, match="cron_specs"):
         trig.init({"scheduler": _RecordingScheduler(), "cron_specs": []})
 
 

@@ -2,9 +2,9 @@
 """TDD-RED: ONNX session reuse + explicit-provider gating (FR-30, design §3.9.2).
 
 Pins the FR-30 verbatim amendment 8 contract for the ONNX runtime path
-of :class:`harbor.nodes.ml.MLNode` *before* the GREEN partner ships in
-task 3.37. Currently RED because :mod:`harbor.nodes.ml` and
-:mod:`harbor.ml.loaders` do not yet exist (collection ImportError).
+of :class:`stargraph.nodes.ml.MLNode` *before* the GREEN partner ships in
+task 3.37. Currently RED because :mod:`stargraph.nodes.ml` and
+:mod:`stargraph.ml.loaders` do not yet exist (collection ImportError).
 
 Four cases:
 
@@ -33,13 +33,13 @@ if TYPE_CHECKING:
 # pyright: reportMissingImports=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportAttributeAccessIssue=false
 
 
-# Force harbor.nodes.ml + harbor.ml.loaders import at collection time so
+# Force stargraph.nodes.ml + stargraph.ml.loaders import at collection time so
 # the missing-module RED signal lands as a collection-phase ImportError
 # (which pytest reports as ERROR, satisfying the verify gate). The
 # GREEN partner (3.37) creates these modules and the tests then exercise
 # the session-reuse contract.
-_ml = importlib.import_module("harbor.nodes.ml")
-_loaders = importlib.import_module("harbor.ml.loaders")
+_ml = importlib.import_module("stargraph.nodes.ml")
+_loaders = importlib.import_module("stargraph.ml.loaders")
 
 
 def _onnx_runtime() -> Any:
@@ -55,7 +55,7 @@ def _make_identity_onnx_model(path: Path) -> None:
 
     Uses the ``onnx`` builder if available, else falls back to
     constructing the protobuf bytes via ``onnxruntime`` -- if neither
-    works, skips. This fixture runs only after the harbor.nodes.ml
+    works, skips. This fixture runs only after the stargraph.nodes.ml
     module-level import succeeds (i.e., post-GREEN).
     """
     try:
@@ -85,8 +85,8 @@ def onnx_model_path(tmp_path: Path) -> Path:
 def test_onnx_session_reused_per_model_version(onnx_model_path: Path) -> None:
     """Two MLNode constructions with the same (model_id, version) share
     the same InferenceSession (cache hit)."""
-    ml = importlib.import_module("harbor.nodes.ml")
-    loaders = importlib.import_module("harbor.ml.loaders")
+    ml = importlib.import_module("stargraph.nodes.ml")
+    loaders = importlib.import_module("stargraph.ml.loaders")
 
     # Hypothetical loader API: cache is keyed by (model_id, version)
     sess1 = loaders.get_onnx_session(  # type: ignore[attr-defined]
@@ -107,7 +107,7 @@ def test_onnx_session_reused_per_model_version(onnx_model_path: Path) -> None:
 def test_onnx_session_created_with_cpu_provider_only(onnx_model_path: Path) -> None:
     """Session must be opened with providers=['CPUExecutionProvider']
     only, defeating onnxruntime#25145 silent GPU fallback."""
-    loaders = importlib.import_module("harbor.ml.loaders")
+    loaders = importlib.import_module("stargraph.ml.loaders")
     sess = loaders.get_onnx_session(  # type: ignore[attr-defined]
         model_id="m2", version="v1", file_uri=onnx_model_path.as_uri()
     )
@@ -123,8 +123,8 @@ def test_onnx_effective_provider_logged_on_session_create(
     """Effective provider is logged at session-create time."""
     import logging
 
-    loaders = importlib.import_module("harbor.ml.loaders")
-    with caplog.at_level(logging.INFO, logger="harbor.ml.loaders"):
+    loaders = importlib.import_module("stargraph.ml.loaders")
+    with caplog.at_level(logging.INFO, logger="stargraph.ml.loaders"):
         loaders.get_onnx_session(  # type: ignore[attr-defined]
             model_id="m3", version="v1", file_uri=onnx_model_path.as_uri()
         )
@@ -138,7 +138,7 @@ def test_onnx_effective_provider_logged_on_session_create(
 def test_onnx_session_thread_safe_concurrent_inference(onnx_model_path: Path) -> None:
     """The cached InferenceSession is thread-safe across concurrent
     inferences on CPU EP (onnxruntime#114)."""
-    loaders = importlib.import_module("harbor.ml.loaders")
+    loaders = importlib.import_module("stargraph.ml.loaders")
     sess = loaders.get_onnx_session(  # type: ignore[attr-defined]
         model_id="m4", version="v1", file_uri=onnx_model_path.as_uri()
     )

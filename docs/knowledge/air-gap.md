@@ -1,12 +1,12 @@
 # Air-gap deployment
 
-Harbor's knowledge stack is designed to run with **no outbound network at run
+Stargraph's knowledge stack is designed to run with **no outbound network at run
 time**. The only optional reach-out is the first-load fetch of an embedding
 model into the local HuggingFace cache; once staged, every subsequent run
 operates fully offline. This page is the operator playbook for that staging.
 
 The reference embedder is `MiniLMEmbedder` at
-[`src/harbor/stores/embeddings.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/stores/embeddings.py)
+[`src/stargraph/stores/embeddings.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/stores/embeddings.py)
 — `sentence-transformers/all-MiniLM-L6-v2`, 384 dims, symmetric. The contract
 generalizes to any HF model, but the shipped POC pins MiniLM by sha256.
 
@@ -22,11 +22,11 @@ the mode that matches your deployment posture:
 | 3. Cache-on-first-use | default (`allow_download=True`) | first run only | dev / interactive shells |
 
 ```python
-from harbor.stores.embeddings import MiniLMEmbedder
+from stargraph.stores.embeddings import MiniLMEmbedder
 
 # Mode 1 -- explicit directory
 embedder = MiniLMEmbedder(
-    model_path="/srv/harbor/models/all-MiniLM-L6-v2",
+    model_path="/srv/stargraph/models/all-MiniLM-L6-v2",
 )
 
 # Mode 2 -- HF cache, offline-only
@@ -39,10 +39,10 @@ embedder = MiniLMEmbedder(allow_download=True)
 
 After the directory is resolved, `MiniLMEmbedder.__init__` hashes the
 `model.safetensors` file and compares it against `MINILM_SHA256`. Drift raises
-`EmbeddingModelHashMismatch` (subclass of `HarborError`) — loud-fail, not a
+`EmbeddingModelHashMismatch` (subclass of `StargraphError`) — loud-fail, not a
 warning. This catches:
 
-- Pulling a different revision than the one Harbor pinned.
+- Pulling a different revision than the one Stargraph pinned.
 - Mid-flight cache corruption.
 - An operator swapping safetensors files in place.
 
@@ -63,17 +63,17 @@ synchronously at `Embedding` construction, not buried inside the first
 The cache root follows HF defaults (`HF_HOME` → `XDG_CACHE_HOME/huggingface`
 → `~/.cache/huggingface`). Two operationally-relevant points:
 
-- **The cache is content-addressable.** Multiple Harbor processes can share a
+- **The cache is content-addressable.** Multiple Stargraph processes can share a
   single read-only cache directory; embedding loads do not need write
   permission once staged.
 - **Avoid `fastembed`.** Issue [#615](https://github.com/qdrant/fastembed/issues/615)
-  documents that `fastembed` bypasses `HF_HUB_OFFLINE`. Harbor uses
+  documents that `fastembed` bypasses `HF_HUB_OFFLINE`. Stargraph uses
   `sentence-transformers` directly via `huggingface_hub.snapshot_download` so
   that the offline contract holds.
 
 ## Safetensors sha256 pin
 
-The pin lives at `harbor.stores.embeddings.MINILM_SHA256`:
+The pin lives at `stargraph.stores.embeddings.MINILM_SHA256`:
 
 ```python
 MINILM_SHA256 = "53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db"
@@ -99,22 +99,22 @@ The recommended air-gap recipe for production:
 
 ```bash
 # 1. On a connected build host, pre-stage the cache:
-export HF_HOME=/build/harbor/hf-cache
+export HF_HOME=/build/stargraph/hf-cache
 python -c "
 from huggingface_hub import snapshot_download
 snapshot_download('sentence-transformers/all-MiniLM-L6-v2')
 "
 
 # 2. Verify the safetensors hash matches the pin:
-sha256sum /build/harbor/hf-cache/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/*/model.safetensors
+sha256sum /build/stargraph/hf-cache/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/*/model.safetensors
 # expect: 53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db
 
 # 3. Ship the cache directory to the air-gapped host (read-only mount fine).
 
 # 4. On the air-gapped host:
-export HF_HOME=/srv/harbor/hf-cache
+export HF_HOME=/srv/stargraph/hf-cache
 export HF_HUB_OFFLINE=1
-# Harbor processes started in this env will refuse to reach out for any
+# Stargraph processes started in this env will refuse to reach out for any
 # missing artifact and will fail loud if the cache is incomplete.
 ```
 
@@ -126,12 +126,12 @@ target model and update the sha256 pin in the `Embedding` implementation.
 The five default Providers are all embeddable Python with no outbound network:
 
 - **LanceDB** — local FS only; the SDK never reaches out unless you opt into
-  remote tables (Harbor v1 does not).
+  remote tables (Stargraph v1 does not).
 - **RyuGraph** — single-file embedded; pure local.
 - **SQLite trio** — stdlib; pure local.
 
 If you wire a remote backend (S3-backed Lance, Neo4j 5 server), the air-gap
-boundary is your responsibility — Harbor enforces it for the in-tree defaults
+boundary is your responsibility — Stargraph enforces it for the in-tree defaults
 only.
 
 ## Operator checklist
@@ -143,8 +143,8 @@ only.
 - [ ] No outbound connectivity test passes from the air-gapped host (verify
       with `curl --max-time 2 https://huggingface.co; echo $?` returning
       non-zero).
-- [ ] First Harbor process start succeeds with the offline env; first
+- [ ] First Stargraph process start succeeds with the offline env; first
       `embed()` call returns vectors without timeout.
 
-See [design §3.1](https://github.com/KrakenNet/harbor/blob/main/specs/harbor-knowledge/design.md)
+See [design §3.1](https://github.com/KrakenNet/stargraph/blob/main/specs/stargraph-knowledge/design.md)
 for the full `Embedding` Protocol and POC implementation notes.

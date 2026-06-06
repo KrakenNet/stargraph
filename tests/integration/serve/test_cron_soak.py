@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase-3 task 3.28: 7-day cron soak with mocked timer (FR-7, AC-12.5, NFR-3, NFR-14).
 
-Drives the canonical Harbor cron path through 168 simulated hours
+Drives the canonical Stargraph cron path through 168 simulated hours
 (7 days) of an hourly cron and asserts:
 
 1. **168 hourly fires**: an hourly cron (``0 * * * *``) fires exactly
@@ -50,8 +50,8 @@ import cronsim
 import pytest
 import time_machine
 
-from harbor.serve.scheduler import PendingRun, Scheduler
-from harbor.triggers.cron import CronSpec
+from stargraph.serve.scheduler import PendingRun, Scheduler
+from stargraph.triggers.cron import CronSpec
 
 pytestmark = [pytest.mark.serve, pytest.mark.slow, pytest.mark.scheduler]
 

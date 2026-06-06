@@ -9,10 +9,10 @@ already enforces.
 
 | Module | Responsibility | Public surface |
 |---|---|---|
-| `harbor.stores` | Five storage Protocols + three default embeddable Providers | `VectorStore`, `GraphStore`, `DocStore`, `MemoryStore`, `FactStore` |
-| `harbor.skills` | Skill base class, ReAct primitive, three reference skills | `Skill`, `SkillKind`, `react`, `refs.{rag,autoresearch,wiki}` |
-| `harbor.nodes.retrieval` | Parallel store fan-out node with rank fusion | `RetrievalNode` |
-| `harbor.nodes.memory` | Episode → semantic-fact promotion node | `MemoryWriteNode` |
+| `stargraph.stores` | Five storage Protocols + three default embeddable Providers | `VectorStore`, `GraphStore`, `DocStore`, `MemoryStore`, `FactStore` |
+| `stargraph.skills` | Skill base class, ReAct primitive, three reference skills | `Skill`, `SkillKind`, `react`, `refs.{rag,autoresearch,wiki}` |
+| `stargraph.nodes.retrieval` | Parallel store fan-out node with rank fusion | `RetrievalNode` |
+| `stargraph.nodes.memory` | Episode → semantic-fact promotion node | `MemoryWriteNode` |
 
 The Protocol layer mirrors `Checkpointer`'s shape — `bootstrap / health /
 migrate` lifecycle plus per-store CRUD. Three defaults ship in-tree:

@@ -2,13 +2,23 @@
 
 ## [Unreleased]
 
+### Changed (BREAKING — harbor renamed to stargraph)
+- Project renamed wholesale: package `src/harbor` → `src/stargraph`,
+  CLI console script `harbor` → `stargraph`, entry-point groups
+  `harbor.*` → `stargraph.*`, env vars `HARBOR_*` → `STARGRAPH_*`,
+  config conventions `harbor.yaml` → `stargraph.yaml` and `~/.harbor`
+  → `~/.stargraph`, repo `KrakenNet/harbor` → `KrakenNet/stargraph`
+  (GitHub redirect active). Clean break, no compat shims: old
+  run/checkpoint state hashed under `harbor.*` module paths will not
+  replay or hash-verify.
+
 ### Changed (CI pipeline green campaign)
-- Typing-only pyright strict cleanup across `src/harbor` and `tests`
+- Typing-only pyright strict cleanup across `src/stargraph` and `tests`
   (527 errors → 0), including annotation-only edits in
-  `src/harbor/ir/_validate.py`. No IR schema or runtime behavior
+  `src/stargraph/ir/_validate.py`. No IR schema or runtime behavior
   changes.
 - Knowledge CI job: coverage flag changed from
-  `--cov=harbor.stores --cov=harbor.skills` to `--cov=harbor` — dotted
+  `--cov=stargraph.stores --cov=stargraph.skills` to `--cov=stargraph` — dotted
   `source_pkgs` triggered a re-entrant numpy import under coverage's
   lazy `find_spec`, crashing with "cannot load module more than once
   per process".
@@ -18,8 +28,8 @@
 - Regenerated `docs/reference/openapi.json` to match the current serve
   surface.
 
-The harbor-knowledge surface — Stores, Skills, retrieval, memory, and
-consolidation built on top of harbor-engine.
+The stargraph-knowledge surface — Stores, Skills, retrieval, memory, and
+consolidation built on top of stargraph-engine.
 
 ### Changed (graph-store backend)
 - Replaced `kuzu==0.11.3` with `ryugraph>=25.9.2,<26` in the `stores`
@@ -28,12 +38,12 @@ consolidation built on top of harbor-engine.
   2025-10-10 following Apple's acquisition of Kuzu Inc. The Python API
   surface (`Database` / `AsyncConnection` / `QueryResult`) is unchanged
   across the fork, so the swap was a one-module rename behind the
-  `GraphStore` Protocol — `harbor.stores.kuzu.KuzuGraphStore` is now
-  `harbor.stores.ryugraph.RyuGraphStore`. Provenance source URIs
+  `GraphStore` Protocol — `stargraph.stores.kuzu.KuzuGraphStore` is now
+  `stargraph.stores.ryugraph.RyuGraphStore`. Provenance source URIs
   emitted by `PromoteTriplesToFacts` change from `kuzu:<path>` to
   `ryugraph:<path>` (FR-11, AC-12.1).
 
-### Added (Plan 1.5 — Shipwright runnable via `harbor run`)
+### Added (Plan 1.5 — Shipwright runnable via `stargraph run`)
 - IR `state_class: str | None` field — declare a Pydantic `BaseModel`
   subclass via `module.path:ClassName` instead of the primitive
   `state_schema: dict[str, str]` placeholder. Mutually exclusive with a
@@ -42,8 +52,8 @@ consolidation built on top of harbor-engine.
   (`echo`/`halt`/`dspy`) still match the static factory table; any kind
   containing `:` is imported via `importlib` and validated as a
   `NodeBase` subclass.
-- `harbor run --lm-url/--lm-model/--lm-key/--lm-timeout` flags —
-  `harbor run` calls `dspy.configure(lm=dspy.LM(...))` before driving
+- `stargraph run --lm-url/--lm-model/--lm-key/--lm-timeout` flags —
+  `stargraph run` calls `dspy.configure(lm=dspy.LM(...))` before driving
   the graph when `--lm-url` and `--lm-model` are both set.
 - `--inputs key=value` honors `state_class` by walking the resolved
   BaseModel's `model_fields`.
@@ -61,7 +71,7 @@ consolidation built on top of harbor-engine.
   hash the moment `State` landed under `state_class`.
 
 ### Added
-- Five Store Protocols (`harbor.stores`): `VectorStore`, `GraphStore`,
+- Five Store Protocols (`stargraph.stores`): `VectorStore`, `GraphStore`,
   `DocStore`, `MemoryStore`, `FactStore` — each with `bootstrap`, `health`,
   `migrate` lifecycle methods and capability strings — FR-1 through FR-5.
 - Three default embeddable backends: LanceDB (`VectorStore`), Kuzu
@@ -78,7 +88,7 @@ consolidation built on top of harbor-engine.
   `(node_name, step_id)` (not `(tool_name, args)`) so LLM-output drift cannot
   desynchronize replay; `must_stub` LLM nodes guarantee byte-identical
   re-execution — FR-19.
-- `RetrievalNode` (`harbor.nodes.retrieval`): parallel fan-out across stores
+- `RetrievalNode` (`stargraph.nodes.retrieval`): parallel fan-out across stores
   with `asyncio.TaskGroup` and Reciprocal Rank Fusion (RRF) merge; per-store
   embedder is fixed (no cross-store re-embedding) — FR-22, FR-23.
 - `MemoryWriteNode`: 3-tuple episode write `(observation, thought, action)`
@@ -96,15 +106,15 @@ consolidation built on top of harbor-engine.
   registered via `pluggy` with loud-fail on namespace collision — FR-34,
   FR-35.
 
-### harbor-serve-and-bosun
+### stargraph-serve-and-bosun
 
 The serve / scheduler / triggers / Bosun packs / Nautilus / HITL / artifacts
 surface — single-process FastAPI HTTP+WebSocket runtime built on top of
-harbor-engine + harbor-knowledge, plus the in-tree `harbor.bosun.*`
+stargraph-engine + stargraph-knowledge, plus the in-tree `stargraph.bosun.*`
 reference packs and the Nautilus broker integration.
 
 #### Added
-- `harbor serve` HTTP+WebSocket API (FastAPI 0.115+, OpenAPI 3.1) —
+- `stargraph serve` HTTP+WebSocket API (FastAPI 0.115+, OpenAPI 3.1) —
   `POST /v1/runs`, `GET /v1/runs/{id}`, `POST /v1/runs/{id}/{resume,cancel,pause,respond,counterfactual}`,
   `GET /v1/graphs`, `GET /v1/registry/{tools|skills|stores}`,
   `GET /v1/runs/{id}/artifacts`, `GET /v1/artifacts/{artifact_id}`, and
@@ -113,21 +123,21 @@ reference packs and the Nautilus broker integration.
   (BLAKE3-keyed `dedup_key`) + per-graph `anyio.CapacityLimiter` honoring
   IR `concurrency` — FR-43, FR-46, FR-47.
 - 3 trigger plugins (`manual`, `cron`, `webhook`) registered under the
-  `harbor.triggers` entry-point group; emit `TriggerEvent` → scheduler queue
+  `stargraph.triggers` entry-point group; emit `TriggerEvent` → scheduler queue
    — FR-40, FR-41, FR-42.
-- 4 in-tree Bosun reference packs (`harbor.bosun.budgets@1.0`, `audit@1.0`,
+- 4 in-tree Bosun reference packs (`stargraph.bosun.budgets@1.0`, `audit@1.0`,
   `safety_pii@1.0`, `retries@1.0`) signed with Ed25519; cleared deployments
   verify signatures on load (Fathom attestation pattern) — FR-58 through
   FR-65.
-- Nautilus integration via `harbor.nodes.nautilus.BrokerNode` +
-  `harbor.tools.nautilus.broker_request` + lifespan-singleton `Broker` —
+- Nautilus integration via `stargraph.nodes.nautilus.BrokerNode` +
+  `stargraph.tools.nautilus.broker_request` + lifespan-singleton `Broker` —
   FR-66, FR-67.
 - HITL primitives: `InterruptAction` IR variant,
-  `harbor.nodes.interrupt.InterruptNode`, `WaitingForInputEvent` +
+  `stargraph.nodes.interrupt.InterruptNode`, `WaitingForInputEvent` +
   `InterruptTimeoutEvent` event variants, `POST /v1/runs/{id}/respond` +
-  `GraphRun.respond()` async method + `harbor respond` CLI — FR-83 through
+  `GraphRun.respond()` async method + `stargraph respond` CLI — FR-83 through
   FR-87.
-- `harbor.artifacts` namespace: `ArtifactStore` Protocol +
+- `stargraph.artifacts` namespace: `ArtifactStore` Protocol +
   `FilesystemArtifactStore` (BLAKE3 content-addressable, POSIX-local-only) +
   `WriteArtifactNode` built-in + `ArtifactWrittenEvent` typed variant —
   FR-90 through FR-95.
@@ -136,21 +146,21 @@ reference packs and the Nautilus broker integration.
   signed packs — FR-72 through FR-75.
 - STRIDE threat model (`docs/security/threat-model.md`) + sign-off rubric
   + air-gap deployment guide (`docs/deployment/air-gap.md`).
-- 4 new CLI subcommands: `harbor inspect <run_id>` (timeline + state-at-step
-  + fact diffs), `harbor replay` (drives counterfactual API), `harbor respond`
-  (HITL response posting), `harbor serve` (production-ready uvicorn entry).
+- 4 new CLI subcommands: `stargraph inspect <run_id>` (timeline + state-at-step
+  + fact diffs), `stargraph replay` (drives counterfactual API), `stargraph respond`
+  (HITL response posting), `stargraph serve` (production-ready uvicorn entry).
 
 #### Changed
 - Extended OpenAPI 3.1 spec coverage; mkdocs nav with 12 Serve topic pages.
 - Pack signing pubkey rotated; trust-store TOFU + static allow-list
   (capability-tag pattern from Fathom).
 - `runtime/run.GraphRun` now supports mid-run cancel/pause/resume/respond
-  (engine TODO at `src/harbor/graph/run.py:329` resolved) — FR-76 to FR-82.
+  (engine TODO at `src/stargraph/graph/run.py:329` resolved) — FR-76 to FR-82.
 
 ## [v0.2.0] - 2026-04-29
 
-The harbor-engine release (v0.2.0). Implements the runtime, checkpoint, replay, audit,
-adapters, ML, and node subsystems on top of the harbor-foundation contracts,
+The stargraph-engine release (v0.2.0). Implements the runtime, checkpoint, replay, audit,
+adapters, ML, and node subsystems on top of the stargraph-foundation contracts,
 plus the foundation surface extensions required to support them (FR-33).
 
 ### Foundation surface (engine extension)
@@ -158,7 +168,7 @@ plus the foundation surface extensions required to support them (FR-33).
   (`none | read | write | external`) — FR-33, FR-21.
 - `ToolSpec.replay_policy` field added (`must-stub | fail-loud`) governing how
   side-effecting tools behave during replay — FR-33, FR-21, NFR-8.
-- `@tool` decorator (`harbor.registry.tool`) for declarative tool registration
+- `@tool` decorator (`stargraph.registry.tool`) for declarative tool registration
   with stable-ID and signature validation — FR-26, FR-33.
 - Stable-ID validators for `node_id`, `tool_id`, and `run_id` enforcing the
   ASCII slug grammar required by graph hashing and resume — FR-33, FR-4.
@@ -167,7 +177,7 @@ plus the foundation surface extensions required to support them (FR-33).
 - `runtime/parallel` — `asyncio.TaskGroup` + `anyio` cancel scopes for
   fan-out/fan-in nodes, with structured cancellation — FR-10, FR-13.
 - `runtime/bus` — bounded `anyio.MemoryObjectStream` event bus with
-  back-pressure and the `harbor.transition` / `harbor.evidence` event
+  back-pressure and the `stargraph.transition` / `stargraph.evidence` event
   vocabulary — FR-14, FR-15.
 - `runtime/merge` — Mirror field-level merge reducers with deterministic
   last-write semantics and `race`/`any` rejection — FR-11, FR-12.
@@ -182,7 +192,7 @@ plus the foundation surface extensions required to support them (FR-33).
 - `adapters/dspy` — `DSPyNode` adapter with the FR-6 loud-fail guard for
   unconfigured/missing DSPy modules — FR-5, FR-6.
 - `adapters/mcp` — Model Context Protocol bind path for tool registration
-  via `harbor.registry` — FR-25.
+  via `stargraph.registry` — FR-25.
 - `replay` — cassettes, determinism contract, counterfactual runs (new
   derived `graph_hash`, fresh `run_id`), history inspection, and compare —
   FR-19, FR-20, FR-27, FR-28, FR-29, NFR-2.
@@ -193,17 +203,17 @@ plus the foundation surface extensions required to support them (FR-33).
 - `audit` — JSONL audit-log sink with optional Ed25519 signing — FR-22.
 
 ### CLI
-- `harbor run` validate + execute + JSONL log + `--inspect` — FR-8.
-- `harbor.simulate(ir, fixtures)` programmatic entrypoint — FR-9.
-- `harbor counterfactual` CLI for replay mutations — FR-29.
+- `stargraph run` validate + execute + JSONL log + `--inspect` — FR-8.
+- `stargraph.simulate(ir, fixtures)` programmatic entrypoint — FR-9.
+- `stargraph counterfactual` CLI for replay mutations — FR-29.
 
 ### Cross-reference
 This release closes FR-1 through FR-33 (all 33 functional requirements from
-`specs/harbor-engine/requirements.md`), plus NFR-1 through NFR-10. The
+`specs/stargraph-engine/requirements.md`), plus NFR-1 through NFR-10. The
 foundation extensions in FR-33 are a prerequisite for FR-21/FR-24/FR-26 and
 were landed first.
 
 ## [0.1.0] - 2026-04-26
 
 ### Added
-- Initial release: harbor-foundation contracts.
+- Initial release: stargraph-foundation contracts.

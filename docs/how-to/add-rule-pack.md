@@ -3,15 +3,15 @@
 ## Goal
 
 Wire a packaged rule pack — Fathom (general-purpose) or Bosun (governance
-flavour) — into a Harbor graph's `governance` block so the engine
+flavour) — into a Stargraph graph's `governance` block so the engine
 evaluates its CLIPS rules each step.
 
 ## Prerequisites
 
-- Harbor + Fathom installed (`pip install stargraph>=0.2`).
+- Stargraph + Fathom installed (`pip install stargraph>=0.2`).
 - A pack distribution to mount — either:
   - One you authored via [Author a Bosun pack](bosun-pack.md), or
-  - A bundled pack: `harbor.bosun.budgets`, `audit`, `safety_pii`,
+  - A bundled pack: `stargraph.bosun.budgets`, `audit`, `safety_pii`,
     `retries`.
 - Familiarity with the
   [Fathom rules tutorial](../tutorials/fathom-rules.md).
@@ -23,7 +23,7 @@ evaluates its CLIPS rules each step.
 | Flavour | When to use | Examples |
 | --- | --- | --- |
 | **Fathom** rule pack | General-purpose CLIPS rules; routing, classification, deterministic decisions. | Custom routing pack for a sandbox dispatcher. |
-| **Bosun** governance pack | Cross-graph guardrails, signed; policy + audit. | `harbor.bosun.budgets`, `harbor.bosun.audit`. |
+| **Bosun** governance pack | Cross-graph guardrails, signed; policy + audit. | `stargraph.bosun.budgets`, `stargraph.bosun.audit`. |
 
 Both share the same on-disk shape (manifest + rules.clp + signatures);
 the difference is the directory of conventions and the consuming
@@ -62,12 +62,12 @@ fact templates, and any compile errors with line numbers.
 ### 4. Mount the pack from a graph
 
 ```yaml
-# harbor.yaml
+# stargraph.yaml
 governance:
-  - id: "harbor.bosun.my_pack"
+  - id: "stargraph.bosun.my_pack"
     version: "1.0"
     requires:
-      harbor_facts_version: "1.0"
+      stargraph_facts_version: "1.0"
       api_version: "1"
 ```
 
@@ -79,7 +79,7 @@ your pack relies on rule salience — declare it explicitly in
 ### 5. Run the graph and inspect rule firings
 
 ```bash
-harbor run ./harbor.yaml --inputs message="hi" --inspect
+stargraph run ./stargraph.yaml --inputs message="hi" --inspect
 ```
 
 `--inspect` prints the per-rule firing trace against synthetic fixtures:
@@ -95,19 +95,19 @@ rule_firings=3
 Run it for real:
 
 ```bash
-harbor run ./harbor.yaml --inputs message="hi" --log-file run.jsonl
-harbor inspect <run_id> --diff 0 5     # CLIPS fact diff between steps 0 and 5
+stargraph run ./stargraph.yaml --inputs message="hi" --log-file run.jsonl
+stargraph inspect <run_id> --diff 0 5     # CLIPS fact diff between steps 0 and 5
 ```
 
 ## Wire it up
 
 If the pack is shipped as a plugin distribution, install it; the
-`harbor.packs` entry-point + `register_packs` hook surfaces it
+`stargraph.packs` entry-point + `register_packs` hook surfaces it
 automatically:
 
 ```bash
-pip install harbor-pack-my-pack
-harbor run ./harbor.yaml --inspect      # mount-by-id resolves the installed pack
+pip install stargraph-pack-my-pack
+stargraph run ./stargraph.yaml --inspect      # mount-by-id resolves the installed pack
 ```
 
 If the pack lives on disk locally (no distribution), mount it
@@ -122,19 +122,19 @@ search path (see [serve/bosun](../serve/bosun.md) discovery section).
 After running:
 
 ```bash
-harbor inspect <run_id> --db .harbor/run.sqlite
+stargraph inspect <run_id> --db .stargraph/run.sqlite
 ```
 
 The timeline shows `rule_firings` per step. For Bosun packs that emit
-violations, `harbor inspect <run_id> --diff <N> <M>` prints CLIPS facts
+violations, `stargraph inspect <run_id> --diff <N> <M>` prints CLIPS facts
 added between steps — `(bosun.violation ...)` rows are how the engine
 halts the run.
 
 ## Troubleshooting
 
 !!! warning "Common failure modes"
-    - **`PackCompatError: harbor_facts_version mismatch`** — bump the
-      pack's `requires.harbor_facts_version` or pin Harbor.
+    - **`PackCompatError: stargraph_facts_version mismatch`** — bump the
+      pack's `requires.stargraph_facts_version` or pin Stargraph.
     - **`PackSignatureError`** — the JWT failed verification. Check
       that `manifest.jwt` was signed with EdDSA (the only allowed alg)
       and that the sidecar `<key_id>.pub.pem` matches.
@@ -152,4 +152,4 @@ halts the run.
 - [Fathom rules tutorial](../tutorials/fathom-rules.md) — CLIPS rules
   end-to-end.
 - [Reference: signing](../reference/signing.md).
-- [Bundled bosun packs](https://github.com/KrakenNet/harbor/tree/main/src/harbor/bosun).
+- [Bundled bosun packs](https://github.com/KrakenNet/stargraph/tree/main/src/stargraph/bosun).

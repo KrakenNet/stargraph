@@ -11,8 +11,8 @@ import importlib.util
 
 import pytest
 
-from harbor.stores.rerankers import CrossEncoderReranker
-from harbor.stores.vector import Hit
+from stargraph.stores.rerankers import CrossEncoderReranker
+from stargraph.stores.vector import Hit
 
 pytestmark = [pytest.mark.integration, pytest.mark.knowledge]
 

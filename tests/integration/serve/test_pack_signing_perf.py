@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase-3 task 3.21: pack-signing cold-load perf budget (NFR-5).
 
-Asserts the production budget for :func:`harbor.bosun.signing.verify_pack`
+Asserts the production budget for :func:`stargraph.bosun.signing.verify_pack`
 on a fixture pack tree of ~1 MiB content: mean latency under 50 ms.
 
 Each benchmark iteration uses a *fresh* :class:`StaticTrustStore` keyed
@@ -33,12 +33,12 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from harbor.bosun.signing import (
+from stargraph.bosun.signing import (
     StaticTrustStore,
     sign_pack,
     verify_pack,
 )
-from harbor.serve.profiles import ClearedProfile
+from stargraph.serve.profiles import ClearedProfile
 
 if TYPE_CHECKING:
     from pathlib import Path

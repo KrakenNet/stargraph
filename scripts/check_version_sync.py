@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Assert version strings are synchronised across release-critical files.
 
-Reads ``__version__`` from ``src/harbor/__init__.py``, ``project.version``
+Reads ``__version__`` from ``src/stargraph/__init__.py``, ``project.version``
 from ``pyproject.toml``, and the latest ``## [X.Y.Z]`` heading in
 ``CHANGELOG.md``. Exits non-zero if the three values disagree.
 
@@ -16,7 +16,7 @@ import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-INIT_PATH = REPO_ROOT / "src" / "harbor" / "__init__.py"
+INIT_PATH = REPO_ROOT / "src" / "stargraph" / "__init__.py"
 PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
 CHANGELOG_PATH = REPO_ROOT / "CHANGELOG.md"
 
@@ -58,7 +58,7 @@ def main() -> int:
     changelog_version = read_changelog_version(CHANGELOG_PATH)
 
     versions = {
-        "src/harbor/__init__.py": init_version,
+        "src/stargraph/__init__.py": init_version,
         "pyproject.toml": pyproject_version,
         "CHANGELOG.md": changelog_version,
     }

@@ -16,7 +16,7 @@
 [GitHub webhook -- PR opened/synchronize]
              │
              ▼
-[harbor.triggers.webhook receives event]
+[stargraph.triggers.webhook receives event]
              │
              ▼
 [FetchDiffTool]
@@ -44,7 +44,7 @@
              ▼
 [Fathom governance check]
              │  CLIPS rules from signed Bosun pack:
-             │    - touches src/harbor/ir/_dumps.py     -> require @ir-lead
+             │    - touches src/stargraph/ir/_dumps.py     -> require @ir-lead
              │    - changes >500 LOC                    -> request 2 reviewers
              │    - removes a test without adding one   -> block
              │    - api_version major bumped            -> require ADR link
@@ -55,13 +55,13 @@
              │  Posts review as a single PR comment.
              │
              ▼
-[harbor.audit.JSONLAuditSink]
+[stargraph.audit.JSONLAuditSink]
              │  Ed25519-signed record: PR id, ruleset hash, retrieved
              │  symbols, model id, prompt hash, output hash.
              │
              └──► Months later, "why did the bot block my PR?" ──►
-                  harbor replay --run-id <id>     # byte-identical
-                  harbor counterfactual ...       # what if rule X off?
+                  stargraph replay --run-id <id>     # byte-identical
+                  stargraph counterfactual ...       # what if rule X off?
 
 =============================================================================
                               WHY IT LANDS
@@ -76,7 +76,7 @@
   why the bot decided this 3 months later."
 
 =============================================================================
-                         HARBOR CAPABILITIES EXERCISED
+                         STARGRAPH CAPABILITIES EXERCISED
 =============================================================================
 
   Triggers:      webhook (GitHub PR events)
@@ -96,7 +96,7 @@
 
   demos/pr-review/
     README.md
-    harbor.yaml
+    stargraph.yaml
     bosun-packs/
       pr-policy/                  -- signed; rules above
     fixtures/

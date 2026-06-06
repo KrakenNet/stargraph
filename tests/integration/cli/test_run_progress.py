@@ -8,9 +8,9 @@ import anyio
 import pytest
 from rich.console import Console
 
-from harbor.cli._progress import ProgressPrinter
-from harbor.runtime.bus import EventBus
-from harbor.runtime.events import (
+from stargraph.cli._progress import ProgressPrinter
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.events import (
     ErrorEvent,
     ResultEvent,
     ToolCallEvent,

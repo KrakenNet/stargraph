@@ -2,8 +2,8 @@
 """Unit tests for store -> capability-string binding (FR-20, AC-8.1).
 
 These tests pin the canonical ``db.{name}:read`` / ``db.{name}:write``
-binding produced by :class:`~harbor.ir.StoreSpec` and
-:class:`~harbor.ir.StoreRef`, and the read-op vs write-op convention
+binding produced by :class:`~stargraph.ir.StoreSpec` and
+:class:`~stargraph.ir.StoreRef`, and the read-op vs write-op convention
 that downstream policy checks rely on.
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.ir._models import StoreRef, StoreSpec
+from stargraph.ir._models import StoreRef, StoreSpec
 
 
 @pytest.mark.unit

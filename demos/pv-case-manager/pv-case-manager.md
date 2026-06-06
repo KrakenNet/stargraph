@@ -12,10 +12,10 @@
 
           Pharmacovigilance is a multi-billion-dollar industry that has
           refused to adopt AI agents specifically because nothing on the
-          market is auditable enough. Harbor is.
+          market is auditable enough. Stargraph is.
 
-  Footprint:  Touches ~19 distinct Harbor capabilities -- effectively
-              the whole src/harbor/* tree -- in one realistic workflow.
+  Footprint:  Touches ~19 distinct Stargraph capabilities -- effectively
+              the whole src/stargraph/* tree -- in one realistic workflow.
               Swap "pharmacovigilance" for "clinical trial pharmacy",
               "medical device complaint", "CFPB adverse-action",
               "defense incident triage", or "trade-surveillance review"
@@ -26,12 +26,12 @@
 =============================================================================
 
   ┌─── Inbound ───────────────────────────────────────────────────────┐
-  │ harbor.triggers.webhook  -- new AE from FAERS/sponsor portal       │
-  │ harbor.triggers.cron     -- 02:00 nightly batch reconciliation     │
+  │ stargraph.triggers.webhook  -- new AE from FAERS/sponsor portal       │
+  │ stargraph.triggers.cron     -- 02:00 nightly batch reconciliation     │
   └─────────────────────────────┬─────────────────────────────────────┘
                                 │
                                 ▼
-  ┌─── harbor.serve  -- /v1/runs ─────────────────────────────────────┐
+  ┌─── stargraph.serve  -- /v1/runs ─────────────────────────────────────┐
   │ Auth:  mTLS (sponsor portal) or API key (internal)                 │
   │ Caps:  pv.case.write                                               │
   │ Rate:  per-sponsor + per-asset limits                              │
@@ -55,13 +55,13 @@
                                 ▼
   ┌─── MLNode ────────────────────────────────────────────────────────┐
   │ Seriousness classifier (ONNX, sha256-pinned)                       │
-  │ Loaded via harbor.ml.ModelRegistry                                 │
+  │ Loaded via stargraph.ml.ModelRegistry                                 │
   │ Output: probability(serious), causality, expectedness, narrative   │
   └─────────────────────────────┬─────────────────────────────────────┘
                                 │
                                 ▼
   ┌─── DSPyAdapter (case-type router) ────────────────────────────────┐
-  │ harbor.adapters.dspy.bind() with LoudFallbackFilter                │
+  │ stargraph.adapters.dspy.bind() with LoudFallbackFilter                │
   │ Routes to specialized SubGraphNode by case type:                   │
   │   - oncology     -> OncologySubGraph                               │
   │   - cardiac      -> CardiacSubGraph                                │
@@ -72,12 +72,12 @@
   ┌─── External enrichment (gated) ───────────────────────────────────┐
   │ Nautilus broker_node -- drug master data, MedDRA terms             │
   │ Bosun 'budgets' pack rate-limits external calls per case           │
-  │ harbor.adapters.mcp -- exposes our tools to upstream EHR systems   │
+  │ stargraph.adapters.mcp -- exposes our tools to upstream EHR systems   │
   └─────────────────────────────┬─────────────────────────────────────┘
                                 │
                                 ▼
   ┌─── Mirror state -> Fathom facts ──────────────────────────────────┐
-  │ harbor.runtime.mirror_lifecycle bucket = step                      │
+  │ stargraph.runtime.mirror_lifecycle bucket = step                      │
   │ Mirror-annotated state fields auto-emit AssertSpec on each step    │
   └─────────────────────────────┬─────────────────────────────────────┘
                                 │
@@ -105,7 +105,7 @@
                                 │
                                 ▼
   ┌─── ActionDispatch ────────────────────────────────────────────────┐
-  │ harbor_action facts -> typed Action instances                      │
+  │ stargraph_action facts -> typed Action instances                      │
   │   ExpediteAction | RequireMDReview | InterruptAction | FlagAction  │
   └─────────────────────────────┬─────────────────────────────────────┘
                                 │
@@ -127,7 +127,7 @@
   ┌─── Persistence ───────────────────────────────────────────────────┐
   │ Checkpointer after every node                                      │
   │   sqlite (dev) / postgres (prod) -- migrations _m001/_m002         │
-  │ harbor.audit.JSONLAuditSink: Ed25519-signed chain                  │
+  │ stargraph.audit.JSONLAuditSink: Ed25519-signed chain                  │
   │   alert_id, retrieved_context, model_hash, ruleset_hash,           │
   │   rule_firings, action, operator (if HITL), artifact_hash          │
   └─────────────────────────────┬─────────────────────────────────────┘
@@ -143,15 +143,15 @@
   │ Inspector: "Why didn't you expedite case 14592?"                   │
   │                                                                    │
   │ Operator runs:                                                     │
-  │   harbor replay --run-id 14592                                     │
+  │   stargraph replay --run-id 14592                                     │
   │     -> byte-identical reproduction of IR, ruleset hash, model      │
   │        hash, lit-corpus snapshot                                   │
   │                                                                    │
-  │   harbor counterfactual --run-id 14592 \                           │
+  │   stargraph counterfactual --run-id 14592 \                           │
   │       --mutate "lab.creatinine=2.1"                                │
   │     -> shows what the decision would have been with that lab       │
   │                                                                    │
-  │   harbor replay --run-id 14592 --pack-version reportability@v3     │
+  │   stargraph replay --run-id 14592 --pack-version reportability@v3     │
   │     -> shows what would have happened under the older policy       │
   └───────────────────────────────────────────────────────────────────┘
 
@@ -161,7 +161,7 @@
   │ - FilesystemTrustStore TOFU                                        │
   │ - Cypher subset linter blocks arbitrary graph queries              │
   │ - Whole bundle reproducible on a disconnected machine              │
-  │ make airgap-bundle  -- emits harbor-pv-<sha>.tar.gz                │
+  │ make airgap-bundle  -- emits stargraph-pv-<sha>.tar.gz                │
   └───────────────────────────────────────────────────────────────────┘
 
 =============================================================================
@@ -169,7 +169,7 @@
 =============================================================================
 
 - Real, regulated workflow with measurable cost-of-failure.
-- Every Harbor distinctive feature is load-bearing, not decorative.
+- Every Stargraph distinctive feature is load-bearing, not decorative.
 - The architecture re-skins to any regulated industry by swapping
   vocabulary -- one demo, five vertical sales pitches.
 - "Three years later, replay this decision" is the line that closes
@@ -178,14 +178,14 @@
   buyer profile that competitors can't serve.
 
 =============================================================================
-                  HARBOR CAPABILITIES EXERCISED  (count: 19)
+                  STARGRAPH CAPABILITIES EXERCISED  (count: 19)
 =============================================================================
 
   1.  Pluggable stores (5 protocols)         RetrievalNode RRF fusion
   2.  Reference skills (rag/autoresearch)    Lit search subgraph
   3.  ML model registry + sha256 pinning     Seriousness classifier
   4.  DSPy + MCP adapters                    Case routing + EHR bridge
-  5.  Fathom governance + harbor_action      Reportability rules
+  5.  Fathom governance + stargraph_action      Reportability rules
   6.  Bosun signed packs (4 packs)           audit/budgets/retries/safety_pii
   7.  Mandatory provenance bundle            Every fact, FDA-grade
   8.  BLAKE3 content-addressable artifacts   Case report PDF
@@ -207,7 +207,7 @@
 
   demos/pv-case-manager/
     README.md                         -- pitch + run instructions
-    harbor.yaml                       -- graph definition, stores, triggers
+    stargraph.yaml                       -- graph definition, stores, triggers
     bosun-packs/
       audit/                          -- signed
       budgets/                        -- signed

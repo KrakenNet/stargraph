@@ -5,8 +5,8 @@ Asserts the three behaviours required by ``requirements.md §FR-6``:
 
 1. Constructing the DSPy adapter with ``use_json_adapter_fallback=False`` and
    forcing a Pydantic-constraint violation raises
-   :class:`harbor.errors.AdapterFallbackError` -- never silently degrades.
-2. The :class:`harbor.adapters.dspy._LoudFallbackFilter` (design §3.3.1)
+   :class:`stargraph.errors.AdapterFallbackError` -- never silently degrades.
+2. The :class:`stargraph.adapters.dspy._LoudFallbackFilter` (design §3.3.1)
    installed on ``logging.getLogger("dspy.adapters.json_adapter")`` regex-matches
    the DSPy fallback warning ``'Failed to use structured output format, falling
    back to JSON mode'`` and converts it to an ``AdapterFallbackError`` -- the
@@ -15,7 +15,7 @@ Asserts the three behaviours required by ``requirements.md §FR-6``:
    release that introduced the ``use_json_adapter_fallback`` flag) and is
    collected as a no-op when ``dspy`` is not installed.
 
-This is the [TDD-RED] half of the loud-fail seam: ``harbor.adapters.dspy`` does
+This is the [TDD-RED] half of the loud-fail seam: ``stargraph.adapters.dspy`` does
 not yet exist (created in Task 3.4 [TDD-GREEN]), so importing it raises
 ``ImportError`` -- the verify gate ``grep -qE "(FAILED|ERROR)"`` matches that.
 """
@@ -56,7 +56,7 @@ if _parse_version(getattr(dspy, "__version__", "0")) < _MIN_DSPY:
 
 
 # Verbatim needle from FR-6 amendment 1; mirrored in
-# ``harbor.adapters.dspy._LoudFallbackFilter._NEEDLE``.
+# ``stargraph.adapters.dspy._LoudFallbackFilter._NEEDLE``.
 _FALLBACK_WARNING = "Failed to use structured output format, falling back to JSON mode"
 _FALLBACK_RE = re.compile(re.escape(_FALLBACK_WARNING))
 
@@ -66,14 +66,14 @@ def loud_dspy() -> Any:
     """Import the DSPy adapter under test.
 
     Lives behind a fixture so collection succeeds even in the [TDD-RED] state
-    where ``harbor.adapters.dspy`` is not yet implemented; per-test usage
+    where ``stargraph.adapters.dspy`` is not yet implemented; per-test usage
     surfaces the ``ImportError`` as a test failure (which the verify gate
     matches via ``grep -qE "(FAILED|ERROR)"``).
     """
     import importlib
 
-    harbor_dspy: Any = importlib.import_module("harbor.adapters.dspy")
-    return harbor_dspy
+    stargraph_dspy: Any = importlib.import_module("stargraph.adapters.dspy")
+    return stargraph_dspy
 
 
 def test_schema_mismatch_raises_adapter_fallback_error(loud_dspy: Any) -> None:
@@ -84,9 +84,9 @@ def test_schema_mismatch_raises_adapter_fallback_error(loud_dspy: Any) -> None:
     parser, the adapter MUST raise :class:`AdapterFallbackError` rather than
     silently rewrite the call to ``JSONAdapter``.
     """
-    from harbor.errors import AdapterFallbackError
+    from stargraph.errors import AdapterFallbackError
 
-    # ``bind`` returns the harbor-side DSPyNode; calling it with a schema-busting
+    # ``bind`` returns the stargraph-side DSPyNode; calling it with a schema-busting
     # input must surface ``AdapterFallbackError`` (no silent JSONAdapter swap).
     node = loud_dspy.bind(
         module=_schema_violating_module(),
@@ -108,7 +108,7 @@ def test_fallback_warning_is_converted_no_leak(
     record's message matches ``_FALLBACK_WARNING``. The captured log MUST NOT
     contain the warning text -- the filter short-circuits emission.
     """
-    from harbor.errors import AdapterFallbackError
+    from stargraph.errors import AdapterFallbackError
 
     target_logger = logging.getLogger("dspy.adapters.json_adapter")
     fallback_filter: logging.Filter = loud_dspy._LoudFallbackFilter()
@@ -161,7 +161,7 @@ def test_fallback_needle_present_in_installed_dspy(loud_dspy: Any) -> None:
     assert matches, (
         f"FALLBACK_NEEDLE {needle!r} not found in any file under {adapters_pkg}; "
         f"DSPy {dspy.__version__} has likely reworded the JSONAdapter fallback warning. "
-        f"Update harbor.adapters.dspy.FALLBACK_NEEDLE to the new text."
+        f"Update stargraph.adapters.dspy.FALLBACK_NEEDLE to the new text."
     )
 
 

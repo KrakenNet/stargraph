@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.ir._dumps` (FR-15, AC-11.1, AC-11.2, AC-11.3, AC-11.4).
+"""Unit tests for :mod:`stargraph.ir._dumps` (FR-15, AC-11.1, AC-11.2, AC-11.3, AC-11.4).
 
 Covers:
 
@@ -21,14 +21,14 @@ from pathlib import Path
 
 import pytest
 
-from harbor.ir import (
+from stargraph.ir import (
     IRDocument,
     NodeSpec,
     dumps,
     dumps_canonical,
     loads,
 )
-from harbor.ir._dumps import dumps as raw_dumps
+from stargraph.ir._dumps import dumps as raw_dumps
 
 FIXTURES_DIR: Path = Path(__file__).resolve().parents[1] / "fixtures" / "ir" / "canonical"
 
@@ -170,5 +170,5 @@ def test_loads_accepts_custom_irbase_subclass() -> None:
 
 @pytest.mark.unit
 def test_raw_dumps_is_re_exported_under_same_object() -> None:
-    """``harbor.ir.dumps`` and ``harbor.ir._dumps.dumps`` are the same callable."""
+    """``stargraph.ir.dumps`` and ``stargraph.ir._dumps.dumps`` are the same callable."""
     assert dumps is raw_dumps

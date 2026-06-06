@@ -43,7 +43,7 @@ Per-branch behaviour:
   order via list rank).
 - **Graph** — POC skip; full Triple-Cypher dispatch lands in Phase-2.
 
-Events: emits a `harbor.transition` payload per branch via
+Events: emits a `stargraph.transition` payload per branch via
 `ctx.emit_event` when the context exposes that hook (best-effort; Phase-1
 `ExecutionContext` is minimal — silently skipped when absent).
 
@@ -71,10 +71,10 @@ See `tests/fixtures/skills/rag/example.yaml` for the RagSkill POC.
 
 - Any provider-raised exception inside the `TaskGroup` aborts the group; sibling
   branches are cancelled. Phase-3 promotes the bare `asyncio.TaskGroup` to the
-  engine-managed `harbor.runtime.parallel.create_task_group`.
+  engine-managed `stargraph.runtime.parallel.create_task_group`.
 
 ## See also
 
 - [`NodeBase`](base.md) — abstract contract.
 - [`StoreRef`](../ir-schema.md) — IR binding shape.
-- `harbor.stores.rerankers.RRFReranker` — default fusion strategy.
+- `stargraph.stores.rerankers.RRFReranker` — default fusion strategy.

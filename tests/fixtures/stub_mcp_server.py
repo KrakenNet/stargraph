@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """In-memory stub MCP server for FR-25 adapter integration tests.
 
-The MCP stdio adapter (``harbor.adapters.mcp.bind``, design §3.3.2) is built
+The MCP stdio adapter (``stargraph.adapters.mcp.bind``, design §3.3.2) is built
 against the official ``mcp.ClientSession`` interface (``initialize`` /
 ``list_tools`` / ``call_tool``). Standing up a real subprocess for each test
 is heavy and flaky on CI; we instead provide a minimal in-memory stub that
@@ -165,7 +165,7 @@ def restricted_tool_spec() -> StubTool:
 
     The required permission lives outside MCP's wire protocol; the
     adapter is expected to surface it via the ``ToolSpec.permissions``
-    list when translating the MCP ``Tool`` -> Harbor ``ToolSpec`` (the
+    list when translating the MCP ``Tool`` -> Stargraph ``ToolSpec`` (the
     translation rule is part of the [TDD-GREEN] task 3.6 contract).
     """
     return StubTool(

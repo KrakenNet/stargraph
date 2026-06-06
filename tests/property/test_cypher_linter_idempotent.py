@@ -26,8 +26,8 @@ from graphglot.lexer import (  # pyright: ignore[reportMissingTypeStubs]
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from harbor.errors import UnportableCypherError
-from harbor.stores.cypher import Linter
+from stargraph.errors import UnportableCypherError
+from stargraph.stores.cypher import Linter
 
 # ---------------------------------------------------------------------------
 # Allow-list strategy: portable Cypher templates.
@@ -108,7 +108,7 @@ _ALLOWED = st.one_of(
 # ---------------------------------------------------------------------------
 
 # Tokens that the linter rejects on sight (each maps to a rule in
-# ``harbor.stores.cypher._BAN_PATTERNS``).
+# ``stargraph.stores.cypher._BAN_PATTERNS``).
 _BANNED_TOKENS: tuple[str, ...] = (
     "apoc.coll.sum(xs)",
     "gds.graph.project('g', 'N', 'R')",

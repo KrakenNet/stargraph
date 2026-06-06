@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""POC milestone (task 1.29): end-to-end ``harbor run sample-graph.yaml``.
+"""POC milestone (task 1.29): end-to-end ``stargraph run sample-graph.yaml``.
 
-Spawns the installed ``harbor`` console-script via :mod:`subprocess`, points it
+Spawns the installed ``stargraph`` console-script via :mod:`subprocess`, points it
 at ``tests/fixtures/sample-graph.yaml`` with both a JSONL audit sink and a
 SQLite checkpointer wired through ``--log-file`` / ``--checkpoint``, then
 asserts the four POC-gate conditions (FR-1, FR-8, FR-17, US-1):
@@ -24,7 +24,7 @@ from pathlib import Path
 
 from fathom.chained_log import GENESIS_RECORD_TYPE
 
-from harbor.audit.jsonl import unwrap_audit_record
+from stargraph.audit.jsonl import unwrap_audit_record
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 SAMPLE_GRAPH: Path = REPO_ROOT / "tests" / "fixtures" / "sample-graph.yaml"
@@ -37,12 +37,12 @@ def test_poc_milestone(tmp_path: Path) -> None:
     log_file = tmp_path / "run.jsonl"
     checkpoint_db = tmp_path / "poc.sqlite"
 
-    # 1. Invoke ``harbor run ...`` via subprocess. ``check=True`` makes
+    # 1. Invoke ``stargraph run ...`` via subprocess. ``check=True`` makes
     #    assertion 1 (exit code 0) implicit -- a nonzero exit raises
     #    CalledProcessError before the rest of the assertions run.
     result = subprocess.run(
         [
-            "harbor",
+            "stargraph",
             "run",
             str(SAMPLE_GRAPH),
             "--log-file",
@@ -58,7 +58,8 @@ def test_poc_milestone(tmp_path: Path) -> None:
 
     # 1. Exit code 0 (already enforced by ``check=True``; explicit for clarity).
     assert result.returncode == 0, (
-        f"harbor run exited {result.returncode}\nstdout={result.stdout!r}\nstderr={result.stderr!r}"
+        f"stargraph run exited {result.returncode}\n"
+        f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
     )
 
     # 2. JSONL file exists and has >=2 events. Each line is a chained-log

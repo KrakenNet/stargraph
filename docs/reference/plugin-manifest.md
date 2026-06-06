@@ -1,15 +1,15 @@
 # Plugin Manifest and Hookspec Catalog
 
-Every Harbor plugin distribution declares a `PluginManifest` and
+Every Stargraph plugin distribution declares a `PluginManifest` and
 registers under one of the supported entry-point groups. This page is
-the canonical hookspec catalog — the hooks Harbor core declares and
+the canonical hookspec catalog — the hooks Stargraph core declares and
 that plugins may implement.
 
 ## Manifest fields
 
 | Field         | Type    | Required | Description                                                              |
 |---------------|---------|----------|--------------------------------------------------------------------------|
-| `api_version` | str     | yes      | SemVer string Harbor checks before importing the plugin module.          |
+| `api_version` | str     | yes      | SemVer string Stargraph checks before importing the plugin module.          |
 | `name`        | str     | yes      | Human-readable plugin name.                                              |
 | `kind`        | enum    | yes      | One of `tool`, `skill`, `store`, `pack`, `trigger`, `mcp_adapter`.       |
 | `provides`    | list    | no       | Capabilities the plugin advertises (used by graph resolution).           |
@@ -21,25 +21,25 @@ Plugins register under one of the following groups in `pyproject.toml`:
 
 | Group | Purpose | Hookspec |
 |-------|---------|----------|
-| `harbor` | Plugin manifest entry-point (root) | n/a |
-| `harbor.tools` | Tool plugins | `register_tools` |
-| `harbor.skills` | Skill plugins | `register_skills` |
-| `harbor.stores` | Store plugins | `register_stores` |
-| `harbor.packs` | Bosun rule packs | `register_packs` |
-| `harbor.triggers` | Trigger plugins | `trigger_*` family |
-| `harbor.mcp_adapters` | MCP server adapters | (loader-discovered) |
+| `stargraph` | Plugin manifest entry-point (root) | n/a |
+| `stargraph.tools` | Tool plugins | `register_tools` |
+| `stargraph.skills` | Skill plugins | `register_skills` |
+| `stargraph.stores` | Store plugins | `register_stores` |
+| `stargraph.packs` | Bosun rule packs | `register_packs` |
+| `stargraph.triggers` | Trigger plugins | `trigger_*` family |
+| `stargraph.mcp_adapters` | MCP server adapters | (loader-discovered) |
 
 ## Hookspec catalog
 
-Source of truth: [`src/harbor/plugin/hookspecs.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/plugin/hookspecs.py).
+Source of truth: [`src/stargraph/plugin/hookspecs.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/plugin/hookspecs.py).
 Type aliases used in the signatures live in
-[`src/harbor/plugin/types.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/plugin/types.py).
+[`src/stargraph/plugin/types.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/plugin/types.py).
 
 ### Lifecycle
 
 ```python
-def harbor_startup(pm: PluginManager) -> None: ...
-def harbor_shutdown(pm: PluginManager) -> None: ...
+def stargraph_startup(pm: PluginManager) -> None: ...
+def stargraph_shutdown(pm: PluginManager) -> None: ...
 ```
 
 Fire once after plugin manager builds, and once on graceful shutdown.
@@ -56,8 +56,8 @@ def register_packs() -> list[PackSpec]: ...
 
 Each plugin returns the entries it provides; results are aggregated
 across plugins. `ToolSpec` / `SkillSpec` / `StoreSpec` are the IR
-records (`harbor.ir._models`); `PackSpec` is defined in
-`harbor.plugin.types` as `(id, version, manifest_path)`.
+records (`stargraph.ir._models`); `PackSpec` is defined in
+`stargraph.plugin.types` as `(id, version, manifest_path)`.
 
 ### Tool-call observation
 
@@ -68,7 +68,7 @@ def after_tool_call(call: ToolCall, result: ToolResult) -> None: ...
 
 Fire around every dispatched tool call. `ToolCall` is a frozen
 dataclass `(tool_name, namespace, args, call_id)`; `ToolResult` is
-re-exported from `harbor.runtime.tool_exec`. Plugin observers can
+re-exported from `stargraph.runtime.tool_exec`. Plugin observers can
 correlate call-to-result via `call_id`.
 
 ### Authorisation (first-deny)
@@ -94,10 +94,10 @@ def trigger_routes() -> list[Route]: ...
 Fire at lifespan startup, scheduler start, graceful shutdown, and
 route-mount time respectively. `Route` is the FastAPI
 `starlette.routing.BaseRoute` (typed as `Any` in v1 to keep
-`harbor.plugin` import-light — see
+`stargraph.plugin` import-light — see
 [v1 limits](v1-limits.md)).
 Per-plugin try/except isolation lives in
-`harbor.plugin.triggers_dispatcher` — call those dispatchers, not
+`stargraph.plugin.triggers_dispatcher` — call those dispatchers, not
 `pm.hook.<name>()` directly, for trigger lifecycles.
 
 ## Type contract
@@ -105,7 +105,7 @@ Per-plugin try/except isolation lives in
 Plugin authors import the placeholder types from a single shared module:
 
 ```python
-from harbor.plugin.types import (
+from stargraph.plugin.types import (
     PackSpec,
     PluginManager,
     Route,

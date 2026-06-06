@@ -10,7 +10,7 @@ Pins the FR-24 contract:
   appear on the parent's bus (LangGraph #2484 mitigation, replay-first
   stance: full visibility by default; quiet hot paths on demand).
 
-The engine's :class:`harbor.nodes.SubGraphNode` always streams child
+The engine's :class:`stargraph.nodes.SubGraphNode` always streams child
 events to the parent bus (see :mod:`tests.integration.test_subgraph_node`).
 The skill boundary translator (FR-23) is the layer that consults
 :attr:`Skill.bubble_events` to gate that emission. This test pins the
@@ -20,7 +20,7 @@ wiring lands. Two paths exercised here:
 
 * **bubbling** -- ``bubble_events=True``: route children straight through
   :class:`SubGraphNode`; every child :class:`TransitionEvent` lands on
-  the parent's :class:`~harbor.runtime.bus.EventBus`.
+  the parent's :class:`~stargraph.runtime.bus.EventBus`.
 * **quiet** -- ``bubble_events=False``: gate the dispatch through a
   detached child bus; the parent's bus stays empty.
 """
@@ -33,11 +33,11 @@ import anyio
 import pytest
 from pydantic import BaseModel
 
-from harbor.nodes.base import ExecutionContext, NodeBase
-from harbor.nodes.subgraph import SubGraphNode
-from harbor.runtime.bus import EventBus
-from harbor.runtime.events import TransitionEvent
-from harbor.skills.base import Skill, SkillKind
+from stargraph.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.subgraph import SubGraphNode
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.events import TransitionEvent
+from stargraph.skills.base import Skill, SkillKind
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

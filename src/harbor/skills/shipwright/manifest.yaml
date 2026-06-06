@@ -1,7 +1,0 @@
-id: harbor.skills.shipwright
-version: "0.1.0"
-kind: workflow
-description: |
-  Shipwright — a Harbor graph that authors Harbor graphs from a brief.
-  Interview-driven (rules + LLM dual-truth), verified end-to-end, replayable.
-state_schema: harbor.skills.shipwright.state:State

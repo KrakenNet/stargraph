@@ -3,7 +3,7 @@
 
 Pins the Pydantic shape for the 6th counterfactual mutation field per
 locked Decision #2 (cf:<actor> provenance prefix) before the live wiring
-in :mod:`harbor.replay.counterfactual` lands. Currently RED until task
+in :mod:`stargraph.replay.counterfactual` lands. Currently RED until task
 2.32 adds ``respond_payloads`` to :class:`CounterfactualMutation`.
 
 Cases:
@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.replay.counterfactual import CounterfactualMutation
+from stargraph.replay.counterfactual import CounterfactualMutation
 
 
 def test_respond_payloads_default_none() -> None:

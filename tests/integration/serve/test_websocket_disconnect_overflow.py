@@ -4,11 +4,11 @@
 Three integration-tier scenarios at the FastAPI ASGI boundary:
 
 1. **Slow consumer -> 1011 + "slow consumer"**: a real
-   :class:`~harbor.serve.broadcast.EventBroadcaster` whose
+   :class:`~stargraph.serve.broadcast.EventBroadcaster` whose
    per-subscriber bounded buffer fills (the broadcaster's fan-out
    uses ``send_nowait``; on :class:`anyio.WouldBlock` the broadcaster
    flips the subscriber's overflow flag, drops it, and the iterator
-   raises :class:`~harbor.errors.BroadcasterOverflow`). The WS handler
+   raises :class:`~stargraph.errors.BroadcasterOverflow`). The WS handler
    catches the typed error and closes 1011 with reason ``slow consumer``.
    Driven against a real broadcaster (NOT a stub) by lowering the
    per-subscriber buffer via a ``max_buffer`` injected at construction
@@ -17,7 +17,7 @@ Three integration-tier scenarios at the FastAPI ASGI boundary:
    covers the fan-out branch in isolation; this test exercises the
    end-to-end ASGI close-frame surface.
 
-   Implementation note: :data:`harbor.serve.broadcast._SUBSCRIBER_BUFFER_SIZE`
+   Implementation note: :data:`stargraph.serve.broadcast._SUBSCRIBER_BUFFER_SIZE`
    is a module-level constant (``100`` per design §5.6). Tests cannot
    inject a smaller value without monkey-patching; we patch the module
    constant for this test only and restore on teardown so the slow-
@@ -32,7 +32,7 @@ Three integration-tier scenarios at the FastAPI ASGI boundary:
    cursor = ``<run_id>:1:0``.
 
 3. **Bad cursor format -> 1008**: ``?last_event_id=garbage`` triggers
-   :func:`harbor.serve.api._parse_last_event_id` returning ``None``;
+   :func:`stargraph.serve.api._parse_last_event_id` returning ``None``;
    the handler closes 1008 with reason ``malformed last_event_id:
    'garbage'``.
 
@@ -50,11 +50,11 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from harbor.errors import BroadcasterOverflow
-from harbor.runtime.bus import EventBus
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.errors import BroadcasterOverflow
+from stargraph.runtime.bus import EventBus
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -187,7 +187,7 @@ def test_ws_reconnect_with_last_event_id_replays_strictly_after(
     Pre-populates the audit JSONL with 5 transitions for ``run_id``
     (steps 0..4); the cursor at ``<run_id>:1:0`` should yield steps
     2/3/4 (3 events) on reconnect. Drives the real
-    :func:`harbor.serve.api._replay_audit_after_cursor` walker against
+    :func:`stargraph.serve.api._replay_audit_after_cursor` walker against
     a real on-disk file rather than the unit-suite's in-memory
     fixtures (task 2.21).
     """

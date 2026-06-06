@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for ``harbor.checkpoint.protocol`` (FR-16).
+"""Unit tests for ``stargraph.checkpoint.protocol`` (FR-16).
 
 Pins the Pydantic shape of :class:`Checkpoint` / :class:`RunSummary`
 plus the structural contract of the :class:`Checkpointer` ``Protocol``
 (5 required methods per design §3.2.1). Also exercises cf-prefix
 detection -- counterfactual run_ids are minted as ``f"cf-{uuid4()}"``
-in :mod:`harbor.graph.run`, so any row whose ``run_id`` starts with
+in :mod:`stargraph.graph.run`, so any row whose ``run_id`` starts with
 ``"cf-"`` is a counterfactual child.
 """
 
@@ -18,7 +18,7 @@ from typing import Any, Protocol, get_type_hints
 import pytest
 from pydantic import ValidationError
 
-from harbor.checkpoint import Checkpoint, Checkpointer, RunSummary
+from stargraph.checkpoint import Checkpoint, Checkpointer, RunSummary
 
 # ---------------------------------------------------------------------------
 # Checkpoint -- Pydantic shape, required fields, per-field type assertions
@@ -114,7 +114,7 @@ def test_checkpoint_rejects_wrong_type_for_state() -> None:
 
 # ---------------------------------------------------------------------------
 # cf-prefix detection -- run_id minted as ``f"cf-{uuid4()}"`` in
-# harbor.graph.run.GraphRun.counterfactual()
+# stargraph.graph.run.GraphRun.counterfactual()
 # ---------------------------------------------------------------------------
 
 

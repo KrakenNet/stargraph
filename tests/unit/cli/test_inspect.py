@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit: ``harbor inspect <run_id>`` timeline + state + fact-diff (task 4.7).
+"""Unit: ``stargraph inspect <run_id>`` timeline + state + fact-diff (task 4.7).
 
 Per design §3.1 (``inspect.py`` row), the CLI exposes three read-only
 views over a fixtured Checkpointer + JSONL audit log:
@@ -35,9 +35,9 @@ from pathlib import Path  # noqa: TC003 -- runtime use by pytest fixture type
 import pytest
 from typer.testing import CliRunner
 
-from harbor.checkpoint.protocol import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.cli import app
+from stargraph.checkpoint.protocol import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.cli import app
 
 _runner = CliRunner()
 
@@ -54,8 +54,8 @@ async def _seed_checkpoints(db_path: Path, run_id: str) -> None:
     cp = SQLiteCheckpointer(db_path)
     await cp.bootstrap()
     base_ts = datetime(2026, 4, 30, 12, 0, 0, tzinfo=UTC)
-    fact_first = '(harbor.evidence (text "first"))'
-    fact_second = '(harbor.evidence (text "second"))'
+    fact_first = '(stargraph.evidence (text "first"))'
+    fact_second = '(stargraph.evidence (text "second"))'
     for step, node, facts in (
         (0, "node_a", [fact_first]),
         (1, "node_b", [fact_first, fact_second]),
@@ -129,7 +129,7 @@ def fixtured_run(tmp_path: Path) -> tuple[Path, Path, str]:
 
 @pytest.mark.unit
 def test_timeline_view_renders_steps(fixtured_run: tuple[Path, Path, str]) -> None:
-    """Default ``harbor inspect <run_id>`` renders one timeline row per checkpoint."""
+    """Default ``stargraph inspect <run_id>`` renders one timeline row per checkpoint."""
     db_path, jsonl_path, run_id = fixtured_run
     result = _runner.invoke(
         app,
@@ -222,13 +222,13 @@ def test_diff_view_returns_fact_delta(fixtured_run: tuple[Path, Path, str]) -> N
     assert result.exit_code == 0, result.output + str(result.exception)
     payload = json.loads(result.output.strip())
     # Step 0 had {first}; step 1 had {first, second} -> only "second" added.
-    assert payload["added"] == ['(harbor.evidence (text "second"))']
+    assert payload["added"] == ['(stargraph.evidence (text "second"))']
     assert payload["removed"] == []
 
 
 @pytest.mark.unit
 def test_inspect_help_mentions_timeline() -> None:
-    """``harbor inspect --help`` mentions the timeline view (verify spec)."""
+    """``stargraph inspect --help`` mentions the timeline view (verify spec)."""
     result = _runner.invoke(app, ["inspect", "--help"])
     assert result.exit_code == 0, result.output
     assert "timeline" in result.output.lower()

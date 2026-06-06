@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stargraph.dev/schemas/tool-v1.json",
+  "$defs": {
+    "ReplayPolicy": {
+      "description": "Tool replay policy (FR-33, FR-21, NFR-8, design 3.4.2).",
+      "enum": [
+        "must-stub",
+        "fail-loud",
+        "recorded-result"
+      ],
+      "title": "ReplayPolicy",
+      "type": "string"
+    },
+    "SideEffects": {
+      "description": "Tool side-effect classification (FR-33, design 3.4.2).",
+      "enum": [
+        "none",
+        "read",
+        "write",
+        "external"
+      ],
+      "title": "SideEffects",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Tool descriptor (AC-9.4): name, schemas, side-effects, cost, etc.\n\n``cost_estimate`` is ``Decimal | None`` per FR-9 (no float for monetary\nfields). All optional list/dict fields default to empty so a minimal\nspec only needs name/namespace/version/description/schemas/side_effects.",
+  "properties": {
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "namespace": {
+      "title": "Namespace",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "input_schema": {
+      "additionalProperties": true,
+      "title": "Input Schema",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "Output Schema",
+      "type": "object"
+    },
+    "side_effects": {
+      "$ref": "#/$defs/SideEffects"
+    },
+    "replay_policy": {
+      "$ref": "#/$defs/ReplayPolicy",
+      "default": "must-stub"
+    },
+    "permissions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Permissions",
+      "type": "array"
+    },
+    "idempotency_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Idempotency Key"
+    },
+    "cost_estimate": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cost Estimate"
+    },
+    "examples": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Examples",
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "deprecated": {
+      "default": false,
+      "title": "Deprecated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "name",
+    "namespace",
+    "version",
+    "description",
+    "input_schema",
+    "output_schema",
+    "side_effects"
+  ],
+  "title": "ToolSpec",
+  "type": "object"
+}

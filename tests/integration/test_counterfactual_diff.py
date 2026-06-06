@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration: ``harbor.compare`` returns a RunDiff (FR-27, AC-4.4).
+"""Integration: ``stargraph.compare`` returns a RunDiff (FR-27, AC-4.4).
 
 Per design §3.8.6, two runs that share steps 0..N-1 but diverge at
 step N must produce a :class:`RunDiff` whose ``steps`` lists the
@@ -14,9 +14,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from harbor.checkpoint import Checkpoint
-from harbor.replay.compare import RunDiff, StepDiff, compare
-from harbor.replay.history import RunHistory
+from stargraph.checkpoint import Checkpoint
+from stargraph.replay.compare import RunDiff, StepDiff, compare
+from stargraph.replay.history import RunHistory
 
 
 def _ckpt(

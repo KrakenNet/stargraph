@@ -1,0 +1,7 @@
+id: stargraph.bosun.safety_pii
+version: "1.0"
+requires:
+  stargraph_facts_version: "1.0"
+  api_version: "1"
+provides:
+  - "stargraph_facts:bosun.violation"

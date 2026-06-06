@@ -1,6 +1,6 @@
 # Memory
 
-Harbor splits memory into two tiers:
+Stargraph splits memory into two tiers:
 
 - **Episodic** (`MemoryStore`) — raw events scoped `(user, session, agent)`.
 - **Semantic** (`FactStore`) — promoted facts scoped `(user, agent)`. Session
@@ -29,7 +29,7 @@ The cadence is IR-declared:
 
 **Sleep-cycle batch is the default.** Practitioner reports describe naive
 streaming summarization losing ~20% of facts; batch is the safer answer.
-Cadence machinery reuses CLIPS rule scheduling already in `harbor.fathom`
+Cadence machinery reuses CLIPS rule scheduling already in `stargraph.fathom`
 — no second scheduler.
 
 ## Mem0-style typed deltas
@@ -38,7 +38,7 @@ Consolidation never blind-inserts. Rules emit a `MemoryDelta` discriminated
 union — the only acceptable promotion path:
 
 ```python
-from harbor.stores import MemoryDelta
+from stargraph.stores import MemoryDelta
 
 class AddDelta(BaseModel):
     kind: Literal["add"]
@@ -150,5 +150,5 @@ return max(0.0, min(1.0, score))
 A property test enforces both the bounds invariant and recency
 monotonicity (older = lower).
 
-See [design §3.4–3.6](https://github.com/KrakenNet/harbor/blob/main/specs/harbor-knowledge/design.md)
+See [design §3.4–3.6](https://github.com/KrakenNet/stargraph/blob/main/specs/stargraph-knowledge/design.md)
 for the MemoryStore Protocol, FactStore Protocol, and SalienceScorer details.

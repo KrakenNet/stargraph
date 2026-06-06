@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for ``harbor.fathom._adapter`` and ``harbor.fathom._template``.
+"""Unit tests for ``stargraph.fathom._adapter`` and ``stargraph.fathom._template``.
 
-Pins the contract documented in ``harbor.fathom._adapter`` against a mocked
+Pins the contract documented in ``stargraph.fathom._adapter`` against a mocked
 :class:`fathom.Engine` so the suite runs in milliseconds and is independent
 of the live-engine integration smoke (1.38 / ``test_poc_smoke.py``).
 
 Coverage map:
 
 * AC-6.1 -- :class:`FathomAdapter` constructor performs no eager mutation of
-  the wrapped engine. ``register_harbor_action_template`` is the only entry
+  the wrapped engine. ``register_stargraph_action_template`` is the only entry
   point that calls into ``engine.load_clips_function``.
 * AC-6.2 -- :meth:`FathomAdapter.assert_with_provenance` runs three structural
   checks (NUL bytes, unbalanced parens, identifier-shape regex on
@@ -16,7 +16,7 @@ Coverage map:
 * AC-6.3 -- provenance encoding round-trips through
   :func:`_sanitize_provenance_slot`; covered exhaustively in
   ``test_fathom_provenance.py``. Here we only assert the merge semantics.
-* AC-7.1 -- :func:`register_harbor_action_template` is idempotent (WeakSet).
+* AC-7.1 -- :func:`register_stargraph_action_template` is idempotent (WeakSet).
 * AC-7.4 -- :func:`extract_actions` is exercised end-to-end through
   :meth:`FathomAdapter.evaluate` with a mocked engine.
 * AC-8.4 -- :meth:`FathomAdapter.mirror_state` walks ``Mirror``-annotated
@@ -36,8 +36,8 @@ import fathom
 import pytest
 from pydantic import BaseModel
 
-from harbor.errors import ValidationError
-from harbor.fathom import (
+from stargraph.errors import ValidationError
+from stargraph.fathom import (
     AssertAction,
     FathomAdapter,
     GotoAction,
@@ -48,15 +48,15 @@ from harbor.fathom import (
     RetryAction,
     extract_actions,
 )
-from harbor.fathom._adapter import (
+from stargraph.fathom._adapter import (
     _CLIPS_IDENT_RE,  # pyright: ignore[reportPrivateUsage]
     _check_slot_value,  # pyright: ignore[reportPrivateUsage]
 )
-from harbor.fathom._template import (
-    HARBOR_ACTION_DEFTEMPLATE,
-    register_harbor_action_template,
+from stargraph.fathom._template import (
+    STARGRAPH_ACTION_DEFTEMPLATE,
+    register_stargraph_action_template,
 )
-from harbor.ir._mirror import Mirror
+from stargraph.ir._mirror import Mirror
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -68,7 +68,7 @@ def mock_engine() -> MagicMock:
     """A ``MagicMock`` typed against :class:`fathom.Engine` with a fresh identity.
 
     Each test gets its own engine so the module-level WeakSet behind
-    :func:`register_harbor_action_template` doesn't leak idempotency state
+    :func:`register_stargraph_action_template` doesn't leak idempotency state
     across tests.
     """
     return MagicMock(spec=fathom.Engine)
@@ -112,7 +112,7 @@ def test_constructor_does_not_register_template(mock_engine: MagicMock) -> None:
     FathomAdapter(mock_engine)
 
     # Pre-condition: the WeakSet does not contain the engine.
-    from harbor.fathom._template import (
+    from stargraph.fathom._template import (
         _registered_engines,  # pyright: ignore[reportPrivateUsage]
     )
 
@@ -121,63 +121,63 @@ def test_constructor_does_not_register_template(mock_engine: MagicMock) -> None:
 
 
 # ---------------------------------------------------------------------------
-# AC-7.1: harbor_action template registration is idempotent.
+# AC-7.1: stargraph_action template registration is idempotent.
 # ---------------------------------------------------------------------------
 
 
-def test_register_harbor_action_template_calls_load_clips_function(
+def test_register_stargraph_action_template_calls_load_clips_function(
     mock_engine: MagicMock,
 ) -> None:
     """First registration call passes the deftemplate string to the engine."""
-    register_harbor_action_template(mock_engine)
+    register_stargraph_action_template(mock_engine)
 
-    mock_engine.load_clips_function.assert_called_once_with(HARBOR_ACTION_DEFTEMPLATE)
+    mock_engine.load_clips_function.assert_called_once_with(STARGRAPH_ACTION_DEFTEMPLATE)
 
 
-def test_register_harbor_action_template_is_idempotent(mock_engine: MagicMock) -> None:
+def test_register_stargraph_action_template_is_idempotent(mock_engine: MagicMock) -> None:
     """AC-7.1: subsequent calls are no-ops on the same engine identity."""
-    register_harbor_action_template(mock_engine)
-    register_harbor_action_template(mock_engine)
-    register_harbor_action_template(mock_engine)
+    register_stargraph_action_template(mock_engine)
+    register_stargraph_action_template(mock_engine)
+    register_stargraph_action_template(mock_engine)
 
     # Even after three calls, only one CLIPS load happened.
     assert mock_engine.load_clips_function.call_count == 1
 
 
-def test_register_harbor_action_template_distinct_engines_each_register() -> None:
+def test_register_stargraph_action_template_distinct_engines_each_register() -> None:
     """A fresh engine identity gets a fresh registration."""
     e1 = MagicMock(spec=fathom.Engine)
     e2 = MagicMock(spec=fathom.Engine)
-    register_harbor_action_template(e1)
-    register_harbor_action_template(e2)
+    register_stargraph_action_template(e1)
+    register_stargraph_action_template(e2)
 
-    e1.load_clips_function.assert_called_once_with(HARBOR_ACTION_DEFTEMPLATE)
-    e2.load_clips_function.assert_called_once_with(HARBOR_ACTION_DEFTEMPLATE)
+    e1.load_clips_function.assert_called_once_with(STARGRAPH_ACTION_DEFTEMPLATE)
+    e2.load_clips_function.assert_called_once_with(STARGRAPH_ACTION_DEFTEMPLATE)
 
 
 def test_adapter_register_method_delegates(mock_engine: MagicMock) -> None:
     """The instance method delegates to the module-level registrar."""
     adapter = FathomAdapter(mock_engine)
-    adapter.register_harbor_action_template()
-    mock_engine.load_clips_function.assert_called_once_with(HARBOR_ACTION_DEFTEMPLATE)
+    adapter.register_stargraph_action_template()
+    mock_engine.load_clips_function.assert_called_once_with(STARGRAPH_ACTION_DEFTEMPLATE)
     # Idempotent through the adapter too.
-    adapter.register_harbor_action_template()
+    adapter.register_stargraph_action_template()
     assert mock_engine.load_clips_function.call_count == 1
 
 
 def test_register_uses_weakset_so_engines_are_not_pinned() -> None:
     """The registry uses weakrefs so dropping the engine permits GC."""
-    from harbor.fathom._template import (
+    from stargraph.fathom._template import (
         _registered_engines,  # pyright: ignore[reportPrivateUsage]
     )
 
     assert isinstance(_registered_engines, weakref.WeakSet)
 
 
-def test_harbor_action_deftemplate_constant_is_canonical() -> None:
-    """Deftemplate string carries every Harbor verb in its allowed-symbols list."""
-    txt = HARBOR_ACTION_DEFTEMPLATE
-    assert "(deftemplate harbor_action" in txt
+def test_stargraph_action_deftemplate_constant_is_canonical() -> None:
+    """Deftemplate string carries every Stargraph verb in its allowed-symbols list."""
+    txt = STARGRAPH_ACTION_DEFTEMPLATE
+    assert "(deftemplate stargraph_action" in txt
     for verb in ("goto", "parallel", "halt", "retry", "assert", "retract"):
         assert verb in txt
     # Strategy slot enumerates the four join strategies.
@@ -362,7 +362,7 @@ def test_assert_with_provenance_rejects_naive_datetime(
 
 
 def test_evaluate_calls_engine_evaluate_then_query(mock_engine: MagicMock) -> None:
-    """``evaluate`` runs the engine, then queries ``harbor_action`` facts."""
+    """``evaluate`` runs the engine, then queries ``stargraph_action`` facts."""
     mock_engine.query.return_value = []
     adapter = FathomAdapter(mock_engine)
 
@@ -370,7 +370,7 @@ def test_evaluate_calls_engine_evaluate_then_query(mock_engine: MagicMock) -> No
 
     assert actions == []
     mock_engine.evaluate.assert_called_once_with()
-    mock_engine.query.assert_called_once_with("harbor_action", None)
+    mock_engine.query.assert_called_once_with("stargraph_action", None)
 
 
 def test_evaluate_translates_facts_to_actions(mock_engine: MagicMock) -> None:
@@ -412,7 +412,7 @@ def test_extract_actions_rejects_unknown_kind() -> None:
     """Unknown ``kind`` values raise :class:`ValidationError` (no silent fallback)."""
     with pytest.raises(ValidationError) as excinfo:
         extract_actions([{"kind": "unsupported_verb"}])
-    assert "unknown harbor_action kind" in excinfo.value.message
+    assert "unknown stargraph_action kind" in excinfo.value.message
     assert excinfo.value.context.get("kind") == "unsupported_verb"
 
 

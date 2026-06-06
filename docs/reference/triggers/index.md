@@ -3,19 +3,19 @@
 Triggers are pluggy plugins that emit [`TriggerEvent`](#triggerevent) objects
 into the scheduler queue. The four lifecycle methods
 (`init` / `start` / `stop` / `routes`) mirror the hookspec wrappers in
-`harbor.plugin.hookspecs` (design §6.3); the scheduler invokes them through
+`stargraph.plugin.hookspecs` (design §6.3); the scheduler invokes them through
 [`dispatch_trigger_lifecycle`](#per-plugin-isolation) so one misbehaving
 trigger cannot block the others.
 
-Source: `src/harbor/triggers/`.
+Source: `src/stargraph/triggers/`.
 
 ## Catalog
 
 | Trigger | Module | Path |
 | --- | --- | --- |
-| [Manual](manual.md) | `harbor.triggers.manual` | CLI `harbor run` + `POST /v1/runs` |
-| [Cron](cron.md) | `harbor.triggers.cron` | `cronsim`-driven background loop |
-| [Webhook](webhook.md) | `harbor.triggers.webhook` | HMAC-verified `POST` route per spec |
+| [Manual](manual.md) | `stargraph.triggers.manual` | CLI `stargraph run` + `POST /v1/runs` |
+| [Cron](cron.md) | `stargraph.triggers.cron` | `cronsim`-driven background loop |
+| [Webhook](webhook.md) | `stargraph.triggers.webhook` | HMAC-verified `POST` route per spec |
 
 ## Trigger Protocol
 
@@ -40,7 +40,7 @@ method directly and the scheduler awaits the result if it is a coroutine.
 
 ## TriggerEvent
 
-`harbor.triggers.TriggerEvent` (subclass of `IRBase`):
+`stargraph.triggers.TriggerEvent` (subclass of `IRBase`):
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ Pluggy's default behaviour is to halt iteration if any hook impl raises.
 That is unsafe for trigger lifecycle hooks: a single bad plugin would
 prevent the rest from initialising or shutting down (FR-2, AC-12.2).
 
-`harbor.plugin.triggers_dispatcher.dispatch_trigger_lifecycle` iterates
+`stargraph.plugin.triggers_dispatcher.dispatch_trigger_lifecycle` iterates
 `pm.get_plugins()` directly and isolates exceptions per implementation:
 
 ```python
@@ -74,12 +74,12 @@ class DispatchResult:
     error: BaseException | None = None
 ```
 
-Failures are logged via the structlog `harbor.plugin.triggers` logger and
+Failures are logged via the structlog `stargraph.plugin.triggers` logger and
 captured in the returned list. `collect_trigger_routes(pm)` applies the
 same isolation to the no-arg `trigger_routes` hook.
 
 ```python
-from harbor.triggers import (
+from stargraph.triggers import (
     DispatchResult,
     collect_trigger_routes,
     dispatch_trigger_lifecycle,
@@ -93,14 +93,14 @@ for r in results:
 
 ## Entry-point group
 
-Trigger plugins register under the `harbor.triggers` entry-point group.
+Trigger plugins register under the `stargraph.triggers` entry-point group.
 Discovery is performed by the standard pluggy loader at lifespan startup;
 the Phase 1 plugin loader auto-registers anything declared in a
-distribution's `[project.entry-points."harbor.triggers"]` table.
+distribution's `[project.entry-points."stargraph.triggers"]` table.
 
 ```toml
 # pyproject.toml of a trigger-providing distribution
-[project.entry-points."harbor.triggers"]
+[project.entry-points."stargraph.triggers"]
 my_trigger = "my_pkg.triggers:MyTriggerPlugin"
 ```
 
@@ -110,5 +110,5 @@ my_trigger = "my_pkg.triggers:MyTriggerPlugin"
 - [Cron trigger](cron.md)
 - [Webhook trigger](webhook.md)
 - [Serve: triggers](../../serve/triggers.md) — operational guide.
-- [Plugin manifest](../plugin-manifest.md) — the `harbor.triggers`
+- [Plugin manifest](../plugin-manifest.md) — the `stargraph.triggers`
   entry-point group and adjacent groups.

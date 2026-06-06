@@ -13,19 +13,19 @@ from typing import Any
 
 import pytest
 
-from harbor.errors import (
+from stargraph.errors import (
     CapabilityError,
     IRValidationError,
     ReplayError,
 )
-from harbor.runtime.tool_exec import (
+from stargraph.runtime.tool_exec import (
     CassetteStore,
     RunContext,
     execute_tool,
 )
-from harbor.security.capabilities import Capabilities, CapabilityClaim
-from harbor.tools.decorator import tool
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.security.capabilities import Capabilities, CapabilityClaim
+from stargraph.tools.decorator import tool
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 # ---------------------------------------------------------------------------
 # Stub fixtures.
@@ -194,15 +194,15 @@ def test_step3_replay_fail_loud_always_raises() -> None:
 
 
 def test_step4_and_step8_emit_call_and_result_facts() -> None:
-    """Steps 4 + 8: both harbor.tool-call and harbor.tool-result emit via Fathom."""
+    """Steps 4 + 8: both stargraph.tool-call and stargraph.tool-result emit via Fathom."""
     fathom = _RecordingFathom()
     ctx = RunContext(run_id="r1", fathom=fathom)  # type: ignore[arg-type]
     _run(execute_tool(echo_tool, {"msg": "hi"}, run_ctx=ctx))
     templates = [c[0] for c in fathom.calls]
-    assert "harbor.tool-call" in templates
-    assert "harbor.tool-result" in templates
+    assert "stargraph.tool-call" in templates
+    assert "stargraph.tool-result" in templates
     # Order matters: call before invocation, result after.
-    assert templates.index("harbor.tool-call") < templates.index("harbor.tool-result")
+    assert templates.index("stargraph.tool-call") < templates.index("stargraph.tool-result")
 
 
 def test_step5_invokes_tool_body_when_not_replayed() -> None:
@@ -278,7 +278,7 @@ def test_step7_sanitization_strips_control_chars_and_markers() -> None:
 
 
 def test_step9_emits_tokens_used_when_reported() -> None:
-    """Step 9: tools that report `_tokens` produce a harbor.tokens-used fact."""
+    """Step 9: tools that report `_tokens` produce a stargraph.tokens-used fact."""
 
     @tool(
         name="lm_call",
@@ -302,7 +302,7 @@ def test_step9_emits_tokens_used_when_reported() -> None:
     ctx = RunContext(run_id="r1", fathom=fathom)  # type: ignore[arg-type]
     result = _run(execute_tool(lm_call, {}, run_ctx=ctx))
     templates = [c[0] for c in fathom.calls]
-    assert "harbor.tokens-used" in templates
+    assert "stargraph.tokens-used" in templates
     assert result.tokens == {"prompt": 10, "completion": 5, "total": 15}
 
 
@@ -312,7 +312,7 @@ def test_step9_skipped_when_no_tokens_reported() -> None:
     ctx = RunContext(run_id="r1", fathom=fathom)  # type: ignore[arg-type]
     _run(execute_tool(echo_tool, {"msg": "hi"}, run_ctx=ctx))
     templates = [c[0] for c in fathom.calls]
-    assert "harbor.tokens-used" not in templates
+    assert "stargraph.tokens-used" not in templates
 
 
 def test_async_tool_body_is_awaited() -> None:

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Deeper unit tests for :class:`harbor.graph.GraphRun` (FR-1, design §3.1.1/§3.1.3).
+"""Deeper unit tests for :class:`stargraph.graph.GraphRun` (FR-1, design §3.1.1/§3.1.3).
 
 Pins the GraphRun lifecycle + single-use invariants without driving the full
 run loop (which is exercised end-to-end by integration tests):
@@ -19,11 +19,11 @@ from typing import get_args
 
 import pytest
 
-from harbor.errors import HarborRuntimeError
-from harbor.graph import Graph, GraphRun, RunState
-from harbor.ir import IRDocument, NodeSpec
-from harbor.runtime.bus import EventBus
-from harbor.runtime.mirror_lifecycle import MirrorScheduler
+from stargraph.errors import StargraphRuntimeError
+from stargraph.graph import Graph, GraphRun, RunState
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.mirror_lifecycle import MirrorScheduler
 
 
 def _graph() -> Graph:
@@ -121,7 +121,7 @@ def test_run_construction_creates_fresh_bus_and_scheduler() -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize("terminal_state", ["done", "failed", "paused", "running"])
 async def test_start_refuses_non_pending_run(terminal_state: RunState) -> None:
-    """``start()`` raises :class:`HarborRuntimeError` on any non-``pending`` state.
+    """``start()`` raises :class:`StargraphRuntimeError` on any non-``pending`` state.
 
     Pins single-use semantics: a completed/failed/paused/in-flight run cannot
     be re-driven via ``start()`` (callers must build a new ``GraphRun`` or use
@@ -129,7 +129,7 @@ async def test_start_refuses_non_pending_run(terminal_state: RunState) -> None:
     """
     run = GraphRun(run_id="run-restart", graph=_graph())
     run.state = terminal_state  # simulate post-loop transition
-    with pytest.raises(HarborRuntimeError) as excinfo:
+    with pytest.raises(StargraphRuntimeError) as excinfo:
         await run.start()
     assert "pending" in str(excinfo.value)
     assert terminal_state in str(excinfo.value)
@@ -141,7 +141,7 @@ async def test_wait_refuses_non_pending_run(terminal_state: RunState) -> None:
     """``wait()`` enforces the same single-use invariant as ``start()``."""
     run = GraphRun(run_id="run-wait-restart", graph=_graph())
     run.state = terminal_state
-    with pytest.raises(HarborRuntimeError):
+    with pytest.raises(StargraphRuntimeError):
         await run.wait()
 
 
@@ -165,7 +165,7 @@ def test_checkpoint_returns_checkpoint_model_with_all_required_fields() -> None:
     raises if any required field is missing or wrong-typed, so the assertion
     self-updates as the protocol model evolves. T01.
     """
-    from harbor.checkpoint.protocol import Checkpoint
+    from stargraph.checkpoint.protocol import Checkpoint
 
     run = GraphRun(run_id="run-ckpt", graph=_graph())
     result = run.checkpoint()

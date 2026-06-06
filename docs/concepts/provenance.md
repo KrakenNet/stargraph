@@ -1,6 +1,6 @@
 # Provenance and Replay
 
-Every Harbor run emits a trace that is sufficient to replay the run: IR hash, plugin versions, RNG seeds, tool inputs/outputs, and Fathom decisions. Provenance is non-negotiable — a run without a complete trace is treated as an error, not a warning.
+Every Stargraph run emits a trace that is sufficient to replay the run: IR hash, plugin versions, RNG seeds, tool inputs/outputs, and Fathom decisions. Provenance is non-negotiable — a run without a complete trace is treated as an error, not a warning.
 
 ## What is captured
 

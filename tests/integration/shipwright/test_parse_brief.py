@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.skills.shipwright.nodes.parse import ParseBrief
-from harbor.skills.shipwright.state import State
+from stargraph.skills.shipwright.nodes.parse import ParseBrief
+from stargraph.skills.shipwright.state import State
 
 if TYPE_CHECKING:
-    from harbor.nodes.base import ExecutionContext
+    from stargraph.nodes.base import ExecutionContext
 
 
 @pytest.mark.integration

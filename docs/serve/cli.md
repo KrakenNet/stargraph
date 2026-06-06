@@ -1,6 +1,6 @@
-# `harbor serve` CLI
+# `stargraph serve` CLI
 
-Boots the Harbor FastAPI app via `harbor.serve.api.create_app` under
+Boots the Stargraph FastAPI app via `stargraph.serve.api.create_app` under
 `uvicorn.run`. Profile selection, graph loading, LLM endpoint wiring,
 and the SQLite checkpointer all happen at boot.
 
@@ -10,7 +10,7 @@ For the other six subcommands (`run`, `inspect`, `simulate`, `counterfactual`,
 ## Synopsis
 
 ```bash
-harbor serve \
+stargraph serve \
   [--profile <name>] [--host <addr>] [--port <int>] \
   [--db <path>] [--audit-log <path>] \
   [--graph <ir.yaml>]... \
@@ -24,7 +24,7 @@ harbor serve \
 
 | Flag | Default | Description |
 |---|---|---|
-| `--profile` | `oss-default` | Deployment profile (`oss-default` or `cleared`). Forwarded as `HARBOR_PROFILE` to `harbor.serve.profiles.select_profile`. |
+| `--profile` | `oss-default` | Deployment profile (`oss-default` or `cleared`). Forwarded as `STARGRAPH_PROFILE` to `stargraph.serve.profiles.select_profile`. |
 | `--host` | `127.0.0.1` | uvicorn bind host. |
 | `--port` | `8000` | uvicorn bind port. |
 
@@ -32,7 +32,7 @@ harbor serve \
 
 | Flag | Default | Description |
 |---|---|---|
-| `--db` | temp file | SQLite checkpointer DB path. When unset, a per-process tempdir is used (not durable). Phase 3 reads `harbor.toml: serve.checkpoint.path`. |
+| `--db` | temp file | SQLite checkpointer DB path. When unset, a per-process tempdir is used (not durable). Phase 3 reads `stargraph.toml: serve.checkpoint.path`. |
 | `--audit-log` | unset | JSONL audit-log path. Builds the `run_event_offsets` index in `RunHistory`; `get_event_offset` returns `None` for all lookups when unset. |
 
 ### Graphs
@@ -54,7 +54,7 @@ harbor serve \
 
 Both flags below are FORBIDDEN under `--profile cleared` (FR-32, FR-68,
 design §11.1, §15). The cleared startup gate raises
-`harbor.errors.ProfileViolationError` before any
+`stargraph.errors.ProfileViolationError` before any
 I/O so misconfiguration shows a clear non-zero exit on stderr.
 
 | Flag | Description |
@@ -64,9 +64,9 @@ I/O so misconfiguration shows a clear non-zero exit on stderr.
 
 ## Lifespan
 
-On startup, `harbor serve` runs this sequence inside the FastAPI lifespan:
+On startup, `stargraph serve` runs this sequence inside the FastAPI lifespan:
 
-1. `select_profile()` — resolves the profile from `HARBOR_PROFILE`.
+1. `select_profile()` — resolves the profile from `STARGRAPH_PROFILE`.
 2. Cleared-profile startup gate — checks `--allow-*` flags, raises if violated.
 3. `_configure_lm(...)` — wires DSPy LM if `--lm-url` + `--lm-model` set.
 4. `SQLiteCheckpointer.bootstrap()` — creates `runs_history` + `pending_runs` tables.
@@ -83,22 +83,22 @@ checkpointer closes.
 Boot with the default profile + no graphs (synthetic POC runs only):
 
 ```bash
-harbor serve
+stargraph serve
 ```
 
 Persistent state + one registered graph:
 
 ```bash
-harbor serve \
-  --db ./harbor.sqlite \
+stargraph serve \
+  --db ./stargraph.sqlite \
   --audit-log ./audit.jsonl \
-  --graph demos/sentinel_dark_watch/graph/harbor.yaml
+  --graph demos/sentinel_dark_watch/graph/stargraph.yaml
 ```
 
 Cleared profile with an external LLM endpoint:
 
 ```bash
-harbor serve \
+stargraph serve \
   --profile cleared \
   --lm-url http://localhost:11434/v1 \
   --lm-model gpt-oss:20b

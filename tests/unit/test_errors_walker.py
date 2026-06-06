@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""AST walker — bans bare ``Exception``/``RuntimeError`` raises in ``src/harbor`` (FR-24, AC-3.2).
+"""AST walker — bans bare ``Exception``/``RuntimeError`` raises in src/stargraph (FR-24, AC-3.2).
 
-Walks every ``.py`` module under ``src/harbor/`` and inspects each ``ast.Raise``
+Walks every ``.py`` module under ``src/stargraph/`` and inspects each ``ast.Raise``
 node. The exception class being raised must either:
 
-* inherit (by name) from :class:`harbor.errors.HarborError`, or
+* inherit (by name) from :class:`stargraph.errors.StargraphError`, or
 * be one of a small allow-list of standard-library exceptions that have a
   documented justification (``TypeError``/``ValueError``/``NotImplementedError``
   for type/contract violations, common control-flow exceptions for re-raises),
@@ -13,12 +13,12 @@ node. The exception class being raised must either:
 
 ``raise Exception(...)``, ``raise BaseException(...)``, and
 ``raise RuntimeError(...)`` are forbidden — production code must use
-``HarborRuntimeError`` (or a more specific :class:`HarborError` subclass) so
-operators can catch Harbor-emitted failures distinctly from third-party noise.
+``StargraphRuntimeError`` (or a more specific :class:`StargraphError` subclass) so
+operators can catch Stargraph-emitted failures distinctly from third-party noise.
 
 The walker also pins the 12-row provenance encoder
-(``harbor.fathom._provenance``) to ``ValidationError`` — every raise in that
-module must surface a :class:`harbor.errors.ValidationError` rather than a
+(``stargraph.fathom._provenance``) to ``ValidationError`` — every raise in that
+module must surface a :class:`stargraph.errors.ValidationError` rather than a
 bare exception.
 
 Allowed call shapes inspected:
@@ -41,16 +41,16 @@ from pathlib import Path
 
 import pytest
 
-# Exception class names permitted in ``raise`` statements under ``src/harbor``.
-# Keep this list narrow: every entry is either a Harbor exception subclass
-# (HarborError-rooted) or a stdlib exception with a documented contract use.
+# Exception class names permitted in ``raise`` statements under ``src/stargraph``.
+# Keep this list narrow: every entry is either a Stargraph exception subclass
+# (StargraphError-rooted) or a stdlib exception with a documented contract use.
 _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
     {
-        # Harbor exception hierarchy (HarborError subclasses).
-        "HarborError",
+        # Stargraph exception hierarchy (StargraphError subclasses).
+        "StargraphError",
         "ValidationError",
         "PluginLoadError",
-        "HarborRuntimeError",
+        "StargraphRuntimeError",
         "AdapterFallbackError",
         "CapabilityError",
         "CheckpointError",
@@ -60,7 +60,7 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         "IncompatibleModelHashError",
         "MLNodeError",
         "SimulationError",
-        # Harbor-knowledge store-error hierarchy (design §4.5).
+        # Stargraph-knowledge store-error hierarchy (design §4.5).
         "StoreError",
         "IncompatibleEmbeddingHashError",
         "EmbeddingModelHashMismatch",
@@ -72,56 +72,56 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         "MemoryScopeError",
         "ConsolidationRuleError",
         "FactConflictError",
-        # Harbor-artifacts hierarchy (harbor-serve-and-bosun §3.3).
-        # ArtifactStoreError is the HarborError-rooted base for the artifact
+        # Stargraph-artifacts hierarchy (stargraph-serve-and-bosun §3.3).
+        # ArtifactStoreError is the StargraphError-rooted base for the artifact
         # subsystem; ArtifactNotFound is its 404-shaped subclass surfaced by
         # GET /artifacts/{id} and the FilesystemArtifactStore.get/delete paths.
         "ArtifactStoreError",
         "ArtifactNotFound",
-        # Harbor-serve Bosun pack version-compat (task 2.23, design §3.2 / §7.4).
-        # Raised by harbor.ir._versioning.check_pack_compat at pack-load time
-        # when PackMount.requires (harbor_facts_version / api_version) does
-        # not match the host versions. HarborError-rooted (load-fail surface
+        # Stargraph-serve Bosun pack version-compat (task 2.23, design §3.2 / §7.4).
+        # Raised by stargraph.ir._versioning.check_pack_compat at pack-load time
+        # when PackMount.requires (stargraph_facts_version / api_version) does
+        # not match the host versions. StargraphError-rooted (load-fail surface
         # is operator-facing config, not engine runtime).
         "PackCompatError",
-        # Harbor-serve cleared-profile startup gate (task 2.37, design §11.1 / §15).
-        # Raised by harbor.cli.serve at boot when --allow-pack-mutation or
-        # --allow-side-effects is supplied under --profile cleared. HarborError-rooted
+        # Stargraph-serve cleared-profile startup gate (task 2.37, design §11.1 / §15).
+        # Raised by stargraph.cli.serve at boot when --allow-pack-mutation or
+        # --allow-side-effects is supplied under --profile cleared. StargraphError-rooted
         # (config-time operator-facing failure, not engine runtime).
         "ProfileViolationError",
-        # Harbor-serve Bosun pack-signing trust-boundary failure (tasks 2.26-2.27,
+        # Stargraph-serve Bosun pack-signing trust-boundary failure (tasks 2.26-2.27,
         # design §7.3 / §7.5 / §17 Decision #4). Raised by
-        # harbor.bosun.signing.verify_pack on any signature, algorithm-whitelist,
+        # stargraph.bosun.signing.verify_pack on any signature, algorithm-whitelist,
         # tree-hash, TOFU-fingerprint, x5c-header-rejection, or static-allow-list
-        # miss under the cleared profile (load-fail). HarborError-rooted (load-time
+        # miss under the cleared profile (load-fail). StargraphError-rooted (load-time
         # config surface, not engine runtime — same shape as PackCompatError).
         "PackSignatureError",
-        # Harbor-serve broadcaster overflow signal (task 2.21, design §5.6).
+        # Stargraph-serve broadcaster overflow signal (task 2.21, design §5.6).
         # Raised by ``EventBroadcaster`` when a per-subscriber bounded
         # stream cannot accept a new event non-blocking; caught by the WS
         # handler and translated to ``close(1011, "slow consumer")``.
-        # HarborRuntimeError-rooted so a single ``except HarborRuntimeError``
+        # StargraphRuntimeError-rooted so a single ``except StargraphRuntimeError``
         # catches it alongside other engine runtime failures.
         "BroadcasterOverflow",
-        # InterruptNode internal control-flow signal (harbor-serve-and-bosun
+        # InterruptNode internal control-flow signal (stargraph-serve-and-bosun
         # §3.6, design Decision #1). Caught by the loop's run-step boundary
         # to dispatch InterruptAction without polluting RoutingDecision.
         # Underscore-prefixed = module-private; not part of the public surface.
         "_HitInterrupt",
-        # FastAPI HTTP fault surface for the harbor.serve API + webhook
-        # trigger (harbor-serve-and-bosun §5). HTTPException is the
+        # FastAPI HTTP fault surface for the stargraph.serve API + webhook
+        # trigger (stargraph-serve-and-bosun §5). HTTPException is the
         # framework-mandated way to return non-2xx responses; wrapping each
-        # site in HarborRuntimeError + a translation middleware would re-raise
+        # site in StargraphRuntimeError + a translation middleware would re-raise
         # this same class anyway, so we accept it on its own as a known
         # boundary exception (FR-24 carve-out for HTTP-framework integration).
         "HTTPException",
-        # Stdlib — type/contract violations (caller bug, not a Harbor failure).
+        # Stdlib — type/contract violations (caller bug, not a Stargraph failure).
         "TypeError",
         "ValueError",
         "NotImplementedError",
         "AssertionError",
         # Stdlib — control-flow / iteration / lookup errors. Conventional in
-        # Python and would be wrong to wrap as Harbor errors.
+        # Python and would be wrong to wrap as Stargraph errors.
         "AttributeError",
         "KeyError",
         "IndexError",
@@ -130,18 +130,18 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
     }
 )
 
-# Explicitly forbidden — even though they are stdlib, raising them in Harbor
+# Explicitly forbidden — even though they are stdlib, raising them in Stargraph
 # core is a code-smell. Listed here so failure messages can name the offender.
 _FORBIDDEN_RAISE_NAMES: frozenset[str] = frozenset({"Exception", "BaseException", "RuntimeError"})
 
 # Project root resolved relative to this test file: tests/unit/ -> tests/ -> repo root.
 _REPO_ROOT: Path = Path(__file__).resolve().parents[2]
-_SRC_HARBOR: Path = _REPO_ROOT / "src" / "harbor"
+_SRC_STARGRAPH: Path = _REPO_ROOT / "src" / "stargraph"
 
 
-def _iter_harbor_python_files() -> list[Path]:
-    """Return every ``.py`` module under ``src/harbor`` (sorted, excluding caches)."""
-    return sorted(p for p in _SRC_HARBOR.rglob("*.py") if "__pycache__" not in p.parts)
+def _iter_stargraph_python_files() -> list[Path]:
+    """Return every ``.py`` module under ``src/stargraph`` (sorted, excluding caches)."""
+    return sorted(p for p in _SRC_STARGRAPH.rglob("*.py") if "__pycache__" not in p.parts)
 
 
 def _raise_call_name(node: ast.Raise) -> str | None:
@@ -215,10 +215,10 @@ def _collect_raise_violations(path: Path) -> list[tuple[int, str]]:
 
 
 @pytest.mark.unit
-def test_no_bare_exception_raises_in_src_harbor() -> None:
-    """Every ``raise`` in ``src/harbor`` uses an allow-listed exception class (FR-24)."""
-    files = _iter_harbor_python_files()
-    assert files, f"no python files found under {_SRC_HARBOR!s}"
+def test_no_bare_exception_raises_in_src_stargraph() -> None:
+    """Every ``raise`` in ``src/stargraph`` uses an allow-listed exception class (FR-24)."""
+    files = _iter_stargraph_python_files()
+    assert files, f"no python files found under {_SRC_STARGRAPH!s}"
 
     all_violations: list[tuple[Path, int, str]] = []
     for path in files:
@@ -236,7 +236,7 @@ def test_no_bare_exception_raises_in_src_harbor() -> None:
         hint = (
             "\nForbidden classes detected: "
             + ", ".join(forbidden_seen)
-            + "\nUse harbor.errors.HarborRuntimeError (or a more specific HarborError "
+            + "\nUse stargraph.errors.StargraphRuntimeError (or a more specific StargraphError "
             "subclass) instead of bare Exception/RuntimeError; use ValidationError "
             "for input/contract violations."
             if forbidden_seen
@@ -246,14 +246,16 @@ def test_no_bare_exception_raises_in_src_harbor() -> None:
             )
         )
         pytest.fail(
-            "Disallowed raise statements found in src/harbor (FR-24, AC-3.2):\n" + rendered + hint
+            "Disallowed raise statements found in src/stargraph (FR-24, AC-3.2):\n"
+            + rendered
+            + hint
         )
 
 
 @pytest.mark.unit
 def test_provenance_encoder_uses_validation_error() -> None:
     """The 12-row provenance encoder raises only ``ValidationError`` (AC-6.3, FR-24)."""
-    target = _SRC_HARBOR / "fathom" / "_provenance.py"
+    target = _SRC_STARGRAPH / "fathom" / "_provenance.py"
     assert target.is_file(), f"expected provenance encoder at {target!s}"
 
     tree = ast.parse(target.read_text(encoding="utf-8"), filename=str(target))

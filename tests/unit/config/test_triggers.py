@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for ``harbor.config.triggers.load_triggers``.
+"""Tests for ``stargraph.config.triggers.load_triggers``.
 
 Covers:
   * empty / missing-file paths
@@ -16,12 +16,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.config.triggers import (
+from stargraph.config.triggers import (
     LoadedTriggers,
     ManualDescriptor,
     load_triggers,
 )
-from harbor.errors import HarborRuntimeError
+from stargraph.errors import StargraphRuntimeError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -109,7 +109,7 @@ cron:
     bogus_field: yes
 """,
     )
-    with pytest.raises(HarborRuntimeError, match=r"cron\[cron\.bad\] invalid"):
+    with pytest.raises(StargraphRuntimeError, match=r"cron\[cron\.bad\] invalid"):
         load_triggers(tmp_path)
 
 
@@ -158,7 +158,7 @@ webhook:
     current_secret_env: WHK_DOES_NOT_EXIST_XYZ
 """,
     )
-    with pytest.raises(HarborRuntimeError, match="WHK_DOES_NOT_EXIST_XYZ"):
+    with pytest.raises(StargraphRuntimeError, match="WHK_DOES_NOT_EXIST_XYZ"):
         load_triggers(tmp_path)
 
 
@@ -189,25 +189,25 @@ webhook:
     path: /x
 """,
     )
-    with pytest.raises(HarborRuntimeError, match="missing current_secret_env"):
+    with pytest.raises(StargraphRuntimeError, match="missing current_secret_env"):
         load_triggers(tmp_path)
 
 
 def test_top_level_must_be_mapping(tmp_path: Path) -> None:
     _write_yaml(tmp_path, "- not_a_mapping\n- another\n")
-    with pytest.raises(HarborRuntimeError, match="top-level must be a mapping"):
+    with pytest.raises(StargraphRuntimeError, match="top-level must be a mapping"):
         load_triggers(tmp_path)
 
 
 def test_malformed_yaml_fails(tmp_path: Path) -> None:
     _write_yaml(tmp_path, "version: [unterminated\n")
-    with pytest.raises(HarborRuntimeError, match="parse error"):
+    with pytest.raises(StargraphRuntimeError, match="parse error"):
         load_triggers(tmp_path)
 
 
 def test_non_mapping_row_fails(tmp_path: Path) -> None:
     _write_yaml(tmp_path, "cron:\n  - just_a_string\n")
-    with pytest.raises(HarborRuntimeError, match="cron entry not a mapping"):
+    with pytest.raises(StargraphRuntimeError, match="cron entry not a mapping"):
         load_triggers(tmp_path)
 
 

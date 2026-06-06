@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Re-sign the four ``harbor.bosun.*`` reference packs (Phase-4 task 4.1-4.4).
+"""Re-sign the four ``stargraph.bosun.*`` reference packs (Phase-4 task 4.1-4.4).
 
 Generates a fresh Ed25519 keypair, derives a 16-char ``key_id`` from the
 DER-encoded public key fingerprint (matching the established
 ``dev-bosun-<8-hex>`` convention), and signs each pack tree via
-:func:`harbor.bosun.signing.sign_pack`. Writes the resulting JWT to
+:func:`stargraph.bosun.signing.sign_pack`. Writes the resulting JWT to
 ``manifest.jwt`` and the public key to ``<key_id>.pub.pem`` (TOFU
 sidecar) inside each pack directory.
 
@@ -30,10 +30,10 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from harbor.bosun.signing import sign_pack
+from stargraph.bosun.signing import sign_pack
 
 PACKS = ("budgets", "audit", "safety_pii", "retries")
-ROOT = Path(__file__).parent.parent / "src" / "harbor" / "bosun"
+ROOT = Path(__file__).parent.parent / "src" / "stargraph" / "bosun"
 DEV_KEYS = Path(__file__).parent.parent / "dev" / "keys"
 
 

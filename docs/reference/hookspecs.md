@@ -1,58 +1,58 @@
 # Hookspec Catalog
 
-Reference for every hook specification declared by Harbor core in `harbor.plugin.hookspecs`. Plugins implement these hooks with the `@hookimpl` decorator from `harbor.plugin`.
+Reference for every hook specification declared by Stargraph core in `stargraph.plugin.hookspecs`. Plugins implement these hooks with the `@hookimpl` decorator from `stargraph.plugin`.
 
 See also: [PluginManifest](plugin-manifest.md), [Skills](skills.md), [Plugin model concepts](../concepts/plugins.md).
 
 ## Markers
 
 ```python
-from harbor.plugin import hookimpl, hookspec  # both bound to PROJECT="harbor"
+from stargraph.plugin import hookimpl, hookspec  # both bound to PROJECT="stargraph"
 ```
 
-Both markers are `pluggy.HookspecMarker("harbor")` / `pluggy.HookimplMarker("harbor")` (`src/harbor/plugin/_markers.py`). All Harbor hookspecs and hookimpls **must** use these markers — pluggy routes calls by project name.
+Both markers are `pluggy.HookspecMarker("stargraph")` / `pluggy.HookimplMarker("stargraph")` (`src/stargraph/plugin/_markers.py`). All Stargraph hookspecs and hookimpls **must** use these markers — pluggy routes calls by project name.
 
 ## firstresult vs collect-all
 
-Pluggy hookspecs come in two flavours; Harbor uses both:
+Pluggy hookspecs come in two flavours; Stargraph uses both:
 
 | Flavour | Behaviour | Used by |
 |---------|-----------|---------|
-| **collect-all** | Pluggy calls every registered hookimpl in registration order and returns the list of return values. | `register_tools`, `register_skills`, `register_stores`, `register_packs`, `before_tool_call`, `after_tool_call`, `harbor_startup`, `harbor_shutdown`, `trigger_routes` and the trigger lifecycle hooks. |
+| **collect-all** | Pluggy calls every registered hookimpl in registration order and returns the list of return values. | `register_tools`, `register_skills`, `register_stores`, `register_packs`, `before_tool_call`, `after_tool_call`, `stargraph_startup`, `stargraph_shutdown`, `trigger_routes` and the trigger lifecycle hooks. |
 | **firstresult** | Pluggy calls hookimpls in registration order; the **first non-`None`** return wins and the rest are skipped. | `authorize_action` (Bosun first-deny). |
 
-Every Harbor hookspec exposes `<hook>.firstresult: bool` as a stable attribute so callers and tests can introspect collect semantics without reaching into pluggy internals.
+Every Stargraph hookspec exposes `<hook>.firstresult: bool` as a stable attribute so callers and tests can introspect collect semantics without reaching into pluggy internals.
 
 !!! warning "Trigger lifecycle hooks need the dispatcher"
-    `trigger_init` / `trigger_start` / `trigger_stop` / `trigger_routes` are declared as ordinary collect-all hooks, but pluggy's default behaviour halts iteration on the first exception. **Do not** call `pm.hook.trigger_init(...)` directly — use `harbor.plugin.triggers_dispatcher.dispatch_trigger_lifecycle` (and `collect_trigger_routes`) which iterates plugins manually inside per-plugin `try/except` blocks. See [Trigger lifecycle](#trigger-lifecycle).
+    `trigger_init` / `trigger_start` / `trigger_stop` / `trigger_routes` are declared as ordinary collect-all hooks, but pluggy's default behaviour halts iteration on the first exception. **Do not** call `pm.hook.trigger_init(...)` directly — use `stargraph.plugin.triggers_dispatcher.dispatch_trigger_lifecycle` (and `collect_trigger_routes`) which iterates plugins manually inside per-plugin `try/except` blocks. See [Trigger lifecycle](#trigger-lifecycle).
 
 ## Lifecycle
 
-### `harbor_startup(pm)`
+### `stargraph_startup(pm)`
 
 ```python
 @hookspec
-def harbor_startup(pm: PluginManager) -> None: ...
+def stargraph_startup(pm: PluginManager) -> None: ...
 ```
 
 - **Returns:** `None` (collect-all; return values discarded).
 - **When:** invoked once after `build_plugin_manager` finishes registering plugins.
 - **Use for:** opening connections, warming caches, registering observability sinks.
 
-### `harbor_shutdown(pm)`
+### `stargraph_shutdown(pm)`
 
 ```python
 @hookspec
-def harbor_shutdown(pm: PluginManager) -> None: ...
+def stargraph_shutdown(pm: PluginManager) -> None: ...
 ```
 
 - **Returns:** `None` (collect-all).
 - **When:** invoked once during graceful shutdown.
-- **Use for:** flushing buffers, closing handles. Mirror of `harbor_startup`.
+- **Use for:** flushing buffers, closing handles. Mirror of `stargraph_startup`.
 
 ## Registration (collect-all)
 
-Each `register_*` hookspec returns a list. Pluggy aggregates lists across plugins; Harbor's registries flatten them.
+Each `register_*` hookspec returns a list. Pluggy aggregates lists across plugins; Stargraph's registries flatten them.
 
 ### `register_tools() -> list[ToolSpec]`
 
@@ -62,7 +62,7 @@ def register_tools() -> list[ToolSpec]:
     return []
 ```
 
-Each plugin returns the tools it provides. `ToolSpec` (`harbor.ir._models`) carries `name`, `namespace`, `version`, schemas, `side_effects`, `replay_policy`, `permissions`, `cost_estimate`, etc.
+Each plugin returns the tools it provides. `ToolSpec` (`stargraph.ir._models`) carries `name`, `namespace`, `version`, schemas, `side_effects`, `replay_policy`, `permissions`, `cost_estimate`, etc.
 
 ### `register_skills() -> list[SkillSpec]`
 
@@ -72,7 +72,7 @@ def register_skills() -> list[SkillSpec]:
     return []
 ```
 
-Each plugin returns the skills it provides. The IR-portable `SkillSpec` is the registration record; runtime `Skill` instances (`harbor.skills.Skill`) are pre-validated by the loader. See [Skills](skills.md).
+Each plugin returns the skills it provides. The IR-portable `SkillSpec` is the registration record; runtime `Skill` instances (`stargraph.skills.Skill`) are pre-validated by the loader. See [Skills](skills.md).
 
 ### `register_stores() -> list[StoreSpec]`
 
@@ -82,7 +82,7 @@ def register_stores() -> list[StoreSpec]:
     return []
 ```
 
-Each plugin returns the named store bindings it provides. `StoreSpec.protocol` is one of `vector`, `graph`, `doc`, `memory`, `fact`. Bootstrap-time `${VAR}` interpolation and JSON Schema validation live in `harbor.plugin._config`.
+Each plugin returns the named store bindings it provides. `StoreSpec.protocol` is one of `vector`, `graph`, `doc`, `memory`, `fact`. Bootstrap-time `${VAR}` interpolation and JSON Schema validation live in `stargraph.plugin._config`.
 
 ### `register_packs() -> list[PackSpec]`
 
@@ -134,7 +134,7 @@ def authorize_action(action: dict[str, Any]) -> bool | None: ...
 - **Use for:** Bosun first-deny authorisation. Earlier-registered plugins (lower `manifest.order`) get the first chance to deny.
 
 ```python
-from harbor.plugin import hookimpl
+from stargraph.plugin import hookimpl
 
 @hookimpl
 def authorize_action(action: dict) -> bool | None:
@@ -145,7 +145,7 @@ def authorize_action(action: dict) -> bool | None:
 
 ## Trigger lifecycle
 
-Trigger plugins (cron, webhook, queue) implement four hooks. **All four must be invoked through `harbor.plugin.triggers_dispatcher`** to get per-plugin try/except isolation (design §6.3, FR-2, AC-12.2).
+Trigger plugins (cron, webhook, queue) implement four hooks. **All four must be invoked through `stargraph.plugin.triggers_dispatcher`** to get per-plugin try/except isolation (design §6.3, FR-2, AC-12.2).
 
 ### `trigger_init(deps)`
 
@@ -186,7 +186,7 @@ Webhook triggers return their FastAPI routes here; cron-only triggers return `[]
 ### Dispatcher API
 
 ```python
-from harbor.plugin.triggers_dispatcher import (
+from stargraph.plugin.triggers_dispatcher import (
     dispatch_trigger_lifecycle,  # for trigger_init / trigger_start / trigger_stop
     collect_trigger_routes,      # for trigger_routes
     DispatchResult,
@@ -202,16 +202,16 @@ Each `DispatchResult` carries `plugin_name`, `success`, `result`, and `error`. A
 
 ### `TriggerHookSpec` namespace alias
 
-`harbor.plugin.hookspecs.TriggerHookSpec` is a documentation/grouping class that exposes the four trigger hooks as `staticmethod` attributes. It is **not** decorated with pluggy markers — pluggy still picks up the module-level functions. Use the class only as a typed reference handle when you prefer the class-shaped API.
+`stargraph.plugin.hookspecs.TriggerHookSpec` is a documentation/grouping class that exposes the four trigger hooks as `staticmethod` attributes. It is **not** decorated with pluggy markers — pluggy still picks up the module-level functions. Use the class only as a typed reference handle when you prefer the class-shaped API.
 
 ## Complete plugin example
 
 A minimal plugin that registers one tool and observes every dispatch:
 
 ```python
-# acme_harbor/tools/search.py
-from harbor.plugin import hookimpl
-from harbor.ir import ToolSpec, SideEffects
+# acme_stargraph/tools/search.py
+from stargraph.plugin import hookimpl
+from stargraph.ir import ToolSpec, SideEffects
 
 @hookimpl
 def register_tools() -> list[ToolSpec]:
@@ -246,8 +246,8 @@ Pair with the manifest factory described in [PluginManifest](plugin-manifest.md)
 
 | Hook | firstresult | When | Returns |
 |------|-------------|------|---------|
-| `harbor_startup(pm)` | no | After plugin manager build | `None` |
-| `harbor_shutdown(pm)` | no | On graceful shutdown | `None` |
+| `stargraph_startup(pm)` | no | After plugin manager build | `None` |
+| `stargraph_shutdown(pm)` | no | On graceful shutdown | `None` |
 | `register_tools()` | no | Registry build | `list[ToolSpec]` |
 | `register_skills()` | no | Registry build | `list[SkillSpec]` |
 | `register_stores()` | no | Registry build | `list[StoreSpec]` |

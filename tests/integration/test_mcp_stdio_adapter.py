@@ -4,8 +4,8 @@
 Asserts the four behaviours required by ``requirements.md §FR-25`` and the
 adapter recipe in ``design.md §3.3.2``:
 
-1. ``bind(stdio_server, *, capabilities)`` returns a list of harbor
-   :class:`harbor.ir.ToolSpec` objects, one per MCP tool reported by the
+1. ``bind(stdio_server, *, capabilities)`` returns a list of stargraph
+   :class:`stargraph.ir.ToolSpec` objects, one per MCP tool reported by the
    session's ``list_tools()``.
 2. Every ``call_tool`` validates ``arguments`` against the tool's MCP
    ``inputSchema`` (jsonschema draft 2020-12) *and* the returned payload
@@ -13,11 +13,11 @@ adapter recipe in ``design.md §3.3.2``:
 3. Tool outputs are sanitized -- HTML-escaped, control characters stripped,
    ``__system__`` markers removed -- before they reach any LM-context
    surface (FR-24 / AC-10.5).
-4. Capability-gated: ``call_tool`` raises :class:`harbor.errors.CapabilityError`
+4. Capability-gated: ``call_tool`` raises :class:`stargraph.errors.CapabilityError`
    when the tool's required permission is not granted by the
-   :class:`harbor.security.Capabilities` passed to ``bind`` (NFR-7).
+   :class:`stargraph.security.Capabilities` passed to ``bind`` (NFR-7).
 
-This is the [TDD-RED] half of the seam: ``harbor.adapters.mcp`` does not
+This is the [TDD-RED] half of the seam: ``stargraph.adapters.mcp`` does not
 yet exist (created in Task 3.6 [TDD-GREEN]), so importing it raises
 ``ImportError`` -- the verify gate ``grep -qE "(FAILED|ERROR)"`` matches that.
 The tests use the in-memory :mod:`tests.fixtures.stub_mcp_server` instead of
@@ -36,9 +36,9 @@ from typing import Any
 
 import pytest
 
-from harbor.errors import CapabilityError
-from harbor.ir import ToolSpec
-from harbor.security import Capabilities, CapabilityClaim
+from stargraph.errors import CapabilityError
+from stargraph.ir import ToolSpec
+from stargraph.security import Capabilities, CapabilityClaim
 
 # Load the in-memory stub MCP server from ``tests/fixtures/stub_mcp_server.py``.
 # The ``tests`` directory is not a package (no ``__init__.py``), so we resolve
@@ -65,12 +65,12 @@ def mcp_adapter() -> Any:
     """Import the MCP adapter under test.
 
     Lives behind a fixture so collection succeeds even in [TDD-RED] state
-    where ``harbor.adapters.mcp`` is not yet implemented; per-test usage
+    where ``stargraph.adapters.mcp`` is not yet implemented; per-test usage
     surfaces ``ModuleNotFoundError`` as a test failure (which the verify
     gate matches via ``grep -qE "(FAILED|ERROR)"``).
     """
-    harbor_mcp: Any = importlib.import_module("harbor.adapters.mcp")
-    return harbor_mcp
+    stargraph_mcp: Any = importlib.import_module("stargraph.adapters.mcp")
+    return stargraph_mcp
 
 
 @pytest.fixture
@@ -99,7 +99,7 @@ def test_bind_returns_toolspecs_from_list_tools(
 
     Per design §3.3.2: the adapter opens a session, calls ``initialize()``
     then ``list_tools()``, and returns one :class:`ToolSpec` per MCP tool,
-    translating MCP fields -> Harbor fields (``inputSchema`` ->
+    translating MCP fields -> Stargraph fields (``inputSchema`` ->
     ``input_schema``, ``outputSchema`` -> ``output_schema``, etc.).
     """
     session = StubMCPSession(
@@ -116,7 +116,7 @@ def test_bind_returns_toolspecs_from_list_tools(
     assert {s.name for s in specs} == {"echo", "read-secret"}
     assert all(isinstance(s, ToolSpec) for s in specs)
     # The echo tool's input/output schemas should round-trip into the
-    # Harbor ToolSpec (adapter is a translator, not a transformer).
+    # Stargraph ToolSpec (adapter is a translator, not a transformer).
     echo = next(s for s in specs if s.name == "echo")
     assert echo.input_schema["type"] == "object"
     echo_in_props = echo.input_schema["properties"]
@@ -234,18 +234,18 @@ def test_call_tool_capability_gated(mcp_adapter: Any) -> None:
 def test_collect_mcp_adapters_aggregates_hookimpl_results(mcp_adapter: Any) -> None:
     """FR-25 plugin path: ``collect_mcp_adapters(pm)`` aggregates hookimpls.
 
-    Plugin authors register MCP adapters under ``harbor.mcp_adapters`` and
+    Plugin authors register MCP adapters under ``stargraph.mcp_adapters`` and
     implement ``register_mcp_adapters() -> list[MCPAdapterSpec]``.
-    :func:`harbor.adapters.mcp.collect_mcp_adapters` is the aggregator the
+    :func:`stargraph.adapters.mcp.collect_mcp_adapters` is the aggregator the
     serve / engine wiring drives at lifespan time. This test stands up a
     bare ``pluggy.PluginManager``, registers a fake plugin module, and
     asserts the collector returns the spec the plugin contributed.
     """
     import pluggy
 
-    from harbor.plugin import hookspecs
-    from harbor.plugin._markers import PROJECT
-    from harbor.plugin.types import MCPAdapterSpec
+    from stargraph.plugin import hookspecs
+    from stargraph.plugin._markers import PROJECT
+    from stargraph.plugin.types import MCPAdapterSpec
 
     pm = pluggy.PluginManager(PROJECT)
     pm.add_hookspecs(hookspecs)

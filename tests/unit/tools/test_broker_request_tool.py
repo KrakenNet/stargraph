@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :func:`harbor.tools.nautilus.broker_request` (FR-45, AC-6.2, AC-6.5).
+"""Unit tests for :func:`stargraph.tools.nautilus.broker_request` (FR-45, AC-6.2, AC-6.5).
 
 The :func:`broker_request` `@tool`-decorated coroutine is the
 sub-graph / ReAct-skill consumption form of the Nautilus broker
@@ -8,18 +8,18 @@ registry-discoverable tool callable rather than a graph node:
 
 * Signature: ``async def broker_request(*, agent_id: str, intent: str)
   -> dict[str, Any]`` (returns the broker response in dumped JSON form
-  with the harbor provenance envelope; the wrapper exposes
+  with the stargraph provenance envelope; the wrapper exposes
   :attr:`broker_request.spec` so the registry can introspect it).
 * Reads :func:`current_broker` to pull the lifespan singleton.
 * JSON Schema for the response shape is re-exported from
-  :func:`harbor.nodes.nautilus.schemas.broker_response_schema`.
+  :func:`stargraph.nodes.nautilus.schemas.broker_response_schema`.
 
 The RED test invariants from the task spec:
 
 1. happy path -- the tool returns a dict carrying the broker response
    shape (JSON-dumped) with the provenance envelope.
 2. registry shape -- the wrapped callable carries a ``spec`` attribute
-   produced by :func:`harbor.tools.tool` (FR-26 contract).
+   produced by :func:`stargraph.tools.tool` (FR-26 contract).
 3. JSON Schema -- the surfaced response schema matches
    :func:`BrokerResponse.model_json_schema(mode="serialization")`.
 """
@@ -31,12 +31,12 @@ from unittest.mock import AsyncMock
 import pytest
 from nautilus import BrokerResponse  # pyright: ignore[reportMissingTypeStubs]
 
-from harbor.errors import HarborRuntimeError
-from harbor.ir._models import ToolSpec
-from harbor.nodes.nautilus.schemas import broker_response_schema
-from harbor.serve.contextvars import _broker_var
-from harbor.tools.nautilus.broker_request import broker_request
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.errors import StargraphRuntimeError
+from stargraph.ir._models import ToolSpec
+from stargraph.nodes.nautilus.schemas import broker_response_schema
+from stargraph.serve.contextvars import _broker_var
+from stargraph.tools.nautilus.broker_request import broker_request
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 
 def _stub_response(request_id: str = "req-broker-tool-1") -> BrokerResponse:
@@ -74,7 +74,7 @@ async def test_broker_request_calls_broker_and_returns_envelope() -> None:
     # Result shape: model_dump(mode="json") of BrokerResponse + provenance envelope.
     assert result["request_id"] == "req-broker-tool-1"
     assert result["data"]["vuln_db"] == [{"cve": "cve-2025-1234"}]
-    provenance = result["__harbor_provenance__"]
+    provenance = result["__stargraph_provenance__"]
     assert provenance["origin"] == "tool"
     assert provenance["source"] == "nautilus"
     assert provenance["external_id"] == "req-broker-tool-1"
@@ -82,8 +82,8 @@ async def test_broker_request_calls_broker_and_returns_envelope() -> None:
 
 @pytest.mark.asyncio
 async def test_broker_request_without_broker_raises() -> None:
-    """Calling broker_request without an active lifespan raises HarborRuntimeError."""
-    with pytest.raises(HarborRuntimeError):
+    """Calling broker_request without an active lifespan raises StargraphRuntimeError."""
+    with pytest.raises(StargraphRuntimeError):
         await broker_request(agent_id="analyst", intent="cve-triage")
 
 

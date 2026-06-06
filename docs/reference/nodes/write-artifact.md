@@ -59,7 +59,7 @@ Single keyword-only arg; the config is attached at construction time.
 
 !!! note "Cassette wiring still pending"
     Today the runtime cassette layer for nodes is not yet wired
-    (`harbor.runtime.tool_exec` covers tool calls only). Reaching either
+    (`stargraph.runtime.tool_exec` covers tool calls only). Reaching either
     replay branch with the current runtime means the cassette wiring is
     incomplete; both raise `ArtifactStoreError` rather than re-writing.
 
@@ -70,7 +70,7 @@ Emits one `ArtifactWrittenEvent` carrying:
 ```python
 provenance = {
     "origin": "tool",
-    "source": "harbor.artifacts",
+    "source": "stargraph.artifacts",
     "run_id": ctx.run_id,
     "step": ctx.step,
     "confidence": 1.0,

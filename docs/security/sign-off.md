@@ -1,10 +1,10 @@
-# Security Sign-off Rubric — Harbor v1
+# Security Sign-off Rubric — Stargraph v1
 
-**Status**: Phase-5 prerequisite. A Harbor release cannot ship to a
+**Status**: Phase-5 prerequisite. A Stargraph release cannot ship to a
 cleared deployment until every item below is checked by a non-author
 reviewer and the signoff template at the bottom is filled in.
 
-**Spec ref**: `harbor-serve-and-bosun` §12.2 (FR-64, FR-67, AC-8.4).
+**Spec ref**: `stargraph-serve-and-bosun` §12.2 (FR-64, FR-67, AC-8.4).
 
 This document is the canonical 13-check rubric. Each check has a
 **verifier** (the command/test/observation that proves the check) and
@@ -33,9 +33,9 @@ regresses).
    rejected algs + the accepted Ed25519 path. Owner: Bosun maintainer.
 
 4. **TOFU + static allow-list pubkey distribution** (task 2.27) —
-   first-pin records the pubkey to `~/.harbor/known_packs.json`;
+   first-pin records the pubkey to `~/.stargraph/known_packs.json`;
    subsequent loads compare to the pinned value; static allow-list in
-   `harbor.toml` overrides TOFU when present. Verifier:
+   `stargraph.toml` overrides TOFU when present. Verifier:
    `tests/integration/test_pack_tofu.py` green. Owner: Bosun
    maintainer.
 
@@ -46,7 +46,7 @@ regresses).
    `tests/integration/test_replay_isolation.py` covers the 3 side-
    effect categories. Owner: replay maintainer.
 
-6. **NFS refusal at bootstrap** (task 3.31) — Harbor refuses to start
+6. **NFS refusal at bootstrap** (task 3.31) — Stargraph refuses to start
    when the configured state directory lives on NFS/SMB/AFP (POSIX
    `statfs(2)` lookup). Verifier:
    `tests/unit/serve/test_lifecycle_fs_refusal.py` covers the four
@@ -61,9 +61,9 @@ regresses).
    parametrized over the 7 routes. Owner: serve-API maintainer.
 
 8. **`--allow-side-effects` startup gate under cleared** (task 2.37)
-   — `harbor serve --profile cleared` refuses to start unless the
+   — `stargraph serve --profile cleared` refuses to start unless the
    operator passes `--allow-side-effects` (or the equivalent
-   `harbor.toml` flag). The gate is profile-conditional; OSS-default
+   `stargraph.toml` flag). The gate is profile-conditional; OSS-default
    does not require the flag. Verifier:
    `tests/unit/cli/test_serve_side_effects_gate.py`. Owner: CLI
    maintainer.
@@ -145,7 +145,7 @@ ______________________________________________________________
 - Sign-off forms are committed to `docs/security/signoffs/<tag>.md`
   alongside the release tag.
 - Reviewer Ed25519 signature pinned per release; the static allow-
-  list in `harbor.toml` is updated when a reviewer rotates.
+  list in `stargraph.toml` is updated when a reviewer rotates.
 - A failed sign-off (BLOCK) does NOT prevent merging the source
   branch — it prevents tagging + publishing the release. The
   blocking observations are tracked as issues against the next

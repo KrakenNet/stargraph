@@ -1,18 +1,18 @@
 # Adapters Reference
 
 Adapters are the seams that wrap an external runtime (an LLM framework, an
-MCP server, ...) so Harbor can call it under the same gates as in-tree tools.
+MCP server, ...) so Stargraph can call it under the same gates as in-tree tools.
 Every adapter is intentionally thin: validate, gate, invoke, validate,
 sanitize. No silent fallback, no implicit retries.
 
-Source: `src/harbor/adapters/`.
+Source: `src/stargraph/adapters/`.
 
 ## Catalog
 
 | Adapter | Module | Purpose | Key safety property |
 | --- | --- | --- | --- |
-| [DSPy](dspy.md) | `harbor.adapters.dspy` | Bind a `dspy.Module` as a `DSPyNode` with the force-loud JSON adapter. | Silent JSONAdapter fallback raises `AdapterFallbackError` (FR-6). |
-| [MCP](mcp.md) | `harbor.adapters.mcp` | Translate an MCP server's catalogue into Harbor `ToolSpec`s and gate every `call_tool`. | Schema validation (in + out) + capability gate + output sanitization (FR-25). |
+| [DSPy](dspy.md) | `stargraph.adapters.dspy` | Bind a `dspy.Module` as a `DSPyNode` with the force-loud JSON adapter. | Silent JSONAdapter fallback raises `AdapterFallbackError` (FR-6). |
+| [MCP](mcp.md) | `stargraph.adapters.mcp` | Translate an MCP server's catalogue into Stargraph `ToolSpec`s and gate every `call_tool`. | Schema validation (in + out) + capability gate + output sanitization (FR-25). |
 
 ## Design constraint
 

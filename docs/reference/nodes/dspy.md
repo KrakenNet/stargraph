@@ -1,12 +1,12 @@
 # `DSPyNode`
 
-Wraps a DSPy module so the harbor execution loop can dispatch it like any other
+Wraps a DSPy module so the stargraph execution loop can dispatch it like any other
 [`NodeBase`](base.md). Pydantic run-state fields project to DSPy signature
 inputs (and outputs project back) via the user-supplied `signature_map`.
 
 ## Constructor
 
-`DSPyNode` is constructed via `harbor.adapters.dspy.bind(...)`, **not directly**
+`DSPyNode` is constructed via `stargraph.adapters.dspy.bind(...)`, **not directly**
 — `bind` installs the force-loud `_LoudFallbackFilter` on the DSPy
 `json_adapter` logger before any module call can occur (FR-6).
 
@@ -15,7 +15,7 @@ inputs (and outputs project back) via the user-supplied `signature_map`.
 | `module` | `Any` (DSPy module-compatible callable) | required | Wrapped DSPy module. |
 | `adapter` | `dspy.JSONAdapter` (force-loud config) | required | Default JSON adapter — `use_native_function_calling=True`. |
 | `chat_adapter` | `dspy.ChatAdapter` | required | Chat-style adapter — `use_json_adapter_fallback=False`. |
-| `signature_map` | `SignatureMap` \| `Any` | required | Mapping from harbor state-field names to DSPy signature input/output names. |
+| `signature_map` | `SignatureMap` \| `Any` | required | Mapping from stargraph state-field names to DSPy signature input/output names. |
 
 All four are keyword-only.
 
@@ -23,7 +23,7 @@ All four are keyword-only.
 
 - **Reads** — every key listed in `signature_map` (when it is a `dict[str, str]`)
   is read off the run state.
-- **Writes** — DSPy `Prediction` attributes mapped back to harbor state-field
+- **Writes** — DSPy `Prediction` attributes mapped back to stargraph state-field
   names. `dict`-shaped results pass through; anything else is wrapped under
   `"output"` so the merge step always receives a dict.
 
@@ -49,9 +49,9 @@ state_schema:
   answer: str
 ```
 
-The `kind: dspy` factory at `harbor.cli.run._NODE_FACTORIES` is the POC default
+The `kind: dspy` factory at `stargraph.cli.run._NODE_FACTORIES` is the POC default
 that binds an inert stub module; production wiring binds via
-`harbor.adapters.dspy.bind(...)` during lifespan startup.
+`stargraph.adapters.dspy.bind(...)` during lifespan startup.
 
 ## Errors
 
@@ -60,7 +60,7 @@ that binds an inert stub module; production wiring binds via
     structured-output parser, malformed signature map, `TypeError` because the
     wrapped object is not a DSPy module — `acall` emits the canonical DSPy
     fallback warning to `dspy.adapters.json_adapter`. The
-    `_LoudFallbackFilter` installed by `harbor.adapters.dspy.bind` converts
+    `_LoudFallbackFilter` installed by `stargraph.adapters.dspy.bind` converts
     that warning into [`AdapterFallbackError`][adapter-fallback]. There is **no
     success path through a fallback**.
 

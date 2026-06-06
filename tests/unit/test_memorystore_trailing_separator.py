@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Trailing-separator scope key prevents prefix collisions (FR-5, FR-27).
 
-The :class:`harbor.stores.sqlite_memory.SQLiteMemoryStore` encodes the
+The :class:`stargraph.stores.sqlite_memory.SQLiteMemoryStore` encodes the
 ``(user, session, agent)`` 3-tuple as a *trailing-separator* key
 (``/user/{user}/session/{session}/agent/{agent}/``). Without the
 trailing slash, ``LIKE '/user/Alice%'`` would match ``Alice2`` rows
@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.memory import Episode
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.memory import Episode
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from pathlib import Path

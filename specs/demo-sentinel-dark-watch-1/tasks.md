@@ -25,7 +25,7 @@ total_tasks: 83
 
 - [x] 1.2 Create `.env.example` and copy existing `.env`
   - **Do**:
-    1. Create `.env.example` with all env vars and sensible defaults (POSTGRES_USER=harbor, POSTGRES_PASSWORD=harbor, POSTGRES_DB=sdw, POSTGRES_PORT=5441, REDIS_PORT=6391, LLM_PORT=41001, POSTGRES_DSN, AIS_STREAM_API_KEY placeholder, AIS_MODE=mock, LLM_BASE_URL=http://localhost:41001/v1)
+    1. Create `.env.example` with all env vars and sensible defaults (POSTGRES_USER=stargraph, POSTGRES_PASSWORD=stargraph, POSTGRES_DB=sdw, POSTGRES_PORT=5441, REDIS_PORT=6391, LLM_PORT=41001, POSTGRES_DSN, AIS_STREAM_API_KEY placeholder, AIS_MODE=mock, LLM_BASE_URL=http://localhost:41001/v1)
     2. Move/update existing `.env` from `demos/sentinel-dark-watch/.env` into new location preserving API key
   - **Files**: demos/sentinel_dark_watch/.env.example, demos/sentinel_dark_watch/.env
   - **Done when**: `.env.example` lists all required vars; `.env` has the real AIS key
@@ -62,14 +62,14 @@ total_tasks: 83
   - _Requirements: FR-2_
   - _Design: State Model_
 
-- [x] 1.6 [P] Create main pipeline graph IR (`graph/harbor.yaml`)
+- [x] 1.6 [P] Create main pipeline graph IR (`graph/stargraph.yaml`)
   - **Do**:
-    1. Create `demos/sentinel_dark_watch/graph/harbor.yaml` with all 14 nodes, state_class, tools, governance mounts, and all rules exactly per design spec
+    1. Create `demos/sentinel_dark_watch/graph/stargraph.yaml` with all 14 nodes, state_class, tools, governance mounts, and all rules exactly per design spec
     2. Include conditional rules for FR-17 active learning routing
-  - **Files**: demos/sentinel_dark_watch/graph/harbor.yaml
+  - **Files**: demos/sentinel_dark_watch/graph/stargraph.yaml
   - **Done when**: YAML parses correctly; all node IDs, rules, and state_class present
-  - **Verify**: `uv run --no-project python -c "import yaml; d = yaml.safe_load(open('demos/sentinel_dark_watch/graph/harbor.yaml')); assert len(d['nodes']) >= 14; assert d['state_class'].endswith(':SdwState'); print('OK')"`
-  - **Commit**: `feat(sdw): main pipeline harbor.yaml IR with 14 nodes`
+  - **Verify**: `uv run --no-project python -c "import yaml; d = yaml.safe_load(open('demos/sentinel_dark_watch/graph/stargraph.yaml')); assert len(d['nodes']) >= 14; assert d['state_class'].endswith(':SdwState'); print('OK')"`
+  - **Commit**: `feat(sdw): main pipeline stargraph.yaml IR with 14 nodes`
   - _Requirements: FR-1, FR-17_
   - _Design: Main Pipeline Graph_
 
@@ -86,7 +86,7 @@ total_tasks: 83
 
 - [x] 1.8 [VERIFY] Quality checkpoint: state + graph IR
   - **Do**: Verify state models instantiate and graph YAMLs parse
-  - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.state import SdwState, RetrainState; import yaml; yaml.safe_load(open('demos/sentinel_dark_watch/graph/harbor.yaml')); yaml.safe_load(open('demos/sentinel_dark_watch/graph/retrain.yaml')); print('ALL OK')"`
+  - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.state import SdwState, RetrainState; import yaml; yaml.safe_load(open('demos/sentinel_dark_watch/graph/stargraph.yaml')); yaml.safe_load(open('demos/sentinel_dark_watch/graph/retrain.yaml')); print('ALL OK')"`
   - **Done when**: All imports and parses succeed
   - **Commit**: `chore(sdw): pass quality checkpoint` (if fixes needed)
 
@@ -399,15 +399,15 @@ total_tasks: 83
 
 - [x] 1.39 Create `serve_sdw.py`
   - **Do**:
-    1. Create `demos/sentinel_dark_watch/serve_sdw.py` — harbor serve wrapper per CVE-rem pattern
-    2. Argparse: `--host`, `--port` (default 9001), `--graph` (repeatable, default harbor.yaml + retrain.yaml)
+    1. Create `demos/sentinel_dark_watch/serve_sdw.py` — stargraph serve wrapper per CVE-rem pattern
+    2. Argparse: `--host`, `--port` (default 9001), `--graph` (repeatable, default stargraph.yaml + retrain.yaml)
     3. Load .env, pin capabilities via `build_sdw_capabilities()`, import `create_app`, start uvicorn
     4. Register nightly retrain schedule via APScheduler (02:00 UTC)
     5. `__main__` block
   - **Files**: demos/sentinel_dark_watch/serve_sdw.py
   - **Done when**: `python -m demos.sentinel_dark_watch.serve_sdw --help` shows usage
   - **Verify**: `uv run --no-project python -c "from demos.sentinel_dark_watch import serve_sdw; print('OK')"`
-  - **Commit**: `feat(sdw): serve_sdw.py harbor serve wrapper with retrain scheduler`
+  - **Commit**: `feat(sdw): serve_sdw.py stargraph serve wrapper with retrain scheduler`
   - _Requirements: FR-14, AC-9.1_
   - _Design: serve_sdw.py, Nightly Retrain Cron_
 
@@ -452,8 +452,8 @@ total_tasks: 83
 - [x] 1.44 Create Streamlit `ui/app.py` — tab structure + map view
   - **Do**:
     1. Create `demos/sentinel_dark_watch/ui/app.py` with Streamlit tab layout: "Live Map", "Detection Review", "Metrics Dashboard", "Pipeline Status"
-    2. Tab 1 (Live Map): Folium map centered on Strait of Hormuz (lat ~26.5, lon ~56.2). Query detections from Harbor API, render markers color-coded by risk level (red=Critical, orange=High, yellow=Medium, green=Low). Show AIS tracks as polylines.
-    3. `HARBOR_URL` from env (default `http://localhost:9001`)
+    2. Tab 1 (Live Map): Folium map centered on Strait of Hormuz (lat ~26.5, lon ~56.2). Query detections from Stargraph API, render markers color-coded by risk level (red=Critical, orange=High, yellow=Medium, green=Low). Show AIS tracks as polylines.
+    3. `STARGRAPH_URL` from env (default `http://localhost:9001`)
     4. Helper functions: `trigger_run(tile_ids)` → `POST /v1/runs`, `get_detections(run_id)` → fetch from state
   - **Files**: demos/sentinel_dark_watch/ui/app.py
   - **Done when**: `streamlit run ui/app.py --server.headless true` starts without error (or import at least succeeds)
@@ -507,7 +507,7 @@ total_tasks: 83
 
 - [x] 1.49 [P] Add `[sdw]` extra to monorepo `pyproject.toml`
   - **Do**:
-    1. Add `sdw` optional dependency group to `/home/sean/leagues/harbor/pyproject.toml` under `[project.optional-dependencies]`
+    1. Add `sdw` optional dependency group to `/home/sean/leagues/stargraph/pyproject.toml` under `[project.optional-dependencies]`
     2. Include: ultralytics>=8.3, torch>=2.0, torchvision>=0.15, rasterio>=1.3, geopandas>=0.14, shapely>=2.0, streamlit>=1.30, streamlit-folium>=0.20, folium>=0.15, websockets>=12.0, Pillow>=10.0, asyncpg>=0.29, plotly>=5.18
     3. Add inline comment about ultralytics version numbering
   - **Files**: pyproject.toml
@@ -771,37 +771,37 @@ total_tasks: 83
     1. AC-1.1: `grep -q "demo:" demos/sentinel_dark_watch/Justfile` (one-command launch)
     2. AC-1.4: `grep -q "demo-offline:" demos/sentinel_dark_watch/Justfile` (offline mode)
     3. AC-1.5: `grep -q "teardown:" demos/sentinel_dark_watch/Justfile` (clean stop)
-    4. FR-1: `uv run --no-project python -c "import yaml; d=yaml.safe_load(open('demos/sentinel_dark_watch/graph/harbor.yaml')); assert len(d['nodes'])>=14"` (graph with 14+ nodes)
+    4. FR-1: `uv run --no-project python -c "import yaml; d=yaml.safe_load(open('demos/sentinel_dark_watch/graph/stargraph.yaml')); assert len(d['nodes'])>=14"` (graph with 14+ nodes)
     5. FR-2: `uv run --no-project python -c "from demos.sentinel_dark_watch.graph.state import SdwState; s=SdwState(); assert hasattr(s,'detections')"` (state model)
     6. AC-6.1/6.2: `grep -q "risk_score" demos/sentinel_dark_watch/graph/nodes.py` (risk scoring)
     7. AC-8.1: `grep -q "folium" demos/sentinel_dark_watch/ui/app.py` (map view)
     8. FR-10: `test -f demos/sentinel_dark_watch/graph/retrain.yaml` (retrain sub-graph)
     9. FR-13: `test -f demos/sentinel_dark_watch/docker-compose.yml` (docker compose)
-  - **Verify**: `grep -q "demo:" demos/sentinel_dark_watch/Justfile && uv run --no-project python -c "import yaml; d=yaml.safe_load(open('demos/sentinel_dark_watch/graph/harbor.yaml')); assert len(d['nodes'])>=14; print('AC PASS')" && test -f demos/sentinel_dark_watch/graph/retrain.yaml && test -f demos/sentinel_dark_watch/docker-compose.yml && echo "ALL ACs VERIFIED"`
+  - **Verify**: `grep -q "demo:" demos/sentinel_dark_watch/Justfile && uv run --no-project python -c "import yaml; d=yaml.safe_load(open('demos/sentinel_dark_watch/graph/stargraph.yaml')); assert len(d['nodes'])>=14; print('AC PASS')" && test -f demos/sentinel_dark_watch/graph/retrain.yaml && test -f demos/sentinel_dark_watch/docker-compose.yml && echo "ALL ACs VERIFIED"`
   - **Done when**: All acceptance criteria confirmed via automated checks
   - **Commit**: None
 
-- [x] VE1 [VERIFY] E2E startup: docker compose + bootstrap + harbor serve
+- [x] VE1 [VERIFY] E2E startup: docker compose + bootstrap + stargraph serve
   - **Do**:
     1. Start Docker: `docker compose -f demos/sentinel_dark_watch/docker-compose.yml up -d`
     2. Record compose PID context: `echo "sdw-docker" > /tmp/ve-pids.txt`
-    3. Wait for PostGIS ready (60s timeout): `for i in $(seq 1 60); do pg_isready -h localhost -p 5441 -U harbor 2>/dev/null && break || sleep 1; done`
+    3. Wait for PostGIS ready (60s timeout): `for i in $(seq 1 60); do pg_isready -h localhost -p 5441 -U stargraph 2>/dev/null && break || sleep 1; done`
     4. Run bootstrap: `uv run --no-project python -m demos.sentinel_dark_watch.bootstrap`
     5. Run AIS ingest mock: `AIS_MODE=mock uv run --no-project python -m demos.sentinel_dark_watch.ais_ingest`
-    6. Start harbor serve in background: `uv run --no-project python -m demos.sentinel_dark_watch.serve_sdw --port 9001 & echo $! >> /tmp/ve-pids.txt`
+    6. Start stargraph serve in background: `uv run --no-project python -m demos.sentinel_dark_watch.serve_sdw --port 9001 & echo $! >> /tmp/ve-pids.txt`
     7. Wait for serve ready: `for i in $(seq 1 60); do curl -sf http://localhost:9001/health && break || sleep 1; done`
   - **Verify**: `curl -sf http://localhost:9001/health && echo VE1_PASS`
-  - **Done when**: Docker running, bootstrap complete, harbor serve responding on 9001
+  - **Done when**: Docker running, bootstrap complete, stargraph serve responding on 9001
   - **Commit**: None
 
 - [x] VE2 [VERIFY] E2E check: pipeline health + streamlit loads
   - **Do**:
-    1. Verify harbor serve health: `curl -sf http://localhost:9001/health`
+    1. Verify stargraph serve health: `curl -sf http://localhost:9001/health`
     2. Start Streamlit in background: `uv run --no-project streamlit run demos/sentinel_dark_watch/ui/app.py --server.port 8501 --server.headless true & echo $! >> /tmp/ve-pids.txt`
     3. Wait for Streamlit: `for i in $(seq 1 30); do curl -sf http://localhost:8501/_stcore/health && break || sleep 1; done`
     4. Verify Streamlit responds: `curl -sf http://localhost:8501/_stcore/health`
   - **Verify**: `curl -sf http://localhost:9001/health && curl -sf http://localhost:8501/_stcore/health && echo VE2_PASS`
-  - **Done when**: Both harbor serve and Streamlit responding
+  - **Done when**: Both stargraph serve and Streamlit responding
   - **Commit**: None
 
 - [x] VE3 [VERIFY] E2E cleanup: stop all services and free ports

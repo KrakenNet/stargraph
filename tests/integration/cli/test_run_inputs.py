@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 import typer
 
-from harbor.cli._inputs import parse_inputs
+from stargraph.cli._inputs import parse_inputs
 
 
 def test_parses_string_int_bool() -> None:

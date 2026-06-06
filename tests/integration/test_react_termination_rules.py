@@ -2,7 +2,7 @@
 """ReactSkill termination-rule integration tests (FR-25, AC-7.5, AC-10.4).
 
 Three independent termination paths that the loop body in
-:meth:`harbor.skills.react.ReactSkill.run` honors in priority order:
+:meth:`stargraph.skills.react.ReactSkill.run` honors in priority order:
 
 1. ``test_max_steps_termination`` -- llm_stub never sets ``done``;
    the loop terminates exactly at ``max_steps`` iterations.
@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from harbor.skills.react import ReactSkill, ReactState
+from stargraph.skills.react import ReactSkill, ReactState
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

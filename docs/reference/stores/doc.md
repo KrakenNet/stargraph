@@ -74,21 +74,21 @@ Returns up to `limit` documents matching the SQL `WHERE` fragment in
 | `created_at` | `datetime` | Set at `put()` time (`datetime.now(UTC)`). |
 
 `metadata` stays typed as `dict[str, Any]` (rather than the JSON-scalar
-union used by `harbor.stores.vector.Row`): DocStore is the catch-all
+union used by `stargraph.stores.vector.Row`): DocStore is the catch-all
 unstructured-payload tier, the column round-trips through JSONB, and
 the columnar restrictions that justify scalar-only metadata for
 columnar backends do not apply here.
 
 ## `SQLiteDocStore`
 
-Default in-tree provider (`harbor.stores.sqlite_doc`). POC scope of
+Default in-tree provider (`stargraph.stores.sqlite_doc`). POC scope of
 FR-4 / FR-13.
 
 ### Constructor
 
 ```python
 from pathlib import Path
-from harbor.stores import SQLiteDocStore
+from stargraph.stores import SQLiteDocStore
 
 store = SQLiteDocStore(path=Path("./.docs"))
 await store.bootstrap()

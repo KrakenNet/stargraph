@@ -8,7 +8,7 @@ of the ``(user, session, agent)`` scope:
 2. 2-tuple recent -> 1-tuple recent (omit ``session`` + ``agent``).
 3. 1-tuple put -> global recent (omit everything; user is required).
 
-Note: the current :class:`harbor.stores.sqlite_memory.SQLiteMemoryStore`
+Note: the current :class:`stargraph.stores.sqlite_memory.SQLiteMemoryStore`
 ``recent`` API requires a ``user`` argument (no global "every user"
 read). The third case therefore checks the 1-tuple put -> 1-tuple
 recent collapse (no narrowing required) which is the operator-visible
@@ -22,8 +22,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.memory import Episode
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.memory import Episode
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from pathlib import Path

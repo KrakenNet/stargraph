@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit: ``harbor serve --profile cleared`` rejects ``--allow-*`` flags (task 2.37).
+"""Unit: ``stargraph serve --profile cleared`` rejects ``--allow-*`` flags (task 2.37).
 
 Per FR-32 / FR-68 / AC-4.2 / design §11.1, §15: the cleared profile
 forbids the ``--allow-pack-mutation`` and ``--allow-side-effects``
@@ -20,7 +20,7 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
-from harbor.cli import app
+from stargraph.cli import app
 
 _runner = CliRunner()
 
@@ -43,7 +43,7 @@ def test_cleared_profile_rejects_allow_side_effects() -> None:
     # typer/click swallows non-Click exceptions into ``result.exception``;
     # the message body lives there. The output channel is also checked
     # for the operator-friendly stderr render that the runtime path
-    # produces on real ``harbor serve`` invocations.
+    # produces on real ``stargraph serve`` invocations.
     combined = (result.output or "").lower() + " " + str(result.exception or "").lower()
     assert "violation" in combined or "cleared" in combined or "forbid" in combined, combined
 
@@ -66,6 +66,6 @@ def test_cleared_profile_rejects_allow_pack_mutation() -> None:
     # typer/click swallows non-Click exceptions into ``result.exception``;
     # the message body lives there. The output channel is also checked
     # for the operator-friendly stderr render that the runtime path
-    # produces on real ``harbor serve`` invocations.
+    # produces on real ``stargraph serve`` invocations.
     combined = (result.output or "").lower() + " " + str(result.exception or "").lower()
     assert "violation" in combined or "cleared" in combined or "forbid" in combined, combined

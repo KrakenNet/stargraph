@@ -8,13 +8,13 @@ created: 2026-05-26
 
 ## Executive Summary
 
-Sentinel Dark Watch is a **maritime SAR surveillance pipeline**: Sentinel-1 SAR tiles + AIS vessel tracking in, dark vessel alerts + analyst-reviewed intel reports out. Harbor provides the graph engine (nodes, rules, checkpoints, Fathom governance, `harbor serve`). Nautilus brokers external data (AIS, geo-context, S3 tiles). The ML model (YOLO OBB for SAR vessel detection, trained on xView3) needs **custom nodes** -- Harbor's built-in `MLNode` only supports sklearn/xgboost/onnx, but YOLO can be exported to ONNX for inference. Training uses Ultralytics + PyTorch directly, outside the graph engine.
+Sentinel Dark Watch is a **maritime SAR surveillance pipeline**: Sentinel-1 SAR tiles + AIS vessel tracking in, dark vessel alerts + analyst-reviewed intel reports out. Stargraph provides the graph engine (nodes, rules, checkpoints, Fathom governance, `stargraph serve`). Nautilus brokers external data (AIS, geo-context, S3 tiles). The ML model (YOLO OBB for SAR vessel detection, trained on xView3) needs **custom nodes** -- Stargraph's built-in `MLNode` only supports sklearn/xgboost/onnx, but YOLO can be exported to ONNX for inference. Training uses Ultralytics + PyTorch directly, outside the graph engine.
 
-## Harbor Framework Analysis
+## Stargraph Framework Analysis
 
 ### Graph Engine
 
-- **`Graph`** (definition.py): IR-validated, hashable. Constructed from `harbor.yaml` IR YAML. Supports `state_class: "module:ClassName"` for complex Pydantic states.
+- **`Graph`** (definition.py): IR-validated, hashable. Constructed from `stargraph.yaml` IR YAML. Supports `state_class: "module:ClassName"` for complex Pydantic states.
 - **`GraphRun`** (run.py): Single-use execution handle. `await graph.start(state, checkpointer=...)` returns a run.
 - **Loop** (loop.py): Walks IR nodes sequentially. Supports routing via Fathom rules (CLIPS-style `when`/`then`), parallel blocks, and cooperative cancel/pause.
 - **Checkpointing**: SQLite (default) or Postgres. Per-step snapshots of state.
@@ -53,7 +53,7 @@ Sentinel Dark Watch is a **maritime SAR surveillance pipeline**: Sentinel-1 SAR 
 
 ### Serving
 
-- `harbor serve` starts FastAPI app with WebSocket streaming, REST API (`POST /v1/runs`, `GET /v1/runs/{id}/stream`).
+- `stargraph serve` starts FastAPI app with WebSocket streaming, REST API (`POST /v1/runs`, `GET /v1/runs/{id}/stream`).
 - CVE-rem wraps this in `serve_cve_rem.py` to add capability profile + watcher UI mount + per-run JSONL audit.
 - Pattern: demo provides its own `serve_sdw.py` that mirrors `serve_cve_rem.py`.
 
@@ -100,9 +100,9 @@ demos/cve_remediation/
   bootstrap.py                 # idempotent: wait health, provision schemas, seed data
   nautilus.yaml                # broker source configs
   capabilities.py              # engine-side capability profile
-  serve_cve_rem.py             # harbor serve wrapper + watcher mount
+  serve_cve_rem.py             # stargraph serve wrapper + watcher mount
   graph/
-    harbor.yaml                # IR graph definition (nodes, rules)
+    stargraph.yaml                # IR graph definition (nodes, rules)
     state.py                   # Pydantic BaseModel state class
     nodes.py                   # stub nodes
     real_nodes.py              # real node implementations
@@ -118,7 +118,7 @@ demos/cve_remediation/
 
 ### Key Patterns to Follow
 
-1. **`state_class`** in harbor.yaml: `state_class: "demos.sentinel_dark_watch.graph.state:SdwState"` — Pydantic BaseModel with StrEnum enums, flat top-level attrs, sub-models as values.
+1. **`state_class`** in stargraph.yaml: `state_class: "demos.sentinel_dark_watch.graph.state:SdwState"` — Pydantic BaseModel with StrEnum enums, flat top-level attrs, sub-models as values.
 2. **Node `kind`** format: `"demos.sentinel_dark_watch.graph.nodes:NodeClassName"` — Python import path.
 3. **bootstrap.py**: `_wait_tcp()` + `_wait_http_health()` for Docker health; then SQL schema provisioning; then seed data.
 4. **Run via uv**: `uv run --no-project python -m demos.sentinel_dark_watch.bootstrap` — no separate pyproject.toml.
@@ -183,13 +183,13 @@ Full dataset is ~300 GB. For demo:
 - Vessels in SAR are elongated, rotated. OBB fits them tighter than axis-aligned boxes.
 - Ultralytics YOLO11/YOLO26 has built-in OBB support (`yolo11n-obb.pt`).
 - One-line export to ONNX: `model.export(format="onnx")`.
-- ONNX model can be loaded by Harbor's `MLNode` or a custom `YOLONode`.
+- ONNX model can be loaded by Stargraph's `MLNode` or a custom `YOLONode`.
 
 **Training pipeline:**
 1. Convert xView3 CSV labels to YOLO OBB format (4 corner points, normalized).
 2. Fine-tune `yolo11s-obb.pt` (pre-trained on DOTAv1) on xView3 subset.
 3. Export best checkpoint to ONNX.
-4. Register in Harbor `ModelRegistry` with SHA-256 hash.
+4. Register in Stargraph `ModelRegistry` with SHA-256 hash.
 
 **Recent SAR-specific YOLO variants (2024-2025):**
 - AC-YOLO (YOLO11-based): 30% fewer params, 1.2% higher AP on SSDD
@@ -204,7 +204,7 @@ Full dataset is ~300 GB. For demo:
 from ultralytics import YOLO
 model = YOLO("best.pt")  # trained checkpoint
 model.export(format="onnx")  # -> best.onnx
-# Can be loaded by Harbor MLNode(runtime="onnx") or onnxruntime directly
+# Can be loaded by Stargraph MLNode(runtime="onnx") or onnxruntime directly
 ```
 
 **Caveat**: YOLO OBB output requires custom post-processing (NMS, coordinate transform). A custom `YOLOInferenceNode(NodeBase)` is cleaner than trying to shoehorn into `MLNode`'s simple `predict()` API.
@@ -285,7 +285,7 @@ Nautilus `s3` adapter can list/fetch from `sentinel-s1-l1c` bucket. Custom inges
 
 ### Port Data
 
-- **OpenStreetMap**: `osmnx` library can extract port/harbor locations
+- **OpenStreetMap**: `osmnx` library can extract port/stargraph locations
 - **World Port Index**: US NGA database, downloadable CSV
 - **Strategy**: Pre-load port locations at bootstrap. Calculate distance-to-nearest-port for each detection.
 
@@ -329,7 +329,7 @@ graph node: YOLOInferenceNode(NodeBase)
 
 ### Champion/Challenger (Auto-Retrain)
 
-Harbor `ModelRegistry` supports this natively:
+Stargraph `ModelRegistry` supports this natively:
 1. Nightly cron trigger fires a training sub-graph.
 2. New model evaluated on holdout set.
 3. If metrics exceed champion: promote to `production` alias.
@@ -338,7 +338,7 @@ Harbor `ModelRegistry` supports this natively:
 ### Model Format Decision
 
 **ONNX recommended** over raw PyTorch for inference:
-- Harbor `MLNode` already handles ONNX sessions (cached, thread-safe)
+- Stargraph `MLNode` already handles ONNX sessions (cached, thread-safe)
 - 43% faster inference than PyTorch (per Ultralytics docs)
 - CPU-only deployment (no CUDA dependency in production)
 - SHA-256 hash verification via ModelRegistry
@@ -363,9 +363,9 @@ Analyst review dashboard with:
 | `folium` | Map markers, layers, popups |
 | `geopandas` | Geo data handling |
 
-### Integration with Harbor
+### Integration with Stargraph
 
-Streamlit app communicates with `harbor serve` API:
+Streamlit app communicates with `stargraph serve` API:
 - `POST /v1/runs` to trigger pipeline for new SAR tile
 - `GET /v1/runs/{id}/stream` WebSocket for live progress
 - `POST /v1/runs/{id}/respond` to submit analyst decisions (InterruptNode resume)
@@ -391,7 +391,7 @@ Streamlit app communicates with `harbor serve` API:
 | postgres | 5439 | 5441 |
 | pgvector | 5440 | 5442 |
 | redis | 6390 | 6391 |
-| harbor serve | 9000 | 9001 |
+| stargraph serve | 9000 | 9001 |
 | llm | 41001 | 41001 (shared) |
 
 ## Package Management (uv)
@@ -444,16 +444,16 @@ Streamlit app communicates with `harbor serve` API:
 | Docker | `docker-compose.yml` | demo directory |
 
 **Project Type**: Web App (FastAPI backend + Streamlit HITL UI)
-**Verification Strategy**: Start docker-compose, run bootstrap.py, start harbor serve, run Streamlit, verify via curl + Playwright
+**Verification Strategy**: Start docker-compose, run bootstrap.py, start stargraph serve, run Streamlit, verify via curl + Playwright
 
 ## Related Specs
 
 | Spec | Relevance | mayNeedUpdate |
 |------|-----------|---------------|
 | cve-rem-node-ui | Low — different domain (CVE remediation watcher UI), but shares run-watcher patterns | No |
-| harbor-engine | Medium — relies on graph engine, MLNode, SubGraphNode | No |
-| harbor-serve-and-bosun | Medium — relies on harbor serve API, scheduler, triggers | No |
-| harbor-knowledge | Low — may use stores (vector, fact) in future | No |
+| stargraph-engine | Medium — relies on graph engine, MLNode, SubGraphNode | No |
+| stargraph-serve-and-bosun | Medium — relies on stargraph serve API, scheduler, triggers | No |
+| stargraph-knowledge | Low — may use stores (vector, fact) in future | No |
 
 ## Recommendations
 
@@ -464,7 +464,7 @@ Streamlit app communicates with `harbor serve` API:
    - `docker-compose.yml` with postgres + redis
    - `bootstrap.py` — provision schemas, download small xView3 subset, pre-load EEZ/port data
    - `state.py` — `SdwState` Pydantic model
-   - `harbor.yaml` — graph IR definition
+   - `stargraph.yaml` — graph IR definition
 
 2. **Phase 2 (ML Pipeline)**:
    - `scripts/prepare_dataset.py` — download xView3 subset, tile, convert labels to YOLO OBB
@@ -474,13 +474,13 @@ Streamlit app communicates with `harbor serve` API:
 3. **Phase 3 (Integration)**:
    - `nautilus.yaml` — sources for AIS buffer, SAR metadata, geo-context
    - `ais_ingest.py` — AIS WebSocket daemon (writes to Postgres)
-   - `serve_sdw.py` — harbor serve wrapper
+   - `serve_sdw.py` — stargraph serve wrapper
    - `capabilities.py` — engine-side capability profile
 
 4. **Phase 4 (HITL UI)**:
    - `ui/app.py` — Streamlit analyst dashboard
    - Map view, detection review, report editing
-   - Integration with harbor serve API (respond to InterruptNodes)
+   - Integration with stargraph serve API (respond to InterruptNodes)
 
 5. **Phase 5 (Self-Improvement)**:
    - Cron-triggered nightly retrain sub-graph
@@ -518,8 +518,8 @@ Streamlit app communicates with `harbor serve` API:
 - [Marine Regions WFS](https://www.marineregions.org/webservices.php) — EEZ boundaries
 - [Global Fishing Watch APIs](https://globalfishingwatch.org/our-apis/) — vessel tracking data
 - [streamlit-folium](https://folium.streamlit.app/) — map visualization
-- Harbor source: `/home/sean/leagues/harbor/src/harbor/nodes/` — node types
-- Harbor source: `/home/sean/leagues/harbor/src/harbor/ml/` — ML infrastructure
-- Harbor source: `/home/sean/leagues/harbor/src/harbor/graph/` — graph engine
-- CVE-rem demo: `/home/sean/leagues/harbor/demos/cve_remediation/` — structural reference
+- Stargraph source: `/home/sean/leagues/stargraph/src/stargraph/nodes/` — node types
+- Stargraph source: `/home/sean/leagues/stargraph/src/stargraph/ml/` — ML infrastructure
+- Stargraph source: `/home/sean/leagues/stargraph/src/stargraph/graph/` — graph engine
+- CVE-rem demo: `/home/sean/leagues/stargraph/demos/cve_remediation/` — structural reference
 - Nautilus source: `/home/sean/leagues/nautilus/nautilus/adapters/` — adapter types

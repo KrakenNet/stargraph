@@ -1,0 +1,45 @@
+name: shipwright
+state: ./state.py:State
+
+nodes:
+  - name: triage_gate
+    type: stargraph.skills.shipwright.nodes.triage:TriageGate
+  - name: parse_brief
+    type: stargraph.skills.shipwright.nodes.parse:ParseBrief
+    must_stub: true
+  - name: gap_check
+    type: stargraph.skills.shipwright.nodes.interview:GapCheck
+  - name: propose_questions
+    type: stargraph.skills.shipwright.nodes.interview:ProposeQuestions
+    must_stub: true
+  - name: human_input
+    type: stargraph.nodes.human_input
+    prompt: "Please answer the following spec questions."
+    expected_input_schema_from: open_questions
+  - name: synthesize_graph
+    type: stargraph.skills.shipwright.nodes.synthesize:SynthesizeGraph
+    must_stub: true
+  - name: verify_static
+    type: stargraph.skills.shipwright.nodes.verify:VerifyStatic
+  - name: verify_tests
+    type: stargraph.skills.shipwright.nodes.verify:VerifyTests
+  - name: verify_smoke
+    type: stargraph.skills.shipwright.nodes.verify:VerifySmoke
+  - name: fix_loop
+    type: stargraph.skills.shipwright.nodes.fix:FixLoop
+
+rules:
+  - pack: stargraph.bosun.shipwright.gaps
+  - pack: stargraph.bosun.shipwright.edits
+
+governance:
+  - stargraph.bosun.budgets
+  - stargraph.bosun.audit
+
+stores:
+  doc: sqlite:./.shipwright/docs.db
+  fact: sqlite:./.shipwright/facts.db
+
+checkpoints:
+  every: node-exit
+  store: sqlite:./.shipwright/checkpoints.db

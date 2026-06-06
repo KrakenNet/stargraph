@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration tests for :class:`harbor.stores.sqlite_memory.SQLiteMemoryStore`.
+"""Integration tests for :class:`stargraph.stores.sqlite_memory.SQLiteMemoryStore`.
 
 Covers the widening LIKE read (FR-5, FR-13, FR-27) at the basic shape (3-tuple put,
 2-tuple recent). The exhaustive 3-tuple -> 2-tuple -> 1-tuple cascade
@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.memory import Episode
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.memory import Episode
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -8,10 +8,10 @@ Pins the four migration guarantees promised by FR-33:
    is re-exercised here in a focused subset to fail loud if a future
    refactor breaks the foundation-frozen surface area).
 2. IR fragments authored against v0.1 (``side_effects: bool``) load via
-   :func:`harbor.ir._migrate.coerce_legacy_tool_spec` with a
+   :func:`stargraph.ir._migrate.coerce_legacy_tool_spec` with a
    :class:`DeprecationWarning`.
 3. Legacy IR with no ``replay_policy`` field defaults to
-   :data:`harbor.tools.spec.ReplayPolicy.must_stub` after migration.
+   :data:`stargraph.tools.spec.ReplayPolicy.must_stub` after migration.
 4. Existing fixtures under ``tests/fixtures/*.yaml`` (the engine's POC
    sample graph and the FR-32 training-subgraph reference) still parse
    under the v0.2 schema.
@@ -26,9 +26,9 @@ from typing import Any
 import pytest
 import yaml
 
-from harbor.ir._migrate import coerce_legacy_tool_spec
-from harbor.ir._models import IRDocument, ToolSpec
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.ir._migrate import coerce_legacy_tool_spec
+from stargraph.ir._models import IRDocument, ToolSpec
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 _FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 

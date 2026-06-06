@@ -1,0 +1,8 @@
+id: stargraph.skills.ai_builder
+version: "0.1.0"
+kind: workflow
+description: |
+  AI Builder router — a Stargraph router graph that classifies user turns and
+  dispatches to basic chat, Shipwright graph authoring, Inspector tenant-data
+  Q&A, or Docs framework Q&A. Phase A: basic chat is live; other routes stub.
+state_schema: stargraph.skills.ai_builder.state:State

@@ -2,19 +2,19 @@
 
 A *counterfactual* is a what-if branch off a recorded run: at step N, mutate the
 state (or facts, or rule pack, or a node output), then re-execute from there.
-The original run is untouched — Harbor enforces the Temporal "cannot change the
+The original run is untouched — Stargraph enforces the Temporal "cannot change the
 past" invariant: every cf-derived checkpoint lives under a fresh `run_id` and a
 domain-separated `graph_hash`.
 
 ## The mutation builder
 
-`CounterfactualMutation` (in `harbor.replay.counterfactual`) is the typed
+`CounterfactualMutation` (in `stargraph.replay.counterfactual`) is the typed
 Pydantic builder for the five FR-27 fields a caller may override at the cf
 fork point. `extra="forbid"` rejects unknown keys at construction time so
 typos are loud:
 
 ```python
-from harbor.replay.counterfactual import CounterfactualMutation
+from stargraph.replay.counterfactual import CounterfactualMutation
 
 mutation = CounterfactualMutation(
     state_overrides={"risk_score": 0.95},      # patch state at fork step
@@ -35,7 +35,7 @@ domain-separation tag.
 `GraphRun.counterfactual()` mints the cf child:
 
 ```python
-from harbor.graph import GraphRun
+from stargraph.graph import GraphRun
 
 cf_run = await GraphRun.counterfactual(
     checkpointer,
@@ -53,7 +53,7 @@ Five things happen inside `counterfactual()` (per design §3.8.4):
 1. Load the original checkpoint at `step` (loud-fail on miss via
    `CheckpointError(reason="missing-step")`).
 2. Compute the cf-derived `graph_hash` via `derived_graph_hash(...)`:
-   `sha256(b"harbor-cf-v1\x00" + original_hash + b"\x00" + jcs(mutation))`.
+   `sha256(b"stargraph-cf-v1\x00" + original_hash + b"\x00" + jcs(mutation))`.
    The 12-byte tag prefix lives only in the pre-image — the on-the-wire
    artifact is the 64-char hex digest.
 3. Mint a fresh `run_id` (`f"cf-{uuid.uuid4()}"`) so cf checkpoints never
@@ -67,11 +67,11 @@ Five things happen inside `counterfactual()` (per design §3.8.4):
 ## Resume refuses cf-prefix
 
 `GraphRun.resume()` deliberately refuses checkpoints whose `graph_hash` starts
-with `harbor-cf-v1` — a cf-derived row is not eligible for resume against the
+with `stargraph-cf-v1` — a cf-derived row is not eligible for resume against the
 parent `run_id` (AC-3.4):
 
 ```python
-from harbor.errors import CheckpointError
+from stargraph.errors import CheckpointError
 
 try:
     await GraphRun.resume(checkpointer, run_id=cf_run.run_id, graph=graph)
@@ -91,7 +91,7 @@ directly, but `derived_graph_hash` is exposed for test fixtures and audit
 tools that need to predict the cf identity before forking:
 
 ```python
-from harbor.replay.counterfactual import derived_graph_hash
+from stargraph.replay.counterfactual import derived_graph_hash
 
 cf_hash = derived_graph_hash(graph.graph_hash, mutation)
 # cf_hash is the same digest GraphRun.counterfactual() will pin for this fork.

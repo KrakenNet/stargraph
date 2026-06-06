@@ -8,7 +8,7 @@ Structural contract for rerankers (FR-16, design §3.8). Used by
 
 ```python
 from typing import Protocol, runtime_checkable
-from harbor.stores import Hit
+from stargraph.stores import Hit
 
 @runtime_checkable
 class Reranker(Protocol):
@@ -26,7 +26,7 @@ class Reranker(Protocol):
 
 ## `RRFReranker`
 
-Default in-tree reranker (`harbor.stores.rerankers`). Reciprocal Rank
+Default in-tree reranker (`stargraph.stores.rerankers`). Reciprocal Rank
 Fusion: model-free, API-key-free, appropriate for the default
 `mode="hybrid"` path.
 
@@ -54,7 +54,7 @@ truncated to `k`.
 ### Constructor
 
 ```python
-from harbor.stores import RRFReranker
+from stargraph.stores import RRFReranker
 
 reranker = RRFReranker(k_param=60)   # default
 ```
@@ -84,15 +84,15 @@ class CrossEncoderReranker:
 ### Opt-in via entry point
 
 Heavier rerankers (cross-encoder, Cohere, Jina) live behind the
-`harbor.rerankers` entry-point group. `harbor.stores.rerankers` only
+`stargraph.rerankers` entry-point group. `stargraph.stores.rerankers` only
 ships the always-available `RRFReranker` default; everything else is
-loaded by `harbor.stores._rerank_loader` from the entry-point group at
+loaded by `stargraph.stores._rerank_loader` from the entry-point group at
 runtime, so optional dependencies (sentence-transformers, vendor SDKs)
 are **not** required for the default install.
 
 ```toml
 # In a downstream plugin's pyproject.toml:
-[project.entry-points."harbor.rerankers"]
+[project.entry-points."stargraph.rerankers"]
 cross-encoder = "my_plugin.rerankers:CrossEncoderReranker"
 ```
 

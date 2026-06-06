@@ -11,7 +11,7 @@ This module asserts:
   names (computed by :meth:`Skill._validate_declared_outputs`).
 * A key absent from ``declared_output_keys`` is rejected as undeclared
   (smoke-tested via membership: the public gate documented in
-  :mod:`harbor.skills.base`).
+  :mod:`stargraph.skills.base`).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from harbor.skills.base import Skill, SkillKind
+from stargraph.skills.base import Skill, SkillKind
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 
@@ -32,7 +32,7 @@ class _TwoFieldState(BaseModel):
 
 
 def test_undeclared_output_keys_rejected() -> None:
-    """``declared_output_keys`` is the gate documented in ``harbor.skills.base``."""
+    """``declared_output_keys`` is the gate documented in ``stargraph.skills.base``."""
     skill = Skill(
         name="two-field",
         version="0.1.0",

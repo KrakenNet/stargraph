@@ -5,8 +5,8 @@ services:
     image: postgis/postgis:16-3.4
     container_name: sdw-postgis
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-harbor}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harbor}
+      POSTGRES_USER: ${POSTGRES_USER:-stargraph}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stargraph}
       POSTGRES_DB: ${POSTGRES_DB:-sdw}
     ports:
       - "${POSTGRES_PORT:-5441}:5432"

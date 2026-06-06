@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase-3 integration test (task 3.10): WebSocket event stream + resume.
 
-Drives :func:`harbor.serve.api.create_app`'s ``WS /v1/runs/{id}/stream``
+Drives :func:`stargraph.serve.api.create_app`'s ``WS /v1/runs/{id}/stream``
 route end-to-end with three scenarios:
 
 1. **Live event stream** -- a feeder task running on the FastAPI app's
    lifespan loop publishes a deterministic sequence of typed events
    onto the run's bus; the broadcaster fans them out to a WS
    subscriber. The subscriber asserts each event arrives in order as
-   a :func:`harbor.ir.dumps`-shaped JSON text frame, then sees a
+   a :func:`stargraph.ir.dumps`-shaped JSON text frame, then sees a
    terminal :class:`ResultEvent` (status ``done``).
 
 2. **`last_event_id` resume** -- the audit JSONL log is pre-populated
@@ -48,16 +48,16 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from harbor.errors import BroadcasterOverflow
-from harbor.runtime.bus import EventBus
-from harbor.runtime.events import (
+from stargraph.errors import BroadcasterOverflow
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.events import (
     ResultEvent,
     TokenEvent,
     TransitionEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, AsyncIterator
@@ -214,7 +214,7 @@ def _write_audit_lines(audit_path: Path, run_id: str, count: int) -> None:
 
     Mirrors the on-disk shape produced by :class:`JSONLAuditSink` (no
     Ed25519 wrapper -- the
-    :func:`harbor.serve.api._replay_audit_after_cursor` walker accepts
+    :func:`stargraph.serve.api._replay_audit_after_cursor` walker accepts
     both bare ``event`` dicts and ``{"event": ..., "sig": ...}``
     envelopes).
     """

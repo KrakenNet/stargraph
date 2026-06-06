@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration test for :class:`harbor.nodes.memory.MemoryWriteNode` (FR-27, AC-5.1).
+"""Integration test for :class:`stargraph.nodes.memory.MemoryWriteNode` (FR-27, AC-5.1).
 
 Two checks:
 
@@ -20,10 +20,10 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic import BaseModel
 
-from harbor.nodes.memory import MemoryWriteNode
-from harbor.stores.memory import Episode
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.nodes.memory import MemoryWriteNode
+from stargraph.stores.memory import Episode
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 if TYPE_CHECKING:
     from pathlib import Path

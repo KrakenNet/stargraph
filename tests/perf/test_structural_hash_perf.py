@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Structural-hash calibration on a 100-node IR (NFR-3, FR-4).
 
-Times :func:`harbor.graph.hash.structural_hash` across 100 invocations on
+Times :func:`stargraph.graph.hash.structural_hash` across 100 invocations on
 ``tests/fixtures/100-node-ir.yaml`` (100 echo nodes wired by 99 goto rules
 + a terminal halt). Exercises rule (a) topology lex-sort, rule (b) node
 signatures (``model_json_schema()`` once per node), rule (c) state-schema
@@ -22,8 +22,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from harbor.graph.hash import structural_hash
-from harbor.ir._models import IRDocument
+from stargraph.graph.hash import structural_hash
+from stargraph.ir._models import IRDocument
 
 _FIXTURE: Path = Path(__file__).parent.parent / "fixtures" / "100-node-ir.yaml"
 

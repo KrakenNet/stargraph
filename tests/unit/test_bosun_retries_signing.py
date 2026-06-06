@@ -2,7 +2,7 @@
 """Unit tests for ``bosun/retries`` pack-signing wiring (T11).
 
 Pins ``_PACK_ROOT`` constant exposure (consumed by
-:func:`harbor.bosun.signing.sign_pack`) and the round-trip through the
+:func:`stargraph.bosun.signing.sign_pack`) and the round-trip through the
 existing local-Ed25519 signing helper.
 """
 
@@ -14,8 +14,8 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from harbor.bosun import retries
-from harbor.bosun.signing import sign_pack
+from stargraph.bosun import retries
+from stargraph.bosun.signing import sign_pack
 
 pytestmark = pytest.mark.unit
 

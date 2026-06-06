@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """everything-demo custom node factories.
 
-The IR's `module:ClassName` escape hatch (`harbor.cli.run._resolve_node_factory`)
+The IR's `module:ClassName` escape hatch (`stargraph.cli.run._resolve_node_factory`)
 imports these. Every class is a `NodeBase` subclass with a zero-arg
 constructor — that is the contract `_resolve_node_factory` enforces.
 
@@ -12,12 +12,12 @@ Two patterns covered here:
    the supported plugin API.
 2. **Custom domain nodes** (lookup_history caller). Demonstrates how a
    graph author drops an arbitrary `NodeBase` into the IR without
-   touching Harbor core.
+   touching Stargraph core.
 
 For real plugin distribution, declare entry points under
-``harbor.tools`` / ``harbor.skills`` / ``harbor.stores`` /
-``harbor.triggers``. There is no ``harbor.nodes`` group yet (see
-TODO.md "Add `harbor.nodes` entry-point group" item) — until then,
+``stargraph.tools`` / ``stargraph.skills`` / ``stargraph.stores`` /
+``stargraph.triggers``. There is no ``stargraph.nodes`` group yet (see
+TODO.md "Add `stargraph.nodes` entry-point group" item) — until then,
 custom nodes are imported via the ``module:ClassName`` IR ``kind:``.
 """
 
@@ -25,8 +25,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from harbor.nodes.base import EchoNode, ExecutionContext, NodeBase
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.nodes.base import EchoNode, ExecutionContext, NodeBase
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 if TYPE_CHECKING:
     from pydantic import BaseModel

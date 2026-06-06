@@ -2,12 +2,12 @@
 """Consolidation-cadence batch integration test (FR-29, AC-5.2).
 
 Exercises the ``every: N`` cadence semantics declared on
-:class:`harbor.stores.memory.ConsolidationRule` against
-:meth:`harbor.stores.sqlite_memory.SQLiteMemoryStore.consolidate`.
+:class:`stargraph.stores.memory.ConsolidationRule` against
+:meth:`stargraph.stores.sqlite_memory.SQLiteMemoryStore.consolidate`.
 
 The auto-dispatch wiring (a hook on :meth:`MemoryStore.put` that fires
 ``consolidate`` after every Nth episode using the CLIPS rule scheduler in
-``harbor.fathom``) is a Phase 4 wiring task -- the runtime currently
+``stargraph.fathom``) is a Phase 4 wiring task -- the runtime currently
 exposes only the data carrier (``ConsolidationRule.cadence={"every": N}``)
 and the ``consolidate`` operation. This test therefore exercises the
 cadence-trigger logic via a minimal in-test dispatcher that mirrors the
@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.memory import ConsolidationRule, Episode, MemoryDelta
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.memory import ConsolidationRule, Episode, MemoryDelta
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from pathlib import Path

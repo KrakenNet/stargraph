@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""VerifyStatic — Python syntax + ruff + harbor graph verify on artifact_files."""
+"""VerifyStatic — Python syntax + ruff + stargraph graph verify on artifact_files."""
 
 from __future__ import annotations
 
@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from harbor.skills.shipwright.nodes.verify import VerifyStatic
-from harbor.skills.shipwright.state import State
+from stargraph.skills.shipwright.nodes.verify import VerifyStatic
+from stargraph.skills.shipwright.state import State
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from harbor.nodes.base import ExecutionContext
+    from stargraph.nodes.base import ExecutionContext
 
 
 VALID_STATE_PY = """\
@@ -23,7 +23,7 @@ class State(BaseModel):
     pass
 """
 
-VALID_HARBOR_YAML = """\
+VALID_STARGRAPH_YAML = """\
 name: x
 state: ./state.py:State
 nodes:
@@ -39,7 +39,7 @@ async def test_static_pass_on_valid_files(tmp_path: Path) -> None:
     state = State(
         artifact_files={
             "state.py": VALID_STATE_PY,
-            "harbor.yaml": VALID_HARBOR_YAML,
+            "stargraph.yaml": VALID_STARGRAPH_YAML,
         }
     )
     out = await VerifyStatic(work_dir=tmp_path).execute(
@@ -55,7 +55,7 @@ async def test_static_fail_on_syntax_error(tmp_path: Path) -> None:
     state = State(
         artifact_files={
             "state.py": INVALID_STATE_PY,
-            "harbor.yaml": VALID_HARBOR_YAML,
+            "stargraph.yaml": VALID_STARGRAPH_YAML,
         }
     )
     out = await VerifyStatic(work_dir=tmp_path).execute(

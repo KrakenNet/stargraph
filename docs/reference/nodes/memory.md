@@ -3,7 +3,7 @@
 POC node (FR-27, design §3.4) that persists a single
 [`Episode`](../python/index.md) into an injected memory-store provider — a
 [`MemoryStore`](../python/index.md) such as
-`harbor.stores.sqlite_memory.SQLiteMemoryStore`.
+`stargraph.stores.sqlite_memory.SQLiteMemoryStore`.
 
 ## Constructor
 

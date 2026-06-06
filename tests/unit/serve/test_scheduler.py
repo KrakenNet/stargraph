@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.serve.scheduler` (FR-7, FR-9, NFR-3).
+"""Unit tests for :mod:`stargraph.serve.scheduler` (FR-7, FR-9, NFR-3).
 
 Covers:
 
@@ -24,9 +24,9 @@ import cronsim
 import pytest
 import time_machine
 
-from harbor.errors import HarborRuntimeError
-from harbor.serve.scheduler import PendingRun, Scheduler
-from harbor.triggers.cron import CronSpec, CronTrigger
+from stargraph.errors import StargraphRuntimeError
+from stargraph.serve.scheduler import PendingRun, Scheduler
+from stargraph.triggers.cron import CronSpec, CronTrigger
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -266,13 +266,13 @@ async def test_replay_pending_repushes_persisted_rows() -> None:
 
 
 def test_enqueue_before_start_raises_runtime_error() -> None:
-    """``enqueue`` before ``start`` raises :class:`HarborRuntimeError`.
+    """``enqueue`` before ``start`` raises :class:`StargraphRuntimeError`.
 
     The dispatcher must be live for the future to ever resolve;
     enqueueing into a dead scheduler would silently strand callers.
     """
     scheduler = Scheduler()
-    with pytest.raises(HarborRuntimeError, match=r"requires Scheduler\.start"):
+    with pytest.raises(StargraphRuntimeError, match=r"requires Scheduler\.start"):
         scheduler.enqueue("graph-x", {})
 
 

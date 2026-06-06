@@ -13,7 +13,7 @@ These tests verify the scaffold:
 * Each ``manifest.yaml`` parses via ``yaml.safe_load`` and contains
   the expected ``id``, ``version``, and ``requires`` keys.
 * The 4 packs are discoverable via filesystem traversal of
-  ``src/harbor/bosun/`` (the canonical path until Phase 4 wires
+  ``src/stargraph/bosun/`` (the canonical path until Phase 4 wires
   pluggy-based discovery).
 """
 
@@ -25,7 +25,7 @@ import pytest
 import yaml
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_BOSUN_DIR = _REPO_ROOT / "src" / "harbor" / "bosun"
+_BOSUN_DIR = _REPO_ROOT / "src" / "stargraph" / "bosun"
 
 _PACK_NAMES = ("budgets", "audit", "safety_pii", "retries")
 
@@ -50,10 +50,10 @@ def test_pack_manifest_parses_with_expected_shape(pack_name: str) -> None:
     with manifest_path.open("rb") as fh:
         data = yaml.safe_load(fh)
     assert isinstance(data, dict)
-    assert data["id"] == f"harbor.bosun.{pack_name}"
+    assert data["id"] == f"stargraph.bosun.{pack_name}"
     assert data["version"] == "1.0"
     assert isinstance(data["requires"], dict)
-    assert data["requires"]["harbor_facts_version"] == "1.0"
+    assert data["requires"]["stargraph_facts_version"] == "1.0"
     assert data["requires"]["api_version"] == "1"
 
 
@@ -61,7 +61,7 @@ def test_pack_manifest_parses_with_expected_shape(pack_name: str) -> None:
 def test_pack_discovery_finds_four_packs() -> None:
     """Filesystem-level discovery finds exactly the 4 in-tree packs.
 
-    Walks ``src/harbor/bosun/`` for any subdir containing ``manifest.yaml``
+    Walks ``src/stargraph/bosun/`` for any subdir containing ``manifest.yaml``
     -- the contract for "this is a Bosun pack scaffold". Phase 4 wires
     real pluggy-based discovery; for this task, file-existence is the
     contract.

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Regenerate JSON Schemas (Draft 2020-12) from Pydantic IR models.
 
-Emits three schema files under ``src/harbor/schemas/``:
+Emits three schema files under ``src/stargraph/schemas/``:
 
-* ``ir-v1.json``        -- :class:`harbor.ir.IRDocument`
-* ``tool-v1.json``      -- :class:`harbor.ir.ToolSpec`
-* ``manifest-v1.json``  -- :class:`harbor.ir.PluginManifest`
+* ``ir-v1.json``        -- :class:`stargraph.ir.IRDocument`
+* ``tool-v1.json``      -- :class:`stargraph.ir.ToolSpec`
+* ``manifest-v1.json``  -- :class:`stargraph.ir.PluginManifest`
 
 Each schema is generated with ``mode='validation'`` (per
 ``research-pydantic-ir.md`` -- validation- and serialization-mode schemas
@@ -13,7 +13,7 @@ diverge; we pin one). The Pydantic-emitted ``$schema`` and ``$id`` are
 overridden to canonical values:
 
 * ``$schema`` -- ``https://json-schema.org/draft/2020-12/schema``
-* ``$id``     -- ``https://harbor.dev/schemas/{ir,tool,manifest}-v1.json``
+* ``$id``     -- ``https://stargraph.dev/schemas/{ir,tool,manifest}-v1.json``
 
 Run with ``uv run python scripts/regen_schemas.py``. The output is
 deterministic (Pydantic preserves declaration-order keys, ``json.dumps``
@@ -27,14 +27,14 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from harbor.ir import IRDocument, PluginManifest, ToolSpec
+from stargraph.ir import IRDocument, PluginManifest, ToolSpec
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
-SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "src" / "harbor" / "schemas"
+SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "src" / "stargraph" / "schemas"
 JSON_SCHEMA_DRAFT = "https://json-schema.org/draft/2020-12/schema"
-ID_BASE = "https://harbor.dev/schemas"
+ID_BASE = "https://stargraph.dev/schemas"
 
 
 def _build_schema(model: type[BaseModel], schema_id: str) -> dict[str, Any]:

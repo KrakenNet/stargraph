@@ -2,7 +2,7 @@
 """Unit tests for the per-node cassette protocol (design §10.3).
 
 Covers the round-trip contract that
-:class:`harbor.nodes.artifacts.WriteArtifactNode` (the first consumer)
+:class:`stargraph.nodes.artifacts.WriteArtifactNode` (the first consumer)
 relies on:
 
 * Live run records its ``ArtifactRef`` payload on the cassette.
@@ -23,12 +23,12 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from pydantic import BaseModel
 
-from harbor.errors import ArtifactStoreError
-from harbor.nodes.artifacts import WriteArtifactNode, WriteArtifactNodeConfig
-from harbor.replay.cassettes import InMemoryNodeCassette
+from stargraph.errors import ArtifactStoreError
+from stargraph.nodes.artifacts import WriteArtifactNode, WriteArtifactNodeConfig
+from stargraph.replay.cassettes import InMemoryNodeCassette
 
 if TYPE_CHECKING:
-    from harbor.graph import GraphRun
+    from stargraph.graph import GraphRun
 
 
 class _FakeBus:
@@ -59,7 +59,7 @@ class _FakeArtifactStore:
     ) -> Any:
         from datetime import UTC, datetime
 
-        from harbor.artifacts import ArtifactRef
+        from stargraph.artifacts import ArtifactRef
 
         self.calls.append({"name": name, "content": content, "run_id": run_id, "step": step})
         digest = "0" * 64
@@ -243,8 +243,8 @@ async def test_dispatch_node_clears_node_id_after_raise() -> None:
     onto the next tick's cassette key. Without this, a subsequent
     write-side-effect node would record/lookup against the wrong key.
     """
-    from harbor.ir._models import NodeSpec
-    from harbor.runtime.dispatch import dispatch_node
+    from stargraph.ir._models import NodeSpec
+    from stargraph.runtime.dispatch import dispatch_node
 
     nodes = [NodeSpec(id="will_raise", kind="stub")]
     run = _FakeRun(node_registry={"will_raise": _RaisingNode()})
@@ -260,8 +260,8 @@ async def test_dispatch_node_clears_node_id_after_raise() -> None:
 @pytest.mark.unit
 async def test_dispatch_node_clears_node_id_on_success() -> None:
     """Successful tick also clears ``run.node_id`` after node body returns."""
-    from harbor.ir._models import NodeSpec
-    from harbor.runtime.dispatch import dispatch_node
+    from stargraph.ir._models import NodeSpec
+    from stargraph.runtime.dispatch import dispatch_node
 
     nodes = [NodeSpec(id="ok", kind="stub")]
     run = _FakeRun(node_registry={"ok": _OkNode()})

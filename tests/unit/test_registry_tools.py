@@ -19,12 +19,12 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.ir._models import ReplayPolicy, SkillSpec, ToolSpec
-from harbor.registry import ToolRegistry
-from harbor.tools.spec import SideEffects
+from stargraph.ir._models import ReplayPolicy, SkillSpec, ToolSpec
+from stargraph.registry import ToolRegistry
+from stargraph.tools.spec import SideEffects
 
 if TYPE_CHECKING:
-    from harbor.graph import Graph
+    from stargraph.graph import Graph
 
 pytestmark = [pytest.mark.unit, pytest.mark.knowledge]
 
@@ -32,7 +32,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.knowledge]
 def _skill(skill_id: str, *, name: str | None = None, description: str | None = None) -> SkillSpec:
     """Build a minimal :class:`SkillSpec` for registry tests.
 
-    SkillSpec (harbor/ir/_models.py:399) has no standalone ``id`` field
+    SkillSpec (stargraph/ir/_models.py:399) has no standalone ``id`` field
     (IRBase forbids extras); ``skill_id`` parameter populates ``name`` by
     default so test assertions of the form ``s.name == "alpha"`` work.
     The composite registry key is ``f"{namespace}/{name}"`` per
@@ -177,7 +177,7 @@ def test_compatible_with_filters_disallowed_tools() -> None:
     class _Caps:
         def check(self, spec: ToolSpec) -> None:
             if "fs.write" in spec.permissions:
-                from harbor.errors import CapabilityError
+                from stargraph.errors import CapabilityError
 
                 raise CapabilityError(
                     f"capability not granted for {spec.name}",

@@ -3,8 +3,8 @@
 
 Two guards land here:
 
-1. **AST walker** — scans every ``.py`` module under ``src/harbor`` and asserts
-   that no ``<expr>.assert_fact(...)`` call exists outside ``src/harbor/fathom/``.
+1. **AST walker** — scans every ``.py`` module under ``src/stargraph`` and asserts
+   that no ``<expr>.assert_fact(...)`` call exists outside ``src/stargraph/fathom/``.
    Engine code paths must route through the Fathom adapter
    (``ProvenanceFathomAdapter.assert_fact``) so the 6-slot
    :class:`ProvenanceBundle` is attached to every assertion. Direct
@@ -19,7 +19,7 @@ Two guards land here:
 
 Status at Phase 3.1: no violations found at time of writing; the AST walker
 acts as a regression guard going forward (will fail if any future engine code
-calls ``assert_fact`` directly outside ``src/harbor/fathom/``).
+calls ``assert_fact`` directly outside ``src/stargraph/fathom/``).
 """
 
 from __future__ import annotations
@@ -29,12 +29,12 @@ from pathlib import Path
 
 import pytest
 
-from harbor.fathom import ProvenanceBundle
+from stargraph.fathom import ProvenanceBundle
 
 # Project root resolved relative to this test file: tests/unit/ -> tests/ -> repo root.
 _REPO_ROOT: Path = Path(__file__).resolve().parents[2]
-_SRC_HARBOR: Path = _REPO_ROOT / "src" / "harbor"
-_FATHOM_DIR: Path = _SRC_HARBOR / "fathom"
+_SRC_STARGRAPH: Path = _REPO_ROOT / "src" / "stargraph"
+_FATHOM_DIR: Path = _SRC_STARGRAPH / "fathom"
 
 # Six-slot ProvenanceBundle contract per design §4.5.
 _REQUIRED_PROVENANCE_SLOTS: frozenset[str] = frozenset(
@@ -42,11 +42,11 @@ _REQUIRED_PROVENANCE_SLOTS: frozenset[str] = frozenset(
 )
 
 
-def _iter_harbor_python_files_outside_fathom() -> list[Path]:
-    """Return every ``.py`` module under ``src/harbor`` excluding ``src/harbor/fathom/``."""
+def _iter_stargraph_python_files_outside_fathom() -> list[Path]:
+    """Return every ``.py`` module under ``src/stargraph`` excluding ``src/stargraph/fathom/``."""
     return sorted(
         p
-        for p in _SRC_HARBOR.rglob("*.py")
+        for p in _SRC_STARGRAPH.rglob("*.py")
         if "__pycache__" not in p.parts and _FATHOM_DIR not in p.parents and p != _FATHOM_DIR
     )
 
@@ -81,9 +81,9 @@ def _collect_assert_fact_calls(path: Path) -> list[tuple[int, str]]:
 
 @pytest.mark.unit
 def test_no_direct_assert_fact_outside_fathom() -> None:
-    """No engine code calls ``.assert_fact(...)`` outside ``src/harbor/fathom/`` (FR-3)."""
-    files = _iter_harbor_python_files_outside_fathom()
-    assert files, f"no python files found under {_SRC_HARBOR!s} outside fathom/"
+    """No engine code calls ``.assert_fact(...)`` outside ``src/stargraph/fathom/`` (FR-3)."""
+    files = _iter_stargraph_python_files_outside_fathom()
+    assert files, f"no python files found under {_SRC_STARGRAPH!s} outside fathom/"
 
     violations: list[tuple[Path, int, str]] = []
     for path in files:
@@ -95,7 +95,7 @@ def test_no_direct_assert_fact_outside_fathom() -> None:
             f"  {p.relative_to(_REPO_ROOT)}:{lineno}: {what}" for p, lineno, what in violations
         )
         pytest.fail(
-            "Direct .assert_fact(...) calls found outside src/harbor/fathom/ "
+            "Direct .assert_fact(...) calls found outside src/stargraph/fathom/ "
             "(FR-3, NFR-6, design §4.5):\n"
             + rendered
             + "\n\nRoute the assertion through ProvenanceFathomAdapter.assert_fact "

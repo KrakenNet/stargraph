@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :class:`harbor.triggers.manual.ManualTrigger` (FR-3).
+"""Unit tests for :class:`stargraph.triggers.manual.ManualTrigger` (FR-3).
 
 Manual triggers carry the explicit-caller path used by both the
-``harbor run`` CLI subcommand and the ``POST /v1/runs`` HTTP route.
+``stargraph run`` CLI subcommand and the ``POST /v1/runs`` HTTP route.
 Both surfaces converge on :meth:`ManualTrigger.enqueue`, which delegates
 to :class:`Scheduler.enqueue` and synthesises a ``run_id``.
 """
@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor.errors import HarborRuntimeError
-from harbor.triggers.manual import ManualTrigger
+from stargraph.errors import StargraphRuntimeError
+from stargraph.triggers.manual import ManualTrigger
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -51,7 +51,7 @@ class _RecordingScheduler:
         # under a sync test (which would need a running loop).
         from datetime import UTC, datetime
 
-        from harbor.serve.scheduler import EnqueueHandle, Scheduler
+        from stargraph.serve.scheduler import EnqueueHandle, Scheduler
 
         key = idempotency_key or Scheduler._synth_idempotency_key(  # pyright: ignore[reportPrivateUsage]
             graph_id, datetime.now(UTC)
@@ -71,14 +71,14 @@ def trigger() -> tuple[ManualTrigger, _RecordingScheduler]:
 
 def test_manual_init_requires_scheduler() -> None:
     """:meth:`ManualTrigger.init` raises when ``deps['scheduler']`` is missing."""
-    with pytest.raises(HarborRuntimeError, match="requires deps"):
+    with pytest.raises(StargraphRuntimeError, match="requires deps"):
         ManualTrigger().init({})
 
 
 def test_manual_enqueue_before_init_raises() -> None:
-    """Calling :meth:`enqueue` without :meth:`init` raises :class:`HarborRuntimeError`."""
+    """Calling :meth:`enqueue` without :meth:`init` raises :class:`StargraphRuntimeError`."""
     t = ManualTrigger()
-    with pytest.raises(HarborRuntimeError, match=r"requires init\(deps\)"):
+    with pytest.raises(StargraphRuntimeError, match=r"requires init\(deps\)"):
         t.enqueue("graph-x", {})
 
 
@@ -108,7 +108,7 @@ def test_manual_cli_and_http_convergence(
     """Two paths (CLI-shaped, HTTP-shaped) → identical ``Scheduler.enqueue`` payload.
 
     The "CLI path" passes positional ``graph_id`` + ``params`` (mirrors
-    ``harbor run <graph> --params=...``); the "HTTP path" passes the
+    ``stargraph run <graph> --params=...``); the "HTTP path" passes the
     same payload through the same method (since the route handler
     delegates here directly). Both must produce identical
     ``graph_id`` + ``params`` on the scheduler.
@@ -117,7 +117,7 @@ def test_manual_cli_and_http_convergence(
     payload = {"foo": "bar", "n": 7}
     # CLI shape
     t.enqueue("graph-converge", payload)
-    # HTTP shape (same method; the route handler in `harbor.serve.api`
+    # HTTP shape (same method; the route handler in `stargraph.serve.api`
     # forwards the body unchanged)
     t.enqueue("graph-converge", payload)
     assert len(sched.calls) == 2

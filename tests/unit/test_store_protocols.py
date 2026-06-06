@@ -7,7 +7,7 @@ import inspect
 
 import pytest
 
-from harbor.stores import (
+from stargraph.stores import (
     DocStore,
     FactStore,
     GraphStore,

@@ -1,11 +1,11 @@
 # Nautilus Broker Integration
 
-Harbor consumes the Nautilus broker (`nautilus_rkm` distribution) for
+Stargraph consumes the Nautilus broker (`nautilus_rkm` distribution) for
 broker-emit and broker-request graph nodes. The `BrokerResponse` shape
 appears in the OpenAPI spec under `components/schemas/BrokerResponse`
 so client SDKs can dispatch on broker results.
 
-The broker integration is composition-only: Harbor imports `nautilus`
+The broker integration is composition-only: Stargraph imports `nautilus`
 lazily; if the package is absent at runtime the broker-emit nodes raise
 a clear capability error rather than crashing import. Stripped composition
 tests (design §16.10) verify this.

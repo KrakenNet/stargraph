@@ -2,7 +2,7 @@
 """Unit tests for ``triggers/webhook._emit_audit`` structlog fallback (T16).
 
 Pins that when ``self._audit_sink is None`` the method calls
-``harbor.logging.get_logger(__name__).info("webhook_request", ...)`` with
+``stargraph.logging.get_logger(__name__).info("webhook_request", ...)`` with
 the same :class:`BosunAuditEvent`-shaped payload rather than silently
 dropping. The sink-present branch is NOT modified by T16.
 """
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.unit
 
 def _spec() -> object:
     """Build a minimal :class:`WebhookSpec`-shaped stand-in."""
-    from harbor.triggers.webhook import WebhookSpec
+    from stargraph.triggers.webhook import WebhookSpec
 
     return WebhookSpec(
         trigger_id="t1",
@@ -29,7 +29,7 @@ def _spec() -> object:
 
 def _trigger_with_sink(sink: object | None) -> object:
     """Build a WebhookTrigger with the audit_sink wired."""
-    from harbor.triggers.webhook import WebhookTrigger
+    from stargraph.triggers.webhook import WebhookTrigger
 
     t = WebhookTrigger()
     t._audit_sink = sink  # type: ignore[attr-defined]  # pyright: ignore[reportPrivateUsage]

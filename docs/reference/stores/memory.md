@@ -116,7 +116,7 @@ IR-declared episodic→semantic consolidation rule (FR-28, FR-29).
 | Field | Type | Notes |
 |---|---|---|
 | `id` | `str` | Stamped onto every emitted delta as `rule_id`. |
-| `cadence` | `dict[str, Any]` | IR knob -- `{every: N}` or `{cron: "..."}`. Re-uses the CLIPS rule scheduling in `harbor.fathom`. |
+| `cadence` | `dict[str, Any]` | IR knob -- `{every: N}` or `{cron: "..."}`. Re-uses the CLIPS rule scheduling in `stargraph.fathom`. |
 | `when_filter` | `str` | SQL `WHERE` fragment selecting eligible episodes. Empty string == match-all. |
 | `then_emits` | `list[str]` | Fact-channel names this rule promotes into. |
 
@@ -143,14 +143,14 @@ MemoryDelta = Annotated[
 
 ## `SQLiteMemoryStore`
 
-Default in-tree provider (`harbor.stores.sqlite_memory`). POC scope of
+Default in-tree provider (`stargraph.stores.sqlite_memory`). POC scope of
 FR-5 / FR-13 / FR-27 / FR-28.
 
 ### Constructor
 
 ```python
 from pathlib import Path
-from harbor.stores import SQLiteMemoryStore
+from stargraph.stores import SQLiteMemoryStore
 
 store = SQLiteMemoryStore(path=Path("./.memory"))
 await store.bootstrap()
@@ -206,7 +206,7 @@ stores:
 | `ConsolidationRuleError` | (Reserved) malformed `ConsolidationRule`. |
 
 Provenance validation is performed via
-`harbor.stores._delta._validate_delta_provenance` on every emitted
+`stargraph.stores._delta._validate_delta_provenance` on every emitted
 delta -- see [fact.md](fact.md) for the receiving end.
 
 ## Promotion path
@@ -214,5 +214,5 @@ delta -- see [fact.md](fact.md) for the receiving end.
 Memory→fact promotion is one-way: `MemoryStore.consolidate()` produces
 typed `MemoryDelta` instances which are then applied to a `FactStore`
 via `FactStore.apply_delta(delta)`. The graph-side analog
-(`PromoteTriplesToFacts`) lives in `harbor.stores.kg_promotion` and is
+(`PromoteTriplesToFacts`) lives in `stargraph.stores.kg_promotion` and is
 covered on the [`FactStore` reference](fact.md#promotetriplestofacts).

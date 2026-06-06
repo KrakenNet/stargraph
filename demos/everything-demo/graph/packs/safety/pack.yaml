@@ -3,7 +3,7 @@
 # everything-demo custom safety pack.
 #
 # Bosun governance pack: kill-switches and PII guards in addition to
-# the harbor.bosun.safety_pii baseline pack. Mounted via the main
+# the stargraph.bosun.safety_pii baseline pack. Mounted via the main
 # graph's ``governance:`` block as id ``demo.safety@1.0``.
 
 id: "demo.safety"
@@ -11,7 +11,7 @@ version: "1.0.0"
 flavor: "governance"
 
 api_version: "1"
-harbor_facts_version: "1.0"
+stargraph_facts_version: "1.0"
 
 rules:
   - id: kill-switch-pii-leak

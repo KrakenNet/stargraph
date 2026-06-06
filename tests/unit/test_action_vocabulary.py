@@ -4,20 +4,20 @@
 
 Pins the 5-row translation table from design §3.1.4 that maps the five
 native Fathom action verbs (``allow``, ``deny``, ``escalate``, ``scope``,
-``route``) to the corresponding :data:`~harbor.runtime.action.RoutingDecision`
-variant produced by :func:`~harbor.runtime.action.translate_actions` after
-:func:`~harbor.fathom.extract_actions` has lifted ``harbor_action`` fact slot
-dicts into typed IR :data:`~harbor.fathom.Action` instances.
+``route``) to the corresponding :data:`~stargraph.runtime.action.RoutingDecision`
+variant produced by :func:`~stargraph.runtime.action.translate_actions` after
+:func:`~stargraph.fathom.extract_actions` has lifted ``stargraph_action`` fact slot
+dicts into typed IR :data:`~stargraph.fathom.Action` instances.
 
 Covered rows (design §3.1.4 table):
 
 | Fathom native            | Engine action                    | Routing semantics                              |
 |--------------------------|----------------------------------|------------------------------------------------|
-| ``harbor_action.allow``  | continue current edge            | :class:`ContinueAction`                        |
-| ``harbor_action.deny``   | halt                             | :class:`HaltAction(reason="denied-by-rule")`   |
-| ``harbor_action.escalate`` | route to escalation target     | :class:`GotoAction(target=escalation_target)`  |
-| ``harbor_action.scope``  | filter state, continue           | :class:`ContinueAction` (scope is adapter-side)|
-| ``harbor_action.route``  | route to target                  | :class:`GotoAction(target=target)`             |
+| ``stargraph_action.allow``  | continue current edge            | :class:`ContinueAction`                        |
+| ``stargraph_action.deny``   | halt                             | :class:`HaltAction(reason="denied-by-rule")`   |
+| ``stargraph_action.escalate`` | route to escalation target     | :class:`GotoAction(target=escalation_target)`  |
+| ``stargraph_action.scope``  | filter state, continue           | :class:`ContinueAction` (scope is adapter-side)|
+| ``stargraph_action.route``  | route to target                  | :class:`GotoAction(target=target)`             |
 """
 
 from __future__ import annotations
@@ -26,8 +26,8 @@ from typing import Any
 
 import pytest
 
-from harbor.fathom import extract_actions
-from harbor.runtime.action import (
+from stargraph.fathom import extract_actions
+from stargraph.runtime.action import (
     ContinueAction,
     GotoAction,
     HaltAction,
@@ -43,7 +43,7 @@ def _translate(facts: list[dict[str, Any]]) -> RoutingDecision:
 
 @pytest.mark.unit
 def test_allow_translates_to_continue() -> None:
-    """``harbor_action.allow`` → :class:`ContinueAction` (walk static edge)."""
+    """``stargraph_action.allow`` → :class:`ContinueAction` (walk static edge)."""
     decision = _translate([{"kind": "allow"}])
     assert isinstance(decision, ContinueAction)
     assert decision.kind == "continue"
@@ -51,7 +51,7 @@ def test_allow_translates_to_continue() -> None:
 
 @pytest.mark.unit
 def test_deny_translates_to_halt_with_denied_by_rule_reason() -> None:
-    """``harbor_action.deny`` → :class:`HaltAction(reason="denied-by-rule")`."""
+    """``stargraph_action.deny`` → :class:`HaltAction(reason="denied-by-rule")`."""
     decision = _translate([{"kind": "deny"}])
     assert isinstance(decision, HaltAction)
     assert decision.reason == "denied-by-rule"
@@ -59,7 +59,7 @@ def test_deny_translates_to_halt_with_denied_by_rule_reason() -> None:
 
 @pytest.mark.unit
 def test_escalate_translates_to_goto_escalation_target() -> None:
-    """``harbor_action.escalate`` → :class:`GotoAction(target=escalation_target)`."""
+    """``stargraph_action.escalate`` → :class:`GotoAction(target=escalation_target)`."""
     decision = _translate([{"kind": "escalate", "escalation_target": "human_review"}])
     assert isinstance(decision, GotoAction)
     assert decision.target == "human_review"
@@ -67,7 +67,7 @@ def test_escalate_translates_to_goto_escalation_target() -> None:
 
 @pytest.mark.unit
 def test_scope_translates_to_continue() -> None:
-    """``harbor_action.scope`` → :class:`ContinueAction` (state-filter is adapter-layer; no routing change)."""
+    """``stargraph_action.scope`` → :class:`ContinueAction` (state-filter is adapter-layer; no routing change)."""
     decision = _translate([{"kind": "scope", "scope": "tenant_a"}])
     assert isinstance(decision, ContinueAction)
     assert decision.kind == "continue"
@@ -75,7 +75,7 @@ def test_scope_translates_to_continue() -> None:
 
 @pytest.mark.unit
 def test_route_translates_to_goto_target() -> None:
-    """``harbor_action.route`` → :class:`GotoAction(target=target)`."""
+    """``stargraph_action.route`` → :class:`GotoAction(target=target)`."""
     decision = _translate([{"kind": "route", "target": "fallback_node"}])
     assert isinstance(decision, GotoAction)
     assert decision.target == "fallback_node"

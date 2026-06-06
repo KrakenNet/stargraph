@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """RetrievalNode parallel fan-out integration test (FR-26, AC-4, Task 3.30).
 
-Asserts two surfaces on :class:`harbor.nodes.retrieval.RetrievalNode`:
+Asserts two surfaces on :class:`stargraph.nodes.retrieval.RetrievalNode`:
 
 1. **Mixed store fan-out** -- a vector branch (LanceDB) and a doc branch
    (SQLiteDoc) seeded with overlapping ids, run through one
@@ -25,19 +25,19 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from pydantic import BaseModel
 
-from harbor.ir._models import StoreRef
-from harbor.nodes.retrieval import RetrievalNode
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.sqlite_doc import SQLiteDocStore
-from harbor.stores.vector import Hit, Row
+from stargraph.ir._models import StoreRef
+from stargraph.nodes.retrieval import RetrievalNode
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.vector import Hit, Row
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from harbor.nodes.base import ExecutionContext
-    from harbor.stores.doc import DocStore
-    from harbor.stores.vector import VectorStore
+    from stargraph.nodes.base import ExecutionContext
+    from stargraph.stores.doc import DocStore
+    from stargraph.stores.vector import VectorStore
 
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
@@ -58,7 +58,7 @@ class _StubCtx:
 class _SlowVectorStore:
     """Vector-store wrapper that sleeps before delegating to ``inner``.
 
-    Satisfies :class:`~harbor.stores.vector.VectorStore` structurally.
+    Satisfies :class:`~stargraph.stores.vector.VectorStore` structurally.
     Used to inject a measurable per-branch latency so the parallel
     dispatch contract is observable from wall-clock.
     """

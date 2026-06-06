@@ -1,0 +1,8 @@
+id: stargraph.bosun.retries
+version: "1.0"
+requires:
+  stargraph_facts_version: "1.0"
+  api_version: "1"
+provides:
+  - "stargraph_facts:action.retry"
+  - "stargraph_facts:bosun.violation"

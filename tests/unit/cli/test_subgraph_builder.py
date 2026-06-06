@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for ``harbor.cli.run._build_subgraph`` (S4)."""
+"""Tests for ``stargraph.cli.run._build_subgraph`` (S4)."""
 
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ import pytest
 import typer
 import yaml
 
-from harbor.cli.run import (
+from stargraph.cli.run import (
     _build_node_registry,  # pyright: ignore[reportPrivateUsage]
     _build_subgraph,  # pyright: ignore[reportPrivateUsage]
 )
-from harbor.ir._models import NodeSpec
-from harbor.nodes.base import EchoNode
-from harbor.nodes.subgraph import SubGraphNode
+from stargraph.ir._models import NodeSpec
+from stargraph.nodes.base import EchoNode
+from stargraph.nodes.subgraph import SubGraphNode
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -40,7 +40,7 @@ it, but the parameter is mandatory day one.
 
 POC reference implementation backed by
 `sentence-transformers/all-MiniLM-L6-v2`. Lives at
-`harbor.stores.embeddings`.
+`stargraph.stores.embeddings`.
 
 ### Constants
 
@@ -55,7 +55,7 @@ POC reference implementation backed by
 
 ```python
 from pathlib import Path
-from harbor.stores import MiniLMEmbedder
+from stargraph.stores import MiniLMEmbedder
 
 embedder = MiniLMEmbedder(
     model_path=None,                    # mode 1 if set
@@ -76,7 +76,7 @@ embedder = MiniLMEmbedder(
 
 ### Dependencies
 
-Optional extra: `harbor[skills-rag]`
+Optional extra: `stargraph[skills-rag]`
 (`sentence-transformers>=5.0,<6`, `huggingface_hub>=0.25`). The
 `sentence-transformers` import is lazy -- it only fires inside
 `__init__` after the safetensors hash check passes.
@@ -94,7 +94,7 @@ Optional extra: `harbor[skills-rag]`
 After the model directory is resolved, the safetensors weights file
 (`model.safetensors`) is hashed and compared against
 `expected_sha256`. Drift raises
-`harbor.errors.EmbeddingModelHashMismatch` carrying:
+`stargraph.errors.EmbeddingModelHashMismatch` carrying:
 
 | Context key | Value |
 |---|---|

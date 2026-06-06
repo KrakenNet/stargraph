@@ -1,13 +1,13 @@
 # Cypher Portable Subset
 
-Harbor's `GraphStore` Protocol speaks Cypher, but only a **portable subset** that
+Stargraph's `GraphStore` Protocol speaks Cypher, but only a **portable subset** that
 runs unchanged on both **Kuzu** (the v1 default Provider) and **Neo4j 5** (the
 documented swap path for operators who outgrow embedded Kuzu). The subset is
-enforced by a single linter — `harbor.stores.cypher.Linter` — that fires before
+enforced by a single linter — `stargraph.stores.cypher.Linter` — that fires before
 any query reaches a backend.
 
 This page is the canonical allow / ban list. The implementation is at
-[`src/harbor/stores/cypher.py`](https://github.com/KrakenNet/harbor/blob/main/src/harbor/stores/cypher.py)
+[`src/stargraph/stores/cypher.py`](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/stores/cypher.py)
 and the rule set is exercised by the FR-12 two-engine gate test suite.
 
 ## Why a subset
@@ -24,8 +24,8 @@ boundary passes through `Linter.check()` first. Reject-loud, run-everywhere.
 ## Linter contract
 
 ```python
-from harbor.stores.cypher import Linter
-from harbor.errors import UnportableCypherError
+from stargraph.stores.cypher import Linter
+from stargraph.errors import UnportableCypherError
 
 linter = Linter()
 
@@ -34,7 +34,7 @@ linter.check("CALL apoc.coll.zip([1,2], [3,4])")            # raises
 # UnportableCypherError(rule='apoc-call', match='apoc.', ...)
 ```
 
-`Linter.check(cypher)` raises `UnportableCypherError` (subclass of `HarborError`)
+`Linter.check(cypher)` raises `UnportableCypherError` (subclass of `StargraphError`)
 on the first ban-list match. The error carries `context['rule']` (the rule slug)
 and `context['match']` (the offending substring) for log surfacing.
 
@@ -52,7 +52,7 @@ what it rejects**, not what it accepts; the working set in production is:
 | Write clauses | `CREATE`, `MERGE`, `SET`, `DELETE`, `DETACH DELETE`, `REMOVE` | yes | yes |
 | Pattern syntax | Node `(n:Label {prop: $param})`, relationship `-[r:REL]->`, anonymous nodes/rels | yes | yes |
 | Bounded variable-length | `*1..3`, `*..5`, `*2..` | yes | yes |
-| Schema | `CREATE NODE TABLE`, `CREATE REL TABLE` (Kuzu) / `CREATE (n:Label)` + indexes (Neo4j) | yes (DDL via `harbor.stores.kuzu` migrations) | yes (mapped by Neo4j Provider) |
+| Schema | `CREATE NODE TABLE`, `CREATE REL TABLE` (Kuzu) / `CREATE (n:Label)` + indexes (Neo4j) | yes (DDL via `stargraph.stores.kuzu` migrations) | yes (mapped by Neo4j Provider) |
 | Parameters | `$name`, `$ids` (positional or named) | yes | yes |
 | Aggregates | `count()`, `collect()`, `sum()`, `avg()`, `min()`, `max()` | yes | yes |
 | String fns | `toLower`, `toUpper`, `trim`, `substring`, `replace`, `split` | yes | yes |
@@ -126,9 +126,9 @@ false negatives would let a write through a read capability and are not.
 
 | Concern | Reused from | Why |
 |---|---|---|
-| Error class | `harbor.errors.UnportableCypherError` | One hierarchy across stack (NFR-4) |
+| Error class | `stargraph.errors.UnportableCypherError` | One hierarchy across stack (NFR-4) |
 | Capability strings | engine FR-26 capability registry | One vocabulary |
 | Backend swap seam | `GraphStore` Protocol | Linter is engine-agnostic by construction |
 
-See [design §3.2](https://github.com/KrakenNet/harbor/blob/main/specs/harbor-knowledge/design.md)
+See [design §3.2](https://github.com/KrakenNet/stargraph/blob/main/specs/stargraph-knowledge/design.md)
 for the full Provider implementation notes.

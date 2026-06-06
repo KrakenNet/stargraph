@@ -1,12 +1,12 @@
 # MCP Adapter
 
-`harbor.adapters.mcp` is the Model Context Protocol stdio adapter (FR-25,
-design §3.3.2). It translates an MCP server's tool catalogue into Harbor
+`stargraph.adapters.mcp` is the Model Context Protocol stdio adapter (FR-25,
+design §3.3.2). It translates an MCP server's tool catalogue into Stargraph
 [`ToolSpec`](../tools.md#toolspec) records and gates every `call_tool`
 invocation through three controls before the response reaches the LM
 context.
 
-Source: `src/harbor/adapters/mcp.py`.
+Source: `src/stargraph/adapters/mcp.py`.
 
 ## `bind`
 
@@ -41,7 +41,7 @@ environments where the optional dependency is absent.
 
 Each MCP `Tool` becomes a `ToolSpec` with:
 
-| MCP wire field | Harbor field |
+| MCP wire field | Stargraph field |
 | --- | --- |
 | `name` | `name` |
 | `description` | `description` |
@@ -148,8 +148,8 @@ FR-25 contract requires a JSON object.
 ## Example
 
 ```python
-from harbor.adapters import mcp
-from harbor.security import Capabilities
+from stargraph.adapters import mcp
+from stargraph.security import Capabilities
 
 caps = Capabilities(...)
 specs = await mcp.bind(server_params, capabilities=caps)

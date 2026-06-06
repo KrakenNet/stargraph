@@ -3,12 +3,12 @@
 `/v1/runs/{run_id}/stream` is the read-only WebSocket endpoint that pushes
 typed `Event` shapes to subscribers as a run progresses. Frames are
 JSON-serialized via the canonical Pydantic discriminated union (see
-`harbor.runtime.events:Event`).
+`stargraph.runtime.events:Event`).
 
 The WS surface is read-only on the server side: clients receive event
 frames but cannot send anything except an optional `ping`. Slow
 consumers are disconnected with WS code 1011 + a 5s emit timeout
-(`harbor.serve.broadcast`); this prevents one stalled subscriber from
+(`stargraph.serve.broadcast`); this prevents one stalled subscriber from
 back-pressuring the entire broadcast hub.
 
 ## Topics

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-GREEN: MiniLM safetensors sha256 pin (FR-15, AC-11).
 
-Asserts :class:`harbor.stores.embeddings.MiniLMEmbedder` enforces the
-pinned :data:`harbor.stores.embeddings.MINILM_SHA256` against the
+Asserts :class:`stargraph.stores.embeddings.MiniLMEmbedder` enforces the
+pinned :data:`stargraph.stores.embeddings.MINILM_SHA256` against the
 on-disk safetensors weights:
 
 1. :func:`test_sha256_match_no_error` -- when the hashed bytes equal
    the pin, construction succeeds.
 2. :func:`test_sha256_drift_raises_mismatch` -- when the hash differs,
-   :class:`harbor.errors.EmbeddingModelHashMismatch` is raised with the
+   :class:`stargraph.errors.EmbeddingModelHashMismatch` is raised with the
    expected/actual digests in ``context``.
 
 Tests heavily mock ``huggingface_hub.snapshot_download``,
@@ -27,9 +27,9 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
-from harbor.errors import EmbeddingModelHashMismatch
-from harbor.stores import embeddings
-from harbor.stores.embeddings import MINILM_SHA256, MiniLMEmbedder
+from stargraph.errors import EmbeddingModelHashMismatch
+from stargraph.stores import embeddings
+from stargraph.stores.embeddings import MINILM_SHA256, MiniLMEmbedder
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

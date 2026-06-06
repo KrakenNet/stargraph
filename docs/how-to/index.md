@@ -1,13 +1,13 @@
 # How-to Guides
 
-Task-oriented recipes for building, integrating, and operating Harbor.
-Each guide assumes you already have Harbor installed (`pip install
+Task-oriented recipes for building, integrating, and operating Stargraph.
+Each guide assumes you already have Stargraph installed (`pip install
 stargraph`) and have read the [Plugin Model](../concepts/plugins.md) and
 [IR Concepts](../concepts/ir.md).
 
 ## Authoring
 
-Build the things that run inside Harbor.
+Build the things that run inside Stargraph.
 
 - [Build a skill](build-skill.md) — instantiate `Skill(...)`, declare
   `state_schema`, and register via the `register_skills` hook.
@@ -15,16 +15,16 @@ Build the things that run inside Harbor.
   callable as a discoverable distribution.
 - [Build an agent](build-agent.md) — compose a Skill, tools, and a graph
   into the canonical ReAct-style loop with HITL and memory hooks.
-- [Author a harbor.yaml graph](build-graph.md) — write an IR document
+- [Author a stargraph.yaml graph](build-graph.md) — write an IR document
   end-to-end and run it.
 - [Author a Bosun pack](bosun-pack.md) — bundle CLIPS rules, sign, and
-  distribute as a `harbor.packs` plugin.
+  distribute as a `stargraph.packs` plugin.
 - [Add a Fathom / Bosun rule pack](add-rule-pack.md) — wire a packaged
   rule pack into a graph's `governance` block.
 
 ## Integrations
 
-Wire Harbor to the outside world.
+Wire Stargraph to the outside world.
 
 - [Add an MCP server](add-mcp-server.md) — bind a stdio MCP server's
   tools and gate them through capability + schema + sanitization.
@@ -45,9 +45,9 @@ Run, replay, and persist.
 
 ## See also
 
-- [CLI Reference](../reference/cli.md) — every `harbor` subcommand.
+- [CLI Reference](../reference/cli.md) — every `stargraph` subcommand.
 - [IR Schema](../reference/ir-schema.md) — the wire shape of every
   field referenced below.
 - [Plugin Manifest](../reference/plugin-manifest.md) — the
-  `harbor_plugin()` factory contract.
+  `stargraph_plugin()` factory contract.
 - [Hookspecs](../reference/hookspecs.md) — pluggy hook surface.

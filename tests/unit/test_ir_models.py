@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.ir._models` (FR-6, FR-11, AC-9.1).
+"""Unit tests for :mod:`stargraph.ir._models` (FR-6, FR-11, AC-9.1).
 
 Covers:
 
@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from harbor.ir._models import (
+from stargraph.ir._models import (
     Action,
     AssertAction,
     FactTemplate,
@@ -41,7 +41,7 @@ from harbor.ir._models import (
     SlotDef,
     ToolSpec,
 )
-from harbor.tools.spec import SideEffects
+from stargraph.tools.spec import SideEffects
 
 _ACTION_ADAPTER: TypeAdapter[Action] = TypeAdapter(Action)
 

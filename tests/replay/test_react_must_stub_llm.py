@@ -2,9 +2,9 @@
 """ReAct replay refuses live LLM calls (FR-35, AC-10.2, NFR-4).
 
 The must_stub policy: a replayed ReAct loop MUST consume per-step records
-from :class:`harbor.replay.react_cassette.ReactStepReplayCassette`. A miss
+from :class:`stargraph.replay.react_cassette.ReactStepReplayCassette`. A miss
 (no recorded entry for ``(node_name, step_id)``) is a loud failure --
-:class:`harbor.errors.ReplayError`, never a fall-through to a live LLM
+:class:`stargraph.errors.ReplayError`, never a fall-through to a live LLM
 call. This pins the contract directly on the cassette surface so the
 guarantee is a structural property of the replay layer, not a policy
 the loop driver has to remember to enforce.
@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.errors import ReplayError
-from harbor.replay.react_cassette import (
+from stargraph.errors import ReplayError
+from stargraph.replay.react_cassette import (
     ReactStepRecord,
     ReactStepReplayCassette,
     input_hash,

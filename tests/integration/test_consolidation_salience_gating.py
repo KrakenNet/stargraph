@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Salience-gated consolidation integration test (FR-31, design §3.6/§3.14).
 
-FR-31 mandates a pluggable :class:`harbor.skills.salience.SalienceScorer`
+FR-31 mandates a pluggable :class:`stargraph.skills.salience.SalienceScorer`
 gate at the episodic -> semantic consolidation seam: episodes scoring
 below a caller-chosen threshold are filtered *before* the consolidation
 rule body runs (avoids promoting noise per AC-5.5).
@@ -30,13 +30,13 @@ from pathlib import Path  # noqa: TC003
 import aiosqlite
 import pytest
 
-from harbor.skills.salience import RuleBasedScorer, SalienceContext, SalienceScorer
-from harbor.stores.memory import (
+from stargraph.skills.salience import RuleBasedScorer, SalienceContext, SalienceScorer
+from stargraph.stores.memory import (
     ConsolidationRule,
     Episode,
     MemoryDelta,
 )
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

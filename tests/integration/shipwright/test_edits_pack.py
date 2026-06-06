@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.skills.shipwright._pack import fresh_engine, load_pack
+from stargraph.skills.shipwright._pack import fresh_engine, load_pack
 
 if TYPE_CHECKING:
     from fathom import Engine

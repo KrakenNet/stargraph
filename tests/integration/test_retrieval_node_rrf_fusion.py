@@ -2,7 +2,7 @@
 """RetrievalNode RRF fusion contract test (FR-26, AC-4, Task 3.30).
 
 Pins the fused-rank order produced by
-:class:`harbor.nodes.retrieval.RetrievalNode` against the canonical RRF
+:class:`stargraph.nodes.retrieval.RetrievalNode` against the canonical RRF
 formula ``score(id) = Σ_lists 1/(k_param + rank_in_list)`` (rank is
 1-based).
 
@@ -18,15 +18,15 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from pydantic import BaseModel
 
-from harbor.ir._models import StoreRef
-from harbor.nodes.retrieval import RetrievalNode
-from harbor.stores.rerankers import RRFReranker
-from harbor.stores.vector import Hit
+from stargraph.ir._models import StoreRef
+from stargraph.nodes.retrieval import RetrievalNode
+from stargraph.stores.rerankers import RRFReranker
+from stargraph.stores.vector import Hit
 
 if TYPE_CHECKING:
-    from harbor.nodes.base import ExecutionContext
-    from harbor.stores.doc import DocStore
-    from harbor.stores.vector import VectorStore
+    from stargraph.nodes.base import ExecutionContext
+    from stargraph.stores.doc import DocStore
+    from stargraph.stores.vector import VectorStore
 
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]

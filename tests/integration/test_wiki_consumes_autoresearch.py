@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
-from harbor.skills.refs.wiki import WikiSkill, WikiState
+from stargraph.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
+from stargraph.skills.refs.wiki import WikiSkill, WikiState
 
 pytestmark = [
     pytest.mark.knowledge,

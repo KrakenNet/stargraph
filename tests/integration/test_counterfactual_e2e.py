@@ -4,31 +4,31 @@
 Phase 5 task 5.7. Drives the full counterfactual surface:
 
 1. Run the 6-node ``tests/fixtures/sample-graph-phase5.yaml`` graph
-   end-to-end via ``harbor run`` (parallel/ML kinds scoped down -- see
+   end-to-end via ``stargraph run`` (parallel/ML kinds scoped down -- see
    the fixture header comment for the linear ``echo + dspy + halt``
    topology).
-2. Load the resulting :class:`~harbor.replay.history.RunHistory` from
+2. Load the resulting :class:`~stargraph.replay.history.RunHistory` from
    the on-disk SQLite checkpoint store; assert 6 checkpoints, one per
    node tick.
-3. Build a :class:`~harbor.replay.counterfactual.CounterfactualMutation`
+3. Build a :class:`~stargraph.replay.counterfactual.CounterfactualMutation`
    and exercise the typed surface
-   (:func:`~harbor.replay.counterfactual.derived_graph_hash`).
+   (:func:`~stargraph.replay.counterfactual.derived_graph_hash`).
 4. Construct a synthetic counterfactual :class:`RunHistory` that diverges
    from the original at step ``N`` (state mutation), then call
-   :func:`harbor.replay.compare.compare` and assert the resulting
+   :func:`stargraph.replay.compare.compare` and assert the resulting
    :class:`RunDiff` has the expected step diffs.
-5. Re-run ``harbor run`` against a fresh checkpoint DB and assert the
+5. Re-run ``stargraph run`` against a fresh checkpoint DB and assert the
    modeled event log is byte-identical to the first run after stripping
    wall-clock fields the FR-28 shims do not cover (Temporal "cannot
    change the past" invariant -- the recorded original is durable).
-6. Smoke ``harbor counterfactual --help`` and the full
-   ``harbor counterfactual <graph> --step N --mutate mutation.yaml``
+6. Smoke ``stargraph counterfactual --help`` and the full
+   ``stargraph counterfactual <graph> --step N --mutate mutation.yaml``
    subcommand against the same fixture; assert it prints the original
    and derived graph hashes and exits 0.
 
-Per the task's CRITICAL CONSTRAINT 6, ``harbor.load_run()`` is not yet
+Per the task's CRITICAL CONSTRAINT 6, ``stargraph.load_run()`` is not yet
 a public surface; this test wires :class:`RunHistory` and
-:mod:`harbor.replay.counterfactual` directly. When ``load_run`` lands
+:mod:`stargraph.replay.counterfactual` directly. When ``load_run`` lands
 the test should swap to it without changing the assertions.
 """
 
@@ -44,12 +44,12 @@ from typing import Any
 from fathom.chained_log import GENESIS_RECORD_TYPE
 from tests.fixtures.ansi import strip_ansi
 
-from harbor.audit.jsonl import unwrap_audit_record
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.replay.compare import RunDiff, compare
-from harbor.replay.counterfactual import CounterfactualMutation, derived_graph_hash
-from harbor.replay.history import RunHistory
+from stargraph.audit.jsonl import unwrap_audit_record
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.replay.compare import RunDiff, compare
+from stargraph.replay.counterfactual import CounterfactualMutation, derived_graph_hash
+from stargraph.replay.history import RunHistory
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 SAMPLE_GRAPH: Path = REPO_ROOT / "tests" / "fixtures" / "sample-graph-phase5.yaml"
@@ -58,9 +58,9 @@ MUTATION_YAML: Path = REPO_ROOT / "tests" / "fixtures" / "mutation.yaml"
 _RUN_ID_RE: re.Pattern[str] = re.compile(r"run_id=(\S+)\s+status=(\S+)")
 
 
-def _run_harbor(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+def _run_stargraph(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["harbor", *args],
+        ["stargraph", *args],
         capture_output=True,
         check=check,
         cwd=REPO_ROOT,
@@ -68,13 +68,13 @@ def _run_harbor(*args: str, check: bool = True) -> subprocess.CompletedProcess[s
     )
 
 
-def _harbor_run_to_artifacts(
+def _stargraph_run_to_artifacts(
     *,
     log_file: Path,
     checkpoint_db: Path,
 ) -> tuple[str, str]:
-    """Invoke ``harbor run`` against the phase-5 fixture; return ``(run_id, status)``."""
-    result = _run_harbor(
+    """Invoke ``stargraph run`` against the phase-5 fixture; return ``(run_id, status)``."""
+    result = _run_stargraph(
         "run",
         str(SAMPLE_GRAPH),
         "--log-file",
@@ -107,7 +107,7 @@ def _normalize_event(ev: dict[str, Any]) -> dict[str, Any]:
     """Strip wall-clock fields the FR-28 determinism shims do not cover.
 
     ``ts`` (event envelope) and ``run_duration_ms`` (terminal
-    :class:`~harbor.runtime.events.ResultEvent`) come from
+    :class:`~stargraph.runtime.events.ResultEvent`) come from
     :func:`datetime.now` / monotonic time inside the loop driver, not
     through the determinism shims; ``run_id``, ``call_id``, and the
     bus-side timestamps differ run-to-run because the engine assigns
@@ -141,7 +141,7 @@ def test_counterfactual_e2e_smoke(tmp_path: Path) -> None:
     """End-to-end smoke: original run + cf RunDiff + CLI counterfactual.
 
     Pins the FR-27 / US-4 contract end-to-end without depending on
-    ``harbor.load_run`` (not yet a public surface; CONSTRAINT 6).
+    ``stargraph.load_run`` (not yet a public surface; CONSTRAINT 6).
     """
     assert SAMPLE_GRAPH.exists(), f"missing fixture: {SAMPLE_GRAPH}"
     assert MUTATION_YAML.exists(), f"missing fixture: {MUTATION_YAML}"
@@ -151,7 +151,7 @@ def test_counterfactual_e2e_smoke(tmp_path: Path) -> None:
     # ------------------------------------------------------------------ #
     orig_log = tmp_path / "orig.jsonl"
     orig_db = tmp_path / "orig.sqlite"
-    orig_run_id, orig_status = _harbor_run_to_artifacts(
+    orig_run_id, orig_status = _stargraph_run_to_artifacts(
         log_file=orig_log,
         checkpoint_db=orig_db,
     )
@@ -259,7 +259,7 @@ def test_counterfactual_e2e_smoke(tmp_path: Path) -> None:
     # *modeled* event payload, not the per-run UUIDs/timestamps.
     rerun_log = tmp_path / "rerun.jsonl"
     rerun_db = tmp_path / "rerun.sqlite"
-    _, rerun_status = _harbor_run_to_artifacts(
+    _, rerun_status = _stargraph_run_to_artifacts(
         log_file=rerun_log,
         checkpoint_db=rerun_db,
     )
@@ -276,15 +276,15 @@ def test_counterfactual_e2e_smoke(tmp_path: Path) -> None:
     )
 
     # ------------------------------------------------------------------ #
-    # 6. CLI ``harbor counterfactual``                                   #
+    # 6. CLI ``stargraph counterfactual``                                   #
     # ------------------------------------------------------------------ #
-    help_result = _run_harbor("counterfactual", "--help")
+    help_result = _run_stargraph("counterfactual", "--help")
     assert help_result.returncode == 0, help_result.stderr
     help_text = strip_ansi(help_result.stdout)
     assert "--step" in help_text
     assert "--mutate" in help_text
 
-    cli_cf = _run_harbor(
+    cli_cf = _run_stargraph(
         "counterfactual",
         str(SAMPLE_GRAPH),
         "--step",

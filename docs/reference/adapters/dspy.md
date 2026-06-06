@@ -1,12 +1,12 @@
 # DSPy Adapter
 
-`harbor.adapters.dspy` is the force-loud DSPy seam (FR-5, FR-6, FR-25,
+`stargraph.adapters.dspy` is the force-loud DSPy seam (FR-5, FR-6, FR-25,
 design §3.3.1). The seam is intentionally thin: a logging filter installed
 on `dspy.adapters.json_adapter` converts DSPy's silent
 ChatAdapter→JSONAdapter fallback warning into
-`harbor.errors.AdapterFallbackError`.
+`stargraph.errors.AdapterFallbackError`.
 
-Source: `src/harbor/adapters/dspy.py`.
+Source: `src/stargraph/adapters/dspy.py`.
 
 ## `bind`
 
@@ -14,7 +14,7 @@ Source: `src/harbor/adapters/dspy.py`.
 def bind(module: Any, *, signature_map: Any) -> DSPyNode: ...
 ```
 
-Returns a [`harbor.nodes.dspy.DSPyNode`](../nodes/index.md) wrapping `module`
+Returns a [`stargraph.nodes.dspy.DSPyNode`](../nodes/index.md) wrapping `module`
 with the force-loud config wired in. Both parameters are typed `Any` at the
 seam so the adapter accepts:
 
@@ -82,7 +82,7 @@ DSPy upstream changes the wording, both copies must move in lockstep.
 SignatureMap = dict[str, str]
 ```
 
-A user-supplied mapping from Harbor state-field names to DSPy signature
+A user-supplied mapping from Stargraph state-field names to DSPy signature
 input/output names. Phase-2 keeps the type structurally a plain mapping to
 avoid premature coupling; the concrete schema lands when `DSPyNode` grows
 beyond the seam.
@@ -91,7 +91,7 @@ beyond the seam.
 
 ```python
 import dspy
-from harbor.adapters.dspy import bind
+from stargraph.adapters.dspy import bind
 
 class Summarize(dspy.Signature):
     """Summarize a document."""
@@ -120,7 +120,7 @@ node = bind(
 
 | Error | When |
 | --- | --- |
-| `harbor.errors.AdapterFallbackError` | DSPy emitted the canonical fallback warning. The warning is suppressed; the error carries the original message plus `adapter="dspy"`, `original_adapter="ChatAdapter"`, `fallback_adapter="JSONAdapter"`. |
+| `stargraph.errors.AdapterFallbackError` | DSPy emitted the canonical fallback warning. The warning is suppressed; the error carries the original message plus `adapter="dspy"`, `original_adapter="ChatAdapter"`, `fallback_adapter="JSONAdapter"`. |
 
 ## See also
 

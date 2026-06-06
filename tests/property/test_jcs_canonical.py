@@ -4,7 +4,7 @@
 Complements ``test_structural_hash_jcs_stable.py`` (which pins the
 sha256-of-JCS contract on the engine's structural-hash primitive) and
 ``test_ir_roundtrip.py`` (which pins Pydantic round-trip equality on
-:class:`harbor.ir.IRDocument`). This file pins the *raw JCS encoding* itself:
+:class:`stargraph.ir.IRDocument`). This file pins the *raw JCS encoding* itself:
 
 1. **Stable bytes across 100 random key orderings.** RFC 8785 lex-sorts
    object keys before serialization, so any IR-shaped dict re-built with

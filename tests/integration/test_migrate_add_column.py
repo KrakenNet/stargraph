@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """FR-17: ``migrate(plan)`` add-nullable-column happy path on SQLiteDocStore.
 
-The v1 migrate contract (harbor-knowledge design §4.5) supports
+The v1 migrate contract (stargraph-knowledge design §4.5) supports
 add-nullable-column **only**. SQLite's ``ALTER TABLE ... ADD COLUMN``
 makes this a one-statement DDL change; the test seeds rows, applies
 the plan, and asserts:
@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING
 import aiosqlite
 import pytest
 
-from harbor.stores._common import MigrationPlan
-from harbor.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores._common import MigrationPlan
+from stargraph.stores.sqlite_doc import SQLiteDocStore
 
 if TYPE_CHECKING:
     from pathlib import Path

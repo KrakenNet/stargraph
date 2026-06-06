@@ -18,7 +18,7 @@ checkpoint, and exits cleanly. Resume happens via cold-restart through
 ## `InterruptNodeConfig`
 
 Pydantic config (subclasses `IRBase`, so `extra="forbid"`). Fields mirror
-`harbor.ir._models.InterruptAction` verbatim.
+`stargraph.ir._models.InterruptAction` verbatim.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -42,11 +42,11 @@ established.
 
 - **Reads** — none; the signal is raise-only and the loop owns state.
 - **Writes** — none from this node. The actual analyst response is asserted as
-  a `harbor.evidence` Fathom fact by `GraphRun.respond` post-resume.
+  a `stargraph.evidence` Fathom fact by `GraphRun.respond` post-resume.
 
 ## Side effects + replay
 
-- `side_effects = SideEffects.read` — no Harbor-side mutation; only requests
+- `side_effects = SideEffects.read` — no Stargraph-side mutation; only requests
   human input.
 - Replay re-executes the raise; the loop's `_HitInterrupt` handler is
   deterministic.
@@ -75,11 +75,11 @@ See `tests/fixtures/triage_stub_broker.yaml` for the full HITL pipeline.
 
 ## Errors
 
-- `_HitInterrupt` (private to `harbor.graph.loop`) is **always** raised — this
+- `_HitInterrupt` (private to `stargraph.graph.loop`) is **always** raised — this
   is the dispatch contract, not an error condition.
 
 ## See also
 
 - [`NodeBase`](base.md) — abstract contract.
-- `harbor.graph.run.GraphRun.respond` / `GraphRun.resume` — the resume path.
+- `stargraph.graph.run.GraphRun.respond` / `GraphRun.resume` — the resume path.
 - [Engine: checkpointer](../../engine/checkpointer.md) — durability for HITL waits.

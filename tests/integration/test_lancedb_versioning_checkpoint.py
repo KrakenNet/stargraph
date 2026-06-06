@@ -7,7 +7,7 @@ records that integer so a counterfactual replay can ``checkout(version)``
 the exact dataset snapshot that produced the run.
 
 Three behaviours are exercised end-to-end against a real on-disk LanceDB
-table and a real :class:`~harbor.checkpoint.sqlite.SQLiteCheckpointer`:
+table and a real :class:`~stargraph.checkpoint.sqlite.SQLiteCheckpointer`:
 
 1. :func:`test_checkpoint_records_lance_version` -- upsert N rows, ask the
    store for :py:meth:`current_version`, write a :class:`Checkpoint`
@@ -28,11 +28,11 @@ from typing import TYPE_CHECKING
 import lancedb  # pyright: ignore[reportMissingTypeStubs]
 import pytest
 
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.vector import Row
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from pathlib import Path

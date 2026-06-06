@@ -4,13 +4,13 @@ The Checkpointer is the storage-driver contract the engine runtime calls into to
 persist and restore execution state. Drivers implement it structurally
 (`typing.Protocol` — no inheritance required); two ship in-tree:
 
-- `harbor.checkpoint.sqlite.SQLiteCheckpointer` — aiosqlite + WAL, single-node
-- `harbor.checkpoint.postgres.PostgresCheckpointer` — asyncpg, pgbouncer-safe
+- `stargraph.checkpoint.sqlite.SQLiteCheckpointer` — aiosqlite + WAL, single-node
+- `stargraph.checkpoint.postgres.PostgresCheckpointer` — asyncpg, pgbouncer-safe
 
 ## The protocol
 
 ```python
-from harbor.checkpoint import Checkpoint, Checkpointer, RunSummary
+from stargraph.checkpoint import Checkpoint, Checkpointer, RunSummary
 
 class Checkpointer(Protocol):
     async def bootstrap(self) -> None: ...
@@ -36,8 +36,8 @@ first `start()`). The runtime calls `write()` once per step boundary under
 | `step` | `int` | Monotonically increasing per run |
 | `branch_id` | `str \| None` | Parallel-branch identity; `None` = main |
 | `parent_step_idx` | `int \| None` | Parent step for branched checkpoints |
-| `graph_hash` | `str` | May be derived (cf-prefix `harbor-cf-v1...`) |
-| `runtime_hash` | `str` | sha256(`python_version + harbor_version`) |
+| `graph_hash` | `str` | May be derived (cf-prefix `stargraph-cf-v1...`) |
+| `runtime_hash` | `str` | sha256(`python_version + stargraph_version`) |
 | `state` | `dict[str, Any]` | JCS-serializable snapshot of state |
 | `clips_facts` | `list[Any]` | `save_facts` text-format output |
 | `last_node` | `str` | The IR node id that produced this checkpoint |
@@ -47,7 +47,7 @@ first `start()`). The runtime calls `write()` once per step boundary under
 | `side_effects_hash` | `str` | sha256 over recorded tool outputs |
 
 The state is serialized through `orjson` into the JSONB column — see
-`harbor.checkpoint._codec` for the canonical codec.
+`stargraph.checkpoint._codec` for the canonical codec.
 
 ## Resume contract
 
@@ -57,12 +57,12 @@ the load. Three failures are loud (FR-6, FR-19, FR-20, FR-27):
 1. **Missing run/step** → `CheckpointError(reason="no-checkpoint" | "missing-step")`
 2. **cf-derived hash on resume** → `CheckpointError(reason="cf-prefix-hash-refused")`.
    Counterfactual checkpoints are not eligible for resume against the parent
-   `run_id`; the cf-prefix `harbor-cf-v1` marks the row.
+   `run_id`; the cf-prefix `stargraph-cf-v1` marks the row.
 3. **graph_hash mismatch** without an applicable IR `migrate` block →
    `CheckpointError(reason="graph-hash-mismatch", expected_hash=..., actual_hash=..., migrate_available=False)`
 
 ```python
-from harbor.graph import GraphRun
+from stargraph.graph import GraphRun
 
 # Continuation of the same logical run — same run_id, fresh handle.
 run = await GraphRun.resume(checkpointer, run_id="run-abc", graph=graph)

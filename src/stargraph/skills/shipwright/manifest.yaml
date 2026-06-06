@@ -1,0 +1,7 @@
+id: stargraph.skills.shipwright
+version: "0.1.0"
+kind: workflow
+description: |
+  Shipwright — a Stargraph graph that authors Stargraph graphs from a brief.
+  Interview-driven (rules + LLM dual-truth), verified end-to-end, replayable.
+state_schema: stargraph.skills.shipwright.state:State

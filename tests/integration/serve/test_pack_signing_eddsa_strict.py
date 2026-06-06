@@ -5,7 +5,7 @@ Re-asserts the security boundary at integration scope (the unit-level
 canary lives at ``tests/unit/bosun/test_signing_roundtrip.py`` and
 ``tests/unit/bosun/test_signing.py``). The contract under test is the
 locked design §17 Decision #4 STRICT algorithm whitelist:
-:func:`harbor.bosun.signing.verify_pack` MUST refuse any JWT whose
+:func:`stargraph.bosun.signing.verify_pack` MUST refuse any JWT whose
 header ``alg`` is not ``EdDSA`` (algorithm-confusion attack defense).
 
 Cases covered (FR-41, FR-42, AC-3.3):
@@ -38,13 +38,13 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from harbor.bosun.signing import (
+from stargraph.bosun.signing import (
     PackSignatureError,
     StaticTrustStore,
     sign_pack,
     verify_pack,
 )
-from harbor.serve.profiles import ClearedProfile
+from stargraph.serve.profiles import ClearedProfile
 
 if TYPE_CHECKING:
     from pathlib import Path

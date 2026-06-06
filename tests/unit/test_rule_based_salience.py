@@ -2,7 +2,7 @@
 """Snapshot test: :class:`RuleBasedScorer` numerical output (FR-31, AC-5.5).
 
 Pins the Park 2023 formula constants on a fixed input so refactors of
-:mod:`harbor.skills.salience` cannot silently shift the distribution
+:mod:`stargraph.skills.salience` cannot silently shift the distribution
 that downstream consolidation thresholds were tuned against. The
 recency anchor is mocked via :func:`datetime.now` so the assertion is
 deterministic.
@@ -16,8 +16,8 @@ from unittest.mock import patch
 
 import pytest
 
-from harbor.skills.salience import RuleBasedScorer, SalienceContext
-from harbor.stores.memory import Episode
+from stargraph.skills.salience import RuleBasedScorer, SalienceContext
+from stargraph.stores.memory import Episode
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 
@@ -57,7 +57,7 @@ async def test_rule_based_scorer_snapshot() -> None:
     expected_rule = math.tanh(15 / 5.0)
     expected = expected_recency * expected_freq * expected_rule
 
-    with patch("harbor.skills.salience.datetime", _FrozenDatetime):
+    with patch("stargraph.skills.salience.datetime", _FrozenDatetime):
         score = await RuleBasedScorer().score(episode, ctx)
 
     assert math.isclose(score, expected, rel_tol=1e-9)

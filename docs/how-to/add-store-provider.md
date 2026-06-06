@@ -2,13 +2,13 @@
 
 ## Goal
 
-Implement a new provider for one of Harbor's five Store Protocols
+Implement a new provider for one of Stargraph's five Store Protocols
 (Vector, Graph, Doc, Memory, Fact) and register it via the
-`harbor.stores` entry-point group + `register_stores` hook.
+`stargraph.stores` entry-point group + `register_stores` hook.
 
 ## Prerequisites
 
-- Harbor installed (`pip install stargraph[stores]>=0.2`).
+- Stargraph installed (`pip install stargraph[stores]>=0.2`).
 - A backend you want to wrap (e.g. Postgres-pgvector, Neo4j, Mongo).
 - Familiarity with [Stores reference](../knowledge/stores.md).
 
@@ -18,11 +18,11 @@ Implement a new provider for one of Harbor's five Store Protocols
 
 | Protocol | Module | Use when |
 | --- | --- | --- |
-| [`VectorStore`][vector] | `harbor.stores.vector` | ANN, FTS, hybrid search over embedded text. |
-| [`GraphStore`][graph] | `harbor.stores.graph` | Triple writes + portable-subset Cypher. |
-| `DocStore` | `harbor.stores.doc` | Document store with metadata-filter querying. |
-| `MemoryStore` | `harbor.stores.memory` | Episode/fact-of-event persistence. |
-| `FactStore` | `harbor.stores.fact` | CLIPS fact persistence + pattern queries. |
+| [`VectorStore`][vector] | `stargraph.stores.vector` | ANN, FTS, hybrid search over embedded text. |
+| [`GraphStore`][graph] | `stargraph.stores.graph` | Triple writes + portable-subset Cypher. |
+| `DocStore` | `stargraph.stores.doc` | Document store with metadata-filter querying. |
+| `MemoryStore` | `stargraph.stores.memory` | Episode/fact-of-event persistence. |
+| `FactStore` | `stargraph.stores.fact` | CLIPS fact persistence + pattern queries. |
 
 All five share the lifecycle triple `bootstrap` / `health` / `migrate`
 plus per-store CRUD. Decorate with `@runtime_checkable` already on the
@@ -35,14 +35,14 @@ Protocol — your class doesn't need to subclass anything.
 from pathlib import Path
 from typing import Literal
 
-from harbor.stores import Hit, MigrationPlan, Row, StoreHealth
-from harbor.stores._common import _detect_fs_type, _lock_for, _nfs_warning
+from stargraph.stores import Hit, MigrationPlan, Row, StoreHealth
+from stargraph.stores._common import _detect_fs_type, _lock_for, _nfs_warning
 
 
 class PGVectorStore:
     """Sketch — wraps Postgres pgvector behind the VectorStore Protocol."""
 
-    def __init__(self, dsn: str, *, table: str = "harbor_vec") -> None:
+    def __init__(self, dsn: str, *, table: str = "stargraph_vec") -> None:
         self.dsn = dsn
         self.table = table
         self._pool = None  # asyncpg pool created in bootstrap
@@ -86,7 +86,7 @@ class PGVectorStore:
 
 Process-local `asyncio.Lock` instances guard concurrent writes per
 resolved path. Use `_lock_for(path)` from
-[`harbor.stores._common`][common] inside any method that mutates state:
+[`stargraph.stores._common`][common] inside any method that mutates state:
 
 ```python
 async def upsert(self, rows: list[Row]) -> None:
@@ -123,8 +123,8 @@ re-entry. Use `_write_embed_metadata` / `_verify_embed_metadata` from
 
 ```python
 # my_stores/_pack.py
-from harbor.ir import StoreSpec
-from harbor.plugin._markers import hookimpl
+from stargraph.ir import StoreSpec
+from stargraph.plugin._markers import hookimpl
 
 
 @hookimpl
@@ -169,17 +169,17 @@ class TestPGVector(VectorStoreConformance):
 
 ```toml
 # pyproject.toml
-[project.entry-points."harbor"]
-harbor_plugin = "my_stores._plugin:harbor_plugin"
+[project.entry-points."stargraph"]
+stargraph_plugin = "my_stores._plugin:stargraph_plugin"
 
-[project.entry-points."harbor.stores"]
+[project.entry-points."stargraph.stores"]
 pgvector = "my_stores._pack"
 ```
 
 Reference from a graph:
 
 ```yaml
-# harbor.yaml
+# stargraph.yaml
 stores:
   - name: kb_vec
     provider: pgvector            # matches StoreSpec.name? See ir-schema.md StoreRef
@@ -189,8 +189,8 @@ stores:
 
 ```bash
 pip install -e .
-HARBOR_TRACE_PLUGINS=1 python -c "
-from harbor.plugin.loader import build_plugin_manager
+STARGRAPH_TRACE_PLUGINS=1 python -c "
+from stargraph.plugin.loader import build_plugin_manager
 pm = build_plugin_manager()
 for specs in pm.hook.register_stores():
     for s in specs:
@@ -218,10 +218,10 @@ You should see `pgvec vector my_stores.pgvector:PGVectorStore`.
 - [Stores reference](../knowledge/stores.md)
 - [Cypher subset](../knowledge/cypher-subset.md) — for `GraphStore`
   providers.
-- [`harbor.stores._common`][common]
+- [`stargraph.stores._common`][common]
 - [`VectorStore`][vector] / [`GraphStore`][graph] Protocols
-- [Bundled providers](https://github.com/KrakenNet/harbor/tree/main/src/harbor/stores)
+- [Bundled providers](https://github.com/KrakenNet/stargraph/tree/main/src/stargraph/stores)
 
-[vector]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/stores/vector.py
-[graph]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/stores/graph.py
-[common]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/stores/_common.py
+[vector]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/stores/vector.py
+[graph]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/stores/graph.py
+[common]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/stores/_common.py

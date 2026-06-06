@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """AST walker test enforcing FR-12 / AC-13.6: ``json_schema_extra`` is dict-only.
 
-Walks ``src/harbor/ir/_models.py`` with :func:`ast.parse` and asserts that
+Walks ``src/stargraph/ir/_models.py`` with :func:`ast.parse` and asserts that
 every ``json_schema_extra=<expr>`` keyword argument -- whether on a
 ``ConfigDict(...)`` / ``BaseModel.model_config = ...`` site, a ``Field(...)``
 call, or anywhere else -- resolves to a **dict literal** (:class:`ast.Dict`),
 never to a callable form (:class:`ast.Lambda` or :class:`ast.Name`).
 
 Pydantic 2.9+ supports dict-merge semantics on ``json_schema_extra``;
-callables are forbidden under Harbor's portable-subset because they break
+callables are forbidden under Stargraph's portable-subset because they break
 declarative schema export -- the schema generator can serialize a dict at
 build time, but a callable defers logic to runtime, defeating offline
 JSON-Schema export and round-trip parity (FR-12 / AC-13.6).
@@ -25,7 +25,7 @@ import ast
 from pathlib import Path
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
-MODELS_FILE: Path = PROJECT_ROOT / "src" / "harbor" / "ir" / "_models.py"
+MODELS_FILE: Path = PROJECT_ROOT / "src" / "stargraph" / "ir" / "_models.py"
 
 
 def _line(node: ast.AST) -> int:
@@ -67,6 +67,6 @@ def test_json_schema_extra_is_dict_literal_only() -> None:
         )
 
     assert not violations, (
-        "json_schema_extra must be a dict literal under Harbor's portable-subset "
+        "json_schema_extra must be a dict literal under Stargraph's portable-subset "
         f"(FR-12, AC-13.6); callables forbidden: {violations!r}"
     )

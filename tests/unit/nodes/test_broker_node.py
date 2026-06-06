@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :class:`harbor.nodes.nautilus.BrokerNode` (FR-44, FR-46, AC-6.1, AC-6.4).
+"""Unit tests for :class:`stargraph.nodes.nautilus.BrokerNode` (FR-44, FR-46, AC-6.1, AC-6.4).
 
 The :class:`BrokerNode` is the graph-node form of the Nautilus broker
 integration. It reads three state-keys (configurable: ``agent_id_field``,
 ``intent_field``, ``output_field``), calls
 :meth:`nautilus.Broker.arequest` via the lifespan-singleton accessor
-(:func:`harbor.serve.contextvars.current_broker`), and writes the
+(:func:`stargraph.serve.contextvars.current_broker`), and writes the
 :class:`nautilus.BrokerResponse` back to ``state[output_field]`` with a
-``harbor.evidence``-shaped provenance record (``origin=tool``,
+``stargraph.evidence``-shaped provenance record (``origin=tool``,
 ``source=nautilus``, ``external_id=<broker request_id>``).
 
 Tests cover the three RED-test invariants from the task spec:
@@ -15,7 +15,7 @@ Tests cover the three RED-test invariants from the task spec:
 1. happy path -- arequest is called with the right args, response lands
    on the configured output field, provenance carries the right shape.
 2. missing-broker fail-loud -- :func:`current_broker` raises
-   :class:`HarborRuntimeError` outside an active lifespan, and
+   :class:`StargraphRuntimeError` outside an active lifespan, and
    :class:`BrokerNode` propagates that.
 3. capability gate -- when ``ctx.capabilities`` is supplied without the
    ``tools:broker_request`` permission, the node raises
@@ -31,11 +31,11 @@ import pytest
 from nautilus import BrokerResponse  # pyright: ignore[reportMissingTypeStubs]
 from pydantic import BaseModel
 
-from harbor.errors import CapabilityError, HarborRuntimeError
-from harbor.nodes.nautilus.broker_node import BrokerNode, BrokerNodeConfig
-from harbor.security.capabilities import Capabilities, CapabilityClaim
-from harbor.serve.contextvars import _broker_var, current_broker
-from harbor.tools.spec import SideEffects
+from stargraph.errors import CapabilityError, StargraphRuntimeError
+from stargraph.nodes.nautilus.broker_node import BrokerNode, BrokerNodeConfig
+from stargraph.security.capabilities import Capabilities, CapabilityClaim
+from stargraph.serve.contextvars import _broker_var, current_broker
+from stargraph.tools.spec import SideEffects
 
 
 class _State(BaseModel):
@@ -102,7 +102,7 @@ async def test_broker_node_happy_path_calls_arequest_and_writes_response() -> No
     written = patch["response"]
     assert written["data"]["hits"] == []
     # (c) provenance carries origin=tool, source=nautilus, external_id=<request_id>
-    provenance = written["__harbor_provenance__"]
+    provenance = written["__stargraph_provenance__"]
     assert provenance["origin"] == "tool"
     assert provenance["source"] == "nautilus"
     assert provenance["external_id"] == "req-abc-123"
@@ -112,7 +112,7 @@ async def test_broker_node_happy_path_calls_arequest_and_writes_response() -> No
 
 @pytest.mark.asyncio
 async def test_broker_node_without_broker_contextvar_raises() -> None:
-    """Running BrokerNode outside an active lifespan raises HarborRuntimeError."""
+    """Running BrokerNode outside an active lifespan raises StargraphRuntimeError."""
     node = BrokerNode(
         config=BrokerNodeConfig(
             agent_id_field="agent_id",
@@ -123,10 +123,10 @@ async def test_broker_node_without_broker_contextvar_raises() -> None:
     state = _State(agent_id="analyst", intent="cve-triage")
 
     # Sanity: contextvar reads None outside an active lifespan; the
-    # accessor lifts that into HarborRuntimeError.
-    with pytest.raises(HarborRuntimeError):
+    # accessor lifts that into StargraphRuntimeError.
+    with pytest.raises(StargraphRuntimeError):
         current_broker()
-    with pytest.raises(HarborRuntimeError):
+    with pytest.raises(StargraphRuntimeError):
         await node.execute(state, _Ctx())
 
 

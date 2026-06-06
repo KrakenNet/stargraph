@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-RED: ``GraphRun.resume(run_id)`` loads the latest checkpoint (FR-19, AC-3.1).
 
-Pins the contract for ``harbor.GraphRun.resume`` *before* the implementation
+Pins the contract for ``stargraph.GraphRun.resume`` *before* the implementation
 lands in task 3.26. These tests MUST be RED -- ``GraphRun.resume`` currently
-raises :class:`NotImplementedError` (see :file:`src/harbor/graph/run.py`),
+raises :class:`NotImplementedError` (see :file:`src/stargraph/graph/run.py`),
 so every async case fails at the ``await`` site. That is the expected RED
 signal for this task.
 
@@ -32,9 +32,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from harbor import GraphRun
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph import GraphRun
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
 
 if TYPE_CHECKING:
     from pathlib import Path

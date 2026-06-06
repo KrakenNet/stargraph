@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration tests for the four ``harbor.bosun.*`` reference packs (Phase 4).
+"""Integration tests for the four ``stargraph.bosun.*`` reference packs (Phase 4).
 
 Each test file exercises the full pack-load → assert-facts → run-engine →
 read-violations cycle for one pack. The shared helpers in :mod:`_helpers`

@@ -37,29 +37,29 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from pydantic import BaseModel
 
-from harbor.fathom import FathomAdapter
-from harbor.ir._models import StoreRef
-from harbor.nodes.base import NodeBase
-from harbor.nodes.retrieval import RetrievalNode
-from harbor.nodes.subgraph import SubGraphNode
-from harbor.runtime.bus import EventBus
-from harbor.skills.base import Skill, SkillKind
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.graph import NodeRef
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.memory import ConsolidationRule, Episode
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
-from harbor.stores.vector import Hit, Row
+from stargraph.fathom import FathomAdapter
+from stargraph.ir._models import StoreRef
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.retrieval import RetrievalNode
+from stargraph.nodes.subgraph import SubGraphNode
+from stargraph.runtime.bus import EventBus
+from stargraph.skills.base import Skill, SkillKind
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.memory import ConsolidationRule, Episode
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.vector import Hit, Row
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from harbor.nodes.base import ExecutionContext
-    from harbor.stores.doc import DocStore
-    from harbor.stores.vector import VectorStore
+    from stargraph.nodes.base import ExecutionContext
+    from stargraph.stores.doc import DocStore
+    from stargraph.stores.vector import VectorStore
 
 
 pytestmark = [pytest.mark.knowledge]

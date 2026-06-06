@@ -12,11 +12,11 @@ Pipeline (mirrors Phase-3 §1-§5 then layers cf §6-§7):
 
 1. Bootstrap five stores under ``tmp_path``: LanceDB (vectors), Kuzu
    (graph), and three SQLite stores (docs, memory, facts).
-2. Drive :class:`~harbor.skills.refs.wiki.WikiSkill` end-to-end on a
+2. Drive :class:`~stargraph.skills.refs.wiki.WikiSkill` end-to-end on a
    topic string -- composes :class:`AutoresearchSkill` (claims) and
    formats the markdown wiki entry with provenance citations.
-3. Promote KG triples → pinned :class:`~harbor.stores.fact.Fact` rows
-   via :func:`~harbor.stores.kg_promotion.PromoteTriplesToFacts`. Use a
+3. Promote KG triples → pinned :class:`~stargraph.stores.fact.Fact` rows
+   via :func:`~stargraph.stores.kg_promotion.PromoteTriplesToFacts`. Use a
    small ``_ConfidenceShim`` wrapping the Kuzu store so the Cypher
    result rows carry a per-triple ``confidence`` (Kuzu does not store
    edge-level confidence; the shim is the deterministic injection
@@ -24,14 +24,14 @@ Pipeline (mirrors Phase-3 §1-§5 then layers cf §6-§7):
 4. Consolidate episodes → typed :data:`MemoryDelta` deltas → pin via
    :meth:`SQLiteFactStore.apply_delta`.
 5. Record + replay :class:`ReactSkill` against
-   :class:`~harbor.replay.react_cassette.ReactStepReplayCassette`:
+   :class:`~stargraph.replay.react_cassette.ReactStepReplayCassette`:
    record-pass byte sequence must equal replay-pass byte sequence
    (FR-27 byte-identical replay).
 6. Counterfactual: for the same triples, re-fire promotion against a
    second :class:`SQLiteFactStore` with one triple's confidence
    bumped. Build synthetic original + cf :class:`RunHistory` snapshots
    whose state carries the per-triple confidence; call
-   :func:`harbor.replay.compare.compare`. Assert the resulting
+   :func:`stargraph.replay.compare.compare`. Assert the resulting
    :class:`RunDiff` has exactly one diverged step, the divergence axis
    is ``state``, and the JSONPatch op rewrites the mutated triple's
    confidence path.
@@ -54,24 +54,24 @@ import lancedb  # pyright: ignore[reportMissingTypeStubs]
 import orjson
 import pytest
 
-from harbor.checkpoint.protocol import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.fathom import FathomAdapter
-from harbor.replay.compare import RunDiff, compare
-from harbor.replay.history import RunHistory
-from harbor.replay.react_cassette import (
+from stargraph.checkpoint.protocol import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.fathom import FathomAdapter
+from stargraph.replay.compare import RunDiff, compare
+from stargraph.replay.history import RunHistory
+from stargraph.replay.react_cassette import (
     ReactStepRecord,
     ReactStepReplayCassette,
     input_hash,
 )
-from harbor.skills.react import ReactSkill, ReactState
-from harbor.skills.refs.wiki import WikiSkill, WikiState
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.fact import Fact, FactPattern
-from harbor.stores.graph import NodeRef, ResultSet
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.memory import (
+from stargraph.skills.react import ReactSkill, ReactState
+from stargraph.skills.refs.wiki import WikiSkill, WikiState
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.fact import Fact, FactPattern
+from stargraph.stores.graph import NodeRef, ResultSet
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.memory import (
     AddDelta,
     ConsolidationRule,
     DeleteDelta,
@@ -79,11 +79,11 @@ from harbor.stores.memory import (
     NoopDelta,
     UpdateDelta,
 )
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_doc import SQLiteDocStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
-from harbor.stores.vector import Row
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -106,7 +106,7 @@ _DOCS: tuple[tuple[str, str], ...] = (
 
 # (subject, predicate, object, original_confidence_str)
 # Confidence is carried as a Decimal-parseable string -- ``_row_confidence``
-# in :mod:`harbor.stores.kg_promotion` accepts ``Decimal | int | str`` and
+# in :mod:`stargraph.stores.kg_promotion` accepts ``Decimal | int | str`` and
 # falls back to ``1.0`` on floats / missing values per its POC docstring.
 _TRIPLES: tuple[tuple[str, str, str, str], ...] = (
     ("alice", "knows", "bob", "0.7"),

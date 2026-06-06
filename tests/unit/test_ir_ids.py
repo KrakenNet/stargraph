@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.ir._ids` (FR-30, FR-31, AC-14.3, AC-14.5).
+"""Unit tests for :mod:`stargraph.ir._ids` (FR-30, FR-31, AC-14.3, AC-14.5).
 
 Covers:
 
@@ -23,7 +23,7 @@ import uuid
 
 import pytest
 
-from harbor.ir._ids import (
+from stargraph.ir._ids import (
     _slug,
     autogen_node_ids,
     autogen_pack_ids,

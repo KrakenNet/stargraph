@@ -9,13 +9,13 @@ propagation + the four ``asyncio.shield`` sites). This file pins the
 1. ``quorum:N`` happy path -- N successes before deadline returns the first
    N results.
 2. ``quorum:N`` timeout path -- deadline elapses before N successes raises
-   :class:`HarborRuntimeError` (the helper-routed quorum-timeout per the
-   FR-24 raise-policy; see ``_quorum_timeout`` in :mod:`harbor.runtime.parallel`).
+   :class:`StargraphRuntimeError` (the helper-routed quorum-timeout per the
+   FR-24 raise-policy; see ``_quorum_timeout`` in :mod:`stargraph.runtime.parallel`).
 3. ``quorum:N`` tiebreak (Learning C) -- N-th success arrives at the same
    moment the deadline elapses; success wins ties (design §3.6.1 verbatim:
    "success-tie at the deadline goes to quorum -- success wins ties").
 4. ``all`` strategy -- every branch must succeed; results returned in input
-   order via :func:`harbor.runtime.parallel.run_branches`.
+   order via :func:`stargraph.runtime.parallel.run_branches`.
 
 These four cases are deliberately the *strategy* surface, not the
 shield/cancel surface 3.8 already covers.
@@ -27,8 +27,8 @@ import asyncio
 
 import pytest
 
-from harbor.errors import HarborRuntimeError
-from harbor.runtime.parallel import execute_parallel
+from stargraph.errors import StargraphRuntimeError
+from stargraph.runtime.parallel import execute_parallel
 
 
 async def test_quorum_two_of_three_succeeds_before_timeout() -> None:
@@ -67,8 +67,8 @@ async def test_quorum_three_of_three_times_out_before_quorum() -> None:
 
     Two branches sleep past the 0.05s deadline; one finishes immediately.
     Quorum-of-3 cannot be satisfied, so :func:`_quorum` raises
-    :class:`HarborRuntimeError` via ``_quorum_timeout`` (the FR-24 raise-policy
-    routes the deadline error through a Harbor helper rather than the bare
+    :class:`StargraphRuntimeError` via ``_quorum_timeout`` (the FR-24 raise-policy
+    routes the deadline error through a Stargraph helper rather than the bare
     :class:`TimeoutError`).
     """
 
@@ -84,7 +84,7 @@ async def test_quorum_three_of_three_times_out_before_quorum() -> None:
         await asyncio.sleep(60)
         return "c"  # pragma: no cover -- cancelled
 
-    with pytest.raises(HarborRuntimeError) as excinfo:
+    with pytest.raises(StargraphRuntimeError) as excinfo:
         await execute_parallel(
             [fast_a, slow_b, slow_c],
             strategy="quorum:3",
@@ -113,7 +113,7 @@ async def test_quorum_tiebreak_success_wins_at_deadline() -> None:
     is already ``done``. The harvest path in the next loop iteration counts
     the success and exits cleanly -- this is the Learning C "success wins
     ties" path. Without that contract this test would flake into a
-    :class:`HarborRuntimeError` quorum-timeout.
+    :class:`StargraphRuntimeError` quorum-timeout.
     """
     deadline = 0.05
     release = asyncio.Event()

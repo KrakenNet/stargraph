@@ -3,7 +3,7 @@
 
 Asserts the four behaviours required by ``requirements.md §FR-10`` (verbatim
 amendment 2 from research §4) and the parallel/join executor that lives at
-:mod:`harbor.runtime.parallel`:
+:mod:`stargraph.runtime.parallel`:
 
 1. ``asyncio.TaskGroup`` propagates :class:`ExceptionGroup` on first failure
    and auto-cancels sibling branches (structured-concurrency invariant -- the
@@ -11,15 +11,15 @@ amendment 2 from research §4) and the parallel/join executor that lives at
 2. ``asyncio.shield()`` protects checkpoint commit during sibling cancellation
    -- the commit completes even when the outer task is cancelled mid-flight
    (verbatim from FR-10 amendment 2: "Critical-section writes (checkpoint
-   commit, harbor.transition emit) wrapped in asyncio.shield()").
-3. ``asyncio.shield()` analogously protects ``harbor.transition`` emit so a
+   commit, stargraph.transition emit) wrapped in asyncio.shield()").
+3. ``asyncio.shield()` analogously protects ``stargraph.transition`` emit so a
    lost cancel race never leaves a half-emitted transition fact behind.
-4. **Static guard:** :mod:`harbor.runtime.parallel` MUST NOT contain the
+4. **Static guard:** :mod:`stargraph.runtime.parallel` MUST NOT contain the
    string ``asyncio.gather`` (search-and-fail). ``gather`` is forbidden in
    the parallel executor per amendment 2 -- only test fixtures and the
    explicit-opt-in ``return_exceptions=True`` path may use it.
 
-This is the [TDD-RED] half of the antipattern guard: ``harbor.runtime.parallel``
+This is the [TDD-RED] half of the antipattern guard: ``stargraph.runtime.parallel``
 does not yet exist (created in task 3.9 [TDD-GREEN]), so importing it raises
 ``ImportError`` -- the verify gate ``grep -qE "(FAILED|ERROR)"`` matches that.
 Test 4 (the grep guard) gracefully skips while the file is missing so the GREEN
@@ -35,11 +35,11 @@ from typing import Any
 
 import pytest
 
-_PARALLEL_PATH = Path("src/harbor/runtime/parallel.py")
+_PARALLEL_PATH = Path("src/stargraph/runtime/parallel.py")
 
 
 def _import_parallel() -> Any:
-    """Deferred-import helper for ``harbor.runtime.parallel``.
+    """Deferred-import helper for ``stargraph.runtime.parallel``.
 
     Mirrors the pattern in :mod:`tests.integration.test_dspy_loud_fallback`:
     routing the import through :func:`importlib.import_module` keeps pyright
@@ -47,7 +47,7 @@ def _import_parallel() -> Any:
     surfacing :class:`ImportError` at runtime as the RED signal that the
     verify gate ``grep -qE "(FAILED|ERROR)"`` matches.
     """
-    return importlib.import_module("harbor.runtime.parallel")
+    return importlib.import_module("stargraph.runtime.parallel")
 
 
 @pytest.mark.asyncio
@@ -97,7 +97,7 @@ async def test_shield_protects_checkpoint_commit_under_outer_cancel() -> None:
     """FR-10 case 2: shielded checkpoint commit completes despite outer cancel.
 
     Verbatim amendment 2: "Critical-section writes (checkpoint commit,
-    harbor.transition emit) wrapped in asyncio.shield()". The outer task is
+    stargraph.transition emit) wrapped in asyncio.shield()". The outer task is
     cancelled mid-commit; the shielded inner coroutine MUST run to completion
     and the commit-side-effect MUST be observed (here: a ``commit_done``
     sentinel set inside the shielded coroutine). Without ``asyncio.shield`` the
@@ -139,9 +139,9 @@ async def test_shield_protects_checkpoint_commit_under_outer_cancel() -> None:
 
 @pytest.mark.asyncio
 async def test_shield_protects_transition_emit_under_outer_cancel() -> None:
-    """FR-10 case 3: shielded ``harbor.transition`` emit survives outer cancel.
+    """FR-10 case 3: shielded ``stargraph.transition`` emit survives outer cancel.
 
-    Mirror of case 2 but for the ``harbor.transition`` emit critical section
+    Mirror of case 2 but for the ``stargraph.transition`` emit critical section
     (FR-13). A half-emitted transition fact would corrupt the event log /
     CLIPS working memory; ``asyncio.shield`` is the documented guard.
     """
@@ -166,7 +166,7 @@ async def test_shield_protects_transition_emit_under_outer_cancel() -> None:
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    assert emit_done.is_set(), "asyncio.shield did not protect the harbor.transition emit"
+    assert emit_done.is_set(), "asyncio.shield did not protect the stargraph.transition emit"
 
 
 def test_parallel_module_does_not_use_asyncio_gather() -> None:

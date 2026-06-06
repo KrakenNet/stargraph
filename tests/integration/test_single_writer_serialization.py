@@ -2,7 +2,7 @@
 """Single-writer-per-path serialization tests (FR-9, NFR-1, NFR-4).
 
 Pins the contract that two concurrent writers against the same on-disk
-store path serialise through :func:`harbor.stores._common._lock_for`
+store path serialise through :func:`stargraph.stores._common._lock_for`
 without corruption: every row from every concurrent task is durable
 afterwards. Loud-fail mandatory per NFR-4 -- a future change that drops
 the lock surfaces here, not as silent data loss in production.
@@ -21,7 +21,7 @@ and assert post-condition row counts on the on-disk store:
 
 A fourth test pins observability: while a writer is mid-flight,
 :meth:`LanceDBVectorStore.health` reports ``lock_state='held'``, the
-hint Harbor exposes per design §3.1 for runtime introspection.
+hint Stargraph exposes per design §3.1 for runtime introspection.
 """
 
 from __future__ import annotations
@@ -32,13 +32,13 @@ from typing import TYPE_CHECKING
 import lancedb  # pyright: ignore[reportMissingTypeStubs]
 import pytest
 
-from harbor.stores._common import _lock_for  # pyright: ignore[reportPrivateUsage]
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.graph import NodeRef
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_doc import SQLiteDocStore
-from harbor.stores.vector import Row
+from stargraph.stores._common import _lock_for  # pyright: ignore[reportPrivateUsage]
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from pathlib import Path

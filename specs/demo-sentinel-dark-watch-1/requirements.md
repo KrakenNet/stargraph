@@ -8,7 +8,7 @@ created: 2026-05-26
 
 ## Overview
 
-Investor-grade demo of a self-improving maritime reconnaissance pipeline. Sentinel-1 SAR imagery flows through ML-based vessel detection, AIS correlation flags "dark" (transponder-off) vessels, LLM agents enrich with geo-context and draft intel reports, analysts review/correct via Streamlit UI, and the system retrains nightly on new labels. Built on Harbor (graph engine) and Nautilus (data broker). One command (`make demo`) brings up the entire stack from cold start. The narrative: cold start with xView3 training data, detect dark vessels in the Strait of Hormuz, analyst corrects, model measurably improves, metrics dashboard proves it.
+Investor-grade demo of a self-improving maritime reconnaissance pipeline. Sentinel-1 SAR imagery flows through ML-based vessel detection, AIS correlation flags "dark" (transponder-off) vessels, LLM agents enrich with geo-context and draft intel reports, analysts review/correct via Streamlit UI, and the system retrains nightly on new labels. Built on Stargraph (graph engine) and Nautilus (data broker). One command (`make demo`) brings up the entire stack from cold start. The narrative: cold start with xView3 training data, detect dark vessels in the Strait of Hormuz, analyst corrects, model measurably improves, metrics dashboard proves it.
 
 Primary audience: external stakeholders / investors. Polish, narrative arc, and visual impact matter.
 
@@ -21,7 +21,7 @@ Primary audience: external stakeholders / investors. Polish, narrative arc, and 
 **So that** I see a polished, zero-friction experience.
 
 **Acceptance Criteria:**
-- [ ] AC-1.1: `make demo` (or `just run`) brings up Docker services, runs bootstrap, starts Harbor serve, starts Streamlit UI, and opens browser — all from cold start
+- [ ] AC-1.1: `make demo` (or `just run`) brings up Docker services, runs bootstrap, starts Stargraph serve, starts Streamlit UI, and opens browser — all from cold start
 - [ ] AC-1.2: No manual env setup beyond copying `.env.example` to `.env` and adding API keys
 - [ ] AC-1.3: Pipeline completes a full run (ingest → detect → correlate → enrich → report → HITL) within 5 minutes on a machine with GPU
 - [ ] AC-1.4: `make demo-offline` works without network access (mock AIS, local LLM shim, pre-staged tiles)
@@ -48,7 +48,7 @@ Primary audience: external stakeholders / investors. Polish, narrative arc, and 
 
 **Acceptance Criteria:**
 - [ ] AC-3.1: YOLO11-OBB model fine-tuned on xView3 subset (10-20 scenes, Strait of Hormuz region). If fewer than 10 scenes available for Strait of Hormuz, expand AOI to broader Persian Gulf / Arabian Sea region to reach minimum scene count.
-- [ ] AC-3.2: Training script (`scripts/train_detector.py`) converts xView3 CSV labels to YOLO OBB format, tiles scenes, fine-tunes, exports to ONNX, registers in Harbor ModelRegistry
+- [ ] AC-3.2: Training script (`scripts/train_detector.py`) converts xView3 CSV labels to YOLO OBB format, tiles scenes, fine-tunes, exports to ONNX, registers in Stargraph ModelRegistry
 - [ ] AC-3.3: `YOLOInferenceNode` runs ONNX inference on each tile, outputs detections with: geo-coords, confidence, OBB corners, vessel_length_estimate
 - [ ] AC-3.4: NMS post-processing eliminates duplicate detections across overlapping tile boundaries
 - [ ] AC-3.5: Land-mask filtering removes detections on land (using pre-loaded coastline data)
@@ -150,7 +150,7 @@ Primary audience: external stakeholders / investors. Polish, narrative arc, and 
 **So that** I can narrate what's happening at each stage.
 
 **Acceptance Criteria:**
-- [ ] AC-11.1: Harbor serve WebSocket streams node transitions in real time
+- [ ] AC-11.1: Stargraph serve WebSocket streams node transitions in real time
 - [ ] AC-11.2: Streamlit sidebar or dedicated panel shows current pipeline stage with progress indicator
 - [ ] AC-11.3: Per-run JSONL audit log written (mirrors CVE-rem pattern)
 - [ ] AC-11.4: Node execution durations visible for throughput narrative
@@ -159,7 +159,7 @@ Primary audience: external stakeholders / investors. Polish, narrative arc, and 
 
 | ID | Requirement | Priority | Acceptance Criteria |
 |----|-------------|----------|---------------------|
-| FR-1 | Graph definition (`harbor.yaml`) with nodes: SARIngest, YOLOInference, AISCorrelation, GeoContext, RiskScoring, Reporting, AnalystReview (InterruptNode), RetrainTrigger | High | Graph loads and validates via `harbor verify-graph` |
+| FR-1 | Graph definition (`stargraph.yaml`) with nodes: SARIngest, YOLOInference, AISCorrelation, GeoContext, RiskScoring, Reporting, AnalystReview (InterruptNode), RetrainTrigger | High | Graph loads and validates via `stargraph verify-graph` |
 | FR-2 | `SdwState` Pydantic model tracks: current_tile, detections list, ais_matches, enrichments, risk_scores, analyst_decisions, run_metrics | High | State serializes/deserializes through checkpointing round-trip |
 | FR-3 | `YOLOInferenceNode` runs ONNX model from ModelRegistry, outputs OBB detections with geo-coords | High | Detections match expected count (±10%) on known test tile |
 | FR-4 | AIS buffer daemon writes WebSocket messages to Postgres; falls back to fixture data when offline | High | `ais_positions` table populated within 30s of daemon start; fixture mode works without network |
@@ -172,7 +172,7 @@ Primary audience: external stakeholders / investors. Polish, narrative arc, and 
 | FR-11 | `nautilus.yaml` configures sources: postgres (AIS buffer, detections), rest (Marine Regions WFS fallback) | High | Nautilus broker resolves queries to correct adapters |
 | FR-12 | `bootstrap.py` provisions: Postgres schemas, pre-staged SAR tiles, EEZ/port geo-data, fixture AIS data | High | Idempotent; second run is a no-op |
 | FR-13 | `docker-compose.yml` with postgis/postgis:16-3.4 (5441), redis:7 (6391), llm-shim (41001) | High | All services healthy within 30s of `docker compose up` |
-| FR-14 | `serve_sdw.py` wraps `harbor serve` on port 9001 with capability profile + JSONL audit | High | `POST /v1/runs` triggers pipeline; WebSocket streams events |
+| FR-14 | `serve_sdw.py` wraps `stargraph serve` on port 9001 with capability profile + JSONL audit | High | `POST /v1/runs` triggers pipeline; WebSocket streams events |
 | FR-15 | `scripts/prepare_dataset.py` downloads xView3 subset, tiles scenes, converts labels to YOLO OBB format | High | Output: `data/tiles/` with images + `data/labels/` with YOLO OBB annotations |
 | FR-16 | `scripts/train_detector.py` fine-tunes YOLO11-OBB, exports ONNX, registers model | High | `production` alias points to trained model in ModelRegistry |
 | FR-17 | Fathom rules route: low-confidence detections to analyst queue (active learning); high-confidence + low-risk detections to auto-accept | High | Low-conf detection hits InterruptNode; high-conf/low-risk bypasses it |
@@ -205,9 +205,9 @@ Primary audience: external stakeholders / investors. Polish, narrative arc, and 
 - **MMSI**: Maritime Mobile Service Identity. 9-digit number uniquely identifying a vessel's AIS transponder.
 - **AOI**: Area of Interest. For this demo: Strait of Hormuz region.
 - **Champion/challenger**: Model deployment pattern where a new model (challenger) must beat the current model (champion) on a holdout metric before promotion.
-- **ModelRegistry**: Harbor's model management component (SQLite-backed). Tracks versions, SHA-256 hashes, aliases.
-- **InterruptNode**: Harbor node type that pauses execution and waits for external input (analyst decision).
-- **Fathom**: Harbor's rule engine (CLIPS-style when/then rules). Used for routing logic.
+- **ModelRegistry**: Stargraph's model management component (SQLite-backed). Tracks versions, SHA-256 hashes, aliases.
+- **InterruptNode**: Stargraph node type that pauses execution and waits for external input (analyst decision).
+- **Fathom**: Stargraph's rule engine (CLIPS-style when/then rules). Used for routing logic.
 - **mAP**: Mean Average Precision. Standard object detection accuracy metric.
 - **Strait of Hormuz**: Narrow waterway between Iran and Oman. ~30% of seaborne oil passes through. High surveillance interest.
 
@@ -236,14 +236,14 @@ Primary audience: external stakeholders / investors. Polish, narrative arc, and 
 | AISStream.io API key | Service | Provisioned in `.env` | Key: `933205...` |
 | Local GPU (CUDA) | Hardware | Available | Required for training; inference can fall back to CPU |
 | Ollama server | Service | Running at localhost:41001 | LLM for geo-context + reporting agents |
-| Harbor framework | Library | In monorepo | Graph engine, MLNode, ModelRegistry, InterruptNode, stores |
+| Stargraph framework | Library | In monorepo | Graph engine, MLNode, ModelRegistry, InterruptNode, stores |
 | Nautilus framework | Library | In monorepo | Data broker: postgres, rest, s3 adapters |
 | PostGIS (postgis/postgis:16-3.4) | Infrastructure | Docker image | Required for spatial queries (ST_Contains, ST_Distance) on EEZ boundaries and AIS positions |
 | Docker + Docker Compose | Infrastructure | Assumed installed | postgis, redis, llm-shim |
 | uv package manager | Tooling | Assumed installed | `uv run --no-project` pattern |
-| Python 3.11+ | Runtime | Assumed | Required by ultralytics + harbor |
+| Python 3.11+ | Runtime | Assumed | Required by ultralytics + stargraph |
 | Ultralytics YOLO11 | ML Library | pip/uv installable | Training + ONNX export |
-| onnxruntime | ML Library | Already in `[ml]` extra | ONNX inference in Harbor MLNode |
+| onnxruntime | ML Library | Already in `[ml]` extra | ONNX inference in Stargraph MLNode |
 | Streamlit + streamlit-folium | UI Library | pip/uv installable | HITL analyst dashboard |
 | rasterio + geopandas | Geo Library | pip/uv installable | GeoTIFF I/O + spatial queries |
 

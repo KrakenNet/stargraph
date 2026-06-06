@@ -7,8 +7,8 @@ Exercises the three Plan-1.5 affordances together:
                                  with rich Pydantic fields), not the
                                  ``dict[str, str]`` placeholder schema.
   2. ``module:Class`` kinds    — every node kind is resolved via importlib
-                                 against ``harbor.skills.shipwright.nodes.*``.
-  3. ``harbor run --inspect``  — drives ``Graph.simulate`` so the whole rule
+                                 against ``stargraph.skills.shipwright.nodes.*``.
+  3. ``stargraph run --inspect``  — drives ``Graph.simulate`` so the whole rule
                                  chain fires without needing a live LLM.
 
 A live-LLM end-to-end test (driving the actual node bodies via ollama) lives
@@ -24,12 +24,17 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from harbor.cli import app
-from harbor.graph.definition import Graph
-from harbor.ir._models import IRDocument
+from stargraph.cli import app
+from stargraph.graph.definition import Graph
+from stargraph.ir._models import IRDocument
 
 SHIPWRIGHT_GRAPH = (
-    Path(__file__).resolve().parents[3] / "src" / "harbor" / "skills" / "shipwright" / "graph.yaml"
+    Path(__file__).resolve().parents[3]
+    / "src"
+    / "stargraph"
+    / "skills"
+    / "shipwright"
+    / "graph.yaml"
 )
 
 EXPECTED_NODE_IDS = (
@@ -56,13 +61,13 @@ def test_graph_yaml_compiles_with_state_class() -> None:
     ir_dict = yaml.safe_load(SHIPWRIGHT_GRAPH.read_text(encoding="utf-8"))
     ir = IRDocument.model_validate(ir_dict)
 
-    assert ir.state_class == "harbor.skills.shipwright.state:State"
+    assert ir.state_class == "stargraph.skills.shipwright.state:State"
     assert ir.state_schema == {}
     assert tuple(n.id for n in ir.nodes) == EXPECTED_NODE_IDS
 
     g = Graph(ir)
 
-    from harbor.skills.shipwright.state import State
+    from stargraph.skills.shipwright.state import State
 
     assert g.state_schema is State
     assert isinstance(g.graph_hash, str) and len(g.graph_hash) == 64
@@ -70,7 +75,7 @@ def test_graph_yaml_compiles_with_state_class() -> None:
 
 @pytest.mark.integration
 def test_inspect_mode_drives_all_rules(runner: CliRunner) -> None:
-    """``harbor run --inspect`` walks the rule chain end-to-end on the IR."""
+    """``stargraph run --inspect`` walks the rule chain end-to-end on the IR."""
     result = runner.invoke(app, ["run", str(SHIPWRIGHT_GRAPH), "--inspect"])
 
     assert result.exit_code == 0, result.output

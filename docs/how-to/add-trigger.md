@@ -2,16 +2,16 @@
 
 ## Goal
 
-Register a custom Harbor [`Trigger`][trigger] plugin that emits
+Register a custom Stargraph [`Trigger`][trigger] plugin that emits
 [`TriggerEvent`][trigger] rows into the scheduler queue, with per-plugin
 try/except isolation across the lifecycle hooks.
 
 ## Prerequisites
 
-- Harbor installed (`pip install stargraph>=0.2`).
+- Stargraph installed (`pip install stargraph>=0.2`).
 - Familiarity with the bundled triggers
   ([`manual`](../serve/triggers.md), `cron`, `webhook`) under
-  [`harbor.triggers`][triggers-pkg].
+  [`stargraph.triggers`][triggers-pkg].
 - A signal source you want to wire (filesystem watcher, message queue,
   device event, ...).
 
@@ -31,8 +31,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from harbor.errors import HarborRuntimeError
-from harbor.triggers import TriggerEvent
+from stargraph.errors import StargraphRuntimeError
+from stargraph.triggers import TriggerEvent
 
 
 class FilesystemWatchTrigger:
@@ -48,7 +48,7 @@ class FilesystemWatchTrigger:
     def init(self, deps: dict[str, Any]) -> None:
         scheduler = deps.get("scheduler")
         if scheduler is None:
-            raise HarborRuntimeError(
+            raise StargraphRuntimeError(
                 "FilesystemWatchTrigger.init requires deps['scheduler']"
             )
         self._scheduler = scheduler
@@ -94,7 +94,7 @@ class FilesystemWatchTrigger:
 against `pending_runs` before enqueuing — the field is **required**, not
 optional.
 
-**Verify:** `python -c "from harbor.triggers import Trigger;
+**Verify:** `python -c "from stargraph.triggers import Trigger;
 from my_triggers.fswatch import FilesystemWatchTrigger;
 print(isinstance(FilesystemWatchTrigger(), Trigger))"` prints `True`
 (structural Protocol check).
@@ -109,7 +109,7 @@ isolate per-plugin failures. Wire one if you want
 # my_triggers/_pack.py
 from typing import Any
 
-from harbor.plugin._markers import hookimpl
+from stargraph.plugin._markers import hookimpl
 
 from my_triggers.fswatch import FilesystemWatchTrigger
 
@@ -167,35 +167,35 @@ def routes(self) -> list[APIRouter]:
 ```
 
 For HMAC + nonce + timestamp window, mirror the canonical implementation
-in [`harbor.triggers.webhook`][webhook].
+in [`stargraph.triggers.webhook`][webhook].
 
 ## Wire it up
 
 ```toml
 # pyproject.toml
-[project.entry-points."harbor"]
-harbor_plugin = "my_triggers._plugin:harbor_plugin"
+[project.entry-points."stargraph"]
+stargraph_plugin = "my_triggers._plugin:stargraph_plugin"
 
-[project.entry-points."harbor.triggers"]
+[project.entry-points."stargraph.triggers"]
 fswatch = "my_triggers.fswatch:FilesystemWatchTrigger"
 ```
 
-The entry-point value can be either a class (Harbor instantiates it) or
+The entry-point value can be either a class (Stargraph instantiates it) or
 a module containing `@hookimpl`-decorated functions.
 
 ## Verify
 
 ```bash
 pip install -e .
-HARBOR_TRACE_PLUGINS=1 python -c "
-from harbor.plugin.loader import build_plugin_manager
+STARGRAPH_TRACE_PLUGINS=1 python -c "
+from stargraph.plugin.loader import build_plugin_manager
 pm = build_plugin_manager()
 "
 ```
 
-Expect a `plugin.register` event for `my-triggers:harbor.triggers:fswatch`.
+Expect a `plugin.register` event for `my-triggers:stargraph.triggers:fswatch`.
 
-Boot `harbor serve` with the deps wired (see
+Boot `stargraph serve` with the deps wired (see
 [serve overview](../serve/overview.md)) and confirm the trigger fires:
 
 ```bash
@@ -206,12 +206,12 @@ curl http://localhost:8000/v1/runs?trigger_source=fswatch
 ## Troubleshooting
 
 !!! warning "Common failure modes"
-    - **`HarborRuntimeError: ... requires deps['scheduler']`** —
-      `harbor serve` lifespan must build the `Scheduler` before
+    - **`StargraphRuntimeError: ... requires deps['scheduler']`** —
+      `stargraph serve` lifespan must build the `Scheduler` before
       initialising triggers; pass `deps={"scheduler": scheduler, ...}`.
     - **Plugin silently skipped at startup** — pluggy's per-plugin
       try/except inside `dispatch_trigger_lifecycle` swallows
-      exceptions. Run with `HARBOR_TRACE_PLUGINS=1` and check the log
+      exceptions. Run with `STARGRAPH_TRACE_PLUGINS=1` and check the log
       for `trigger.lifecycle.failed` events.
     - **Duplicate runs from one event** — your `idempotency_key` isn't
       stable across retries. Hash a tuple that includes a stable
@@ -224,13 +224,13 @@ curl http://localhost:8000/v1/runs?trigger_source=fswatch
 
 - [Triggers (serve)](../serve/triggers.md)
 - [`Trigger` Protocol][trigger]
-- [`harbor.plugin.triggers_dispatcher`][dispatcher]
+- [`stargraph.plugin.triggers_dispatcher`][dispatcher]
 - Bundled triggers:
-  [manual](https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/manual.py),
-  [cron](https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/cron.py),
-  [webhook](https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/webhook.py).
+  [manual](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/manual.py),
+  [cron](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/cron.py),
+  [webhook](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/webhook.py).
 
-[trigger]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/__init__.py
-[triggers-pkg]: https://github.com/KrakenNet/harbor/tree/main/src/harbor/triggers
-[webhook]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/triggers/webhook.py
-[dispatcher]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/plugin/triggers_dispatcher.py
+[trigger]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/__init__.py
+[triggers-pkg]: https://github.com/KrakenNet/stargraph/tree/main/src/stargraph/triggers
+[webhook]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/triggers/webhook.py
+[dispatcher]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/plugin/triggers_dispatcher.py

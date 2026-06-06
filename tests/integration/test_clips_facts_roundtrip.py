@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-RED suite for FR-16 CLIPS facts round-trip (research §4 amendment 9).
 
-Pins the loud-fail integration contract from NFR-4: a Harbor checkpoint
+Pins the loud-fail integration contract from NFR-4: a Stargraph checkpoint
 MUST round-trip a CLIPS :class:`clips.Environment`'s asserted-fact set
 via the ``Environment.save_facts(path, mode=SaveMode.LOCAL_SAVE)`` /
 ``Environment.load_facts(path)`` text format. Per design §3.2.1 and the
@@ -16,14 +16,14 @@ Cases (per task 3.22):
    smoke test: ``save_facts`` -> fresh ``Environment`` -> ``load_facts``
    yields the same fact set. Pins the upstream API contract; failure
    here means clipspy regressed and the GREEN wiring will not work.
-2. ``test_harbor_clips_helper_round_trip`` -- the (not-yet-implemented)
-   ``harbor.checkpoint._clips`` helper exposes ``dump_facts(env) ->
+2. ``test_stargraph_clips_helper_round_trip`` -- the (not-yet-implemented)
+   ``stargraph.checkpoint._clips`` helper exposes ``dump_facts(env) ->
    list[str]`` / ``load_facts(env, payload)`` that wrap the clipspy
    text-format API for the JSONB ``clips_facts`` column. RED state:
    :class:`ModuleNotFoundError` on the deferred import (the helper is
    added in 3.23 GREEN).
 3. ``test_checkpoint_round_trip_preserves_clips_facts`` -- end-to-end
-   through :class:`harbor.checkpoint.sqlite.SQLiteCheckpointer`: an
+   through :class:`stargraph.checkpoint.sqlite.SQLiteCheckpointer`: an
    ``Environment`` with N asserted facts is dumped via the helper into
    a :class:`Checkpoint`, written, read back, re-loaded into a fresh
    ``Environment``, and the resulting fact set matches. RED state:
@@ -53,8 +53,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor.checkpoint import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.checkpoint import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -139,8 +139,8 @@ def test_clipspy_save_facts_native_round_trip(tmp_path: Path) -> None:
     assert actual == expected, f"fact set mismatch: {actual=} {expected=}"
 
 
-def test_harbor_clips_helper_round_trip(tmp_path: Path) -> None:
-    """Case 2: ``harbor.checkpoint._clips`` helper round-trips facts.
+def test_stargraph_clips_helper_round_trip(tmp_path: Path) -> None:
+    """Case 2: ``stargraph.checkpoint._clips`` helper round-trips facts.
 
     RED contract: the GREEN path adds a tiny helper module that wraps
     the clipspy text-format API for the JSONB ``clips_facts`` column.
@@ -148,7 +148,7 @@ def test_harbor_clips_helper_round_trip(tmp_path: Path) -> None:
 
     .. code-block:: python
 
-        from harbor.checkpoint._clips import dump_facts, load_facts
+        from stargraph.checkpoint._clips import dump_facts, load_facts
         payload: list[str] = dump_facts(env)        # JSONB-friendly
         load_facts(target_env, payload)             # rehydrates target
 
@@ -156,7 +156,7 @@ def test_harbor_clips_helper_round_trip(tmp_path: Path) -> None:
     :class:`ModuleNotFoundError`, which is the RED signal.
     """
     del tmp_path
-    helper = importlib.import_module("harbor.checkpoint._clips")
+    helper = importlib.import_module("stargraph.checkpoint._clips")
     dump_facts = helper.dump_facts
     load_facts = helper.load_facts
 
@@ -191,7 +191,7 @@ def test_checkpoint_round_trip_preserves_clips_facts(tmp_path: Path) -> None:
     :class:`ModuleNotFoundError`. After 3.23 GREEN wires the helper,
     the round-trip passes.
     """
-    helper = importlib.import_module("harbor.checkpoint._clips")
+    helper = importlib.import_module("stargraph.checkpoint._clips")
     dump_facts = helper.dump_facts
     load_facts = helper.load_facts
 
@@ -234,7 +234,7 @@ def test_agenda_and_firing_history_not_serialized(tmp_path: Path) -> None:
 
     RED state: depends on the helper module from 3.23.
     """
-    helper = importlib.import_module("harbor.checkpoint._clips")
+    helper = importlib.import_module("stargraph.checkpoint._clips")
     dump_facts = helper.dump_facts
     load_facts = helper.load_facts
 

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Build a Draft-7 mirror of ``ir-v1.json`` for legacy validators.
 
-Reads :file:`src/harbor/schemas/ir-v1.json` (Draft 2020-12, emitted by
+Reads :file:`src/stargraph/schemas/ir-v1.json` (Draft 2020-12, emitted by
 :mod:`scripts.regen_schemas`) and applies the minimum transforms needed
 for JSON Schema Draft-7 compatibility:
 
@@ -13,9 +13,9 @@ for JSON Schema Draft-7 compatibility:
 * rewrite ``$ref`` / ``$dynamicRef`` pointers from ``#/$defs/...`` to
   ``#/definitions/...`` to match the renamed key
 * set top-level ``$schema`` to ``http://json-schema.org/draft-07/schema#``
-* mirror ``$id`` to ``https://harbor.dev/schemas/ir-v1-draft7.json``
+* mirror ``$id`` to ``https://stargraph.dev/schemas/ir-v1-draft7.json``
 
-Output is written to :file:`src/harbor/schemas/ir-v1-draft7.json`. Run
+Output is written to :file:`src/stargraph/schemas/ir-v1-draft7.json`. Run
 with ``uv run python scripts/build_draft7.py``. Output is deterministic
 (``json.dumps`` with ``sort_keys=False``) so re-running on an unchanged
 source produces a byte-identical diff (FR-28, AC-10.4).
@@ -27,11 +27,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "src" / "harbor" / "schemas"
+SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "src" / "stargraph" / "schemas"
 SOURCE_FILE = SCHEMAS_DIR / "ir-v1.json"
 TARGET_FILE = SCHEMAS_DIR / "ir-v1-draft7.json"
 DRAFT7_SCHEMA = "http://json-schema.org/draft-07/schema#"
-DRAFT7_ID = "https://harbor.dev/schemas/ir-v1-draft7.json"
+DRAFT7_ID = "https://stargraph.dev/schemas/ir-v1-draft7.json"
 
 DROP_KEYS = frozenset({"prefixItems", "unevaluatedProperties"})
 

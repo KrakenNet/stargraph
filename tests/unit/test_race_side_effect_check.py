@@ -8,11 +8,11 @@ opts in via ``allow_unsafe_cancel: true``. The rationale (design §3.6.1) is
 that ``race``/``any`` cancel losing branches mid-flight; cancelling a
 write/external tool risks half-committed I/O.
 
-The Phase-1 IR (:class:`harbor.ir._models.ParallelBlock`) does not yet
+The Phase-1 IR (:class:`stargraph.ir._models.ParallelBlock`) does not yet
 carry the per-branch tool-side-effect map nor the ``allow_unsafe_cancel``
 flag (those land alongside the same reducer-aware IR extension noted in
 task 3.11). The compile-time check is therefore staged as a structural
-hook in :func:`harbor.graph.definition._check_race_side_effects` that
+hook in :func:`stargraph.graph.definition._check_race_side_effects` that
 accepts the would-be IR-derived side-effect map and allow-list as
 explicit parameters. These tests exercise the hook directly so the
 violation/opt-in semantics are pinned today; when the IR grows the
@@ -27,9 +27,9 @@ from typing import TYPE_CHECKING, Protocol, cast
 
 import pytest
 
-from harbor.errors import IRValidationError
-from harbor.ir._models import ParallelBlock
-from harbor.tools.spec import SideEffects
+from stargraph.errors import IRValidationError
+from stargraph.ir._models import ParallelBlock
+from stargraph.tools.spec import SideEffects
 
 if TYPE_CHECKING:
 
@@ -50,7 +50,7 @@ def _load_check() -> _CheckFn:
     direct attribute access while keeping the call site fully typed via
     the :class:`_CheckFn` Protocol.
     """
-    mod = importlib.import_module("harbor.graph.definition")
+    mod = importlib.import_module("stargraph.graph.definition")
     return cast("_CheckFn", getattr(mod, "_check_race_side_effects"))  # noqa: B009
 
 

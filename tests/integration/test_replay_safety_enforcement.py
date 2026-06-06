@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Integration tests for FR-21 / NFR-8 replay-safety enforcement.
 
-Drives task 3.28 (TDD-GREEN): the engine must wire ``harbor.replay.cassettes``
+Drives task 3.28 (TDD-GREEN): the engine must wire ``stargraph.replay.cassettes``
 into the FR-24 tool-execution path so that tools with
 ``side_effects in {write, external}`` are stubbed, refused, or re-executed per
 their ``replay_policy`` whenever ``run_ctx.is_replay`` is true.
@@ -13,7 +13,7 @@ The four cases below are pulled verbatim from design §3.4.4 step 3:
 3. ``write`` + no explicit policy -> default policy is ``must_stub`` (FR-26).
 4. ``read`` -> body re-executes natively even on replay.
 
-The cassette-layer surface (``harbor.replay.cassettes.ToolCallCassette``) is
+The cassette-layer surface (``stargraph.replay.cassettes.ToolCallCassette``) is
 the artifact task 3.28 ships; its absence is what flips this RED red.
 """
 
@@ -25,11 +25,11 @@ from typing import Any
 
 import pytest
 
-from harbor.errors import ReplayError
-from harbor.runtime.tool_exec import RunContext, execute_tool
-from harbor.security.capabilities import Capabilities, CapabilityClaim
-from harbor.tools.decorator import tool
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.errors import ReplayError
+from stargraph.runtime.tool_exec import RunContext, execute_tool
+from stargraph.security.capabilities import Capabilities, CapabilityClaim
+from stargraph.tools.decorator import tool
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 
 def _run(coro: Any) -> Any:
@@ -41,10 +41,10 @@ def _make_cassette() -> Any:
 
     Deferred-import (matches ``tests/integration/test_postgres_checkpointer.py``)
     so this RED file collects cleanly under ``pyright --strict`` until 3.28
-    creates ``harbor.replay.cassettes``.
+    creates ``stargraph.replay.cassettes``.
     """
     mod = importlib.import_module(
-        "harbor.replay.cassettes",  # pyright: ignore[reportMissingImports]
+        "stargraph.replay.cassettes",  # pyright: ignore[reportMissingImports]
     )
     cassette: Any = mod.ToolCallCassette()
     return cassette

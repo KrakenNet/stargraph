@@ -20,7 +20,7 @@ from typing import Any
 
 import pytest
 
-from harbor.skills.react import ReactSkill, ReactState
+from stargraph.skills.react import ReactSkill, ReactState
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

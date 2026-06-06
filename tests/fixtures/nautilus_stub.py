@@ -4,17 +4,17 @@
 Used by Phase-3 task 3.26 composition tests to exercise the
 "Nautilus-stubbed" form of the CVE-triage IR end-to-end without a live
 :class:`nautilus.Broker` lifespan singleton wired up. Mirrors the
-:class:`harbor.nodes.nautilus.broker_node.BrokerNode` contract verbatim:
+:class:`stargraph.nodes.nautilus.broker_node.BrokerNode` contract verbatim:
 
-* Same :class:`harbor.nodes.nautilus.broker_node.BrokerNodeConfig` Pydantic
+* Same :class:`stargraph.nodes.nautilus.broker_node.BrokerNodeConfig` Pydantic
   schema (``agent_id_field`` / ``intent_field`` / ``output_field``).
-* Same :class:`~harbor.tools.spec.SideEffects.read` class-level attribute.
-* Same ``__harbor_provenance__`` envelope (``origin="tool"``,
+* Same :class:`~stargraph.tools.spec.SideEffects.read` class-level attribute.
+* Same ``__stargraph_provenance__`` envelope (``origin="tool"``,
   ``source="nautilus"``, ``external_id=<request_id>``) wrapped around the
   :meth:`nautilus.BrokerResponse.model_dump` shape.
 
 The only divergence: :meth:`StubBrokerNode.execute` skips the
-:func:`harbor.serve.contextvars.current_broker` lookup entirely and
+:func:`stargraph.serve.contextvars.current_broker` lookup entirely and
 fabricates a deterministic :class:`BrokerResponse`. This lets the
 composition test drive the full graph (including HITL + artifact write)
 without booting the Nautilus lifespan.
@@ -29,9 +29,9 @@ from typing import TYPE_CHECKING, Any
 
 from nautilus import BrokerResponse  # pyright: ignore[reportMissingTypeStubs]
 
-from harbor.nodes.base import ExecutionContext, NodeBase
-from harbor.nodes.nautilus.broker_node import BrokerNodeConfig
-from harbor.tools.spec import SideEffects
+from stargraph.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.nautilus.broker_node import BrokerNodeConfig
+from stargraph.tools.spec import SideEffects
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -75,14 +75,14 @@ def make_stub_response(request_id: str = "req-stub-cve-001") -> BrokerResponse:
 class StubBrokerNode(NodeBase):
     """Test-only :class:`BrokerNode` substitute returning a canned response.
 
-    Constructor mirrors :class:`harbor.nodes.nautilus.BrokerNode`: takes
+    Constructor mirrors :class:`stargraph.nodes.nautilus.BrokerNode`: takes
     a :class:`BrokerNodeConfig` and exposes the same ``side_effects``
     + ``config_model`` class attributes. :meth:`execute` reads
     ``state[agent_id_field]`` + ``state[intent_field]`` (so a
     misconfigured fixture surfaces an :class:`AttributeError` loudly --
     same convention as the real node) but does NOT call
     :meth:`Broker.arequest`; instead it returns
-    :func:`make_stub_response` wrapped in the harbor provenance
+    :func:`make_stub_response` wrapped in the stargraph provenance
     envelope.
 
     No capability gate: the composition test drives the graph from the
@@ -121,7 +121,7 @@ class StubBrokerNode(NodeBase):
 
         response = make_stub_response()
         dumped: dict[str, Any] = response.model_dump(mode="json")
-        dumped["__harbor_provenance__"] = {
+        dumped["__stargraph_provenance__"] = {
             "origin": "tool",
             "source": "nautilus",
             "external_id": response.request_id,

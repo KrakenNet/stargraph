@@ -25,15 +25,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.fact import FactPattern
-from harbor.stores.memory import (
+from stargraph.stores.fact import FactPattern
+from stargraph.stores.memory import (
     AddDelta,
     ConsolidationRule,
     Episode,
     UpdateDelta,
 )
-from harbor.stores.sqlite_fact import SQLiteFactStore
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from pathlib import Path

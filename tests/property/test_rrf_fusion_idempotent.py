@@ -29,8 +29,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from harbor.stores.rerankers import RRFReranker
-from harbor.stores.vector import Hit
+from stargraph.stores.rerankers import RRFReranker
+from stargraph.stores.vector import Hit
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.property]
 

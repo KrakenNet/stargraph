@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit: ``harbor respond <run_id>`` HITL response CLI (task 4.9).
+"""Unit: ``stargraph respond <run_id>`` HITL response CLI (task 4.9).
 
 Per design §3.1 (``respond.py`` row), the CLI is a thin wrapper over
 ``POST /v1/runs/{run_id}/respond`` (httpx) for the production path.
 The shape:
 
-    harbor respond <run_id> --response @file.json --actor <name>
+    stargraph respond <run_id> --response @file.json --actor <name>
                    [--server http://localhost:8000]
 
 Task 4.9 RED tests (TDD):
@@ -32,7 +32,7 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-from harbor.cli import app
+from stargraph.cli import app
 
 _runner = CliRunner()
 
@@ -47,7 +47,7 @@ def response_file(tmp_path: Path) -> Path:
 
 @pytest.mark.unit
 def test_respond_help_mentions_actor() -> None:
-    """``harbor respond --help`` mentions the actor flag (verify cmd)."""
+    """``stargraph respond --help`` mentions the actor flag (verify cmd)."""
     result = _runner.invoke(app, ["respond", "--help"])
     assert result.exit_code == 0, result.output
     assert "actor" in result.output.lower()
@@ -58,7 +58,7 @@ def test_respond_posts_to_server(
     response_file: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``harbor respond ...`` POSTs ``{"response": ...}`` to /v1/runs/{id}/respond."""
+    """``stargraph respond ...`` POSTs ``{"response": ...}`` to /v1/runs/{id}/respond."""
     captured: dict[str, object] = {}
 
     class _FakeResponse:

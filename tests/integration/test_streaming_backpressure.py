@@ -8,7 +8,7 @@ Asserts the four behaviours required by ``requirements.md §FR-15``
    ``send`` once the bounded 256-slot buffer fills (back-pressure --
    no overflow exception, no drop, just blocking).
 2. After a sustained block exceeding the configured threshold, the
-   bus emits a ``harbor.evidence(kind="stream-backpressure",
+   bus emits a ``stargraph.evidence(kind="stream-backpressure",
    buffer_used=256, max=256, block_seconds=...)`` fact via the
    :class:`FathomAdapter` (AC-7.2).
 3. NO tokens are dropped: the count of events the producer pushed
@@ -18,7 +18,7 @@ Asserts the four behaviours required by ``requirements.md §FR-15``
    slow-consumer scenarios) and ``math.inf`` (explicit anti-pattern
    per anyio's own docs); only positive finite ints are accepted.
 
-This is the [TDD-RED] half: :class:`harbor.runtime.bus.EventBus` ships
+This is the [TDD-RED] half: :class:`stargraph.runtime.bus.EventBus` ships
 the bounded buffer + best-effort >5s emit (task 1.15), but the surface
 required by the FR-15 amendment 7 contract is not fully wired yet:
 
@@ -36,7 +36,7 @@ should pass against the current implementation and document the
 once 3.18 wires the constructor surface.
 
 Test fixture style mirrors :mod:`tests.integration.test_branch_lifecycle_facts`:
-- Imports :mod:`harbor.runtime.bus` via :func:`importlib.import_module`
+- Imports :mod:`stargraph.runtime.bus` via :func:`importlib.import_module`
   to keep pyright strict-mode green when the new constructor surface
   is missing.
 - Uses a lightweight stub fathom recorder (the bus only needs
@@ -53,19 +53,19 @@ from typing import Any
 import anyio
 import pytest
 
-from harbor.runtime.events import TokenEvent
+from stargraph.runtime.events import TokenEvent
 
 
 def _import_bus() -> Any:
-    """Deferred-import helper for ``harbor.runtime.bus`` (RED-safe)."""
-    return importlib.import_module("harbor.runtime.bus")
+    """Deferred-import helper for ``stargraph.runtime.bus`` (RED-safe)."""
+    return importlib.import_module("stargraph.runtime.bus")
 
 
 class _RecordingFathom:
     """Minimal Fathom adapter recorder.
 
     Captures every ``assert_with_provenance(template, slots, ...)``
-    call so the test can assert ``harbor.evidence`` emits without
+    call so the test can assert ``stargraph.evidence`` emits without
     depending on the full CLIPS engine.
     """
 
@@ -82,7 +82,7 @@ class _RecordingFathom:
         self.facts.append((template, dict(slots)))
 
     def evidence(self) -> list[dict[str, Any]]:
-        return [slots for tpl, slots in self.facts if tpl == "harbor.evidence"]
+        return [slots for tpl, slots in self.facts if tpl == "stargraph.evidence"]
 
 
 def _token(idx: int) -> TokenEvent:
@@ -132,18 +132,18 @@ async def test_slow_consumer_blocks_producer_on_full_buffer() -> None:
     assert blocked
 
 
-# ---- Test 2: sustained block emits harbor.evidence(stream-backpressure) ----
+# ---- Test 2: sustained block emits stargraph.evidence(stream-backpressure) ----
 
 
-async def test_sustained_block_emits_harbor_evidence_fact() -> None:
-    """Block longer than the threshold -> ``harbor.evidence`` fact emitted.
+async def test_sustained_block_emits_stargraph_evidence_fact() -> None:
+    """Block longer than the threshold -> ``stargraph.evidence`` fact emitted.
 
     Drives the bus with a low ``backpressure_threshold_s`` (injected
     via constructor) so the test does not wait a real 5 seconds. The
     consumer sleeps 0.5s between recvs; the producer's last few sends
     therefore each block well past the 0.1s threshold. After the run,
     the recorded fathom asserts must include at least one
-    ``harbor.evidence(kind="stream-backpressure", buffer_used=256, max=256)``.
+    ``stargraph.evidence(kind="stream-backpressure", buffer_used=256, max=256)``.
     """
     bus_mod = _import_bus()
     # Constructor surface required by FR-15 amendment 7 -- task 3.18
@@ -177,7 +177,7 @@ async def test_sustained_block_emits_harbor_evidence_fact() -> None:
         and slots.get("max") == 256
         for slots in evidence
     ), (
-        f"expected harbor.evidence(kind='stream-backpressure', "
+        f"expected stargraph.evidence(kind='stream-backpressure', "
         f"buffer_used=256, max=256); got {evidence!r}"
     )
 

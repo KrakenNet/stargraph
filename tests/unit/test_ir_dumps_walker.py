@@ -1,26 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 """AST walker test enforcing FR-15 / AC-11.5: single canonical dumps entry point.
 
-Walks every ``.py`` file under ``src/harbor/`` with :func:`ast.parse` and asserts:
+Walks every ``.py`` file under ``src/stargraph/`` with :func:`ast.parse` and asserts:
 
-1. **No ``model_dump_json`` calls outside ``harbor.ir._dumps``.** This Pydantic
+1. **No ``model_dump_json`` calls outside ``stargraph.ir._dumps``.** This Pydantic
    method is only defined on Pydantic models, and the only Pydantic models in
-   the Harbor codebase are :class:`IRBase` subclasses, so any ``.model_dump_json()``
+   the Stargraph codebase are :class:`IRBase` subclasses, so any ``.model_dump_json()``
    call is by construction a leak of IR serialization out of the canonical entry
    point.
 
-2. **No ``json.dumps(<model>.model_dump(...))`` chains outside ``harbor.ir._dumps``.**
-   This is the textbook anti-pattern FR-15 forbids: bypassing :func:`harbor.ir.dumps`
+2. **No ``json.dumps(<model>.model_dump(...))`` chains outside ``stargraph.ir._dumps``.**
+   This is the textbook anti-pattern FR-15 forbids: bypassing :func:`stargraph.ir.dumps`
    by manually re-implementing the canonical compose step. Detected as
    ``Call(func=Attribute(value=Name(id='json'), attr='dumps'))`` whose first
    positional argument is itself a ``Call`` to an ``.model_dump`` attribute.
 
    Bare ``json.dumps(d, ...)`` calls on raw ``dict``/``list`` values (e.g.
-   :func:`harbor.ir._ids.fact_content_hash`'s canonical-fact hashing,
-   :func:`harbor.fathom._provenance._sanitize_provenance_slot`'s slot encoding)
+   :func:`stargraph.ir._ids.fact_content_hash`'s canonical-fact hashing,
+   :func:`stargraph.fathom._provenance._sanitize_provenance_slot`'s slot encoding)
    are *not* leaks: they serialize untyped data, not IR Pydantic models.
 
-The allow-list is exactly one file: ``src/harbor/ir/_dumps.py``.
+The allow-list is exactly one file: ``src/stargraph/ir/_dumps.py``.
 """
 
 from __future__ import annotations
@@ -29,13 +29,13 @@ import ast
 from pathlib import Path
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
-SRC_HARBOR: Path = PROJECT_ROOT / "src" / "harbor"
-DUMPS_FILE: Path = SRC_HARBOR / "ir" / "_dumps.py"
+SRC_STARGRAPH: Path = PROJECT_ROOT / "src" / "stargraph"
+DUMPS_FILE: Path = SRC_STARGRAPH / "ir" / "_dumps.py"
 
 
-def _iter_harbor_py_files() -> list[Path]:
-    """Return every ``.py`` file under ``src/harbor/`` (sorted, deterministic)."""
-    return sorted(p for p in SRC_HARBOR.rglob("*.py") if p.is_file())
+def _iter_stargraph_py_files() -> list[Path]:
+    """Return every ``.py`` file under ``src/stargraph/`` (sorted, deterministic)."""
+    return sorted(p for p in SRC_STARGRAPH.rglob("*.py") if p.is_file())
 
 
 def _is_model_dump_json_call(node: ast.AST) -> bool:
@@ -50,7 +50,7 @@ def _is_json_dumps_of_model_dump(node: ast.AST) -> bool:
     """``True`` iff ``node`` is ``json.dumps(<expr>.model_dump(...), ...)``.
 
     This is the chained anti-pattern FR-15 forbids: a caller hand-rolling the
-    ``json.dumps(model.model_dump())`` compose that :func:`harbor.ir.dumps` owns.
+    ``json.dumps(model.model_dump())`` compose that :func:`stargraph.ir.dumps` owns.
     """
     if not isinstance(node, ast.Call):
         return False
@@ -76,22 +76,24 @@ def _line(node: ast.AST) -> int:
 
 
 def test_no_model_dump_json_outside_canonical_dumps() -> None:
-    """FR-15 / AC-11.5: ``model_dump_json`` is forbidden outside ``harbor.ir._dumps``."""
+    """FR-15 / AC-11.5: ``model_dump_json`` is forbidden outside ``stargraph.ir._dumps``."""
     leaks: list[str] = []
-    for path in _iter_harbor_py_files():
+    for path in _iter_stargraph_py_files():
         if path.resolve() == DUMPS_FILE.resolve():
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if _is_model_dump_json_call(node):
                 leaks.append(f"{path.relative_to(PROJECT_ROOT)}:{_line(node)}")
-    assert not leaks, f"model_dump_json called outside harbor.ir._dumps (FR-15, AC-11.5): {leaks!r}"
+    assert not leaks, (
+        f"model_dump_json called outside stargraph.ir._dumps (FR-15, AC-11.5): {leaks!r}"
+    )
 
 
 def test_no_json_dumps_of_model_dump_outside_canonical_dumps() -> None:
     """FR-15 / AC-11.5: ``json.dumps(x.model_dump(...))`` chain is forbidden outside ``_dumps``."""
     leaks: list[str] = []
-    for path in _iter_harbor_py_files():
+    for path in _iter_stargraph_py_files():
         if path.resolve() == DUMPS_FILE.resolve():
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -99,7 +101,7 @@ def test_no_json_dumps_of_model_dump_outside_canonical_dumps() -> None:
             if _is_json_dumps_of_model_dump(node):
                 leaks.append(f"{path.relative_to(PROJECT_ROOT)}:{_line(node)}")
     assert not leaks, (
-        f"json.dumps(<x>.model_dump(...)) bypass of harbor.ir.dumps (FR-15, AC-11.5): {leaks!r}"
+        f"json.dumps(<x>.model_dump(...)) bypass of stargraph.ir.dumps (FR-15, AC-11.5): {leaks!r}"
     )
 
 

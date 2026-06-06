@@ -11,8 +11,8 @@ from prompt_toolkit.output import DummyOutput
 from prompt_toolkit.shortcuts import PromptSession
 from rich.console import Console
 
-from harbor.cli._prompts import HITLHandler
-from harbor.runtime.events import WaitingForInputEvent
+from stargraph.cli._prompts import HITLHandler
+from stargraph.runtime.events import WaitingForInputEvent
 
 
 class _RunStub:

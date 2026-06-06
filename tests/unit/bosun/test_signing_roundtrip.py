@@ -26,13 +26,13 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from harbor.bosun.signing import (
+from stargraph.bosun.signing import (
     PackSignatureError,
     StaticTrustStore,
     sign_pack,
     verify_pack,
 )
-from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
+from stargraph.serve.profiles import ClearedProfile, OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -110,13 +110,13 @@ def test_tampered_tree_warns_under_oss_default(
     (pack / "manifest.yaml").write_bytes(b"tampered\n")
 
     trust = StaticTrustStore({key_id: pub_pem})
-    with caplog.at_level(logging.WARNING, logger="harbor.bosun.signing"):
+    with caplog.at_level(logging.WARNING, logger="stargraph.bosun.signing"):
         result = verify_pack(pack, token, trust, OssDefaultProfile())
 
     assert result.verified is False
     # Some message logged at WARNING level on the bosun.signing logger.
     assert any(
-        rec.name == "harbor.bosun.signing" and rec.levelno == logging.WARNING
+        rec.name == "stargraph.bosun.signing" and rec.levelno == logging.WARNING
         for rec in caplog.records
     )
 

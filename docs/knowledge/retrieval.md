@@ -3,7 +3,7 @@
 `RetrievalNode` is the engine-aware node that fans a query out across one
 or more stores in parallel and fuses the per-store hit lists into a single
 ranked result. It subscribes to engine FR-10 TaskGroup primitives and
-emits `harbor.transition` facts per branch (engine FR-13).
+emits `stargraph.transition` facts per branch (engine FR-13).
 
 ## Parallel fan-out
 
@@ -94,16 +94,16 @@ itself deterministic.
 
 ## Reranker pluggability
 
-`harbor.rerankers` is a pluggy entry-point group. Three opt-in rerankers
+`stargraph.rerankers` is a pluggy entry-point group. Three opt-in rerankers
 ship as optional installs:
 
 | Reranker | Install extra | Notes |
 |---|---|---|
-| `CrossEncoderReranker` | `harbor[skills-rag]` | Local sentence-transformers cross-encoder |
-| `CohereReranker` | `harbor[skills-rag]` | Network call; capability-gated |
-| `JinaReranker` | `harbor[skills-rag]` | Network call; capability-gated |
+| `CrossEncoderReranker` | `stargraph[skills-rag]` | Local sentence-transformers cross-encoder |
+| `CohereReranker` | `stargraph[skills-rag]` | Network call; capability-gated |
+| `JinaReranker` | `stargraph[skills-rag]` | Network call; capability-gated |
 
-The default `RRFReranker()` ships with the core `harbor.stores` install —
+The default `RRFReranker()` ships with the core `stargraph.stores` install —
 zero extra dependencies, zero API keys. Pluggable rerankers live behind
 the same `Reranker` Protocol so swaps are mechanical.
 
@@ -128,5 +128,5 @@ RetrievalNode (vector + doc) → LLM-call node → answer-validation node
 into `ProvenanceCitation` records that the `FactStore` consumes if the
 output is promoted.
 
-See [design §3.8](https://github.com/KrakenNet/harbor/blob/main/specs/harbor-knowledge/design.md)
+See [design §3.8](https://github.com/KrakenNet/stargraph/blob/main/specs/stargraph-knowledge/design.md)
 for the full RetrievalNode spec and the Reranker Protocol.

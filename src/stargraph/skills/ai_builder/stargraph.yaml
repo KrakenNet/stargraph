@@ -1,0 +1,32 @@
+name: ai_builder
+state: ./state.py:State
+
+nodes:
+  - name: receive_turn
+    type: stargraph.skills.ai_builder.nodes.receive:ReceiveTurn
+  - name: classifier
+    type: stargraph.skills.ai_builder.nodes.classify:Classifier
+  - name: basic_chat
+    type: stargraph.skills.ai_builder.nodes.basic:BasicChat
+  - name: shipwright_gate
+    type: stargraph.skills.ai_builder.nodes.shipwright_gate:ShipwrightGate
+    must_stub: true
+  - name: inspector_chat
+    type: stargraph.skills.ai_builder.nodes.inspector:InspectorChat
+    must_stub: true
+  - name: docs_chat
+    type: stargraph.skills.ai_builder.nodes.docs:DocsChat
+    must_stub: true
+  - name: join_exit
+    type: stargraph.skills.ai_builder.nodes.join:JoinExit
+  - name: await_next_turn
+    type: stargraph.nodes.interrupt
+    prompt: "Waiting for next user turn."
+    on_timeout: "halt"
+
+governance:
+  - stargraph.bosun.audit
+
+checkpoints:
+  every: node-exit
+  store: sqlite:./.ai_builder/checkpoints.db

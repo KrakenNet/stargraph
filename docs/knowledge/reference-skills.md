@@ -1,6 +1,6 @@
 # Reference skills tutorial: `rag → autoresearch → wiki`
 
-Three reference skills ship in-tree at `harbor.skills.refs.*`. They are real
+Three reference skills ship in-tree at `stargraph.skills.refs.*`. They are real
 packages — not doc-only placeholders — and they compose end-to-end:
 
 - **`rag`** — `RetrievalNode (vector + doc) → LLM → answer`. The lowest-level
@@ -48,9 +48,9 @@ and an answer-assembly step. Capabilities declared on the manifest:
 `db.vectors:read`, `db.docs:read`, `llm.generate`.
 
 ```python
-from harbor.skills.refs.rag import RagSkill, RagState
-from harbor.ir._models import StoreRef
-from harbor.skills.base import SkillKind
+from stargraph.skills.refs.rag import RagSkill, RagState
+from stargraph.ir._models import StoreRef
+from stargraph.skills.base import SkillKind
 
 skill = RagSkill(
     name="rag",
@@ -91,7 +91,7 @@ The POC drives gather → assemble: it stubs a web fetch, optionally calls
 every `Claim.source_id` resolves into the `sources` dict.
 
 ```python
-from harbor.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
+from stargraph.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
 
 skill = AutoresearchSkill(
     name="autoresearch",
@@ -100,7 +100,7 @@ skill = AutoresearchSkill(
     state_schema=AutoresearchState,
 )
 
-state = AutoresearchState(topic="harbor knowledge subsystem")
+state = AutoresearchState(topic="stargraph knowledge subsystem")
 out = await skill.run(state)
 
 for claim in out.claims:
@@ -139,7 +139,7 @@ out = await autoresearch.run(
 
 The POC currently no-ops the vector branch (`del ctx, stores, store_resolver,
 k`) so the smoke path stays on the deterministic web stub. Phase 2 lights up
-the branch and routes web fetches through `harbor.tools.web` gated by the
+the branch and routes web fetches through `stargraph.tools.web` gated by the
 `web.read` capability.
 
 ## Skill 3: `wiki`
@@ -149,7 +149,7 @@ It drives `AutoresearchSkill` to build a `WikiEntry`, then renders it as
 markdown with numbered inline citations.
 
 ```python
-from harbor.skills.refs.wiki import WikiSkill, WikiState
+from stargraph.skills.refs.wiki import WikiSkill, WikiState
 
 skill = WikiSkill(
     name="wiki",
@@ -243,5 +243,5 @@ This means: you can wire `wiki` into one corner of a larger
 agent-as-subgraph and freely refactor the other corners; replay survives.
 
 See [Skills → Agent-as-subgraph](skills.md#agent-as-subgraph) for the full
-composition seam, and [design §3.10–3.12](https://github.com/KrakenNet/harbor/blob/main/specs/harbor-knowledge/design.md)
+composition seam, and [design §3.10–3.12](https://github.com/KrakenNet/stargraph/blob/main/specs/stargraph-knowledge/design.md)
 for the per-skill specs.

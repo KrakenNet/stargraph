@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from harbor.ir import PluginManifest
+from stargraph.ir import PluginManifest
 
 
 def make_manifest() -> PluginManifest:

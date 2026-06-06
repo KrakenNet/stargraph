@@ -22,7 +22,7 @@ Two contract assertions:
 2. :func:`test_counterfactual_rule_pack_mutation_refused` -- a
    :class:`CounterfactualMutation` with ``rule_pack_version`` set produces
    a cf-derived graph hash that is distinct from the original
-   (domain-separated by ``b"harbor-cf-v1"``). This is the prefix-hash
+   (domain-separated by ``b"stargraph-cf-v1"``). This is the prefix-hash
    contract that the engine's resume path enforces via
    :class:`CheckpointError(reason="cf-prefix-hash-refused")` per AC-3.4 /
    FR-27. Pinning the hash divergence here ensures that any future cf
@@ -36,13 +36,13 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.fathom import FathomAdapter
-from harbor.replay.counterfactual import CounterfactualMutation, derived_graph_hash
-from harbor.stores.fact import FactPattern
-from harbor.stores.graph import NodeRef
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
+from stargraph.fathom import FathomAdapter
+from stargraph.replay.counterfactual import CounterfactualMutation, derived_graph_hash
+from stargraph.stores.fact import FactPattern
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -233,7 +233,7 @@ def test_counterfactual_rule_pack_mutation_refused() -> None:
     original_hash = "a" * 64
 
     # Empty/no-op mutation still derives a distinct hash via the
-    # ``b"harbor-cf-v1"`` domain-separation tag.
+    # ``b"stargraph-cf-v1"`` domain-separation tag.
     no_op = CounterfactualMutation()
     derived_no_op = derived_graph_hash(original_hash, no_op)
     assert len(derived_no_op) == 64

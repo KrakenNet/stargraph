@@ -1,6 +1,6 @@
 # Human-in-the-Loop (HITL)
 
-Harbor's HITL flow lets a graph pause at a `WaitForInputNode` and resume
+Stargraph's HITL flow lets a graph pause at a `WaitForInputNode` and resume
 when a human (or upstream system) POSTs to `/v1/runs/{run_id}/respond`.
 The pause emits a `WaitingForInputEvent` carrying a prompt + the requested
 capability the responder must hold; the resume injects the response as a

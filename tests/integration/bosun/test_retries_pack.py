@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration: ``harbor.bosun.retries@1.0`` round-trip (FR-37, design §7.1).
+"""Integration: ``stargraph.bosun.retries@1.0`` round-trip (FR-37, design §7.1).
 
-Loads the pack rules + injects ``harbor.error recoverable=TRUE`` facts.
+Loads the pack rules + injects ``stargraph.error recoverable=TRUE`` facts.
 Asserts:
 
 1. First-attempt error → ``action.retry`` with ``delay_seconds=2`` +
@@ -32,7 +32,7 @@ def test_first_attempt_emits_retry_with_two_second_delay() -> None:
     """attempt=1 → action.retry delay_seconds=2 (2^1)."""
     eng = _fresh_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.error (run_id "r1") (step 1) (reason "timeout") (recoverable TRUE) (attempt 1))'
+        '(stargraph.error (run_id "r1") (step 1) (reason "timeout") (recoverable TRUE) (attempt 1))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     retries = [dict(r) for r in eng._env.find_template("action.retry").facts()]  # pyright: ignore[reportPrivateUsage]
@@ -48,7 +48,7 @@ def test_third_attempt_emits_retry_with_eight_second_delay() -> None:
     """attempt=3 → action.retry delay_seconds=8 (2^3)."""
     eng = _fresh_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.error (run_id "r2") (step 5) (reason "timeout") (recoverable TRUE) (attempt 3))'
+        '(stargraph.error (run_id "r2") (step 5) (reason "timeout") (recoverable TRUE) (attempt 3))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     retries = [dict(r) for r in eng._env.find_template("action.retry").facts()]  # pyright: ignore[reportPrivateUsage]
@@ -61,7 +61,7 @@ def test_attempt_past_cap_emits_retry_exhausted_violation() -> None:
     """attempt=6 → bosun.violation kind=retry-exhausted severity=halt."""
     eng = _fresh_engine()
     eng._env.assert_string(  # pyright: ignore[reportPrivateUsage]
-        '(harbor.error (run_id "r3") (step 9) (reason "timeout") (recoverable TRUE) (attempt 6))'
+        '(stargraph.error (run_id "r3") (step 9) (reason "timeout") (recoverable TRUE) (attempt 6))'
     )
     eng._env.run()  # pyright: ignore[reportPrivateUsage]
     viols = [dict(v) for v in eng._env.find_template("bosun.violation").facts()]  # pyright: ignore[reportPrivateUsage]

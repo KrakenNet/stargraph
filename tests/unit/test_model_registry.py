@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.errors import IncompatibleModelHashError
-from harbor.ml.registry import ModelEntry, ModelRegistry
+from stargraph.errors import IncompatibleModelHashError
+from stargraph.ml.registry import ModelEntry, ModelRegistry
 
 if TYPE_CHECKING:
     from pathlib import Path

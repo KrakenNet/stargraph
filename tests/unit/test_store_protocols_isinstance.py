@@ -10,7 +10,7 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
-from harbor.stores import (
+from stargraph.stores import (
     DocStore,
     FactStore,
     GraphStore,

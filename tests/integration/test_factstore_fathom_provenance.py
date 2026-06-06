@@ -2,7 +2,7 @@
 """FactStore + Fathom provenance integration test (FR-30, NFR-5, design §3.4).
 
 Pins the wired contract from design §3.5 line 450: ``apply_delta`` for
-ADD/UPDATE drives a parallel :meth:`harbor.fathom.FathomAdapter.assert_with_provenance`
+ADD/UPDATE drives a parallel :meth:`stargraph.fathom.FathomAdapter.assert_with_provenance`
 side-channel so the engine sees the same promotion the FactStore lineage
 records. Three observable behaviours land here:
 
@@ -35,10 +35,10 @@ from uuid import uuid4
 
 import pytest
 
-from harbor.fathom import FathomAdapter, ProvenanceBundle
-from harbor.stores.fact import FactPattern
-from harbor.stores.memory import AddDelta
-from harbor.stores.sqlite_fact import SQLiteFactStore
+from stargraph.fathom import FathomAdapter, ProvenanceBundle
+from stargraph.stores.fact import FactPattern
+from stargraph.stores.memory import AddDelta
+from stargraph.stores.sqlite_fact import SQLiteFactStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -119,7 +119,7 @@ async def _apply_with_fathom(
     await fact_store.apply_delta(delta)
     bundle = _provenance_for(delta, run_id=run_id)
     adapter.assert_with_provenance(
-        template="harbor.evidence",
+        template="stargraph.evidence",
         slots={
             "subject": delta.fact_payload["subject"],
             "predicate": delta.fact_payload["predicate"],
@@ -144,7 +144,7 @@ async def test_add_delta_drives_assert_with_provenance(tmp_path: Path) -> None:
 
     assert len(engine.calls) == 1
     template, slots = engine.calls[0]
-    assert template == "harbor.evidence"
+    assert template == "stargraph.evidence"
 
     # Caller slots survive the merge.
     assert slots["subject"] == "Alice"

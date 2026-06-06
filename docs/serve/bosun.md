@@ -1,9 +1,9 @@
 # Bosun Packs in Serve
 
-Bosun packs are signed CLIPS rule bundles that `harbor.fathom` evaluates
+Bosun packs are signed CLIPS rule bundles that `stargraph.fathom` evaluates
 during graph execution. Phase 4 ships four reference packs:
-`harbor.bosun.budgets`, `harbor.bosun.audit`, `harbor.bosun.safety_pii`,
-and `harbor.bosun.retries`. Pack discovery happens at serve startup;
+`stargraph.bosun.budgets`, `stargraph.bosun.audit`, `stargraph.bosun.safety_pii`,
+and `stargraph.bosun.retries`. Pack discovery happens at serve startup;
 verified packs are loaded into the FathomAdapter and stay loaded for
 the process lifetime (no hot-reload in v1, see threat model).
 

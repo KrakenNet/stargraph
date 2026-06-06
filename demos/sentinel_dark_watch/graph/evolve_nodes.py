@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from harbor.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.base import ExecutionContext, NodeBase
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -620,10 +620,10 @@ class GovernanceGateNode(NodeBase):
     """Fathom-governed promotion gate.
 
     Asserts an ``sdw.proposal`` fact into CLIPS. The evolution CLIPS rules
-    produce both ``sdw.gate`` (audit) and ``harbor_action`` (routing) facts.
-    The framework's dispatch pipeline reads ``harbor_action`` for routing:
+    produce both ``sdw.gate`` (audit) and ``stargraph_action`` (routing) facts.
+    The framework's dispatch pipeline reads ``stargraph_action`` for routing:
     approve → goto apply_change, reject → goto curate_training_data,
-    human_required → no harbor_action (Python fallback to linear).
+    human_required → no stargraph_action (Python fallback to linear).
 
     Tiered autonomy:
     - LOW risk + positive delta → auto-approve
@@ -720,7 +720,7 @@ class ApplyChangeNode(NodeBase):
 
     For threshold changes: update .env or state defaults.
     For model changes: promote the new model in ModelRegistry.
-    For structural changes: would modify harbor.yaml (deferred to human).
+    For structural changes: would modify stargraph.yaml (deferred to human).
     """
 
     async def execute(self, state: BaseModel, ctx: ExecutionContext) -> dict[str, Any]:

@@ -4,7 +4,7 @@
 This test is the **air-gap install contract gate**: assert that the project
 can be installed from a local wheelhouse with NO network access (``--no-index``)
 inside a fresh isolated venv, and that the post-install import surface
-(``harbor.serve``, ``harbor.bosun``, ``harbor.triggers``, ``harbor.artifacts``)
+(``stargraph.serve``, ``stargraph.bosun``, ``stargraph.triggers``, ``stargraph.artifacts``)
 is reachable without any further package fetch.
 
 Heavy by design: building the wheelhouse downloads + builds every wheel in
@@ -91,13 +91,13 @@ def _pip_executable() -> str | None:
 
 
 def _network_likely_blocked() -> bool:
-    """Cheap heuristic: ``HARBOR_AIR_GAP_NO_NET=1`` declares no-net env.
+    """Cheap heuristic: ``STARGRAPH_AIR_GAP_NO_NET=1`` declares no-net env.
 
     The wheelhouse build itself NEEDS network to fetch wheels from PyPI;
     the test only validates the air-gap step (``--no-index --find-links``).
     Skip cleanly when the operator has flagged that the runner is offline.
     """
-    return os.environ.get("HARBOR_AIR_GAP_NO_NET") == "1"
+    return os.environ.get("STARGRAPH_AIR_GAP_NO_NET") == "1"
 
 
 def _sibling_nautilus_resolvable() -> bool:
@@ -131,7 +131,7 @@ def wheelhouse(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
     if not _uv_available():
         pytest.skip("uv not on PATH — wheelhouse build requires uv")
     if _network_likely_blocked():
-        pytest.skip("HARBOR_AIR_GAP_NO_NET=1 — wheelhouse build needs network")
+        pytest.skip("STARGRAPH_AIR_GAP_NO_NET=1 — wheelhouse build needs network")
     if not _sibling_nautilus_resolvable():
         pytest.skip(
             "sibling nautilus-rkm path unresolvable — wheelhouse build "
@@ -214,7 +214,7 @@ def wheelhouse(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
 
 
 def test_air_gap_wheelhouse_round_trip(wheelhouse: Path, tmp_path: Path) -> None:
-    """Install the harbor wheel set into a fresh venv WITH NO NETWORK ACCESS.
+    """Install the stargraph wheel set into a fresh venv WITH NO NETWORK ACCESS.
 
     Asserts:
       1. ``uv pip install --no-index --find-links <wheelhouse>`` succeeds
@@ -222,8 +222,8 @@ def test_air_gap_wheelhouse_round_trip(wheelhouse: Path, tmp_path: Path) -> None
          pre-staged wheels alone).
       2. Wall-clock for the install is under NFR-6's 5-minute budget.
       3. Post-install, the four canonical entry-point modules
-         (``harbor.serve``, ``harbor.bosun``, ``harbor.triggers``,
-         ``harbor.artifacts``) all import without error inside the
+         (``stargraph.serve``, ``stargraph.bosun``, ``stargraph.triggers``,
+         ``stargraph.artifacts``) all import without error inside the
          air-gapped venv.
     """
     venv_dir = tmp_path / "air-gap-venv"
@@ -234,7 +234,7 @@ def test_air_gap_wheelhouse_round_trip(wheelhouse: Path, tmp_path: Path) -> None
     if create.returncode != 0:
         pytest.skip(f"uv venv create failed (rc={create.returncode}): {create.stderr[:400]}")
 
-    # Step 2: install harbor + closure FROM THE WHEELHOUSE ONLY.
+    # Step 2: install stargraph + closure FROM THE WHEELHOUSE ONLY.
     # ``--no-index`` forbids any PyPI lookup; ``--find-links`` directs uv
     # at the local wheelhouse. ``--reinstall`` ensures the closure resolves
     # against the local wheel set rather than any cached resolution.
@@ -248,7 +248,7 @@ def test_air_gap_wheelhouse_round_trip(wheelhouse: Path, tmp_path: Path) -> None
         "--no-index",
         "--find-links",
         str(wheelhouse),
-        "harbor",
+        "stargraph",
     ]
     t0 = time.monotonic()
     install = subprocess.run(
@@ -276,7 +276,7 @@ def test_air_gap_wheelhouse_round_trip(wheelhouse: Path, tmp_path: Path) -> None
     # the wheelhouse, the import fails — which is the contract this test
     # is built to detect.
     smoke_code = (
-        "import harbor.serve, harbor.bosun, harbor.triggers, harbor.artifacts; "
+        "import stargraph.serve, stargraph.bosun, stargraph.triggers, stargraph.artifacts; "
         "print('AIR_GAP_IMPORT_OK')"
     )
     smoke = subprocess.run(

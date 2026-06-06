@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from harbor.skills.base import Skill, SkillKind
+from stargraph.skills.base import Skill, SkillKind
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

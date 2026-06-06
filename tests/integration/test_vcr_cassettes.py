@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-RED: FR-28 vcrpy HTTP cassette layer (record_mode=none in CI).
 
-Pins the contract for ``harbor.replay.determinism.http_cassette`` *before*
+Pins the contract for ``stargraph.replay.determinism.http_cassette`` *before*
 the implementation lands in task 3.31. Per design §3.8.5, the HTTP cassette
 layer matches on ``(method, url, body_hash)`` and ships in three modes:
 
@@ -11,7 +11,7 @@ layer matches on ``(method, url, body_hash)`` and ships in three modes:
 * The cassette files live under ``<run_id>.cassettes/http/``.
 
 This RED test exercises the CI-shape: a missing cassette MUST raise. The
-``harbor.replay.determinism`` module does not exist yet (lands in 3.31), so
+``stargraph.replay.determinism`` module does not exist yet (lands in 3.31), so
 the ``importlib.import_module`` call fails first -- that ``ImportError`` is
 itself enough to keep the test red. Once 3.31 ships the module + the
 ``http_cassette`` context manager, this test will exercise the real vcrpy
@@ -34,8 +34,8 @@ pytest.importorskip("vcr", reason="vcrpy required for FR-28 HTTP cassette tests"
 
 
 def _load_determinism() -> Any:
-    """Import ``harbor.replay.determinism`` (TDD-RED: not yet built)."""
-    return importlib.import_module("harbor.replay.determinism")
+    """Import ``stargraph.replay.determinism`` (TDD-RED: not yet built)."""
+    return importlib.import_module("stargraph.replay.determinism")
 
 
 def test_http_cassette_record_mode_none_raises_on_missing_recording(

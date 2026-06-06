@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.graph import NodeRef
-from harbor.stores.ryugraph import RyuGraphStore
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.ryugraph import RyuGraphStore
 
 if TYPE_CHECKING:
     from pathlib import Path

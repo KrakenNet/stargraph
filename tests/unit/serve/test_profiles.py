@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for `harbor.serve.profiles` (Task 3.1).
+"""Unit tests for `stargraph.serve.profiles` (Task 3.1).
 
 Covers:
 
-* :func:`select_profile` env-var rung — ``HARBOR_PROFILE=cleared``
+* :func:`select_profile` env-var rung — ``STARGRAPH_PROFILE=cleared``
   returns :class:`ClearedProfile`; unset / unknown returns
   :class:`OssDefaultProfile` (the default fallback rung).
-* TOML rung via ``harbor.toml`` ``[serve.cleared].auth_provider`` —
+* TOML rung via ``stargraph.toml`` ``[serve.cleared].auth_provider`` —
   the ``api_key`` and ``bearer_jwt`` overrides are honored by
   :class:`ClearedProfile`'s ``auth_provider_factory`` default.
 * :class:`OssDefaultProfile` field invariants (all gates open).
@@ -30,13 +30,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.serve.auth import (
+from stargraph.serve.auth import (
     ApiKeyProvider,
     BearerJwtProvider,
     BypassAuthProvider,
     MtlsProvider,
 )
-from harbor.serve.profiles import (
+from stargraph.serve.profiles import (
     ClearedProfile,
     OssDefaultProfile,
     select_profile,
@@ -48,8 +48,8 @@ if TYPE_CHECKING:
 
 @pytest.mark.unit
 def test_select_profile_env_cleared(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``HARBOR_PROFILE=cleared`` selects :class:`ClearedProfile` (env rung wins)."""
-    monkeypatch.setenv("HARBOR_PROFILE", "cleared")
+    """``STARGRAPH_PROFILE=cleared`` selects :class:`ClearedProfile` (env rung wins)."""
+    monkeypatch.setenv("STARGRAPH_PROFILE", "cleared")
     profile = select_profile()
     assert isinstance(profile, ClearedProfile)
     assert profile.name == "cleared"
@@ -60,7 +60,7 @@ def test_select_profile_default_when_env_unset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """No env var → default rung returns :class:`OssDefaultProfile`."""
-    monkeypatch.delenv("HARBOR_PROFILE", raising=False)
+    monkeypatch.delenv("STARGRAPH_PROFILE", raising=False)
     profile = select_profile()
     assert isinstance(profile, OssDefaultProfile)
     assert profile.name == "oss-default"
@@ -76,7 +76,7 @@ def test_select_profile_unknown_env_falls_through_to_default(
     the default rather than raising; the Phase 2 implementation will
     swap this for a strict registry lookup once CLI / TOML rungs land.
     """
-    monkeypatch.setenv("HARBOR_PROFILE", "not-a-real-profile")
+    monkeypatch.setenv("STARGRAPH_PROFILE", "not-a-real-profile")
     profile = select_profile()
     assert isinstance(profile, OssDefaultProfile)
 
@@ -119,7 +119,7 @@ def test_oss_default_auth_factory_returns_bypass_provider() -> None:
 
 @pytest.mark.unit
 def test_cleared_auth_factory_default_is_mtls() -> None:
-    """No ``harbor.toml`` override → cleared profile default factory is mTLS."""
+    """No ``stargraph.toml`` override → cleared profile default factory is mTLS."""
     profile = ClearedProfile()
     factory = profile.auth_provider_factory
     assert factory is MtlsProvider
@@ -130,7 +130,7 @@ def test_cleared_auth_factory_toml_override_api_key(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """``[serve.cleared].auth_provider = "api_key"`` selects :class:`ApiKeyProvider`."""
-    toml = tmp_path / "harbor.toml"
+    toml = tmp_path / "stargraph.toml"
     toml.write_text(
         '[serve.cleared]\nauth_provider = "api_key"\n',
         encoding="utf-8",
@@ -146,7 +146,7 @@ def test_cleared_auth_factory_toml_override_bearer_jwt(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """``[serve.cleared].auth_provider = "bearer_jwt"`` selects :class:`BearerJwtProvider`."""
-    toml = tmp_path / "harbor.toml"
+    toml = tmp_path / "stargraph.toml"
     toml.write_text(
         '[serve.cleared]\nauth_provider = "bearer_jwt"\n',
         encoding="utf-8",
@@ -162,7 +162,7 @@ def test_cleared_auth_factory_unknown_toml_value_falls_through_to_mtls(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Unknown ``auth_provider`` value falls through to mTLS default."""
-    toml = tmp_path / "harbor.toml"
+    toml = tmp_path / "stargraph.toml"
     toml.write_text(
         '[serve.cleared]\nauth_provider = "not-a-real-provider"\n',
         encoding="utf-8",

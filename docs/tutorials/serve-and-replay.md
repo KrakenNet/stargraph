@@ -1,8 +1,8 @@
 # Tutorial: Serve and Replay
 
-In this tutorial you'll boot the Harbor FastAPI app with `harbor serve`,
+In this tutorial you'll boot the Stargraph FastAPI app with `stargraph serve`,
 enqueue a run over HTTP, poll it to terminal state, and then replay it
-deterministically with `harbor replay`. The replay produces a
+deterministically with `stargraph replay`. The replay produces a
 counterfactual fork ID; with `--diff` you can render the parent vs.
 forked `RunDiff` as JSON.
 
@@ -10,11 +10,11 @@ forked `RunDiff` as JSON.
 
 ```mermaid
 flowchart LR
-    client((curl)) -->|POST /v1/runs| api[harbor serve]
+    client((curl)) -->|POST /v1/runs| api[stargraph serve]
     api --> sched[Scheduler]
     sched --> ckpt[(SQLite Checkpointer)]
     client -->|GET /v1/runs/{id}| api
-    cli[harbor replay] --> ckpt
+    cli[stargraph replay] --> ckpt
 ```
 
 Two CLIs talking to the same SQLite checkpointer DB. The scheduler
@@ -31,15 +31,15 @@ CLI forks a counterfactual run from any persisted step.
 ## Step 1 — Boot the API
 
 ```bash
-uv run harbor serve \
+uv run stargraph serve \
   --profile oss-default \
   --host 127.0.0.1 \
   --port 8000 \
-  --db ./.harbor/serve.sqlite \
-  --audit-log ./.harbor/audit.jsonl
+  --db ./.stargraph/serve.sqlite \
+  --audit-log ./.stargraph/audit.jsonl
 ```
 
-Pinning `--db` is critical. Without it `harbor serve` mints a
+Pinning `--db` is critical. Without it `stargraph serve` mints a
 per-process temp DB and the replay CLI in step 5 will not see the
 run. The lifespan factory:
 
@@ -57,32 +57,32 @@ Verify the app is up:
 
 ```bash
 curl -s http://127.0.0.1:8000/openapi.json | jq '.info.title'
-# → "Harbor"
+# → "Stargraph"
 ```
 
 ## Step 2 — Register the graph (POC)
 
-The POC `harbor serve` boots with an empty in-memory graphs registry
+The POC `stargraph serve` boots with an empty in-memory graphs registry
 (`app.state.deps["graphs"] = {}`); production wiring loads graphs
 from the plugin manifest at lifespan start. For this tutorial we
-cheat: enqueue a run and immediately drive it via the CLI's `harbor
+cheat: enqueue a run and immediately drive it via the CLI's `stargraph
 run` against the same DB so the checkpoints are durable. Phase 2 task
 2.30 swaps this for a Checkpointer-backed lookup.
 
 In a second terminal:
 
 ```bash
-uv run harbor run graph.yaml \
+uv run stargraph run graph.yaml \
   --inputs message=hello \
-  --checkpoint ./.harbor/serve.sqlite \
-  --log-file ./.harbor/audit.jsonl
+  --checkpoint ./.stargraph/serve.sqlite \
+  --log-file ./.stargraph/audit.jsonl
 ```
 
 Capture the `run_id=…` from the last stdout line.
 
 ```bash
-RUN_ID=$(uv run harbor run graph.yaml --inputs message=hello \
-  --checkpoint ./.harbor/serve.sqlite --no-summary | tail -1 | awk '{print $1}' | cut -d= -f2)
+RUN_ID=$(uv run stargraph run graph.yaml --inputs message=hello \
+  --checkpoint ./.stargraph/serve.sqlite --no-summary | tail -1 | awk '{print $1}' | cut -d= -f2)
 echo "$RUN_ID"
 ```
 
@@ -122,26 +122,26 @@ end-to-end:
 ```bash
 curl -s -X POST http://127.0.0.1:8000/v1/runs \
   -H "Content-Type: application/json" \
-  -d '{"graph_id": "run:hello-harbor", "params": {"message": "hello"}}'
-# → {"run_id": "poc-run:hello-harbor", "status": "pending"}
+  -d '{"graph_id": "run:hello-stargraph", "params": {"message": "hello"}}'
+# → {"run_id": "poc-run:hello-stargraph", "status": "pending"}
 ```
 
 ## Step 5 — Replay the real run
 
-`harbor replay` forks a counterfactual run from a persisted parent at
+`stargraph replay` forks a counterfactual run from a persisted parent at
 a chosen `--from-step`. Without a `--mutation` JSON, the cf-run still
 gets a fresh `cf-<uuid>` id and a derived `graph_hash` per design
 §3.8.3.
 
 ```bash
-uv run harbor replay "$RUN_ID" \
-  --db ./.harbor/serve.sqlite \
+uv run stargraph replay "$RUN_ID" \
+  --db ./.stargraph/serve.sqlite \
   --from-step 0 \
   --diff
 ```
 
 Expected stdout — the cf-run id followed by the parent vs cf
-`RunDiff` rendered as canonical JSON via `harbor.ir.dumps`:
+`RunDiff` rendered as canonical JSON via `stargraph.ir.dumps`:
 
 ```
 cf_run_id=cf-…
@@ -174,22 +174,22 @@ EOF
 Then replay with the mutation overlay:
 
 ```bash
-uv run harbor replay "$RUN_ID" \
-  --db ./.harbor/serve.sqlite \
+uv run stargraph replay "$RUN_ID" \
+  --db ./.stargraph/serve.sqlite \
   --mutation mutation.json \
   --from-step 0 \
   --diff
 ```
 
 The cf-run now has `state.message="mutated"` at step 0; the diff
-shows the divergence. Pipe `cf_run_id` into `harbor inspect` to walk
+shows the divergence. Pipe `cf_run_id` into `stargraph inspect` to walk
 the cf-side timeline:
 
 ```bash
-CF_RUN_ID=$(uv run harbor replay "$RUN_ID" --db ./.harbor/serve.sqlite \
+CF_RUN_ID=$(uv run stargraph replay "$RUN_ID" --db ./.stargraph/serve.sqlite \
   --mutation mutation.json | head -1 | cut -d= -f2)
 
-uv run harbor inspect "$CF_RUN_ID" --db ./.harbor/serve.sqlite
+uv run stargraph inspect "$CF_RUN_ID" --db ./.stargraph/serve.sqlite
 ```
 
 ## Step 7 — Verify determinism
@@ -202,17 +202,17 @@ write side effects, compiled `state_schema` folded into the graph
 hash).
 
 ```bash
-uv run harbor replay "$RUN_ID" --db ./.harbor/serve.sqlite --diff | jq -r '.derived_hash'
-uv run harbor replay "$RUN_ID" --db ./.harbor/serve.sqlite --diff | jq -r '.derived_hash'
+uv run stargraph replay "$RUN_ID" --db ./.stargraph/serve.sqlite --diff | jq -r '.derived_hash'
+uv run stargraph replay "$RUN_ID" --db ./.stargraph/serve.sqlite --diff | jq -r '.derived_hash'
 # → identical hashes
 ```
 
 ## Cleaning up
 
-The `Scheduler` is started inside `harbor serve`'s lifespan; Ctrl-C
+The `Scheduler` is started inside `stargraph serve`'s lifespan; Ctrl-C
 on the serve process stops it cleanly (drain + close), then closes
 the checkpointer. The SQLite WAL is single-writer, so you cannot run
-`harbor serve` and `harbor run --checkpoint` against the same DB
+`stargraph serve` and `stargraph run --checkpoint` against the same DB
 simultaneously — pick one writer at a time.
 
 ## What to read next

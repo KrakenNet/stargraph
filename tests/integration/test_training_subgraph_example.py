@@ -8,14 +8,14 @@ steps in Python (the YAML -> graph-runtime path for ML nodes lands later) so
 the FR-32 acceptance criterion -- "produces a registered model" -- is
 verifiable today against the primitives that already exist:
 
-* :func:`harbor.tools.decorator.tool` for the ``ml.fit`` / ``ml.register``
+* :func:`stargraph.tools.decorator.tool` for the ``ml.fit`` / ``ml.register``
   tool seam (side_effects + replay_policy declared inline).
-* :class:`harbor.ml.registry.ModelRegistry` for the SQLite tiny registry
+* :class:`stargraph.ml.registry.ModelRegistry` for the SQLite tiny registry
   (FR-31, task 3.38).
-* :class:`harbor.nodes.ml.MLNode` for the inference node (FR-30, task 3.37)
+* :class:`stargraph.nodes.ml.MLNode` for the inference node (FR-30, task 3.37)
   declared ``side_effects=none`` so replay re-executes natively unless the
   registered ``content_hash`` changes -- in which case
-  :class:`harbor.errors.IncompatibleModelHashError` fires and the FR-21
+  :class:`stargraph.errors.IncompatibleModelHashError` fires and the FR-21
   ``must-stub`` envelope must route through the recorded cassette.
 """
 
@@ -33,11 +33,11 @@ import yaml
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
 
-from harbor.errors import IncompatibleModelHashError
-from harbor.ml.registry import ModelRegistry
-from harbor.nodes.ml import MLNode
-from harbor.tools.decorator import tool
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.errors import IncompatibleModelHashError
+from stargraph.ml.registry import ModelRegistry
+from stargraph.nodes.ml import MLNode
+from stargraph.tools.decorator import tool
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 # pyright: reportFunctionMemberAccess=false, reportMissingTypeStubs=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportUnknownLambdaType=false
 

@@ -8,7 +8,7 @@ no explicit ``replay_policy``, the resolved policy must be ``must_stub``.
 Lives in ``tests/replay/`` so the must-stub default sits alongside the
 cassette / determinism tests task 3.30+ adds.
 
-Fails before 3.28: ``harbor.replay.cassettes`` is the surface task 3.28 ships;
+Fails before 3.28: ``stargraph.replay.cassettes`` is the surface task 3.28 ships;
 its absence trips the third test (and proves the cassette layer round-trip
 is what 3.28 must deliver).
 """
@@ -18,8 +18,8 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-from harbor.tools.decorator import tool
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.tools.decorator import tool
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 
 def test_write_default_policy_is_must_stub() -> None:
@@ -61,7 +61,7 @@ def test_external_default_policy_is_must_stub() -> None:
 def test_cassette_layer_round_trip() -> None:
     """The cassette surface task 3.28 ships round-trips a tool-call entry."""
     mod = importlib.import_module(
-        "harbor.replay.cassettes",  # pyright: ignore[reportMissingImports]
+        "stargraph.replay.cassettes",  # pyright: ignore[reportMissingImports]
     )
     cassette: Any = mod.ToolCallCassette()
     cassette.record("ns.tool", {"x": 1}, {"y": 2})

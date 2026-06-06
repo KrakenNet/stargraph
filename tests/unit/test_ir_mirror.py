@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.ir._mirror` (FR-13, FR-14, AC-8.5).
+"""Unit tests for :mod:`stargraph.ir._mirror` (FR-13, FR-14, AC-8.5).
 
 Covers:
 
@@ -7,9 +7,9 @@ Covers:
   :class:`TypeError` on construction (not at field-attach time).
 * ``__get_pydantic_json_schema__`` round-trip: a field annotated with
   ``Annotated[T, Mirror(template=..., lifecycle=...)]`` emits the expected
-  ``harbor_mirror*`` keys in JSON Schema (AC-8.5).
-* ``Mirror(template=None)`` (the default) emits ``harbor_mirror=true`` and
-  the lifecycle but **omits** ``harbor_mirror_template`` -- the field-name
+  ``stargraph_mirror*`` keys in JSON Schema (AC-8.5).
+* ``Mirror(template=None)`` (the default) emits ``stargraph_mirror=true`` and
+  the lifecycle but **omits** ``stargraph_mirror_template`` -- the field-name
   fallback (FR-13) is a runtime concept resolved by :func:`mirrored_fields`.
 * :func:`mirrored_fields` resolves ``template=None`` to the field name and
   preserves explicit overrides; fields without a :class:`Mirror` marker are
@@ -23,7 +23,7 @@ from typing import Annotated, Any
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from harbor.ir._mirror import Mirror, ResolvedMirror, mirrored_fields
+from stargraph.ir._mirror import Mirror, ResolvedMirror, mirrored_fields
 
 # ---------------------------------------------------------------------------
 # Mirror dataclass shape
@@ -72,9 +72,9 @@ def test_mirror_explicit_template_round_trips_to_json_schema() -> None:
 
     schema: dict[str, Any] = M.model_json_schema()
     prop: dict[str, Any] = schema["properties"]["a"]
-    assert prop["harbor_mirror"] is True
-    assert prop["harbor_mirror_template"] == "alpha"
-    assert prop["harbor_mirror_lifecycle"] == "step"
+    assert prop["stargraph_mirror"] is True
+    assert prop["stargraph_mirror_template"] == "alpha"
+    assert prop["stargraph_mirror_lifecycle"] == "step"
     assert prop["type"] == "integer"
 
 
@@ -88,23 +88,23 @@ def test_mirror_template_none_omits_template_key_in_json_schema() -> None:
 
     schema: dict[str, Any] = M.model_json_schema()
     prop: dict[str, Any] = schema["properties"]["b"]
-    assert prop["harbor_mirror"] is True
-    assert "harbor_mirror_template" not in prop
-    assert prop["harbor_mirror_lifecycle"] == "run"
+    assert prop["stargraph_mirror"] is True
+    assert "stargraph_mirror_template" not in prop
+    assert prop["stargraph_mirror_lifecycle"] == "run"
 
 
 @pytest.mark.unit
-def test_unmarked_field_has_no_harbor_mirror_keys() -> None:
-    """Plain (unmarked) fields stay free of ``harbor_mirror*`` keys."""
+def test_unmarked_field_has_no_stargraph_mirror_keys() -> None:
+    """Plain (unmarked) fields stay free of ``stargraph_mirror*`` keys."""
 
     class M(BaseModel):
         model_config = ConfigDict(extra="forbid")
         c: int
 
     prop: dict[str, Any] = M.model_json_schema()["properties"]["c"]
-    assert "harbor_mirror" not in prop
-    assert "harbor_mirror_template" not in prop
-    assert "harbor_mirror_lifecycle" not in prop
+    assert "stargraph_mirror" not in prop
+    assert "stargraph_mirror_template" not in prop
+    assert "stargraph_mirror_lifecycle" not in prop
 
 
 # ---------------------------------------------------------------------------

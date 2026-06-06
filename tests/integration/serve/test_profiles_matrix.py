@@ -2,8 +2,8 @@
 """Phase-3 integration test (task 3.17): profile parity matrix.
 
 Drives the same scenarios under both
-:class:`~harbor.serve.profiles.OssDefaultProfile` and
-:class:`~harbor.serve.profiles.ClearedProfile`, asserting the
+:class:`~stargraph.serve.profiles.OssDefaultProfile` and
+:class:`~stargraph.serve.profiles.ClearedProfile`, asserting the
 locked-design §11.1 / §11.3 divergence:
 
 * **Cleared** (``default_deny_capabilities=True``): every gated route
@@ -28,13 +28,13 @@ covers 7 scenarios x 2 profiles = 14 cases:
 6. Pack-signing missing-signature surface (cleared raises
    :class:`PackSignatureError`; oss-default WARN-logs +
    ``VerifyResult(verified=False)``). Drives the
-   :func:`harbor.bosun.signing.verify_pack` boundary directly because
+   :func:`stargraph.bosun.signing.verify_pack` boundary directly because
    pack-load wiring is not yet threaded through ``create_app`` (Phase
    2 task 2.30 follow-up); the engine-side surface is the canonical
    contract.
 7. ``--allow-side-effects`` startup flag (cleared raises
    :class:`ProfileViolationError`; oss-default boots normally).
-   Drives :mod:`harbor.cli.serve` via :class:`typer.testing.CliRunner`;
+   Drives :mod:`stargraph.cli.serve` via :class:`typer.testing.CliRunner`;
    the cleared exit_code is non-zero and the stderr message references
    ``cleared`` / ``violation``.
 
@@ -67,16 +67,16 @@ from cryptography.hazmat.primitives.serialization import (
 )
 from typer.testing import CliRunner
 
-from harbor.bosun.signing import (
+from stargraph.bosun.signing import (
     PackSignatureError,
     StaticTrustStore,
     sign_pack,
     verify_pack,
 )
-from harbor.cli.serve import cmd as serve_cmd
-from harbor.serve.api import create_app
-from harbor.serve.auth import AuthContext
-from harbor.serve.profiles import ClearedProfile, OssDefaultProfile, Profile
+from stargraph.cli.serve import cmd as serve_cmd
+from stargraph.serve.api import create_app
+from stargraph.serve.auth import AuthContext
+from stargraph.serve.profiles import ClearedProfile, OssDefaultProfile, Profile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -303,7 +303,7 @@ def _build_signed_pack(tmp_path: Path) -> tuple[Path, str, bytes, str]:
     """Build a signed pack tree and return ``(pack_dir, token, pub_pem, key_id)``."""
     pack = tmp_path / "pack"
     pack.mkdir()
-    (pack / "manifest.yaml").write_bytes(b"id: harbor.bosun.test\nversion: 1.0\n")
+    (pack / "manifest.yaml").write_bytes(b"id: stargraph.bosun.test\nversion: 1.0\n")
     (pack / "rules.clp").write_bytes(b";; minimal\n")
     priv_pem, pub_pem, key_id = _make_keypair()
     token = sign_pack(pack, priv_pem, key_id)
@@ -313,7 +313,7 @@ def _build_signed_pack(tmp_path: Path) -> tuple[Path, str, bytes, str]:
 def test_pack_signing_unknown_key_under_profile(profile: Profile, tmp_path: Path) -> None:
     """Cleared raises :class:`PackSignatureError`; oss-default WARN-logs.
 
-    Drives :func:`harbor.bosun.signing.verify_pack` directly because
+    Drives :func:`stargraph.bosun.signing.verify_pack` directly because
     the pack-load wiring inside :func:`create_app`'s lifespan is
     deferred to Phase 2 task 2.30 (FR-65). The engine-level surface
     is the canonical contract for the profile divergence per
@@ -335,7 +335,7 @@ def test_pack_signing_unknown_key_under_profile(profile: Profile, tmp_path: Path
         with pytest.raises(PackSignatureError) as exc_info:
             verify_pack(pack, token, static_store, profile)
         # PackSignatureError stores ``reason`` in ``.context`` per
-        # HarborError's kwarg-context convention.
+        # StargraphError's kwarg-context convention.
         reason = exc_info.value.context.get("reason")
         assert reason == "untrusted-key", (
             f"cleared profile reason should be 'untrusted-key'; got {reason!r} "
@@ -359,7 +359,7 @@ def test_pack_signing_unknown_key_under_profile(profile: Profile, tmp_path: Path
 def test_allow_side_effects_startup_flag(profile: Profile, monkeypatch: pytest.MonkeyPatch) -> None:
     """Cleared rejects ``--allow-side-effects`` at startup; oss-default boots.
 
-    Drives the typer ``harbor serve`` command via
+    Drives the typer ``stargraph serve`` command via
     :class:`typer.testing.CliRunner`. The cleared profile raises
     :class:`ProfileViolationError` BEFORE any I/O, so ``CliRunner``
     sees a non-zero exit code. The oss-default profile reaches the
@@ -405,11 +405,11 @@ def test_allow_side_effects_startup_flag(profile: Profile, monkeypatch: pytest.M
     else:
         # OSS-default path: monkeypatch uvicorn.Server to a no-op stub.
         # The cmd boots via ``uvicorn.Server(uvicorn.Config(...)).run()``
-        # (T15, e69a815); we stub it on the ``harbor.cli.serve``
+        # (T15, e69a815); we stub it on the ``stargraph.cli.serve``
         # module-level reference (the name the cmd actually calls) so
         # the patch hits the in-use binding rather than only the
         # upstream module. Same idiom as test_cli_serve.py.
-        import harbor.cli.serve as cli_serve_mod
+        import stargraph.cli.serve as cli_serve_mod
 
         called = {"hit": False}
 

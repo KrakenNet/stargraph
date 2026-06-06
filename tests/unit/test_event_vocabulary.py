@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from harbor.runtime.events import (
+from stargraph.runtime.events import (
     BranchCancelledEvent,
     BranchCompletedEvent,
     BranchStartedEvent,

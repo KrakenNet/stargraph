@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SalienceScorer Protocol swap loud-fail (FR-31, NFR-4).
 
-The :class:`harbor.skills.salience.SalienceScorer` Protocol is the
+The :class:`stargraph.skills.salience.SalienceScorer` Protocol is the
 seam consolidation rules read salience through. v1 ships
 :class:`RuleBasedScorer` (Park 2023 formula); v2 swaps to embedding-
 similarity, v3 to a learned scorer. NFR-4 mandates the Protocol stay
@@ -25,8 +25,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from harbor.skills.salience import RuleBasedScorer, SalienceContext, SalienceScorer
-from harbor.stores.memory import Episode
+from stargraph.skills.salience import RuleBasedScorer, SalienceContext, SalienceScorer
+from stargraph.stores.memory import Episode
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

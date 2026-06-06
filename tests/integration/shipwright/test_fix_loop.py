@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from harbor.skills.shipwright.nodes.fix import FixLoop
-from harbor.skills.shipwright.state import State, VerifierResult
+from stargraph.skills.shipwright.nodes.fix import FixLoop
+from stargraph.skills.shipwright.state import State, VerifierResult
 
 if TYPE_CHECKING:
-    from harbor.nodes.base import ExecutionContext
+    from stargraph.nodes.base import ExecutionContext
 
 
 @pytest.mark.integration

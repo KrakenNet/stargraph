@@ -154,7 +154,7 @@ async def main() -> None:
 
     dsn = os.environ.get(
         "POSTGRES_DSN",
-        "postgresql://harbor:harbor@localhost:5441/sdw",
+        "postgresql://stargraph:stargraph@localhost:5441/sdw",
     )
     mode = os.environ.get("AIS_MODE", "mock").lower()
 

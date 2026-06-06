@@ -24,8 +24,8 @@ from pathlib import Path
 
 import pytest
 
-from harbor.errors import MigrationNotSupported
-from harbor.stores._common import MigrationPlan
+from stargraph.errors import MigrationNotSupported
+from stargraph.stores._common import MigrationPlan
 
 pytestmark = pytest.mark.unit
 
@@ -69,7 +69,7 @@ async def test_ryugraph_migrate_valid_add_column_succeeds_silently(
 ) -> None:
     """``RyuGraphStore.migrate(add_column nullable=True)`` returns ``None``
     without raising (T03)."""
-    from harbor.stores.ryugraph import RyuGraphStore
+    from stargraph.stores.ryugraph import RyuGraphStore
 
     store = RyuGraphStore(Path(str(tmp_path)))
     result = await store.migrate(_add_column_plan())
@@ -82,7 +82,7 @@ async def test_ryugraph_migrate_valid_add_column_succeeds_silently(
 )
 async def test_ryugraph_migrate_rejects_drop_column(tmp_path: object) -> None:
     """``RyuGraphStore.migrate(drop_column)`` raises ``MigrationNotSupported`` (T03)."""
-    from harbor.stores.ryugraph import RyuGraphStore
+    from stargraph.stores.ryugraph import RyuGraphStore
 
     store = RyuGraphStore(Path(str(tmp_path)))
     with pytest.raises(MigrationNotSupported):
@@ -98,8 +98,8 @@ async def test_lancedb_migrate_valid_add_column_succeeds_silently(
 ) -> None:
     """``LanceDBVectorStore.migrate(add_column nullable=True)`` returns ``None``
     without raising (T04)."""
-    from harbor.stores.embeddings import FakeEmbedder
-    from harbor.stores.lancedb import LanceDBVectorStore
+    from stargraph.stores.embeddings import FakeEmbedder
+    from stargraph.stores.lancedb import LanceDBVectorStore
 
     store = LanceDBVectorStore(Path(str(tmp_path)), FakeEmbedder())
     result = await store.migrate(_add_column_plan())
@@ -112,8 +112,8 @@ async def test_lancedb_migrate_valid_add_column_succeeds_silently(
 )
 async def test_lancedb_migrate_rejects_drop_column(tmp_path: object) -> None:
     """``LanceDBVectorStore.migrate(drop_column)`` raises ``MigrationNotSupported`` (T04)."""
-    from harbor.stores.embeddings import FakeEmbedder
-    from harbor.stores.lancedb import LanceDBVectorStore
+    from stargraph.stores.embeddings import FakeEmbedder
+    from stargraph.stores.lancedb import LanceDBVectorStore
 
     store = LanceDBVectorStore(Path(str(tmp_path)), FakeEmbedder())
     with pytest.raises(MigrationNotSupported):

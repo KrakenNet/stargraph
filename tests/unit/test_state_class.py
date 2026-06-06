@@ -6,9 +6,9 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from harbor.errors import ValidationError
-from harbor.graph import Graph
-from harbor.ir._models import IRDocument, NodeSpec
+from stargraph.errors import ValidationError
+from stargraph.graph import Graph
+from stargraph.ir._models import IRDocument, NodeSpec
 
 
 class _MyState(BaseModel):  # pyright: ignore[reportUnusedClass]
@@ -71,7 +71,7 @@ def test_state_class_import_failure_raises() -> None:
         ir_version="1.0.0",
         id="run:test-bad-import",
         nodes=[NodeSpec(id="n1", kind="echo")],
-        state_class="harbor.nonexistent.module:Foo",
+        state_class="stargraph.nonexistent.module:Foo",
     )
     with pytest.raises(ValidationError, match="state_class"):
         Graph(ir)

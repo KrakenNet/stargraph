@@ -32,13 +32,13 @@ from types import SimpleNamespace
 
 import dspy  # pyright: ignore[reportMissingTypeStubs]
 
-from harbor.skills.shipwright.nodes.fix import FixLoop
-from harbor.skills.shipwright.nodes.interview import GapCheck, ProposeQuestions
-from harbor.skills.shipwright.nodes.parse import ParseBrief
-from harbor.skills.shipwright.nodes.synthesize import SynthesizeGraph
-from harbor.skills.shipwright.nodes.triage import TriageGate
-from harbor.skills.shipwright.nodes.verify import VerifyStatic, VerifyTests
-from harbor.skills.shipwright.state import SpecSlot, State
+from stargraph.skills.shipwright.nodes.fix import FixLoop
+from stargraph.skills.shipwright.nodes.interview import GapCheck, ProposeQuestions
+from stargraph.skills.shipwright.nodes.parse import ParseBrief
+from stargraph.skills.shipwright.nodes.synthesize import SynthesizeGraph
+from stargraph.skills.shipwright.nodes.triage import TriageGate
+from stargraph.skills.shipwright.nodes.verify import VerifyStatic, VerifyTests
+from stargraph.skills.shipwright.state import SpecSlot, State
 
 # Canned answers used when --keep-required is NOT set. Mirrors the e2e test.
 _DEFAULT_EXTRAS: dict[str, object] = {
@@ -146,12 +146,12 @@ async def _run(brief: str, work_dir: Path, keep_required: bool, do_verify: bool)
         print(f"  finding: {f}")
 
     _hr("verify_smoke")
-    if shutil.which("harbor") is None:
-        print("  SKIPPED — harbor CLI not on PATH")
+    if shutil.which("stargraph") is None:
+        print("  SKIPPED — stargraph CLI not on PATH")
     else:
-        # NOTE: synthesize emits user-surface YAML; harbor simulate consumes IR
+        # NOTE: synthesize emits user-surface YAML; stargraph simulate consumes IR
         # YAML. This currently fails until Plan 2 ships an IR translation.
-        from harbor.skills.shipwright.nodes.verify import VerifySmoke
+        from stargraph.skills.shipwright.nodes.verify import VerifySmoke
         state = state.model_copy(update=await VerifySmoke(work_dir=work_dir).execute(state, ctx))
         smoke = next(r for r in reversed(state.verifier_results) if r.kind == "smoke")
         print(f"  passed={smoke.passed}  duration_ms={smoke.duration_ms}")

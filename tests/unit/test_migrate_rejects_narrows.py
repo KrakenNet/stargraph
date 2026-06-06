@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """FR-17: ``migrate(plan)`` rejects type narrows / column renames / drops.
 
-The v1 contract from harbor-knowledge design §4.5 is that ``migrate()``
+The v1 contract from stargraph-knowledge design §4.5 is that ``migrate()``
 supports add-nullable-column **only**. Forward-incompatible operations
 (narrowing a column type, renaming a column, dropping a column) are
 unsafe in Lance fragments and SQLite alike, so every store must surface
@@ -18,11 +18,11 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor.errors import MigrationNotSupported
-from harbor.stores._common import MigrationPlan
-from harbor.stores.sqlite_doc import SQLiteDocStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.errors import MigrationNotSupported
+from stargraph.stores._common import MigrationPlan
+from stargraph.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from collections.abc import Callable

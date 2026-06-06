@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Cypher write-keyword scan integration test (FR-20, AC-8.3, Task 3.17).
 
-The Cypher portable-subset linter (:mod:`harbor.stores.cypher`) exposes
+The Cypher portable-subset linter (:mod:`stargraph.stores.cypher`) exposes
 :meth:`Linter.requires_write` -- a keyword scan used by FR-20 capability
 gating to decide whether a graph branch needs ``db.<name>:write`` instead
 of the default ``db.<name>:read``.
@@ -10,7 +10,7 @@ These tests assert two surfaces:
 
 1. The bare keyword scan: ``MATCH ... RETURN`` is read-only,
    ``MERGE ... SET ...`` flags as write.
-2. :class:`~harbor.nodes.retrieval.RetrievalNode` derives ``db.X:write``
+2. :class:`~stargraph.nodes.retrieval.RetrievalNode` derives ``db.X:write``
    capabilities at construction time when its ``cypher_by_store`` mapping
    contains a write-keyword query for that store name.
 
@@ -27,9 +27,9 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.ir._models import StoreRef
-from harbor.nodes.retrieval import RetrievalNode
-from harbor.stores.cypher import Linter
+from stargraph.ir._models import StoreRef
+from stargraph.nodes.retrieval import RetrievalNode
+from stargraph.stores.cypher import Linter
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

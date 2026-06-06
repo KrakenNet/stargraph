@@ -8,21 +8,21 @@ broader stack:
 
 1. Bootstrap all five stores under ``tmp_path``: LanceDB (vectors),
    Kuzu (graph), and three SQLite stores (docs, memory, facts).
-2. Run :class:`~harbor.skills.refs.wiki.WikiSkill` end-to-end against
+2. Run :class:`~stargraph.skills.refs.wiki.WikiSkill` end-to-end against
    a topic string -- :class:`AutoresearchSkill` gathers stub claims
    and :class:`WikiSkill` formats markdown with provenance citations.
-3. Promote KG triples → pinned :class:`~harbor.stores.fact.Fact` rows
-   via :func:`~harbor.stores.kg_promotion.PromoteTriplesToFacts` (FR-30).
+3. Promote KG triples → pinned :class:`~stargraph.stores.fact.Fact` rows
+   via :func:`~stargraph.stores.kg_promotion.PromoteTriplesToFacts` (FR-30).
 4. Consolidate episodes → typed :data:`MemoryDelta` entries → facts
    via :meth:`SQLiteFactStore.apply_delta` (FR-28, AC-5.3).
-5. Record + replay :class:`~harbor.skills.react.ReactSkill` against
+5. Record + replay :class:`~stargraph.skills.react.ReactSkill` against
    the per-step cassette under must_stub LLM policy (FR-35, AC-10.2).
-6. Write an engine :class:`~harbor.checkpoint.Checkpoint` carrying
+6. Write an engine :class:`~stargraph.checkpoint.Checkpoint` carrying
    ``vector_versions`` metadata sourced from LanceDB ``await
    tbl.version()`` (FR-16 reproducibility hook).
 7. Assert the JSONL audit log (FR-22) contains the FR-14 event
    vocabulary fired during the run -- every recorded event round-trips
-   through :data:`harbor.runtime.events.Event` and the type tags cover
+   through :data:`stargraph.runtime.events.Event` and the type tags cover
    the loud-fail vocabulary (token, tool_call, tool_result, transition,
    checkpoint, result).
 
@@ -40,16 +40,16 @@ import orjson
 import pytest
 from pydantic import TypeAdapter
 
-from harbor.audit import JSONLAuditSink
-from harbor.checkpoint.protocol import Checkpoint
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.fathom import FathomAdapter
-from harbor.replay.react_cassette import (
+from stargraph.audit import JSONLAuditSink
+from stargraph.checkpoint.protocol import Checkpoint
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.fathom import FathomAdapter
+from stargraph.replay.react_cassette import (
     ReactStepRecord,
     ReactStepReplayCassette,
     input_hash,
 )
-from harbor.runtime.events import (
+from stargraph.runtime.events import (
     CheckpointEvent,
     Event,
     ResultEvent,
@@ -58,14 +58,14 @@ from harbor.runtime.events import (
     ToolResultEvent,
     TransitionEvent,
 )
-from harbor.skills.react import ReactSkill, ReactState
-from harbor.skills.refs.wiki import WikiSkill, WikiState
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.fact import FactPattern
-from harbor.stores.graph import NodeRef
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.memory import (
+from stargraph.skills.react import ReactSkill, ReactState
+from stargraph.skills.refs.wiki import WikiSkill, WikiState
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.fact import FactPattern
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.memory import (
     AddDelta,
     ConsolidationRule,
     DeleteDelta,
@@ -73,11 +73,11 @@ from harbor.stores.memory import (
     NoopDelta,
     UpdateDelta,
 )
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_doc import SQLiteDocStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
-from harbor.stores.vector import Row
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Hybrid search RRF integration test (FR-16, AC-4.4).
 
-Pins :class:`~harbor.stores.lancedb.LanceDBVectorStore` ``mode='hybrid'``
+Pins :class:`~stargraph.stores.lancedb.LanceDBVectorStore` ``mode='hybrid'``
 to the Reciprocal Rank Fusion contract from
-:class:`~harbor.stores.rerankers.RRFReranker`. The vector + fts branches
+:class:`~stargraph.stores.rerankers.RRFReranker`. The vector + fts branches
 are run independently first; the hybrid branch is then asserted to be
 the rank-by-rank RRF fusion of the two.
 
-Determinism: :class:`~harbor.stores.embeddings.FakeEmbedder` (``ndims=4``).
+Determinism: :class:`~stargraph.stores.embeddings.FakeEmbedder` (``ndims=4``).
 Six rows are seeded with overlapping text + vectors so both retrieval
 branches return non-empty hits.
 """
@@ -18,10 +18,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.rerankers import RRFReranker
-from harbor.stores.vector import Row
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.rerankers import RRFReranker
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from pathlib import Path

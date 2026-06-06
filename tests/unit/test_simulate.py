@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :meth:`harbor.graph.Graph.simulate` (FR-9, AC-12.1).
+"""Unit tests for :meth:`stargraph.graph.Graph.simulate` (FR-9, AC-12.1).
 
 Covers the offline-simulator contract:
 
@@ -8,7 +8,7 @@ Covers the offline-simulator contract:
 * No tool, no LLM, no checkpointer is touched -- the method walks only
   in-memory IR state and the caller-supplied fixtures dict.
 * A node declared in the IR with no fixture entry raises
-  :class:`harbor.errors.SimulationError` with structured
+  :class:`stargraph.errors.SimulationError` with structured
   ``violation="missing-fixture"`` context.
 
 The "no I/O" assertion is enforced two ways: (a) by stubbing every
@@ -24,10 +24,10 @@ from typing import Any
 
 import pytest
 
-from harbor.errors import SimulationError
-from harbor.graph import Graph
-from harbor.graph.definition import RuleFiring, SimulationResult
-from harbor.ir._models import (
+from stargraph.errors import SimulationError
+from stargraph.graph import Graph
+from stargraph.graph.definition import RuleFiring, SimulationResult
+from stargraph.ir._models import (
     GotoAction,
     HaltAction,
     IRDocument,
@@ -140,8 +140,8 @@ async def test_simulate_does_not_invoke_tools_llms_or_checkpoints(
 ) -> None:
     """``simulate`` must not touch the runtime checkpoint / tool / LLM seams.
 
-    Patches :mod:`harbor.checkpoint`, :mod:`harbor.runtime.tool_exec`, and
-    :mod:`harbor.runtime.dispatch` with sentinel callables that fail the
+    Patches :mod:`stargraph.checkpoint`, :mod:`stargraph.runtime.tool_exec`, and
+    :mod:`stargraph.runtime.dispatch` with sentinel callables that fail the
     test if invoked. ``simulate`` must complete without tripping any.
     """
     sentinel_calls: list[str] = []
@@ -157,8 +157,8 @@ async def test_simulate_does_not_invoke_tools_llms_or_checkpoints(
     # Patch the concrete checkpoint writer modules directly. ``simulate``
     # must never reach a write coroutine, so swapping the SQLite/Postgres
     # write methods with the sentinel is the strongest local guard.
-    import harbor.checkpoint.postgres as _ck_pg
-    import harbor.checkpoint.sqlite as _ck_sqlite
+    import stargraph.checkpoint.postgres as _ck_pg
+    import stargraph.checkpoint.sqlite as _ck_sqlite
 
     monkeypatch.setattr(
         _ck_sqlite.SQLiteCheckpointer,
@@ -174,8 +174,8 @@ async def test_simulate_does_not_invoke_tools_llms_or_checkpoints(
     )
 
     # Patch the tool / dispatch entry points (every async surface).
-    import harbor.runtime.dispatch as _dp
-    import harbor.runtime.tool_exec as _te
+    import stargraph.runtime.dispatch as _dp
+    import stargraph.runtime.tool_exec as _te
 
     for name, _member in inspect.getmembers(_te, inspect.iscoroutinefunction):
         monkeypatch.setattr(_te, name, _trip(f"runtime.tool_exec.{name}"))
@@ -194,11 +194,11 @@ def test_simulate_source_does_not_reference_io_seams() -> None:
     """Static guard: simulate's module source must not call the I/O seams.
 
     Belt-and-braces with the runtime-mock test above. Greps the source of
-    :mod:`harbor.graph.definition` for the patterns the task ``Verify``
+    :mod:`stargraph.graph.definition` for the patterns the task ``Verify``
     line forbids (``checkpointer.write`` / ``tool.acall``). Catches future
     refactors that route simulate through a write/dispatch path.
     """
-    import harbor.graph.definition as _gd
+    import stargraph.graph.definition as _gd
 
     src = inspect.getsource(_gd)
     forbidden = ("checkpointer.write", "tool.acall", ".acall(", "llm.forward(")

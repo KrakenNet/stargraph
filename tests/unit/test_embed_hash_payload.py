@@ -2,7 +2,7 @@
 """TDD-GREEN: FR-8 embed-hash 5-tuple payload unit tests.
 
 Exercises the payload-building portion of the FR-8 drift gate
-(:func:`harbor.stores._common._expected_embed_meta`) without booting
+(:func:`stargraph.stores._common._expected_embed_meta`) without booting
 LanceDB. Three checks per spec task 3.3:
 
 1. ``test_payload_includes_5tuple`` -- payload exposes all five drift-gate
@@ -19,8 +19,8 @@ from __future__ import annotations
 import orjson
 import pytest
 
-from harbor.stores import _common
-from harbor.stores.embeddings import FakeEmbedder
+from stargraph.stores import _common
+from stargraph.stores.embeddings import FakeEmbedder
 
 # Internal helpers under test (FR-8 drift gate primitives).
 _EMBED_META_KEYS = _common._EMBED_META_KEYS  # pyright: ignore[reportPrivateUsage]

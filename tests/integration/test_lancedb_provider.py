@@ -2,7 +2,7 @@
 """LanceDB provider CRUD + filter integration tests (FR-2, FR-10).
 
 Phase-3 testing checkpoint exercising the
-:class:`~harbor.stores.lancedb.LanceDBVectorStore` POC end-to-end against
+:class:`~stargraph.stores.lancedb.LanceDBVectorStore` POC end-to-end against
 a real on-disk LanceDB dataset. Five tests pin the public Protocol
 surface (``bootstrap`` / ``upsert`` / ``search`` / ``delete``):
 
@@ -18,11 +18,11 @@ surface (``bootstrap`` / ``upsert`` / ``search`` / ``delete``):
    contract.
 4. :func:`test_search_mode_vector_fts_hybrid` -- each of
    ``mode='vector' | 'fts' | 'hybrid'`` returns a non-empty
-   :class:`~harbor.stores.vector.Hit` list against seeded data.
+   :class:`~stargraph.stores.vector.Hit` list against seeded data.
 5. :func:`test_delete_returns_count` -- ``delete()`` returns the number
    of rows actually removed.
 
-Uses :class:`~harbor.stores.embeddings.FakeEmbedder` (``ndims=4``) for
+Uses :class:`~stargraph.stores.embeddings.FakeEmbedder` (``ndims=4``) for
 determinism + speed; no MiniLM weights required.
 """
 
@@ -32,9 +32,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.vector import Row
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.vector import Row
 
 if TYPE_CHECKING:
     from pathlib import Path

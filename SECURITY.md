@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Harbor, please report it privately.
+If you discover a security vulnerability in Stargraph, please report it privately.
 Do **not** open a public GitHub issue for security-sensitive reports.
 
 - **Email**: security@krakennetworks.com
@@ -28,11 +28,11 @@ revised timeline directly to the reporter before any public disclosure.
 
 ## Scope
 
-This policy applies to the Harbor codebase in this repository and any official
+This policy applies to the Stargraph codebase in this repository and any official
 artifacts produced from it. Vulnerabilities in third-party dependencies should
 be reported to their respective maintainers; we are happy to coordinate.
 
-## Safe Harbor
+## Safe Stargraph
 
 We will not pursue legal action against researchers who:
 
@@ -40,4 +40,4 @@ We will not pursue legal action against researchers who:
 - Avoid privacy violations, service degradation, and destruction of data.
 - Give us reasonable time to remediate before public disclosure.
 
-Thank you for helping keep Harbor and its users safe.
+Thank you for helping keep Stargraph and its users safe.

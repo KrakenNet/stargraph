@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.artifacts.fs` (FR-91, NFR-15, NFR-20, NFR-21).
+"""Unit tests for :mod:`stargraph.artifacts.fs` (FR-91, NFR-15, NFR-20, NFR-21).
 
 Covers the BLAKE3 content-addressable contract, atomic-write idempotency,
 NFS / SMB / AFP refusal at bootstrap, and the SHA-256 fallback under
-``HARBOR_FIPS_MODE=1``.
+``STARGRAPH_FIPS_MODE=1``.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 import pytest
 from blake3 import blake3
 
-from harbor.artifacts.fs import FilesystemArtifactStore
-from harbor.errors import ArtifactStoreError
+from stargraph.artifacts.fs import FilesystemArtifactStore
+from stargraph.errors import ArtifactStoreError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -148,7 +148,7 @@ async def test_atomic_write_failure_no_partial_artifact(
             raise OSError("simulated mid-write failure")
         real_rename(src, dst)
 
-    monkeypatch.setattr("harbor.artifacts.fs.os.rename", _failing_rename)
+    monkeypatch.setattr("stargraph.artifacts.fs.os.rename", _failing_rename)
 
     with pytest.raises(ArtifactStoreError) as excinfo:
         await store.put(
@@ -174,7 +174,7 @@ def test_nfs_refusal_at_bootstrap(
 ) -> None:
     """Bootstrap on a network-FS path raises :class:`ArtifactStoreError` (NFR-15).
 
-    Mocks the public seam :func:`harbor.artifacts.fs.is_network_fs` to
+    Mocks the public seam :func:`stargraph.artifacts.fs.is_network_fs` to
     return ``True`` so the store believes its root sits on a
     network mount. The constructor itself does not refuse (it is a
     plain dataclass-shaped attach); refusal happens in
@@ -184,7 +184,7 @@ def test_nfs_refusal_at_bootstrap(
     def _always_network(_path: Path) -> bool:
         return True
 
-    monkeypatch.setattr("harbor.artifacts.fs.is_network_fs", _always_network)
+    monkeypatch.setattr("stargraph.artifacts.fs.is_network_fs", _always_network)
     store = FilesystemArtifactStore(tmp_path / "nfs-root")
 
     with pytest.raises(ArtifactStoreError) as excinfo:

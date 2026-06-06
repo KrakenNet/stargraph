@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration tests for :class:`harbor.stores.sqlite_doc.SQLiteDocStore` (FR-4, FR-13).
+"""Integration tests for :class:`stargraph.stores.sqlite_doc.SQLiteDocStore` (FR-4, FR-13).
 
 Covers the three observable contracts task 3.20 calls out:
 
@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import aiosqlite
 import pytest
 
-from harbor.stores.sqlite_doc import SQLiteDocStore
+from stargraph.stores.sqlite_doc import SQLiteDocStore
 
 if TYPE_CHECKING:
     from pathlib import Path

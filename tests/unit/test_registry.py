@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :mod:`harbor.registry` (FR-23, design §3.5).
+"""Unit tests for :mod:`stargraph.registry` (FR-23, design §3.5).
 
 Covers the in-memory :class:`ToolRegistry` surface:
 
@@ -17,9 +17,9 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.errors import PluginLoadError
-from harbor.registry import Tool, ToolRegistry
-from harbor.tools import ReplayPolicy, SideEffects, tool
+from stargraph.errors import PluginLoadError
+from stargraph.registry import Tool, ToolRegistry
+from stargraph.tools import ReplayPolicy, SideEffects, tool
 
 
 def _make_tool(name: str, namespace: str = "fs", version: str = "1.0.0") -> Tool:

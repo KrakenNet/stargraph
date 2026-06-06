@@ -13,14 +13,14 @@ Pin source of truth: **distribution metadata** via
 its own ``__version__`` constant that drifts independently of the
 distribution name (e.g. on local dev installs from a sibling
 worktree); the distribution metadata reflects the actual ``pyproject``
-pin and is the bytewise contract Harbor depends on.
+pin and is the bytewise contract Stargraph depends on.
 
 Upgrade procedure when bumping ``nautilus-rkm``:
 
 1. Edit :file:`pyproject.toml` -- change ``nautilus-rkm==0.1.2`` to the
    new pin (e.g. ``==0.1.3``).
 2. Run ``uv sync`` to install the new version locally.
-3. Re-run the :mod:`harbor.nodes.nautilus.schemas` JSON-schema re-export
+3. Re-run the :mod:`stargraph.nodes.nautilus.schemas` JSON-schema re-export
    script (or the auto-regen entry-point if wired) so the in-tree
    schema mirrors the new distribution shape.
 4. Run the composition tests to verify the IR + node wiring still
@@ -36,7 +36,7 @@ Upgrade procedure when bumping ``nautilus-rkm``:
 
 6. If shape drift is detected (a ``BrokerResponse`` field renamed/
    removed, or a ``Broker.arequest`` signature change), follow the
-   harbor-foundation §15 deprecation flow (deprecate the old field
+   stargraph-foundation §15 deprecation flow (deprecate the old field
    for one minor, ship the new field side-by-side, then drop the
    old field on the following minor).
 
@@ -84,16 +84,16 @@ def test_nautilus_distribution_pin_is_0_1_5() -> None:
 def test_nautilus_import_surface_is_stable() -> None:
     """The ``nautilus`` import surface still exposes ``Broker`` + ``BrokerResponse``.
 
-    Asserts the three structural contract slices Harbor's integration
+    Asserts the three structural contract slices Stargraph's integration
     depends on:
 
     1. :class:`nautilus.Broker` is importable and has an ``arequest``
        attribute that is callable (the canonical async request entry
-       point :class:`harbor.nodes.nautilus.BrokerNode` invokes).
+       point :class:`stargraph.nodes.nautilus.BrokerNode` invokes).
     2. :class:`nautilus.BrokerResponse` is importable and a Pydantic
        model (carries ``model_json_schema``).
     3. :meth:`BrokerResponse.model_json_schema` returns a serialization-
-       mode JSON schema dict (the canonical wire shape Harbor's IR
+       mode JSON schema dict (the canonical wire shape Stargraph's IR
        export consumes).
 
     A break here surfaces upstream API drift before any composition
@@ -104,7 +104,7 @@ def test_nautilus_import_surface_is_stable() -> None:
     # 1. Broker.arequest callable
     assert hasattr(Broker, "arequest"), (
         "nautilus.Broker no longer exposes 'arequest' -- upstream API drift; "
-        "follow harbor-foundation §15 deprecation flow."
+        "follow stargraph-foundation §15 deprecation flow."
     )
     assert callable(Broker.arequest), (
         "nautilus.Broker.arequest is no longer callable -- upstream API drift."
@@ -132,7 +132,7 @@ def test_nautilus_import_surface_is_stable() -> None:
 def test_brokerresponse_carries_canonical_fields() -> None:
     """The ``BrokerResponse`` Pydantic model carries the canonical CVE-triage fields.
 
-    Locks in the field set Harbor's :class:`BrokerNode` envelope code
+    Locks in the field set Stargraph's :class:`BrokerNode` envelope code
     depends on (provenance carries ``request_id`` as ``external_id``).
     A field rename or removal surfaces here before downstream node
     wiring breaks.
@@ -161,6 +161,6 @@ def test_brokerresponse_carries_canonical_fields() -> None:
     missing = expected_fields - actual_fields
     assert not missing, (
         f"nautilus.BrokerResponse is missing canonical field(s) {missing!r}; "
-        f"upstream API drift -- follow harbor-foundation §15 deprecation flow. "
+        f"upstream API drift -- follow stargraph-foundation §15 deprecation flow. "
         f"Actual fields: {sorted(actual_fields)!r}"
     )

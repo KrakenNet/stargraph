@@ -9,11 +9,11 @@
           for QA scoring or dispute review.
 
   Audience:  Every CX vendor has a chatbot. None can prove what their bot
-             did, replay it, or hot-swap escalation policy. Harbor can.
+             did, replay it, or hot-swap escalation policy. Stargraph can.
 
 =============================================================================
 
-[harbor.serve  -- /v1/support/chat (POST, mTLS or session JWT)]
+[stargraph.serve  -- /v1/support/chat (POST, mTLS or session JWT)]
              │
              ├──► [Auth + capability gate (support.handle_inbound)]
              ├──► [Rate limit per session]
@@ -66,19 +66,19 @@
              │  as BLAKE3 content-addressable artifact.
              │
              ▼
-[harbor.audit.JSONLAuditSink]
+[stargraph.audit.JSONLAuditSink]
              Ed25519-signed: session_id, intent, retrieved_chunks,
              rule_firings, action, reply_hash.
 
    ┌─── Hot-swap policy without redeploy ───┐
-   │  ops$ harbor bosun load support-policy │
+   │  ops$ stargraph bosun load support-policy │
    │       --pack ./packs/support-v3.bsn    │
    │  -> sig verified, ruleset hash logged, │
    │     next request uses new rules.       │
    └────────────────────────────────────────┘
 
    ┌─── 6 weeks later: customer disputes a refund ───┐
-   │  harbor replay --session 14881                  │
+   │  stargraph replay --session 14881                  │
    │  -> byte-identical reproduction of the chat,    │
    │     incl. retrieved KB snapshot + ruleset hash. │
    └─────────────────────────────────────────────────┘
@@ -96,7 +96,7 @@
 - Hooks naturally into existing CRMs / ticket queues via custom @tools.
 
 =============================================================================
-                         HARBOR CAPABILITIES EXERCISED
+                         STARGRAPH CAPABILITIES EXERCISED
 =============================================================================
 
   Stores:        Memory, Fact, Doc, Graph (4 of 5 protocols)
@@ -107,7 +107,7 @@
   Bosun:         Two signed packs (support-policy, safety_pii)
   Hot-swap:      Live ruleset reload via Fathom v0.3.1 hot-reload
   Auth:          mTLS or session JWT; capability gates
-  HTTP:          /v1/support/chat endpoint via harbor.serve
+  HTTP:          /v1/support/chat endpoint via stargraph.serve
   Replay:        Cassettes per session for QA / dispute
   Audit:         Ed25519 JSONL chain
   Artifacts:     Per-turn content-addressable storage
@@ -118,7 +118,7 @@
 
   demos/support-veto/
     README.md
-    harbor.yaml
+    stargraph.yaml
     bosun-packs/
       support-policy-v1/          -- signed
       support-policy-v2/          -- signed; hot-swap target

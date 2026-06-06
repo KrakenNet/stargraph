@@ -1,8 +1,8 @@
-# StarGraph - Core (harbor)
+# StarGraph - Core (stargraph)
 
 **Stateful agent-graph framework with deterministic governance.**
 
-Harbor composes LLMs, classical ML models, tools, and deterministic logic into
+Stargraph composes LLMs, classical ML models, tools, and deterministic logic into
 auditable, replayable graphs. Transitions between nodes are decided by
 [Fathom](https://github.com/KrakenNet/fathom) (a CLIPS rules engine) over
 provenance-typed facts — not by an LLM playing router.
@@ -21,7 +21,7 @@ provenance-typed facts — not by an LLM playing router.
 
 In most agent frameworks the LLM is both the worker and the router: it does the
 thinking _and_ picks the next step. That is fine for demos and brittle in
-production. Harbor splits the job. Nodes do work (LLM calls, ML inference, tool
+production. Stargraph splits the job. Nodes do work (LLM calls, ML inference, tool
 invocations, retrieval). Rules decide what happens next. The decision layer is
 inspectable, versioned, replayable, and free of stochastic drift.
 
@@ -46,17 +46,17 @@ inspectable, versioned, replayable, and free of stochastic drift.
   Predictable, testable, transactional.
 - **Two authoring modes.** Python with full Pydantic typing, or YAML with a
   compiled subset for non-Python contributors. One runtime truth.
-- **Headless serving.** `harbor serve` exposes HTTP + WebSocket triggers
+- **Headless serving.** `stargraph serve` exposes HTTP + WebSocket triggers
   (`manual`, `cron`, `webhook`) over FastAPI with OpenAPI 3.1.
 
 ## Architecture
 
 ```
-harbor serve            triggers, scheduler, HTTP/WS, run history
+stargraph serve            triggers, scheduler, HTTP/WS, run history
        │
-harbor.Graph            orchestration, streaming, checkpointing
+stargraph.Graph            orchestration, streaming, checkpointing
        │
-harbor.skills           agents-as-subgraphs, tool registry, plugins
+stargraph.skills           agents-as-subgraphs, tool registry, plugins
        │
 Bosun rule packs        budgets, retries, safety, audit (Fathom rules)
        │
@@ -68,10 +68,10 @@ Nodes:  DSPy │ ML models │ tools │ retrieval │ memory ops
 ## Install
 
 ```bash
-uv add harbor                          # core
-uv add 'harbor[ml]'                    # + sklearn / xgboost / onnxruntime
-uv add 'harbor[stores]'                # + lancedb / ryugraph / pyarrow
-uv add 'harbor[skills-rag]'            # + sentence-transformers
+uv add stargraph                          # core
+uv add 'stargraph[ml]'                    # + sklearn / xgboost / onnxruntime
+uv add 'stargraph[stores]'                # + lancedb / ryugraph / pyarrow
+uv add 'stargraph[skills-rag]'            # + sentence-transformers
 ```
 
 Requires Python 3.13.
@@ -99,16 +99,16 @@ governance: [bosun:budgets, bosun:audit]
 Run it:
 
 ```bash
-harbor run path/to/graph.yaml
-harbor serve                          # FastAPI on :8000
+stargraph run path/to/graph.yaml
+stargraph serve                          # FastAPI on :8000
 ```
 
 Counterfactual replay from Python:
 
 ```python
-run = harbor.load_run("r-7af2")
+run = stargraph.load_run("r-7af2")
 alt = run.counterfactual(step=4, mutate={"facts.intent": "research"})
-diff = harbor.compare(run, alt)
+diff = stargraph.compare(run, alt)
 ```
 
 ## Concepts at a glance
@@ -129,21 +129,21 @@ diff = harbor.compare(run, alt)
 
 The full glossary, including disambiguations like _node vs tool_ and
 _state vs facts_, lives in
-[`design-docs/harbor-concepts.md`](./design-docs/harbor-concepts.md).
+[`design-docs/stargraph-concepts.md`](./design-docs/stargraph-concepts.md).
 
-## What Harbor is not
+## What Stargraph is not
 
-- **Not a prompt-optimization framework** — that's DSPy, which Harbor uses.
-- **Not an inference engine** — that's Fathom/CLIPS, which Harbor uses.
+- **Not a prompt-optimization framework** — that's DSPy, which Stargraph uses.
+- **Not an inference engine** — that's Fathom/CLIPS, which Stargraph uses.
 - **Not a vector or graph DB** — Stores wrap real ones (LanceDB, RyuGraph, …).
-- **Not a workflow UI** — `harbor serve` is headless. UI is a future product.
+- **Not a workflow UI** — `stargraph serve` is headless. UI is a future product.
 - **Not chasing LangGraph or n8n on mindshare.** It competes on correctness,
   inspectability, and ability to run where those tools can't.
 
 ## Project layout
 
 ```
-src/harbor/
+src/stargraph/
   graph/          Graph, Run, transitions, streaming
   runtime/        Engine, scheduler, concurrency
   nodes/          DSPy, ML, retrieval, memory, tool-call nodes
@@ -156,7 +156,7 @@ src/harbor/
   serve/          FastAPI HTTP + WebSocket API
   checkpoint/     Per-transition persistence (SQLite default, Postgres adapter)
   replay/         Counterfactual replay engine
-  cli/            harbor run / serve / inspect / replay / counterfactual
+  cli/            stargraph run / serve / inspect / replay / counterfactual
   ir/             YAML → IR compiler
   ml/             Classical-ML node integrations
 demos/            End-to-end reference graphs (PR review, SOC triage, …)
@@ -168,25 +168,25 @@ tests/            unit · integration · property · replay · migration
 ## Documentation
 
 - [Getting Started](./docs/getting-started.md)
-- [Concepts & Glossary](./design-docs/harbor-concepts.md)
-- [Design Document](./design-docs/harbor-design.md)
-- [Architecture Decision Records](./design-docs/harbor-adrs.md)
-- [Plugin API](./design-docs/harbor-plugin-api.md)
-- [Roadmap](./design-docs/harbor-roadmap.md)
+- [Concepts & Glossary](./design-docs/stargraph-concepts.md)
+- [Design Document](./design-docs/stargraph-design.md)
+- [Architecture Decision Records](./design-docs/stargraph-adrs.md)
+- [Plugin API](./design-docs/stargraph-plugin-api.md)
+- [Roadmap](./design-docs/stargraph-roadmap.md)
 
-Full site: <https://harbor.krakn.ai>
+Full site: <https://stargraph.krakn.ai>
 
 ## Sister projects
 
-Harbor is part of the **Kraken Networks** stack:
+Stargraph is part of the **Kraken Networks** stack:
 
 - **[Fathom](https://github.com/KrakenNet/fathom)** — CLIPS rules engine
-  Harbor delegates routing and governance to.
+  Stargraph delegates routing and governance to.
 - **Bosun** — reference rule packs (budgets, retries, audit, safety) shipped
-  in `harbor.bosun.*`.
+  in `stargraph.bosun.*`.
 - **[Nautilus](https://github.com/KrakenNet/nautilus)** — knowledge broker;
-  ships an in-tree Harbor tool (`harbor.tools.nautilus.broker_request`).
-- **Railyard** — Harbor's Go predecessor. Harbor is the Python cousin and may
+  ships an in-tree Stargraph tool (`stargraph.tools.nautilus.broker_request`).
+- **Railyard** — Stargraph's Go predecessor. Stargraph is the Python cousin and may
   supersede it.
 
 ## Development

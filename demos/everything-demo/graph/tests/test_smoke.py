@@ -24,7 +24,7 @@ import pytest
 import yaml
 
 GRAPH_DIR = Path(__file__).resolve().parent.parent
-MAIN_IR = GRAPH_DIR / "harbor.yaml"
+MAIN_IR = GRAPH_DIR / "stargraph.yaml"
 SUBGRAPH_IR = GRAPH_DIR / "subgraphs" / "enrichment.yaml"
 TRIGGERS_YAML = GRAPH_DIR / "triggers.yaml"
 NAUTILUS_YAML = GRAPH_DIR / "nautilus.yaml"
@@ -153,10 +153,10 @@ def test_six_governance_packs_mounted() -> None:
     ir = _load(MAIN_IR)
     pack_ids = {p["id"] for p in ir["governance"]}
     expected = {
-        "harbor.bosun.budgets",
-        "harbor.bosun.audit",
-        "harbor.bosun.safety_pii",
-        "harbor.bosun.retries",
+        "stargraph.bosun.budgets",
+        "stargraph.bosun.audit",
+        "stargraph.bosun.safety_pii",
+        "stargraph.bosun.retries",
         "demo.routing",
         "demo.safety",
     }
@@ -216,7 +216,7 @@ def test_custom_packs_declare_required_metadata() -> None:
     for path in (ROUTING_PACK, SAFETY_PACK):
         pack = _load(path)
         assert pack["api_version"] == "1"
-        assert pack["harbor_facts_version"] == "1.0"
+        assert pack["stargraph_facts_version"] == "1.0"
         assert pack["flavor"] in ("routing", "governance")
 
 

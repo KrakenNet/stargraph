@@ -24,7 +24,7 @@ pytestmark = pytest.mark.integration
 @pytest.mark.integration
 def test_parallel_merge_disjoint_fields_succeeds() -> None:
     """Two branches writing disjoint fields merge without conflict (T21)."""
-    from harbor.graph.loop import _merge_branch_results  # pyright: ignore[reportPrivateUsage]
+    from stargraph.graph.loop import _merge_branch_results  # pyright: ignore[reportPrivateUsage]
 
     branch_a = {"alpha": 1}
     branch_b = {"beta": 2}
@@ -39,13 +39,13 @@ def test_parallel_merge_disjoint_fields_succeeds() -> None:
 @pytest.mark.integration
 def test_parallel_merge_conflict_without_reducer_raises_with_evidence() -> None:
     """Two branches writing the same field with no declared reducer raises a
-    loud :class:`HarborRuntimeError` carrying conflict evidence (T21, FR-11)."""
-    from harbor.errors import HarborRuntimeError
-    from harbor.graph.loop import _merge_branch_results  # pyright: ignore[reportPrivateUsage]
+    loud :class:`StargraphRuntimeError` carrying conflict evidence (T21, FR-11)."""
+    from stargraph.errors import StargraphRuntimeError
+    from stargraph.graph.loop import _merge_branch_results  # pyright: ignore[reportPrivateUsage]
 
     branch_a = {"shared": 1}
     branch_b = {"shared": 2}
-    with pytest.raises((HarborRuntimeError, ValueError)):
+    with pytest.raises((StargraphRuntimeError, ValueError)):
         _merge_branch_results(
             [branch_a, branch_b],
             ir=None,  # no reducer declared
@@ -57,8 +57,8 @@ def test_parallel_merge_conflict_without_reducer_raises_with_evidence() -> None:
 def test_parallel_merge_conflict_with_reducer_applies_combine() -> None:
     """When a reducer is declared in IR for the conflicting field, the merge
     applies the reducer's ``combine(a, b)`` (T21)."""
-    from harbor.graph.loop import _merge_branch_results  # pyright: ignore[reportPrivateUsage]
-    from harbor.runtime.merge import MergeRegistry
+    from stargraph.graph.loop import _merge_branch_results  # pyright: ignore[reportPrivateUsage]
+    from stargraph.runtime.merge import MergeRegistry
 
     # Sum reducer on the conflicting field.
     registry = MergeRegistry()

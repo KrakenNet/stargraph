@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.bosun.budgets import BudgetDecision, decide
+from stargraph.bosun.budgets import BudgetDecision, decide
 
 pytestmark = pytest.mark.unit
 

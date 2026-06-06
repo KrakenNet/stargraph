@@ -39,12 +39,12 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from harbor.audit import JSONLAuditSink
-from harbor.runtime.bus import EventBus
-from harbor.runtime.events import TokenEvent
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.audit import JSONLAuditSink
+from stargraph.runtime.bus import EventBus
+from stargraph.runtime.events import TokenEvent
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator as _AsyncIter
@@ -169,8 +169,8 @@ async def test_broadcaster_overflow_raises_typed_exception() -> None:
     engine contract is verified end-to-end here, the HTTP-surface
     contract via the mock-broadcaster handler test.
     """
-    from harbor.errors import BroadcasterOverflow
-    from harbor.serve.broadcast import (
+    from stargraph.errors import BroadcasterOverflow
+    from stargraph.serve.broadcast import (
         _SUBSCRIBER_BUFFER_SIZE,  # pyright: ignore[reportPrivateUsage]
     )
 
@@ -245,7 +245,7 @@ def test_ws_overflow_close_via_mock_broadcaster(tmp_path: Path) -> None:
     engine-level fan-out path tested in
     ``test_broadcaster_overflow_raises_typed_exception``.
     """
-    from harbor.errors import BroadcasterOverflow
+    from stargraph.errors import BroadcasterOverflow
 
     run_id = "run-stub"
     audit_path = tmp_path / "audit.jsonl"

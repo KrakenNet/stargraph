@@ -2,7 +2,7 @@
 """Cypher portable-subset linter allow-list tests (FR-12, AC-9.1).
 
 Pins the ~18 allow-list constructs documented in design §3.2 against
-:meth:`harbor.stores.cypher.Linter.check`. Each test asserts that a
+:meth:`stargraph.stores.cypher.Linter.check`. Each test asserts that a
 minimal-but-valid Cypher snippet exercising the construct passes the
 linter without raising :class:`UnportableCypherError`.
 
@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.errors import UnportableCypherError
-from harbor.stores.cypher import Linter
+from stargraph.errors import UnportableCypherError
+from stargraph.stores.cypher import Linter
 
 
 @pytest.mark.knowledge

@@ -2,19 +2,19 @@
 """POC integration smoke -- cancel + pause emit correct events.
 
 Drives a deliberately long-running stub graph through the FastAPI serve
-surface (:func:`harbor.serve.api.create_app`) and exercises the two
+surface (:func:`stargraph.serve.api.create_app`) and exercises the two
 cooperative-lifecycle HTTP routes:
 
-* ``POST /v1/runs/{run_id}/pause`` -> :func:`harbor.serve.lifecycle.pause_run`
-  -> :meth:`harbor.graph.GraphRun.pause` -> bus emits
-  :class:`~harbor.runtime.events.RunPausedEvent`. The loop's cooperative
+* ``POST /v1/runs/{run_id}/pause`` -> :func:`stargraph.serve.lifecycle.pause_run`
+  -> :meth:`stargraph.graph.GraphRun.pause` -> bus emits
+  :class:`~stargraph.runtime.events.RunPausedEvent`. The loop's cooperative
   pause boundary (``loop.py`` lines 240-248, task 1.8) observes
   ``_pause_event`` after the next :func:`dispatch_node` returns,
   transitions ``state="paused"``, emits a terminal :class:`ResultEvent`
   with ``status="paused"``, and exits cleanly.
-* ``POST /v1/runs/{run_id}/cancel`` -> :func:`harbor.serve.lifecycle.cancel_run`
-  -> :meth:`harbor.graph.GraphRun.cancel` -> bus emits
-  :class:`~harbor.runtime.events.RunCancelledEvent`. The loop's
+* ``POST /v1/runs/{run_id}/cancel`` -> :func:`stargraph.serve.lifecycle.cancel_run`
+  -> :meth:`stargraph.graph.GraphRun.cancel` -> bus emits
+  :class:`~stargraph.runtime.events.RunCancelledEvent`. The loop's
   cooperative cancel boundary raises :class:`asyncio.CancelledError` at
   the next checkpoint boundary; ``state`` is set to ``"cancelled"`` by
   ``cancel()`` itself before the loop ever sees the signal (no terminal
@@ -58,19 +58,19 @@ import anyio.lowlevel
 import httpx
 import pytest
 
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.base import NodeBase
-from harbor.runtime.events import (
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.base import NodeBase
+from stargraph.runtime.events import (
     ResultEvent,
     RunCancelledEvent,
     RunPausedEvent,
     TransitionEvent,
 )
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.profiles import OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -128,7 +128,7 @@ def _build_long_running_graph() -> Graph:
     """Build a 12-node IR + compiled :class:`Graph` for the cancel/pause fixture.
 
     All 12 nodes share the ``stub`` kind; the loop walks them in IR
-    order via :func:`harbor.runtime.dispatch.dispatch_node`'s
+    order via :func:`stargraph.runtime.dispatch.dispatch_node`'s
     ``ContinueAction`` fallthrough (no Fathom, no ``goto``). The
     state schema carries a single ``counter`` field that nodes leave
     untouched -- it exists only because :class:`Graph` requires a
@@ -159,7 +159,7 @@ async def _wait_for_running(
     """Poll until ``run.state == 'running'`` (or raise :class:`TimeoutError`).
 
     The loop sets ``state="running"`` at line 193 of
-    :func:`harbor.graph.loop.execute`, before the first
+    :func:`stargraph.graph.loop.execute`, before the first
     :func:`dispatch_node` call. The polling interval is one
     :func:`anyio.lowlevel.checkpoint` yield so we observe the transition
     at the earliest possible scheduler boundary. Used by both scenarios
@@ -249,7 +249,7 @@ async def test_poc_pause_emits_run_paused_event(tmp_path: Path) -> None:
 
     async def _issue_pause() -> None:
         # Wait for the loop to hit ``state='running'`` so ``pause()`` does
-        # not raise ``HarborRuntimeError("cannot pause from state ...")``.
+        # not raise ``StargraphRuntimeError("cannot pause from state ...")``.
         await _wait_for_running(run)
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:

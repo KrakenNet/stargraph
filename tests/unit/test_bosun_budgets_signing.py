@@ -2,7 +2,7 @@
 """Unit tests for ``bosun/budgets`` pack-signing wiring (T12).
 
 Pins ``_PACK_ROOT`` constant exposure and round-trip through
-:func:`harbor.bosun.signing.sign_pack`.
+:func:`stargraph.bosun.signing.sign_pack`.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from harbor.bosun import budgets
-from harbor.bosun.signing import sign_pack
+from stargraph.bosun import budgets
+from stargraph.bosun.signing import sign_pack
 
 pytestmark = pytest.mark.unit
 

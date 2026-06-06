@@ -21,8 +21,8 @@ Usage from ``serve_sdw.py``::
 
 from __future__ import annotations
 
-from harbor.security import Capabilities, CapabilityClaim
-from harbor.tools.nautilus import broker_request
+from stargraph.security import Capabilities, CapabilityClaim
+from stargraph.tools.nautilus import broker_request
 
 
 def _claims_for_permission(permission: str) -> CapabilityClaim:

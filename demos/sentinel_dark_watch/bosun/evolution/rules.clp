@@ -32,7 +32,7 @@
   (slot run_id))
 
 ; Auto-reject: negative improvement
-; Asserts both sdw.gate (audit) and harbor_action (routing) facts.
+; Asserts both sdw.gate (audit) and stargraph_action (routing) facts.
 (defrule evolution-reject-negative
   (sdw.proposal (delta_pct ?d&:(<= ?d 0.0)) (run_id ?r))
   =>
@@ -40,7 +40,7 @@
             (decision "reject")
             (reason "negative or zero improvement")
             (run_id ?r)))
-  (assert (harbor_action
+  (assert (stargraph_action
             (kind goto)
             (target "curate_training_data")
             (reason "governance-rejected: negative or zero improvement"))))
@@ -53,7 +53,7 @@
             (decision "approve")
             (reason "low-risk with positive improvement")
             (run_id ?r)))
-  (assert (harbor_action
+  (assert (stargraph_action
             (kind goto)
             (target "apply_change")
             (reason "governance-approved: low-risk positive improvement"))))
@@ -66,7 +66,7 @@
             (decision "approve")
             (reason "medium-risk with significant improvement")
             (run_id ?r)))
-  (assert (harbor_action
+  (assert (stargraph_action
             (kind goto)
             (target "apply_change")
             (reason "governance-approved: medium-risk significant improvement"))))
@@ -98,7 +98,7 @@
             (decision "reject")
             (reason "structural change cooldown — less than 24h since last")
             (run_id ?r)))
-  (assert (harbor_action
+  (assert (stargraph_action
             (kind goto)
             (target "curate_training_data")
             (reason "governance-rejected: structural cooldown"))))

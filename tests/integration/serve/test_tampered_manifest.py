@@ -19,7 +19,7 @@ Cases covered (FR-41, FR-42, FR-65, AC-3.3, AC-8.5):
    (signature/header parse failure surfaces as a load-fail).
 
 Tree-hash skips ``manifest.jwt`` and ``*.pub.pem`` per
-``harbor.bosun.signing._tree_hash``, so we mutate ``manifest.yaml``
+``stargraph.bosun.signing._tree_hash``, so we mutate ``manifest.yaml``
 (included in the tree-hash) for cases 1+2 and the JWT itself for
 case 3.
 """
@@ -39,13 +39,13 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from harbor.bosun.signing import (
+from stargraph.bosun.signing import (
     PackSignatureError,
     StaticTrustStore,
     sign_pack,
     verify_pack,
 )
-from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
+from stargraph.serve.profiles import ClearedProfile, OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -116,16 +116,16 @@ def test_tampered_tree_under_oss_default_warns(
     (pack / "manifest.yaml").write_bytes(b"id: tamper-test\nversion: 9.9\n")
 
     trust = StaticTrustStore({key_id: pub_pem})
-    with caplog.at_level(logging.WARNING, logger="harbor.bosun.signing"):
+    with caplog.at_level(logging.WARNING, logger="stargraph.bosun.signing"):
         result = verify_pack(pack, token, trust, OssDefaultProfile())
 
     assert result.verified is False
     assert result.reason == "tree-hash-mismatch"
     assert any(
-        rec.name == "harbor.bosun.signing" and rec.levelno == logging.WARNING
+        rec.name == "stargraph.bosun.signing" and rec.levelno == logging.WARNING
         for rec in caplog.records
     ), (
-        "expected at least one WARNING on harbor.bosun.signing logger; "
+        "expected at least one WARNING on stargraph.bosun.signing logger; "
         f"got records={[(r.name, r.levelname) for r in caplog.records]!r}"
     )
 

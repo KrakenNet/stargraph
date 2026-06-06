@@ -17,8 +17,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from harbor.skills.salience import RuleBasedScorer, SalienceContext
-from harbor.stores.memory import Episode
+from stargraph.skills.salience import RuleBasedScorer, SalienceContext
+from stargraph.stores.memory import Episode
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.property]
 

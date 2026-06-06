@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Skill base class shape -- Plugin API §3 surface (FR-21, FR-22).
 
-Asserts that :class:`harbor.skills.base.Skill` exposes every field listed
+Asserts that :class:`stargraph.skills.base.Skill` exposes every field listed
 in design §3.7's Plugin API §3 surface, that ``bubble_events`` defaults
 to ``True`` (FR-24, LangGraph #2484 mitigation), and that ``kind`` only
 accepts :class:`SkillKind` enum values.
@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from harbor.skills.base import Skill, SkillKind
+from stargraph.skills.base import Skill, SkillKind
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

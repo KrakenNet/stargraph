@@ -2,13 +2,13 @@
 """Each store embeds with its own embedder (FR-26, AC-4, Task 3.30).
 
 Pins the per-store embed-isolation contract on
-:class:`harbor.nodes.retrieval.RetrievalNode`: when a fan-out runs across
+:class:`stargraph.nodes.retrieval.RetrievalNode`: when a fan-out runs across
 stores configured with **different** embedders (different ``ndims`` /
 ``model_id`` / ``content_hash``), each store's vectorisation must use
 **that store's own embedder**, never one borrowed from a peer branch.
 
 The test installs two stub vector stores backed by
-:class:`harbor.stores.embeddings.FakeEmbedder` instances of differing
+:class:`stargraph.stores.embeddings.FakeEmbedder` instances of differing
 ``ndims`` (4 vs 8). Each store's ``search`` records the query vector it
 received; the assertion is that ``len(query_vec) == that_store.ndims``
 for every captured call -- a cross-store re-embed (e.g. running the
@@ -23,15 +23,15 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from pydantic import BaseModel
 
-from harbor.ir._models import StoreRef
-from harbor.nodes.retrieval import RetrievalNode
-from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.vector import Hit
+from stargraph.ir._models import StoreRef
+from stargraph.nodes.retrieval import RetrievalNode
+from stargraph.stores.embeddings import FakeEmbedder
+from stargraph.stores.vector import Hit
 
 if TYPE_CHECKING:
-    from harbor.nodes.base import ExecutionContext
-    from harbor.stores.doc import DocStore
-    from harbor.stores.vector import VectorStore
+    from stargraph.nodes.base import ExecutionContext
+    from stargraph.stores.doc import DocStore
+    from stargraph.stores.vector import VectorStore
 
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
@@ -49,7 +49,7 @@ class _SpyVectorStore:
     """Vector store with an in-process embedder that records call args.
 
     The store embeds the incoming ``text`` query itself (mirroring how
-    :class:`harbor.stores.lancedb.LanceDBVectorStore` resolves text →
+    :class:`stargraph.stores.lancedb.LanceDBVectorStore` resolves text →
     vector when ``mode='vector'`` and only ``text`` is supplied) and
     records the ``ndims`` of the produced vector. Tests assert that the
     recorded ndims matches **this** store's embedder, never a peer's.

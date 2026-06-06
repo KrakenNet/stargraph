@@ -3,7 +3,7 @@
 In this tutorial you'll build a two-node retrieval-augmented graph: a
 `RetrievalNode` queries a LanceDB-backed vector store, and a
 `DSPyNode` summarises the fused hits. The DSPy seam runs through
-`harbor.adapters.dspy.bind`, so the force-loud filter raises
+`stargraph.adapters.dspy.bind`, so the force-loud filter raises
 `AdapterFallbackError` if DSPy ever silently swaps to JSON mode mid-run.
 
 ## What you'll build
@@ -23,8 +23,8 @@ network round-trip.
 ## Prerequisites
 
 - The [first graph](first-graph.md) tutorial completed (you have a
-  working Harbor install + state model pattern).
-- `pip install 'harbor[stores,ml]'` — pulls LanceDB, sentence-
+  working Stargraph install + state model pattern).
+- `pip install 'stargraph[stores,ml]'` — pulls LanceDB, sentence-
   transformers, DSPy.
 - A local OpenAI-compatible LM endpoint (Ollama, vLLM, llama-cpp). The
   examples below assume Ollama at `http://localhost:11434/v1` with
@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from harbor.stores.vector import Hit
+from stargraph.stores.vector import Hit
 
 
 class RagState(BaseModel):
@@ -47,7 +47,7 @@ class RagState(BaseModel):
     summary: str = ""
 ```
 
-`Hit` is the canonical row shape from `harbor.stores.vector`:
+`Hit` is the canonical row shape from `stargraph.stores.vector`:
 `(id, score, metadata)`. `RetrievalNode` writes into `state.retrieved`
 under the `"retrieved"` key per the field-merge registry contract
 (FR-11).
@@ -63,9 +63,9 @@ into a fresh LanceDB table at `./.lance`.
 import asyncio
 from pathlib import Path
 
-from harbor.stores.embeddings import MiniLMEmbedder
-from harbor.stores.lancedb import LanceDBVectorStore
-from harbor.stores.vector import Row
+from stargraph.stores.embeddings import MiniLMEmbedder
+from stargraph.stores.lancedb import LanceDBVectorStore
+from stargraph.stores.vector import Row
 
 
 async def main() -> None:
@@ -76,7 +76,7 @@ async def main() -> None:
     await store.bootstrap()
     await store.upsert(
         rows=[
-            Row(id="d1", text="Harbor compiles a stateful agent graph from IR YAML."),
+            Row(id="d1", text="Stargraph compiles a stateful agent graph from IR YAML."),
             Row(id="d2", text="Fathom enforces deterministic governance via CLIPS rules."),
             Row(id="d3", text="LanceDB powers the vector store with FTS + ANN hybrid search."),
         ],
@@ -93,7 +93,7 @@ uv run python seed.py
 ```
 
 Verify: a `./.lance/` directory now exists with `vectors.lance` plus a
-`_harbor_meta` sidecar.
+`_stargraph_meta` sidecar.
 
 ## Step 3 — Wire the DSPy module
 
@@ -109,9 +109,9 @@ from __future__ import annotations
 
 import dspy
 
-from harbor.adapters.dspy import _install_filter
-from harbor.nodes.base import NodeBase
-from harbor.nodes.dspy import DSPyNode
+from stargraph.adapters.dspy import _install_filter
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.dspy import DSPyNode
 
 
 class Summarise(dspy.Signature):
@@ -170,7 +170,7 @@ rules:
 ```
 
 Both `kind:` strings use the `module:ClassName` form
-`harbor.cli.run._resolve_node_factory` understands; each must resolve
+`stargraph.cli.run._resolve_node_factory` understands; each must resolve
 to a `NodeBase` subclass with a zero-arg constructor.
 
 ## Step 5 — Wire the retrieval node
@@ -185,11 +185,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from harbor.ir._models import StoreRef
-from harbor.nodes.base import NodeBase
-from harbor.nodes.retrieval import RetrievalNode
-from harbor.stores.embeddings import MiniLMEmbedder
-from harbor.stores.lancedb import LanceDBVectorStore
+from stargraph.ir._models import StoreRef
+from stargraph.nodes.base import NodeBase
+from stargraph.nodes.retrieval import RetrievalNode
+from stargraph.stores.embeddings import MiniLMEmbedder
+from stargraph.stores.lancedb import LanceDBVectorStore
 
 
 _STORE = LanceDBVectorStore(path=Path("./.lance"), embedder=MiniLMEmbedder())
@@ -220,15 +220,15 @@ module-level singleton above is fine for a tutorial.
 ## Step 6 — Run end-to-end
 
 ```bash
-uv run harbor run graph.yaml \
-  --inputs query="What does Harbor compile?" \
+uv run stargraph run graph.yaml \
+  --inputs query="What does Stargraph compile?" \
   --lm-url http://localhost:11434/v1 \
   --lm-model gpt-oss:20b \
-  --log-file ./.harbor/audit.jsonl
+  --log-file ./.stargraph/audit.jsonl
 ```
 
 The CLI configures `dspy.LM(...)` against the OpenAI-compatible
-endpoint (see `_configure_lm` in `src/harbor/cli/run.py`). Expected
+endpoint (see `_configure_lm` in `src/stargraph/cli/run.py`). Expected
 last line:
 
 ```
@@ -238,7 +238,7 @@ run_id=run-… status=done
 Inspect the run:
 
 ```bash
-uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite --step 1
+uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite --step 1
 ```
 
 The state-at-step JSON shows `retrieved` populated with the top-3
@@ -253,7 +253,7 @@ fused hits and `summary` with the DSPy output.
   build whose safetensors hash doesn't match `MINILM_SHA256`. Pre-stage
   the model directory and pass `MiniLMEmbedder(model_path=...)`.
 - **`store search returned []`** — verify `seed.py` ran and the
-  `./.lance/_harbor_meta` sidecar exists; the embedder identity tuple
+  `./.lance/_stargraph_meta` sidecar exists; the embedder identity tuple
   must match across boot and seed.
 
 ## What to read next

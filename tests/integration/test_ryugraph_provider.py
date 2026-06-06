@@ -2,7 +2,7 @@
 """RyuGraph provider integration tests (FR-3, FR-11, AC-12.2/12.3).
 
 Three smoke tests pinning the public Protocol surface of
-:class:`~harbor.stores.ryugraph.RyuGraphStore` against a real on-disk
+:class:`~stargraph.stores.ryugraph.RyuGraphStore` against a real on-disk
 RyuGraph database:
 
 1. :func:`test_bootstrap_creates_entity_rel_tables` -- bootstrap
@@ -21,8 +21,8 @@ from typing import TYPE_CHECKING
 import pytest
 import ryugraph
 
-from harbor.stores.graph import NodeRef
-from harbor.stores.ryugraph import RyuGraphStore
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.ryugraph import RyuGraphStore
 
 if TYPE_CHECKING:
     from pathlib import Path

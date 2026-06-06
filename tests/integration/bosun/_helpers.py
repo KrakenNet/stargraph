@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared helpers for the four ``harbor.bosun.*`` pack integration tests.
+"""Shared helpers for the four ``stargraph.bosun.*`` pack integration tests.
 
 The helpers strip CLIPS line-comments and split a ``rules.clp`` file
 into individual top-level s-expressions so each construct can be
@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from fathom import Engine
 
-PACK_ROOT = Path(__file__).parent.parent.parent.parent / "src" / "harbor" / "bosun"
+PACK_ROOT = Path(__file__).parent.parent.parent.parent / "src" / "stargraph" / "bosun"
 
 
 def strip_comments(src: str) -> str:
@@ -55,7 +55,7 @@ def split_constructs(src: str) -> list[str]:
 
 
 def load_pack_rules(engine: Engine, pack_name: str) -> int:
-    """Load all constructs from ``src/harbor/bosun/<pack_name>/rules.clp``.
+    """Load all constructs from ``src/stargraph/bosun/<pack_name>/rules.clp``.
 
     Returns the number of constructs built. Raises whatever exception
     Fathom surfaces if a single construct fails to compile (so the test
@@ -70,22 +70,22 @@ def load_pack_rules(engine: Engine, pack_name: str) -> int:
     return count
 
 
-# CLIPS template stubs that the audit pack reads. Real Harbor runtime
-# declares these via :class:`harbor.fathom.FathomAdapter`; the integration
+# CLIPS template stubs that the audit pack reads. Real Stargraph runtime
+# declares these via :class:`stargraph.fathom.FathomAdapter`; the integration
 # test bootstraps minimal versions inline so the audit rules can compile
 # against them without dragging in the full provenance pipeline.
-HARBOR_FACT_STUBS = """
-(deftemplate harbor.transition (slot _run_id) (slot _step) (slot kind))
-(deftemplate harbor.tool_call (slot _run_id) (slot _step) (slot name))
-(deftemplate harbor.node_run (slot _run_id) (slot _step) (slot node_id))
-(deftemplate harbor.respond (slot _run_id) (slot _step) (slot caller))
-(deftemplate harbor.cancel (slot _run_id) (slot _step) (slot reason))
-(deftemplate harbor.pause (slot _run_id) (slot _step) (slot reason))
-(deftemplate harbor.artifact_write (slot _run_id) (slot _step) (slot artifact_id))
+STARGRAPH_FACT_STUBS = """
+(deftemplate stargraph.transition (slot _run_id) (slot _step) (slot kind))
+(deftemplate stargraph.tool_call (slot _run_id) (slot _step) (slot name))
+(deftemplate stargraph.node_run (slot _run_id) (slot _step) (slot node_id))
+(deftemplate stargraph.respond (slot _run_id) (slot _step) (slot caller))
+(deftemplate stargraph.cancel (slot _run_id) (slot _step) (slot reason))
+(deftemplate stargraph.pause (slot _run_id) (slot _step) (slot reason))
+(deftemplate stargraph.artifact_write (slot _run_id) (slot _step) (slot artifact_id))
 """
 
 
-def install_harbor_fact_stubs(engine: Engine) -> None:
-    """Install the inline ``harbor.*`` template stubs for the audit pack."""
-    for construct in split_constructs(HARBOR_FACT_STUBS):
+def install_stargraph_fact_stubs(engine: Engine) -> None:
+    """Install the inline ``stargraph.*`` template stubs for the audit pack."""
+    for construct in split_constructs(STARGRAPH_FACT_STUBS):
         engine._env.build(construct)  # pyright: ignore[reportPrivateUsage]

@@ -271,7 +271,7 @@
       },
       "CounterfactualMutation": {
         "additionalProperties": false,
-        "description": "Typed builder for the six FR-27/FR-56 cf-fork mutation fields (design §3.8.2, §4.5).\n\nAll fields default to ``None`` so the empty mutation is a valid no-op\nbuilder (useful for \"what does this run look like under cf-replay\nsemantics, with no semantic change\" probes -- the derived hash still\ndiffers from the original by virtue of the domain-separation tag).\n\nAttributes:\n    state_overrides: Plain ``dict[str, Any]`` -- merged into the\n        checkpoint state at the cf step, replacing matching keys.\n        Mixed value types are intentional (the runtime state schema\n        is not known here; type-checking happens downstream when the\n        mutated state is fed into the next node).\n    facts_assert: Optional list of CLIPS-style fact records to\n        ``assert`` at the cf step (rule-engine substrate, FR-27).\n    facts_retract: Optional list of CLIPS-style fact records to\n        ``retract`` at the cf step.\n    rule_pack_version: Optional rule-pack semver string -- pins the\n        mutated run to a different rule-pack snapshot than the\n        original (design §3.8.4 step 3).\n    node_output_overrides: Plain ``dict[str, Any]`` keyed by\n        ``node_id`` -- the value at the cf-step replaces the\n        recorded output for that node (design §3.8.4 step 6).\n    respond_payloads: Optional ``dict[int, dict[str, Any]]`` --\n        maps ``step_n`` (the run-step at which the original live\n        run emitted a :class:`~harbor.runtime.events.WaitingForInputEvent`)\n        to a respond payload dict. The override replaces the\n        cassette-recorded analyst response for that step; the\n        cf-replay engine asserts a fresh ``harbor.evidence`` fact\n        with ``origin=\"user\"`` + ``source=\"cf:<actor>\"`` (FR-56,\n        design §4.5, locked Decision #2). The ``<actor>`` is taken\n        from the cf submitter's authenticated\n        :class:`~harbor.serve.auth.AuthContext` at cf-request time;\n        see :func:`apply_respond_override` for the resolver helper.\n        The payload shape mirrors the live ``POST /runs/{id}/respond``\n        body (raw JSON dict, locked Decision #2).",
+        "description": "Typed builder for the six FR-27/FR-56 cf-fork mutation fields (design §3.8.2, §4.5).\n\nAll fields default to ``None`` so the empty mutation is a valid no-op\nbuilder (useful for \"what does this run look like under cf-replay\nsemantics, with no semantic change\" probes -- the derived hash still\ndiffers from the original by virtue of the domain-separation tag).\n\nAttributes:\n    state_overrides: Plain ``dict[str, Any]`` -- merged into the\n        checkpoint state at the cf step, replacing matching keys.\n        Mixed value types are intentional (the runtime state schema\n        is not known here; type-checking happens downstream when the\n        mutated state is fed into the next node).\n    facts_assert: Optional list of CLIPS-style fact records to\n        ``assert`` at the cf step (rule-engine substrate, FR-27).\n    facts_retract: Optional list of CLIPS-style fact records to\n        ``retract`` at the cf step.\n    rule_pack_version: Optional rule-pack semver string -- pins the\n        mutated run to a different rule-pack snapshot than the\n        original (design §3.8.4 step 3).\n    node_output_overrides: Plain ``dict[str, Any]`` keyed by\n        ``node_id`` -- the value at the cf-step replaces the\n        recorded output for that node (design §3.8.4 step 6).\n    respond_payloads: Optional ``dict[int, dict[str, Any]]`` --\n        maps ``step_n`` (the run-step at which the original live\n        run emitted a :class:`~stargraph.runtime.events.WaitingForInputEvent`)\n        to a respond payload dict. The override replaces the\n        cassette-recorded analyst response for that step; the\n        cf-replay engine asserts a fresh ``stargraph.evidence`` fact\n        with ``origin=\"user\"`` + ``source=\"cf:<actor>\"`` (FR-56,\n        design §4.5, locked Decision #2). The ``<actor>`` is taken\n        from the cf submitter's authenticated\n        :class:`~stargraph.serve.auth.AuthContext` at cf-request time;\n        see :func:`apply_respond_override` for the resolver helper.\n        The payload shape mirrors the live ``POST /runs/{id}/respond``\n        body (raw JSON dict, locked Decision #2).",
         "properties": {
           "facts_assert": {
             "anyOf": [
@@ -361,7 +361,7 @@
         "$defs": {
           "ArtifactWrittenEvent": {
             "additionalProperties": false,
-            "description": "Artifact persisted via :class:`WriteArtifactNode` (design §4.3, FR-93, AC-15.4).\n\n``artifact_ref`` carries the ``ArtifactRef`` payload (BLAKE3\ncontent-addressed; type lives in :mod:`harbor.artifacts.base` once\nlanded). ``provenance`` is the originating run/step/actor lineage\nbundle and MUST carry the ProvenanceBundle tuple\n``(origin, source, run_id, step, confidence, timestamp)`` so the\nJSONL lineage audit (FR-55, AC-11.2) treats system-emitted facts\nwith the same chain-of-custody contract as user-asserted facts.\nBoth fields use ``dict[str, Any]`` until the artifacts module lands;\nsubsequent tasks may promote them to typed models.",
+            "description": "Artifact persisted via :class:`WriteArtifactNode` (design §4.3, FR-93, AC-15.4).\n\n``artifact_ref`` carries the ``ArtifactRef`` payload (BLAKE3\ncontent-addressed; type lives in :mod:`stargraph.artifacts.base` once\nlanded). ``provenance`` is the originating run/step/actor lineage\nbundle and MUST carry the ProvenanceBundle tuple\n``(origin, source, run_id, step, confidence, timestamp)`` so the\nJSONL lineage audit (FR-55, AC-11.2) treats system-emitted facts\nwith the same chain-of-custody contract as user-asserted facts.\nBoth fields use ``dict[str, Any]`` until the artifacts module lands;\nsubsequent tasks may promote them to typed models.",
             "properties": {
               "artifact_ref": {
                 "additionalProperties": true,
@@ -422,7 +422,7 @@
           },
           "BosunAuditEvent": {
             "additionalProperties": false,
-            "description": "`harbor.bosun.audit` pack fact promoted to typed event (design §4.3, FR-38).\n\nEmitted by :class:`harbor.fathom.FathomAdapter` when a CLIPS rule\nasserts a ``bosun.audit`` fact. Flows through the single\n:class:`JSONLAuditSink` (Resolved Decision #5) -- no parallel sink.\n\n``provenance`` carries the ProvenanceBundle-shaped tuple\n``(origin, source, run_id, step, confidence, timestamp)`` so the\nJSONL audit lineage (FR-55, AC-11.2) treats every audited fact --\nuser-asserted or system-emitted -- with the same chain-of-custody\ncontract. For system-emitted audit events the canonical shape is\n``origin=\"system\"``, ``source=<emitter-module>``, ``confidence=1.0``,\n``timestamp=<wall-clock UTC>``. The dict shape (rather than typed\nsub-model) mirrors :class:`ArtifactWrittenEvent` until the unified\n``Provenance`` model in :mod:`harbor.runtime.tool_exec` is promoted\nto a public symbol.",
+            "description": "`stargraph.bosun.audit` pack fact promoted to typed event (design §4.3, FR-38).\n\nEmitted by :class:`stargraph.fathom.FathomAdapter` when a CLIPS rule\nasserts a ``bosun.audit`` fact. Flows through the single\n:class:`JSONLAuditSink` (Resolved Decision #5) -- no parallel sink.\n\n``provenance`` carries the ProvenanceBundle-shaped tuple\n``(origin, source, run_id, step, confidence, timestamp)`` so the\nJSONL audit lineage (FR-55, AC-11.2) treats every audited fact --\nuser-asserted or system-emitted -- with the same chain-of-custody\ncontract. For system-emitted audit events the canonical shape is\n``origin=\"system\"``, ``source=<emitter-module>``, ``confidence=1.0``,\n``timestamp=<wall-clock UTC>``. The dict shape (rather than typed\nsub-model) mirrors :class:`ArtifactWrittenEvent` until the unified\n``Provenance`` model in :mod:`stargraph.runtime.tool_exec` is promoted\nto a public symbol.",
             "properties": {
               "branch_id": {
                 "anyOf": [
@@ -1501,7 +1501,7 @@
           },
           "CheckpointBlock": {
             "additionalProperties": false,
-            "description": "Checkpoint policy declaration (design §3.1.2 step 7).\n\nTop-level IR field that declares the checkpoint cadence and\nbacking store. The CLI / serve lifespan reads this block and\nconstructs the :class:`harbor.checkpoint.Checkpointer`. When\nomitted, the run loop uses CLI defaults\n(``./.harbor/run.sqlite``, ``every: node-exit``).\n\nAttributes:\n    every: Cadence — currently only ``\"node-exit\"`` is supported;\n        ``\"never\"`` and ``\"step-N\"`` are reserved for future\n        phases.\n    store: DSN-style store binding. ``\"sqlite:./path.sqlite\"``\n        (file) or ``\"postgres:dsn\"`` (Phase 3+).",
+            "description": "Checkpoint policy declaration (design §3.1.2 step 7).\n\nTop-level IR field that declares the checkpoint cadence and\nbacking store. The CLI / serve lifespan reads this block and\nconstructs the :class:`stargraph.checkpoint.Checkpointer`. When\nomitted, the run loop uses CLI defaults\n(``./.stargraph/run.sqlite``, ``every: node-exit``).\n\nAttributes:\n    every: Cadence — currently only ``\"node-exit\"`` is supported;\n        ``\"never\"`` and ``\"step-N\"`` are reserved for future\n        phases.\n    store: DSN-style store binding. ``\"sqlite:./path.sqlite\"``\n        (file) or ``\"postgres:dsn\"`` (Phase 3+).",
             "properties": {
               "every": {
                 "default": "node-exit",
@@ -1513,7 +1513,7 @@
                 "type": "string"
               },
               "store": {
-                "default": "sqlite:./.harbor/run.sqlite",
+                "default": "sqlite:./.stargraph/run.sqlite",
                 "title": "Store",
                 "type": "string"
               }
@@ -1647,7 +1647,7 @@
           },
           "NodeSpec": {
             "additionalProperties": false,
-            "description": "Graph node descriptor.\n\nAttributes:\n    id: Node identifier, unique within the IR.\n    kind: Either a short kind registered in\n        :data:`harbor.cli.run._NODE_FACTORIES`\n        (``echo``/``halt``/``passthrough``/``tool``/``broker``/\n        ``write_artifact``/``interrupt``/``ml``/``subgraph``/``dspy``)\n        or a ``module.path:ClassName`` reference imported via\n        :mod:`importlib`.\n    spec: Optional subgraph file path (relative to the IR YAML)\n        for ``kind: subgraph`` nodes. Resolved by\n        :class:`harbor.nodes.subgraph.SubGraphNode` at construction.\n        ``None`` for non-subgraph nodes.\n    config: Optional per-node config dict. Forwarded as kwargs into\n        the node factory by\n        :func:`harbor.cli.run._build_node_registry` so concrete node\n        classes (``BrokerNode``/``MLNode``/``WriteArtifactNode``)\n        can read their own config without sub-classing per call site.",
+            "description": "Graph node descriptor.\n\nAttributes:\n    id: Node identifier, unique within the IR.\n    kind: Either a short kind registered in\n        :data:`stargraph.cli.run._NODE_FACTORIES`\n        (``echo``/``halt``/``passthrough``/``tool``/``broker``/\n        ``write_artifact``/``interrupt``/``ml``/``subgraph``/``dspy``)\n        or a ``module.path:ClassName`` reference imported via\n        :mod:`importlib`.\n    spec: Optional subgraph file path (relative to the IR YAML)\n        for ``kind: subgraph`` nodes. Resolved by\n        :class:`stargraph.nodes.subgraph.SubGraphNode` at construction.\n        ``None`` for non-subgraph nodes.\n    config: Optional per-node config dict. Forwarded as kwargs into\n        the node factory by\n        :func:`stargraph.cli.run._build_node_registry` so concrete node\n        classes (``BrokerNode``/``MLNode``/``WriteArtifactNode``)\n        can read their own config without sub-classing per call site.",
             "properties": {
               "config": {
                 "additionalProperties": true,
@@ -1684,7 +1684,7 @@
           },
           "PackMount": {
             "additionalProperties": false,
-            "description": "Bosun rule pack mount entry (POC: id + optional version + version-compat).\n\n``requires`` (added in task 2.22 for FR-39) carries a\n:class:`PackRequires` block declaring the harbor-facts and plugin\napi_versions the pack was authored against. ``None`` keeps full\nbackwards compatibility -- existing two-field mounts (``id`` +\n``version``) round-trip and structural-hash byte-identically.",
+            "description": "Bosun rule pack mount entry (POC: id + optional version + version-compat).\n\n``requires`` (added in task 2.22 for FR-39) carries a\n:class:`PackRequires` block declaring the stargraph-facts and plugin\napi_versions the pack was authored against. ``None`` keeps full\nbackwards compatibility -- existing two-field mounts (``id`` +\n``version``) round-trip and structural-hash byte-identically.",
             "properties": {
               "id": {
                 "title": "Id",
@@ -1722,7 +1722,7 @@
           },
           "PackRequires": {
             "additionalProperties": false,
-            "description": "Pack version-compat requirements (FR-39, design §3.2, §7.4).\n\nOptional sub-record on :class:`PackMount` declaring the harbor-facts\nschema version + plugin api_version a Bosun rule pack was authored\nagainst. Both fields default to ``None`` (no requirement); when set,\n:func:`harbor.ir._versioning.check_pack_compat` enforces them at\npack-load time, raising :class:`harbor.errors.PackCompatError` on\nmismatch (load-fail, never silent runtime drift).",
+            "description": "Pack version-compat requirements (FR-39, design §3.2, §7.4).\n\nOptional sub-record on :class:`PackMount` declaring the stargraph-facts\nschema version + plugin api_version a Bosun rule pack was authored\nagainst. Both fields default to ``None`` (no requirement); when set,\n:func:`stargraph.ir._versioning.check_pack_compat` enforces them at\npack-load time, raising :class:`stargraph.errors.PackCompatError` on\nmismatch (load-fail, never silent runtime drift).",
             "properties": {
               "api_version": {
                 "anyOf": [
@@ -1736,7 +1736,7 @@
                 "default": null,
                 "title": "Api Version"
               },
-              "harbor_facts_version": {
+              "stargraph_facts_version": {
                 "anyOf": [
                   {
                     "type": "string"
@@ -1746,7 +1746,7 @@
                   }
                 ],
                 "default": null,
-                "title": "Harbor Facts Version"
+                "title": "Stargraph Facts Version"
               }
             },
             "title": "PackRequires",
@@ -1863,7 +1863,7 @@
           },
           "RuleSpec": {
             "additionalProperties": false,
-            "description": "Single rule (POC: id + ``when`` pattern + ``then`` action list).\n\n``then`` is a list of :data:`Action` -- the discriminated union; the\nFR-11 \"no nesting\" constraint is enforced by the type itself (variants\ncannot themselves contain :data:`Action` fields).\n\nAttributes:\n    id: Rule identifier, unique within the IR.\n    when: CLIPS-style ``when`` pattern (free text; engine parses).\n    then: Discriminated-union list of routing/control actions.\n    node_id: Owning node id. Introduced in IR ``1.1.0`` for UI /\n        topology consumers (so a rule's source node is explicit\n        rather than inferred from a naming convention). Optional for\n        backward compatibility -- documents declaring\n        ``ir_version: \"1.0.0\"`` may omit it; loaders MAY fill it via\n        the ``rule_id`` prefix heuristic so downstream tools\n        (``harbor inspect``, StarGraph topology endpoint) can assume\n        non-null. New graphs at ``1.1.0`` SHOULD declare ``node_id``\n        explicitly.",
+            "description": "Single rule (POC: id + ``when`` pattern + ``then`` action list).\n\n``then`` is a list of :data:`Action` -- the discriminated union; the\nFR-11 \"no nesting\" constraint is enforced by the type itself (variants\ncannot themselves contain :data:`Action` fields).\n\nAttributes:\n    id: Rule identifier, unique within the IR.\n    when: CLIPS-style ``when`` pattern (free text; engine parses).\n    then: Discriminated-union list of routing/control actions.\n    node_id: Owning node id. Introduced in IR ``1.1.0`` for UI /\n        topology consumers (so a rule's source node is explicit\n        rather than inferred from a naming convention). Optional for\n        backward compatibility -- documents declaring\n        ``ir_version: \"1.0.0\"`` may omit it; loaders MAY fill it via\n        the ``rule_id`` prefix heuristic so downstream tools\n        (``stargraph inspect``, StarGraph topology endpoint) can assume\n        non-null. New graphs at ``1.1.0`` SHOULD declare ``node_id``\n        explicitly.",
             "properties": {
               "id": {
                 "title": "Id",
@@ -2286,7 +2286,7 @@
         "type": "object"
       },
       "_RunSummaryItem": {
-        "description": "One row of the ``GET /v1/runs`` paginated response (design §5.1).\n\nMirrors the ``runs_history`` row shape from\n:class:`harbor.serve.history.RunRecord` but exposed as the\ncanonical ``RunSummary`` API surface (design §5.1 ``GET /v1/runs``\nreturns ``Page[RunSummary]``). Distinct from\n:class:`harbor.checkpoint.protocol.RunSummary` (which is the\n``Checkpointer.list_runs`` row with a narrower status Literal); the\nhistory-backed view here carries the wider lifecycle states\n(``pending``, ``cancelled``, ``error``) plus ``trigger_source`` /\n``duration_ms`` columns the Checkpointer summary lacks. Phase 3\nmay unify the two once the checkpointer's status Literal widens.",
+        "description": "One row of the ``GET /v1/runs`` paginated response (design §5.1).\n\nMirrors the ``runs_history`` row shape from\n:class:`stargraph.serve.history.RunRecord` but exposed as the\ncanonical ``RunSummary`` API surface (design §5.1 ``GET /v1/runs``\nreturns ``Page[RunSummary]``). Distinct from\n:class:`stargraph.checkpoint.protocol.RunSummary` (which is the\n``Checkpointer.list_runs`` row with a narrower status Literal); the\nhistory-backed view here carries the wider lifecycle states\n(``pending``, ``cancelled``, ``error``) plus ``trigger_source`` /\n``duration_ms`` columns the Checkpointer summary lacks. Phase 3\nmay unify the two once the checkpointer's status Literal widens.",
         "properties": {
           "duration_ms": {
             "anyOf": [
@@ -2449,8 +2449,8 @@
     }
   },
   "info": {
-    "description": "Harbor serve API (POC slice -- design §5.1 minimal subset). 5 routes: POST /v1/runs, GET /v1/runs/{run_id}, POST /v1/runs/{run_id}/cancel, POST /v1/runs/{run_id}/pause, POST /v1/runs/{run_id}/respond. Remaining endpoints land in Phase 2 (tasks 2.15, 2.17) and the WS route in task 1.26.",
-    "title": "harbor",
+    "description": "Stargraph serve API (POC slice -- design §5.1 minimal subset). 5 routes: POST /v1/runs, GET /v1/runs/{run_id}, POST /v1/runs/{run_id}/cancel, POST /v1/runs/{run_id}/pause, POST /v1/runs/{run_id}/respond. Remaining endpoints land in Phase 2 (tasks 2.15, 2.17) and the WS route in task 1.26.",
+    "title": "stargraph",
     "version": "0.3.0"
   },
   "openapi": "3.1.0",
@@ -2495,7 +2495,7 @@
     },
     "/v1/graphs": {
       "get": {
-        "description": "List registered graphs (design §5.1).\n\nPOC: reads ``deps[\"graphs\"]`` -- a ``dict[str, Graph]`` keyed\nby ``graph_id`` populated by the lifespan factory at startup.\nPhase 3 polish wires the real graph registry (the\n:mod:`harbor.registry`-backed graph table) once the registry\nProtocol's graph subspace lands.",
+        "description": "List registered graphs (design §5.1).\n\nPOC: reads ``deps[\"graphs\"]`` -- a ``dict[str, Graph]`` keyed\nby ``graph_id`` populated by the lifespan factory at startup.\nPhase 3 polish wires the real graph registry (the\n:mod:`stargraph.registry`-backed graph table) once the registry\nProtocol's graph subspace lands.",
         "operationId": "list_graphs_v1_graphs_get",
         "responses": {
           "200": {
@@ -2518,7 +2518,7 @@
     },
     "/v1/registry/{kind}": {
       "get": {
-        "description": "List plugin-discovered registry entries for ``kind``.\n\n``kind`` is one of ``tools``, ``skills``, ``stores``. Backend:\n``deps[\"registry\"]`` -- the :mod:`harbor.registry` instance the\nlifespan factory populates from the pluggy-loaded plugin\nmanifests. Returns the spec records as JSON dicts. Unknown\n``kind`` -> 404.\n\nPOC: when ``deps[\"registry\"]`` is absent (ad-hoc\n``create_app(profile, deps={})`` calls without lifespan\nwiring) the route returns an empty list rather than 503 --\nconsistent with the permissive POC default elsewhere in this\nmodule. Cleared deployments may flip this to 503 in Phase 3.",
+        "description": "List plugin-discovered registry entries for ``kind``.\n\n``kind`` is one of ``tools``, ``skills``, ``stores``. Backend:\n``deps[\"registry\"]`` -- the :mod:`stargraph.registry` instance the\nlifespan factory populates from the pluggy-loaded plugin\nmanifests. Returns the spec records as JSON dicts. Unknown\n``kind`` -> 404.\n\nPOC: when ``deps[\"registry\"]`` is absent (ad-hoc\n``create_app(profile, deps={})`` calls without lifespan\nwiring) the route returns an empty list rather than 503 --\nconsistent with the permissive POC default elsewhere in this\nmodule. Cleared deployments may flip this to 503 in Phase 3.",
         "operationId": "list_registry_v1_registry__kind__get",
         "parameters": [
           {
@@ -2563,7 +2563,7 @@
     },
     "/v1/runs": {
       "get": {
-        "description": "Return a paginated list of run-history rows (design §5.1).\n\nBacked by :meth:`harbor.serve.history.RunHistory.list` --\n``app.state.deps[\"run_history\"]`` is the canonical reference\nwired by the lifespan factory (CLI ``harbor serve`` boot path).\nWhen ``run_history`` is missing from the deps container the\nroute returns an empty page rather than 500ing -- a permissive\nPOC default that lets ad-hoc test ``create_app(profile,\ndeps={})`` calls hit the route without lifespan wiring. The\ncleared profile may want to flip this to a stricter \"503\nService Unavailable\" once the Phase 3 lifespan wiring is the\nonly supported path.\n\nFilter clauses compose with ``AND``; ``trigger_source`` is\nvalidated by the underlying SQL CHECK constraint -- an unknown\nvalue just yields zero rows. ``status`` is free-form (the\n``runs_history.status`` column is unconstrained TEXT to support\nthe wider state lattice). Page total is computed via a\n``SELECT COUNT(*)`` with the same filter (POC scale; design\n§6.5 cursor pagination lands in Phase 3).",
+        "description": "Return a paginated list of run-history rows (design §5.1).\n\nBacked by :meth:`stargraph.serve.history.RunHistory.list` --\n``app.state.deps[\"run_history\"]`` is the canonical reference\nwired by the lifespan factory (CLI ``stargraph serve`` boot path).\nWhen ``run_history`` is missing from the deps container the\nroute returns an empty page rather than 500ing -- a permissive\nPOC default that lets ad-hoc test ``create_app(profile,\ndeps={})`` calls hit the route without lifespan wiring. The\ncleared profile may want to flip this to a stricter \"503\nService Unavailable\" once the Phase 3 lifespan wiring is the\nonly supported path.\n\nFilter clauses compose with ``AND``; ``trigger_source`` is\nvalidated by the underlying SQL CHECK constraint -- an unknown\nvalue just yields zero rows. ``status`` is free-form (the\n``runs_history.status`` column is unconstrained TEXT to support\nthe wider state lattice). Page total is computed via a\n``SELECT COUNT(*)`` with the same filter (POC scale; design\n§6.5 cursor pagination lands in Phase 3).",
         "operationId": "list_runs_v1_runs_get",
         "parameters": [
           {
@@ -2732,7 +2732,7 @@
     },
     "/v1/runs/{run_id}": {
       "get": {
-        "description": "Return the :class:`RunSummary` for ``run_id`` or 404.\n\nPOC: reads the in-memory ``run_id -> GraphRun`` registry on\n``app.state.deps[\"runs\"]``. Phase 2 task 2.30 reads from the\nCheckpointer instead. Returns the live handle's snapshot\nsynthesized into the :class:`RunSummary` shape (status mapped\nper the same lattice fold used in\n:mod:`harbor.serve.lifecycle`).",
+        "description": "Return the :class:`RunSummary` for ``run_id`` or 404.\n\nPOC: reads the in-memory ``run_id -> GraphRun`` registry on\n``app.state.deps[\"runs\"]``. Phase 2 task 2.30 reads from the\nCheckpointer instead. Returns the live handle's snapshot\nsynthesized into the :class:`RunSummary` shape (status mapped\nper the same lattice fold used in\n:mod:`stargraph.serve.lifecycle`).",
         "operationId": "get_run_v1_runs__run_id__get",
         "parameters": [
           {
@@ -2819,7 +2819,7 @@
     },
     "/v1/runs/{run_id}/cancel": {
       "post": {
-        "description": "Cooperatively cancel a live run; return updated :class:`RunSummary`.\n\nRoutes through :func:`harbor.serve.lifecycle.cancel_run` for\nthe engine-side capability check + audit emission + bus-side\n:class:`RunCancelledEvent`. Missing run -> 404. Engine-side\n:class:`HarborRuntimeError` (e.g. cancel-from-terminal-state)\nbubbles up as 400 by FastAPI default; production wiring\n(Phase 2) maps these to a canonical error envelope.",
+        "description": "Cooperatively cancel a live run; return updated :class:`RunSummary`.\n\nRoutes through :func:`stargraph.serve.lifecycle.cancel_run` for\nthe engine-side capability check + audit emission + bus-side\n:class:`RunCancelledEvent`. Missing run -> 404. Engine-side\n:class:`StargraphRuntimeError` (e.g. cancel-from-terminal-state)\nbubbles up as 400 by FastAPI default; production wiring\n(Phase 2) maps these to a canonical error envelope.",
         "operationId": "cancel_run_route_v1_runs__run_id__cancel_post",
         "parameters": [
           {
@@ -2861,7 +2861,7 @@
     },
     "/v1/runs/{run_id}/counterfactual": {
       "post": {
-        "description": "Fork a counterfactual child run from ``run_id`` at ``body.step``.\n\nDrives :meth:`GraphRun.counterfactual` (design §5.5, FR-27):\nloads the parent checkpoint at ``step``, mints a fresh\n``cf-<uuid>`` child run id bound to the cf-derived\n``graph_hash`` (JCS domain-separation), applies the\n``mutation`` overlay, and returns the child run handle.\n\nRate-limit (design §5.5, locked Decision #6, FR-16, NFR-9):\nper-actor anyio token bucket from\n``deps[\"counterfactual_rate_limiter\"]`` (lazily seeded by\n:func:`create_app`). Default 10/min/actor; over-limit -> 429\nwith ``Retry-After`` header. Bucket state in-memory only --\nprocess restart resets the per-actor count (brief burst window\ndocumented in :mod:`harbor.serve.ratelimit`).",
+        "description": "Fork a counterfactual child run from ``run_id`` at ``body.step``.\n\nDrives :meth:`GraphRun.counterfactual` (design §5.5, FR-27):\nloads the parent checkpoint at ``step``, mints a fresh\n``cf-<uuid>`` child run id bound to the cf-derived\n``graph_hash`` (JCS domain-separation), applies the\n``mutation`` overlay, and returns the child run handle.\n\nRate-limit (design §5.5, locked Decision #6, FR-16, NFR-9):\nper-actor anyio token bucket from\n``deps[\"counterfactual_rate_limiter\"]`` (lazily seeded by\n:func:`create_app`). Default 10/min/actor; over-limit -> 429\nwith ``Retry-After`` header. Bucket state in-memory only --\nprocess restart resets the per-actor count (brief burst window\ndocumented in :mod:`stargraph.serve.ratelimit`).",
         "operationId": "counterfactual_route_v1_runs__run_id__counterfactual_post",
         "parameters": [
           {
@@ -2955,7 +2955,7 @@
     },
     "/v1/runs/{run_id}/respond": {
       "post": {
-        "description": "Deliver a HITL response to an ``awaiting-input`` run.\n\nRoutes through :func:`harbor.serve.respond.handle_respond` for\nthe engine-side capability check + state-precondition check +\naudit emission. Missing run -> 404; non-``awaiting-input``\nstate -> 409 Conflict (per design §9.4 step 2).",
+        "description": "Deliver a HITL response to an ``awaiting-input`` run.\n\nRoutes through :func:`stargraph.serve.respond.handle_respond` for\nthe engine-side capability check + state-precondition check +\naudit emission. Missing run -> 404; non-``awaiting-input``\nstate -> 409 Conflict (per design §9.4 step 2).",
         "operationId": "respond_route_v1_runs__run_id__respond_post",
         "parameters": [
           {

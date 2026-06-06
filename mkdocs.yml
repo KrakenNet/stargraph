@@ -1,8 +1,8 @@
-site_name: Harbor
+site_name: Stargraph
 site_description: Stateful agent-graph framework with deterministic governance
-site_url: https://harbor.krakn.ai
-repo_url: https://github.com/KrakenNet/harbor
-repo_name: KrakenNet/harbor
+site_url: https://stargraph.krakn.ai
+repo_url: https://github.com/KrakenNet/stargraph
+repo_name: KrakenNet/stargraph
 
 theme:
   name: material

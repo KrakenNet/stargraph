@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.bosun.retries import RetryDecision, decide
+from stargraph.bosun.retries import RetryDecision, decide
 
 pytestmark = pytest.mark.unit
 

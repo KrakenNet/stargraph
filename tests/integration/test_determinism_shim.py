@@ -1,22 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-RED: FR-28 determinism shims (now/random/uuid4/urandom + set rejection).
 
-Pins the contract for ``harbor.replay.determinism`` *before* the implementation
+Pins the contract for ``stargraph.replay.determinism`` *before* the implementation
 lands in task 3.31. Per design §3.8.5, replay-mode workflows MUST source their
 non-deterministic primitives through these shims so byte-identical re-execution
 is achievable on counterfactual or resume.
 
 The five cases below are pulled verbatim from the task 3.30 ``Do`` block:
 
-1. ``harbor.replay.now()`` returns the recorded value during replay (not the
+1. ``stargraph.replay.now()`` returns the recorded value during replay (not the
    real wall clock).
-2. ``harbor.replay.random()`` returns the recorded sequence.
-3. ``harbor.replay.uuid4()`` returns the recorded UUID.
-4. ``harbor.replay.urandom(n)`` returns the recorded bytes.
+2. ``stargraph.replay.random()`` returns the recorded sequence.
+3. ``stargraph.replay.uuid4()`` returns the recorded UUID.
+4. ``stargraph.replay.urandom(n)`` returns the recorded bytes.
 5. ``set`` field in state schema rejected at compile time
    (Pydantic-validator / IR-validator surface).
 
-The shim module (``harbor.replay.determinism``) ships in task 3.31; its
+The shim module (``stargraph.replay.determinism``) ships in task 3.31; its
 absence -- plus the missing ``set``-rejection wiring on the IR validator --
 is what flips this test red.
 """
@@ -28,23 +28,23 @@ from typing import Any
 
 import pytest
 
-from harbor.errors import IRValidationError, ValidationError
-from harbor.ir._models import IRDocument, NodeSpec
+from stargraph.errors import IRValidationError, ValidationError
+from stargraph.ir._models import IRDocument, NodeSpec
 
 
 def _load_determinism() -> Any:
-    """Import ``harbor.replay.determinism`` with a clear failure mode.
+    """Import ``stargraph.replay.determinism`` with a clear failure mode.
 
     Phase-3 task 3.31 ships the module; until it does, this test stays red
     via :class:`ImportError`. Using ``importlib.import_module`` here keeps
     the import expression dynamic so pyright does not try to resolve the
     not-yet-built module statically.
     """
-    return importlib.import_module("harbor.replay.determinism")
+    return importlib.import_module("stargraph.replay.determinism")
 
 
 # ---------------------------------------------------------------------------
-# Case 1 -- harbor.replay.now()
+# Case 1 -- stargraph.replay.now()
 # ---------------------------------------------------------------------------
 
 
@@ -62,7 +62,7 @@ def test_now_returns_recorded_value_during_replay() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Case 2 -- harbor.replay.random()
+# Case 2 -- stargraph.replay.random()
 # ---------------------------------------------------------------------------
 
 
@@ -80,7 +80,7 @@ def test_random_returns_recorded_sequence() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Case 3 -- harbor.replay.uuid4()
+# Case 3 -- stargraph.replay.uuid4()
 # ---------------------------------------------------------------------------
 
 
@@ -100,7 +100,7 @@ def test_uuid4_returns_recorded_uuid() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Case 4 -- harbor.replay.urandom(n)
+# Case 4 -- stargraph.replay.urandom(n)
 # ---------------------------------------------------------------------------
 
 
@@ -129,7 +129,7 @@ def test_state_schema_set_field_rejected_at_compile_time() -> None:
     insertion-order), but Pydantic ``set`` fields are explicitly forbidden in
     state schema -- callers must use ``frozenset`` with declared sort or
     ``list[str]``. Task 3.31 wires the rejection into the IR validator /
-    :func:`harbor.graph.definition._compile_state_schema`. Until then, ``set``
+    :func:`stargraph.graph.definition._compile_state_schema`. Until then, ``set``
     flows through the legacy ``ValidationError`` "unsupported type" branch
     rather than the targeted FR-28 ``IRValidationError`` path -- so this test
     stays red.
@@ -141,10 +141,10 @@ def test_state_schema_set_field_rejected_at_compile_time() -> None:
         state_schema={"members": "set"},
     )
 
-    import harbor
+    import stargraph
 
     with pytest.raises((IRValidationError, ValidationError)) as excinfo:
-        harbor.Graph(doc)
+        stargraph.Graph(doc)
 
     # The post-3.31 contract: rejection cites FR-28 / "set" forbidden, not the
     # generic "unsupported type" fallback. This assertion keeps the test red

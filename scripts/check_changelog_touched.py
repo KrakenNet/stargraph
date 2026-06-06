@@ -2,7 +2,7 @@
 """Enforce CHANGELOG.md updates when IR or schema files change.
 
 Computes the diff between two git refs and fails if any file under
-``src/harbor/ir/`` or ``src/harbor/schemas/`` is touched without a
+``src/stargraph/ir/`` or ``src/stargraph/schemas/`` is touched without a
 corresponding entry in ``CHANGELOG.md``.
 
 Used by the ``changelog-check`` CI job (NFR-2).
@@ -14,7 +14,7 @@ import argparse
 import subprocess
 import sys
 
-GUARDED_PREFIXES = ("src/harbor/ir/", "src/harbor/schemas/")
+GUARDED_PREFIXES = ("src/stargraph/ir/", "src/stargraph/schemas/")
 CHANGELOG = "CHANGELOG.md"
 
 

@@ -1,7 +1,0 @@
-id: harbor.bosun.shipwright.edits
-version: "0.1"
-requires:
-  harbor_facts_version: "1.0"
-  api_version: "1"
-provides:
-  - "harbor_facts:fix_target"

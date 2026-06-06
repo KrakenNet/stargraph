@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """SOC Triage++ — custom graph node implementations.
 
-Only the nodes that have no harbor builtin live here; the rest of the
+Only the nodes that have no stargraph builtin live here; the rest of the
 topology (``retrieval`` / ``ml`` / ``dspy`` / ``governance`` / ``interrupt`` /
-``write_artifact``) is wired from builtins in ``graph/harbor.yaml`` (task
-1.29). Each custom node subclasses :class:`harbor.nodes.base.NodeBase` and
+``write_artifact``) is wired from builtins in ``graph/stargraph.yaml`` (task
+1.29). Each custom node subclasses :class:`stargraph.nodes.base.NodeBase` and
 returns a dict of state-field mutations merged by the execution loop (FR-11);
 nodes never mutate state in place.
 
 ``module:ClassName`` nodes are constructed **zero-arg** by
-:func:`harbor.cli.run._build_node_registry` (``NodeSpec.config`` is ignored for
+:func:`stargraph.cli.run._build_node_registry` (``NodeSpec.config`` is ignored for
 custom refs), so any per-run input is read from :class:`RunState`, not from the
 constructor.
 
@@ -19,7 +19,7 @@ Custom nodes:
   alert fields of :class:`RunState` and builds the ONNX feature vector (the
   ``MLNode`` downstream reads it via its configured ``input_field``).
 * :class:`RetrievalPriors` — RRF over the ``data/priors/`` historical-outcome
-  records (matched on signature / asset tier) into ``state.priors``. Harbor's
+  records (matched on signature / asset tier) into ``state.priors``. Stargraph's
   builtin ``RetrievalNode`` needs a live vector/graph/doc ``store_resolver``,
   so this self-contained JSONL fusion is wired as a ``module:Class`` node
   instead (zero-arg, builds at serve boot regardless of store wiring).
@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from graph.state import AssetTier, ProvenanceEvent, RunState
-from harbor.nodes.base import ExecutionContext, NodeBase
+from stargraph.nodes.base import ExecutionContext, NodeBase
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -180,7 +180,7 @@ class RetrievalPriors(NodeBase):
     Reads every ``data/priors/*.jsonl`` record, ranks them under two cheap
     signals — exact ``signature`` match and ``asset_tier`` match — then fuses
     the two ranked lists with Reciprocal Rank Fusion (the same fusion the
-    builtin :class:`~harbor.nodes.retrieval.RetrievalNode` uses) and writes the
+    builtin :class:`~stargraph.nodes.retrieval.RetrievalNode` uses) and writes the
     top precedents to ``state.priors`` for the downstream ``dspy`` triage step.
 
     Self-contained on purpose: the builtin RetrievalNode requires a live

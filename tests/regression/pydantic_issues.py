@@ -1,37 +1,37 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Pydantic-issue regression suite -- pins Harbor's mitigations (NFR-11).
+"""Pydantic-issue regression suite -- pins Stargraph's mitigations (NFR-11).
 
 Five fixtures probe the Pydantic issues the requirements register cites
 (see ``.progress.md`` Learnings -> "Pydantic citation updates required").
 
 * **#6884 (closed)** -- ``model_dump_json`` once ignored ``ensure_ascii=False``.
-  Probe: ``dumps`` emits non-ASCII verbatim. (Issue confirmed fixed; Harbor's
+  Probe: ``dumps`` emits non-ASCII verbatim. (Issue confirmed fixed; Stargraph's
   use of ``json.dumps(ensure_ascii=False)`` after ``model_dump`` is
   belt-and-suspenders.)
 * **#9136 (closed-with-workaround)** -- PEP-695 ``type X = ...`` aliases broke
-  forward refs. Mitigation (FR-8): Harbor bans PEP-695 ``type`` aliases in IR
-  models. Probe: an AST walk over ``src/harbor/ir/_models.py`` finds zero
+  forward refs. Mitigation (FR-8): Stargraph bans PEP-695 ``type`` aliases in IR
+  models. Probe: an AST walk over ``src/stargraph/ir/_models.py`` finds zero
   ``type X = ...`` aliases. The portable-subset walker enforces this on the
   whole IR tree; here we pin the same invariant on the ``ir.IRDocument``
   module specifically.
 * **#7491 (open)** -- nested discriminated unions corrupt JSON Schema.
-  Mitigation (FR-11): Harbor's ``Action`` discriminated union is *top-level
+  Mitigation (FR-11): Stargraph's ``Action`` discriminated union is *top-level
   only* -- variants do not themselves contain :data:`Action` fields. Probe:
   none of the six ``Action`` variants declare an :data:`Action`-typed field.
 * **#9872 (open)** -- ``Sequence[Union[...]]`` discriminator silently ignored.
-  Mitigation (FR-11): Harbor uses ``list[Action]`` (concrete sequence type)
+  Mitigation (FR-11): Stargraph uses ``list[Action]`` (concrete sequence type)
   with a discriminator-marked ``Annotated`` union. Probe: ``RuleSpec.then``
   is annotated as ``list[Action]`` (not ``Sequence[...]``), and a wrong-tag
   payload fails validation rather than silently parsing.
 * **#7424 (open)** -- ``model_dump_json`` has no ``sort_keys``. Mitigation
-  (FR-15): Harbor's single canonical entry point ``harbor.ir.dumps_canonical``
+  (FR-15): Stargraph's single canonical entry point ``stargraph.ir.dumps_canonical``
   applies ``sort_keys=True`` via ``json.dumps`` after ``model_dump``. Probe:
   ``dumps_canonical`` emits keys in alphabetical order, and the output
   differs from a naive ``model_dump_json`` call when fields are non-alpha
   in declaration order.
 
-Each probe is a plain assertion that Harbor's pattern works. ``pytest.mark.xfail``
-is reserved for the case where Harbor's mitigation can't be applied directly --
+Each probe is a plain assertion that Stargraph's pattern works. ``pytest.mark.xfail``
+is reserved for the case where Stargraph's mitigation can't be applied directly --
 none of the current mitigations require it, so all probes are plain pass.
 """
 
@@ -49,7 +49,7 @@ from pydantic import ValidationError as PydanticValidationError
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
-from harbor.ir import (
+from stargraph.ir import (
     AssertAction,
     GotoAction,
     HaltAction,
@@ -64,12 +64,12 @@ from harbor.ir import (
 )
 
 # ---------------------------------------------------------------------------
-# #6884 (closed) -- model_dump_json honors ensure_ascii in Harbor's wrapper.
+# #6884 (closed) -- model_dump_json honors ensure_ascii in Stargraph's wrapper.
 # ---------------------------------------------------------------------------
 
 
 def test_pydantic_6884_ensure_ascii_false_emits_non_ascii_verbatim() -> None:
-    """#6884 closed via PR #6887; Harbor's ``dumps`` belt-and-suspenders the same.
+    """#6884 closed via PR #6887; Stargraph's ``dumps`` belt-and-suspenders the same.
 
     ``json.dumps(..., ensure_ascii=False)`` after ``model_dump`` keeps non-ASCII
     characters verbatim instead of escaping to ``\\uXXXX``. This pins the
@@ -87,14 +87,14 @@ def test_pydantic_6884_ensure_ascii_false_emits_non_ascii_verbatim() -> None:
 # ---------------------------------------------------------------------------
 
 
-_IR_MODELS_PATH = Path(__file__).resolve().parents[2] / "src" / "harbor" / "ir" / "_models.py"
+_IR_MODELS_PATH = Path(__file__).resolve().parents[2] / "src" / "stargraph" / "ir" / "_models.py"
 
 
 def test_pydantic_9136_no_pep695_type_aliases_in_ir_models() -> None:
     """#9136 mitigation (FR-8): IR models contain zero ``type X = ...`` aliases.
 
     PEP-695 type-alias statements broke Pydantic forward refs and were only
-    fixed via a workaround. Harbor bans them outright in IR models. The
+    fixed via a workaround. Stargraph bans them outright in IR models. The
     portable-subset walker enforces this on the whole tree (task 2.3); this
     probe pins the invariant on the canonical models module.
     """
@@ -124,7 +124,7 @@ _ACTION_VARIANTS: tuple[type[BaseModel], ...] = (
 def test_pydantic_7491_action_variants_do_not_nest_action_fields() -> None:
     """#7491 mitigation (FR-11): variants of the ``Action`` union don't nest unions.
 
-    Nested discriminated unions corrupt JSON Schema generation. Harbor's six
+    Nested discriminated unions corrupt JSON Schema generation. Stargraph's six
     ``Action`` variants declare only primitive / list-of-primitive fields --
     no field of any variant is itself an :data:`Action`-typed slot.
     """
@@ -141,7 +141,7 @@ def test_pydantic_7491_top_level_action_json_schema_emits_discriminator() -> Non
     """The top-level ``Action`` discriminator survives JSON Schema generation.
 
     A nested-union bug would cause the discriminator to be dropped from the
-    schema; pinning here ensures Harbor's top-level placement keeps it.
+    schema; pinning here ensures Stargraph's top-level placement keeps it.
     """
     schema = RuleSpec.model_json_schema()
     # ``then`` is a list of Action; its items must reference a discriminated union.
@@ -164,7 +164,7 @@ def test_pydantic_9872_rule_then_uses_list_not_sequence() -> None:
     """#9872 mitigation (FR-11): ``RuleSpec.then`` is ``list[Action]``, not ``Sequence``.
 
     ``Sequence[Union[...]]`` with a discriminator is silently ignored by
-    Pydantic. Harbor uses concrete ``list`` to keep the discriminator active.
+    Pydantic. Stargraph uses concrete ``list`` to keep the discriminator active.
     """
     annotation = RuleSpec.model_fields["then"].annotation
     annotation_text = repr(annotation)
@@ -199,7 +199,7 @@ def test_pydantic_9872_wrong_discriminator_tag_fails_validation() -> None:
 def test_pydantic_7424_dumps_canonical_sorts_top_level_keys() -> None:
     """#7424 mitigation (FR-15): ``dumps_canonical`` emits sorted keys.
 
-    Pydantic's ``model_dump_json`` has no ``sort_keys`` knob; Harbor wraps
+    Pydantic's ``model_dump_json`` has no ``sort_keys`` knob; Stargraph wraps
     ``model_dump`` then ``json.dumps(sort_keys=True)`` in the single
     canonical entry point.
     """

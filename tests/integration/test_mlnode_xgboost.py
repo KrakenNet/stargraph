@@ -4,7 +4,7 @@
 Loads the bundled ``tests/fixtures/xgboost_minimal.ubj`` Booster
 (saved as Universal Binary JSON, the default since xgboost 2.1) and
 verifies the ``.bin`` rejection path raises
-:class:`harbor.errors.MLNodeError` *before* any xgboost C-extension
+:class:`stargraph.errors.MLNodeError` *before* any xgboost C-extension
 call.
 """
 
@@ -18,9 +18,9 @@ import pytest
 
 xgb = pytest.importorskip("xgboost")
 
-from harbor.errors import MLNodeError  # noqa: E402  (importorskip guard above)
-from harbor.ml.loaders import load_xgboost_model  # noqa: E402
-from harbor.nodes.ml import MLNode  # noqa: E402
+from stargraph.errors import MLNodeError  # noqa: E402  (importorskip guard above)
+from stargraph.ml.loaders import load_xgboost_model  # noqa: E402
+from stargraph.nodes.ml import MLNode  # noqa: E402
 
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 

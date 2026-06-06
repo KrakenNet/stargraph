@@ -3,9 +3,9 @@
 
 The model scores a synthetic SOC-alert feature vector into a 3-class risk
 band (``0=low``, ``1=medium``, ``2=high``). It is consumed by the
-soc-triage++ graph's :class:`harbor.nodes.ml.MLNode` (``runtime="onnx"``)
-with the printed SHA-256 pinned into ``harbor.yaml`` (task 1.29) so the
-:class:`harbor.ml.registry.ModelRegistry` verifies the content hash on
+soc-triage++ graph's :class:`stargraph.nodes.ml.MLNode` (``runtime="onnx"``)
+with the printed SHA-256 pinned into ``stargraph.yaml`` (task 1.29) so the
+:class:`stargraph.ml.registry.ModelRegistry` verifies the content hash on
 every load.
 
 Feature schema (7 float32 columns, order is the contract for the graph)::

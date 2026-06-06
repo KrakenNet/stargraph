@@ -1,7 +1,7 @@
-# Harbor Demos
+# Stargraph Demos
 
 Each demo is a single-file design doc (`<demo>/<demo>.md`) describing a real
-workflow that exercises Harbor's runtime. Read in order, they walk from a
+workflow that exercises Stargraph's runtime. Read in order, they walk from a
 single store + skill all the way up to the full stack.
 
 ## Learning path
@@ -23,7 +23,7 @@ Every doc has the same shape:
 1. **Pitch** — one-paragraph use case + audience.
 2. **Flow diagram** — ASCII graph from trigger → action → audit.
 3. **Why it lands** — the sales/adoption argument.
-4. **Harbor capabilities exercised** — the explicit feature checklist.
+4. **Stargraph capabilities exercised** — the explicit feature checklist.
 5. **Demo footprint** — concrete `demos/<name>/` directory layout + `Makefile` targets ready to implement.
 
 The footprint section is what to hand to a spec executor when promoting a demo
@@ -56,7 +56,7 @@ from design to running code.
 | MLNode + sha256 weights |   |   |   | ✓ |   |   | ✓ |
 | DSPy adapter | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | MCP adapter |   |   |   |   |   |   | ✓ |
-| Fathom + harbor_action |   |   | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Fathom + stargraph_action |   |   | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Bosun signed packs |   |   | ✓ | ✓ | ✓ | ✓ | ✓ |
 | InterruptAction (HITL) |   |   |   | ✓ |   | ✓ | ✓ |
 | Cron trigger |   |   |   |   | ✓ |   | ✓ |
@@ -67,7 +67,7 @@ from design to running code.
 | Checkpoint (sqlite/pg) |   | ✓ |   | ✓ |   | ✓ | ✓ |
 | Counterfactual replay |   | ✓ | ✓ | ✓ |   | ✓ | ✓ |
 | Air-gap variant |   |   |   |   | ✓ |   | ✓ |
-| harbor.serve API |   |   |   | ✓ |   | ✓ | ✓ |
+| stargraph.serve API |   |   |   | ✓ |   | ✓ | ✓ |
 | mTLS + capabilities |   |   |   | ✓ |   | ✓ | ✓ |
 | KG promotion (memory) |   |   |   |   |   |   | ✓ |
 | Cypher subset linter |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |

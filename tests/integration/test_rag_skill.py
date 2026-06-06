@@ -2,7 +2,7 @@
 """Integration tests for ``RagSkill`` DSPy seam wiring (T09).
 
 Pins that ``_call_llm`` (the renamed ``_llm_stub`` body) routes through
-``harbor.adapters.dspy.bind`` and a ``dspy.Predict(_RagAnswerSignature)``
+``stargraph.adapters.dspy.bind`` and a ``dspy.Predict(_RagAnswerSignature)``
 invocation rather than returning the hardcoded f-string
 ``"Based on N sources: POC stub answer"``.
 
@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.skills.refs.rag import (
+from stargraph.skills.refs.rag import (
     RagSkill,
     _RagAnswerSignature,  # pyright: ignore[reportPrivateUsage]
 )
-from harbor.stores.vector import Hit
+from stargraph.stores.vector import Hit
 
 pytestmark = pytest.mark.integration
 

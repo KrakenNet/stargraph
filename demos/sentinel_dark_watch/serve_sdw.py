@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``harbor serve`` wrapper that pins the SDW capability profile.
+"""``stargraph serve`` wrapper that pins the SDW capability profile.
 
-Thin argparse wrapper around :func:`harbor.serve.api.create_app` that inserts the
+Thin argparse wrapper around :func:`stargraph.serve.api.create_app` that inserts the
 engine-side :class:`Capabilities` from
 :func:`demos.sentinel_dark_watch.capabilities.build_sdw_capabilities`
 into ``deps`` before constructing the FastAPI app.
@@ -78,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="serve_sdw",
-        description="harbor serve with the SDW capability profile pinned.",
+        description="stargraph serve with the SDW capability profile pinned.",
     )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=9001)
@@ -93,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "IR YAML graph to load and register at boot (repeatable). "
-            "Defaults to both harbor.yaml and retrain.yaml."
+            "Defaults to both stargraph.yaml and retrain.yaml."
         ),
     )
     args = parser.parse_args(argv)
@@ -106,21 +106,21 @@ def main(argv: list[str] | None = None) -> int:
     import uvicorn
     from fastapi import FastAPI  # noqa: TC002
 
-    from harbor.artifacts.fs import FilesystemArtifactStore
-    from harbor.checkpoint.sqlite import SQLiteCheckpointer
-    from harbor.errors import HarborRuntimeError
-    from harbor.registry import StoreRegistry, ToolRegistry
-    from harbor.serve.api import create_app
-    from harbor.serve.history import RunHistory
-    from harbor.serve.lifecycle import broker_lifespan
-    from harbor.serve.profiles import select_profile
-    from harbor.serve.scheduler import Scheduler
+    from stargraph.artifacts.fs import FilesystemArtifactStore
+    from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+    from stargraph.errors import StargraphRuntimeError
+    from stargraph.registry import StoreRegistry, ToolRegistry
+    from stargraph.serve.api import create_app
+    from stargraph.serve.history import RunHistory
+    from stargraph.serve.lifecycle import broker_lifespan
+    from stargraph.serve.profiles import select_profile
+    from stargraph.serve.scheduler import Scheduler
 
-    os.environ["HARBOR_PROFILE"] = args.profile
+    os.environ["STARGRAPH_PROFILE"] = args.profile
     selected = select_profile()
 
     # Wire dspy.LM from env.
-    from harbor.cli.run import _configure_lm
+    from stargraph.cli.run import _configure_lm
 
     lm_url = os.environ.get("LLM_BASE_URL") or None
     lm_model = os.environ.get("LLM_MODEL") or None
@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         print("[serve_sdw] no LLM_BASE_URL/LLM_MODEL set — DSPy nodes will fail-loud")
 
     # Nautilus config dir.
-    os.environ.setdefault("HARBOR_CONFIG_DIR", str(Path(__file__).parent.resolve()))
+    os.environ.setdefault("STARGRAPH_CONFIG_DIR", str(Path(__file__).parent.resolve()))
     tmpdir = Path(tempfile.mkdtemp(prefix="sdw-serve-"))
     checkpointer = SQLiteCheckpointer(tmpdir / "checkpoint.sqlite")
     artifact_store = FilesystemArtifactStore(tmpdir / "artifacts")
@@ -142,13 +142,13 @@ def main(argv: list[str] | None = None) -> int:
     # Load + register graphs.
     import yaml as _yaml
 
-    from harbor.cli.run import _build_node_registry
-    from harbor.graph.definition import Graph
-    from harbor.ir._models import IRDocument
+    from stargraph.cli.run import _build_node_registry
+    from stargraph.graph.definition import Graph
+    from stargraph.ir._models import IRDocument
 
     graph_dir = Path(__file__).parent / "graph"
     default_graphs = [
-        str(graph_dir / "harbor.yaml"),
+        str(graph_dir / "stargraph.yaml"),
         str(graph_dir / "retrain.yaml"),
         str(graph_dir / "evolve.yaml"),
     ]
@@ -173,18 +173,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         import fathom as _fathom
 
-        from harbor.fathom._adapter import FathomAdapter
+        from stargraph.fathom._adapter import FathomAdapter
 
         engine = _fathom.Engine(default_decision="deny")
         fathom_adapter = FathomAdapter(engine)
-        fathom_adapter.register_harbor_action_template()
+        fathom_adapter.register_stargraph_action_template()
 
-        # Register harbor_action in Fathom's template registry so query() works
+        # Register stargraph_action in Fathom's template registry so query() works
         from fathom.models import SlotDefinition, TemplateDefinition
 
-        harbor_action_def = TemplateDefinition(
-            name="harbor_action",
-            description="Harbor routing action",
+        stargraph_action_def = TemplateDefinition(
+            name="stargraph_action",
+            description="Stargraph routing action",
             slots=[
                 SlotDefinition(name="kind", type="symbol"),
                 SlotDefinition(name="target", type="string"),
@@ -197,33 +197,33 @@ def main(argv: list[str] | None = None) -> int:
                 SlotDefinition(name="pattern", type="string"),
             ],
         )
-        engine.template_registry["harbor_action"] = harbor_action_def
+        engine.template_registry["stargraph_action"] = stargraph_action_def
 
         # Install CLIPS deftemplate stubs for audit pack (dots OK in CLIPS)
-        _harbor_stubs = [
-            "(deftemplate harbor.transition (slot _run_id) (slot _step) (slot kind))",
-            "(deftemplate harbor.tool_call (slot _run_id) (slot _step) (slot name))",
-            "(deftemplate harbor.node_run (slot _run_id) (slot _step) (slot node_id))",
-            "(deftemplate harbor.respond (slot _run_id) (slot _step) (slot caller))",
-            "(deftemplate harbor.cancel (slot _run_id) (slot _step) (slot reason))",
-            "(deftemplate harbor.pause (slot _run_id) (slot _step) (slot reason))",
-            "(deftemplate harbor.artifact_write (slot _run_id) (slot _step) (slot artifact_id))",
+        _stargraph_stubs = [
+            "(deftemplate stargraph.transition (slot _run_id) (slot _step) (slot kind))",
+            "(deftemplate stargraph.tool_call (slot _run_id) (slot _step) (slot name))",
+            "(deftemplate stargraph.node_run (slot _run_id) (slot _step) (slot node_id))",
+            "(deftemplate stargraph.respond (slot _run_id) (slot _step) (slot caller))",
+            "(deftemplate stargraph.cancel (slot _run_id) (slot _step) (slot reason))",
+            "(deftemplate stargraph.pause (slot _run_id) (slot _step) (slot reason))",
+            "(deftemplate stargraph.artifact_write (slot _run_id) (slot _step) (slot artifact_id))",
         ]
-        for stub in _harbor_stubs:
+        for stub in _stargraph_stubs:
             engine._env.build(stub)
 
         # Load Bosun packs declared in any graph's governance section.
-        bosun_root = Path(__file__).parent.parent.parent / "src" / "harbor" / "bosun"
+        bosun_root = Path(__file__).parent.parent.parent / "src" / "stargraph" / "bosun"
         sdw_bosun_root = Path(__file__).parent / "bosun"
         loaded_packs: set[str] = set()
         for graph_obj in graphs.values():
             for pack in graph_obj.ir.governance:
                 if pack.id in loaded_packs:
                     continue
-                # Resolve pack location: harbor.bosun.X → src/harbor/bosun/X
+                # Resolve pack location: stargraph.bosun.X → src/stargraph/bosun/X
                 # sdw.X → demos/sentinel_dark_watch/bosun/X
                 parts = pack.id.split(".")
-                if parts[0] == "harbor" and parts[1] == "bosun" and len(parts) > 2:
+                if parts[0] == "stargraph" and parts[1] == "bosun" and len(parts) > 2:
                     pack_dir = bosun_root / parts[2]
                 elif parts[0] == "sdw" and len(parts) > 1:
                     pack_dir = sdw_bosun_root / parts[1]
@@ -319,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
         await checkpointer.bootstrap()
         db = checkpointer._db  # pyright: ignore[reportPrivateUsage]
         if db is None:
-            raise HarborRuntimeError("checkpointer bootstrap failed")
+            raise StargraphRuntimeError("checkpointer bootstrap failed")
         run_history = RunHistory(db)
         await run_history.bootstrap()
         deps["run_history"] = run_history

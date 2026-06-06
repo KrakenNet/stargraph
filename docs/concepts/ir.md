@@ -1,8 +1,8 @@
 # IR and Schema
 
-Harbor's intermediate representation (IR) is a portable, JSON-Schema-typed description of an agent graph: nodes, routing rules (Fathom `goto`/`halt`/`parallel` actions plus implicit fall-through node order), state shape, and policy bindings. The IR is the unit of replay — given the same IR, the same plugin versions, and the same inputs, Harbor reproduces a run bit-for-bit.
+Stargraph's intermediate representation (IR) is a portable, JSON-Schema-typed description of an agent graph: nodes, routing rules (Fathom `goto`/`halt`/`parallel` actions plus implicit fall-through node order), state shape, and policy bindings. The IR is the unit of replay — given the same IR, the same plugin versions, and the same inputs, Stargraph reproduces a run bit-for-bit.
 
-> **Terminology note**: Harbor's IR has no first-class `EdgeSpec` model.
+> **Terminology note**: Stargraph's IR has no first-class `EdgeSpec` model.
 > Transitions between nodes are *derived* from rule-firing outcomes
 > (`RuleSpec.then` actions) and from `nodes`-list ordering for
 > fall-through. Treat "edges" as a mental model, not an IR-level type.

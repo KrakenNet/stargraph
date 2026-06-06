@@ -7,7 +7,7 @@ test below; the headline integration case (1) records and replays a
 3-node graph end-to-end and byte-compares per-step state + the modeled
 event sequence, the same shape as the existing
 ``tests/replay/test_replay_determinism.py`` but extended to every
-:mod:`harbor.replay.determinism` shim (``now``, ``random``, ``uuid4``,
+:mod:`stargraph.replay.determinism` shim (``now``, ``random``, ``uuid4``,
 ``urandom``, ``secrets_token``).
 
 The remaining 11 sources are pinned by smaller hermetic checks:
@@ -23,19 +23,19 @@ The remaining 11 sources are pinned by smaller hermetic checks:
   in an order that differs from lexicographic.
 * ``set`` iteration -- IR :attr:`state_schema` rejects ``set`` /
   ``frozenset`` types at compile time
-  (:func:`harbor.graph.definition._check_state_schema_no_set_fields`).
+  (:func:`stargraph.graph.definition._check_state_schema_no_set_fields`).
 * ``dict`` ordering -- 3.7+ insertion order is the spec contract; we
   sanity-check round-trip JCS canonicalization is insensitive to
   insertion order so any in-engine dict shuffle is benign for the
   hash.
 * ``gc.collect()`` -- documented (no engine call); we assert the
   source tree contains no ``gc.collect`` invocations under
-  ``src/harbor`` so a future regression is loud.
+  ``src/stargraph`` so a future regression is loud.
 * LLM completions -- the dspy adapter routes through vcrpy; we assert
-  :data:`harbor.replay.determinism.HTTP_CASSETTE_MATCHERS` is the
+  :data:`stargraph.replay.determinism.HTTP_CASSETTE_MATCHERS` is the
   FR-28 tuple (covered above) and that the dspy stub registered in
-  ``harbor.cli.run`` does *not* hit the network (no transport import).
-* Tool side effects -- :func:`harbor.tools.decorator.tool` defaults
+  ``stargraph.cli.run`` does *not* hit the network (no transport import).
+* Tool side effects -- :func:`stargraph.tools.decorator.tool` defaults
   ``write`` / ``external`` to ``ReplayPolicy.must_stub``
   (cross-reference: ``tests/replay/test_must_stub_policy.py``). We
   re-assert the default here so the sweep stays self-contained.
@@ -65,23 +65,23 @@ import anyio
 import pytest
 import rfc8785
 
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.errors import IRValidationError
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.ir._models import HaltAction
-from harbor.nodes.base import NodeBase
-from harbor.replay import determinism
-from harbor.runtime.events import ResultEvent
-from harbor.tools.decorator import tool
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.errors import IRValidationError
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.ir._models import HaltAction
+from stargraph.nodes.base import NodeBase
+from stargraph.replay import determinism
+from stargraph.runtime.events import ResultEvent
+from stargraph.tools.decorator import tool
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
-SRC_ROOT: Path = REPO_ROOT / "src" / "harbor"
+SRC_ROOT: Path = REPO_ROOT / "src" / "stargraph"
 
 
 # --------------------------------------------------------------------------- #
@@ -110,7 +110,7 @@ class _AllShimsConsumingNode(NodeBase):
         prev_trail: str = getattr(state, "trail", "")
         # Order matters: the recording dict is positional per shim name,
         # so the replay must call shims in the same order to pop the
-        # right value (see harbor.replay.determinism._shim).
+        # right value (see stargraph.replay.determinism._shim).
         ts = determinism.now()
         rnd = determinism.random()
         uid = determinism.uuid4()
@@ -505,7 +505,7 @@ def test_source_12_no_asyncio_gather_in_engine_runtime() -> None:
     """Runtime must not use ``asyncio.gather`` (anyio TaskGroup is the contract).
 
     ``asyncio.gather`` does not preserve completion order in a way the
-    Harbor parallel block can rely on -- ``anyio.create_task_group``
+    Stargraph parallel block can rely on -- ``anyio.create_task_group``
     is the structured-concurrency primitive design §3.6.1 mandates.
     Tests are exempt (they may need plain asyncio for stubs).
     """
@@ -517,7 +517,7 @@ def test_source_12_no_asyncio_gather_in_engine_runtime() -> None:
         if pattern.search(text):
             offenders.append(str(py.relative_to(REPO_ROOT)))
     assert offenders == [], (
-        "harbor.runtime uses asyncio.gather -- design §3.6.1 mandates "
+        "stargraph.runtime uses asyncio.gather -- design §3.6.1 mandates "
         f"anyio.create_task_group: {offenders!r}"
     )
 

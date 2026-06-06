@@ -3,10 +3,10 @@
 
 Pins the round-trip from IR ``state_schema`` placeholder dict ->
 :class:`pydantic.BaseModel` subclass -> Mirror-marker introspection via
-:func:`harbor.ir.mirrored_fields`.
+:func:`stargraph.ir.mirrored_fields`.
 
 The IR's ``state_schema`` field today is a ``dict[str, str]`` (POC). The
-:class:`harbor.graph.Graph` constructor compiles it to a real Pydantic model;
+:class:`stargraph.graph.Graph` constructor compiles it to a real Pydantic model;
 this file pins the contract that:
 
 * Loading a state schema from IR yields a ``BaseModel`` subclass with all
@@ -26,8 +26,8 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from harbor.graph import Graph
-from harbor.ir import (
+from stargraph.graph import Graph
+from stargraph.ir import (
     IRDocument,
     Mirror,
     NodeSpec,
@@ -133,6 +133,6 @@ def test_mirror_json_schema_round_trip_carries_lifecycle() -> None:
 
     schema = State.model_json_schema()
     prop = schema["properties"]["token"]
-    assert prop["harbor_mirror"] is True
-    assert prop["harbor_mirror_template"] == "tok"
-    assert prop["harbor_mirror_lifecycle"] == "step"
+    assert prop["stargraph_mirror"] is True
+    assert prop["stargraph_mirror_template"] == "tok"
+    assert prop["stargraph_mirror_lifecycle"] == "step"

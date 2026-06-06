@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for module:Class node kind resolution in harbor run."""
+"""Tests for module:Class node kind resolution in stargraph run."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from typing import Any
 import pytest
 import typer
 
-from harbor.cli.run import _build_node_registry  # pyright: ignore[reportPrivateUsage]
-from harbor.ir._models import NodeSpec
-from harbor.nodes.base import EchoNode, NodeBase
+from stargraph.cli.run import _build_node_registry  # pyright: ignore[reportPrivateUsage]
+from stargraph.ir._models import NodeSpec
+from stargraph.nodes.base import EchoNode, NodeBase
 
 
 # A minimal NodeBase subclass exposed for the import-resolution test.
@@ -41,10 +41,10 @@ def test_module_class_kind_resolves_via_importlib() -> None:
 @pytest.mark.unit
 def test_module_class_with_dotted_path_resolves() -> None:
     """Confirm fully-qualified module paths work (not just top-level)."""
-    # EchoNode is at harbor.nodes.base:EchoNode — works as a sanity check
+    # EchoNode is at stargraph.nodes.base:EchoNode — works as a sanity check
     registry = _build_node_registry(
         [
-            NodeSpec(id="e", kind="harbor.nodes.base:EchoNode"),
+            NodeSpec(id="e", kind="stargraph.nodes.base:EchoNode"),
         ]
     )
     assert isinstance(registry["e"], EchoNode)
@@ -61,7 +61,7 @@ def test_module_class_import_failure_raises_typer_error() -> None:
     with pytest.raises(typer.BadParameter, match="cannot import"):
         _build_node_registry(
             [
-                NodeSpec(id="x", kind="harbor.nonexistent.module:Foo"),
+                NodeSpec(id="x", kind="stargraph.nonexistent.module:Foo"),
             ]
         )
 
@@ -71,7 +71,7 @@ def test_module_class_missing_attribute_raises() -> None:
     with pytest.raises(typer.BadParameter, match="not found"):
         _build_node_registry(
             [
-                NodeSpec(id="x", kind="harbor.nodes.base:NoSuchClass"),
+                NodeSpec(id="x", kind="stargraph.nodes.base:NoSuchClass"),
             ]
         )
 

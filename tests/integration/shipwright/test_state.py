@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.ir import mirrored_fields
-from harbor.skills.shipwright.state import (
+from stargraph.ir import mirrored_fields
+from stargraph.skills.shipwright.state import (
     Question,
     SpecSlot,
     State,

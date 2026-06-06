@@ -10,7 +10,7 @@ name; the execution loop merges each returned dict into the next state via the
 field-merge registry (FR-11). Nodes never mutate state in place.
 
 ```python
-from harbor.nodes import NodeBase
+from stargraph.nodes import NodeBase
 
 class MyNode(NodeBase):
     async def execute(self, state, ctx):
@@ -34,7 +34,7 @@ needs. Subclasses are free to declare additional fields (e.g. `model_id` on
 
 Minimal per-run context surfaced to nodes — a `runtime_checkable`
 `typing.Protocol`. Phase-1 only pins `run_id`. Concrete contexts (the real
-`harbor.graph.run.GraphRun`) attach more fields (event sink, replay flag,
+`stargraph.graph.run.GraphRun`) attach more fields (event sink, replay flag,
 artifact store, capability gate); nodes that need those fields declare their
 own narrower Protocol — see [`SubGraphContext`](subgraph.md) and
 [`WriteArtifactContext`](write-artifact.md).

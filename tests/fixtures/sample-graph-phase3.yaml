@@ -28,7 +28,7 @@
 #   7. TransitionEvent(from=parallel, to=node_d)         # join after all-success
 #   8. ResultEvent(reason="Phase-3 sample graph reached node_d")
 #
-# Each Branch* event is mirrored by a `harbor.transition` fact emitted through
+# Each Branch* event is mirrored by a `stargraph.transition` fact emitted through
 # the Fathom adapter (parallel.py::_emit_transition, kind in {started,
 # completed, cancelled}). The all-strategy is the simplest: both branches
 # must succeed before the join target (node_d) is reached; any branch

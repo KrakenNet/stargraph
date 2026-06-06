@@ -1,7 +1,0 @@
-id: harbor.bosun.safety_pii
-version: "1.0"
-requires:
-  harbor_facts_version: "1.0"
-  api_version: "1"
-provides:
-  - "harbor_facts:bosun.violation"

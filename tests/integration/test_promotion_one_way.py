@@ -20,12 +20,12 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.fathom import FathomAdapter
-from harbor.stores.fact import FactPattern
-from harbor.stores.graph import NodeRef
-from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.ryugraph import RyuGraphStore
-from harbor.stores.sqlite_fact import SQLiteFactStore
+from stargraph.fathom import FathomAdapter
+from stargraph.stores.fact import FactPattern
+from stargraph.stores.graph import NodeRef
+from stargraph.stores.kg_promotion import PromoteTriplesToFacts
+from stargraph.stores.ryugraph import RyuGraphStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,7 +75,7 @@ async def test_triple_delete_does_not_unpin_fact(tmp_path: Path) -> None:
         fact_store,
         adapter,
         filter_cypher=_FILTER_CYPHER,
-        rule_id="harbor_evidence_v1",
+        rule_id="stargraph_evidence_v1",
         agent_id="one-way-agent",
     )
     assert len(promoted) == 1
@@ -116,7 +116,7 @@ async def test_explicit_retraction_unpins_fact(tmp_path: Path) -> None:
         fact_store,
         adapter,
         filter_cypher=_FILTER_CYPHER,
-        rule_id="harbor_evidence_v1",
+        rule_id="stargraph_evidence_v1",
         agent_id="retract-agent",
     )
     assert len(promoted) == 1

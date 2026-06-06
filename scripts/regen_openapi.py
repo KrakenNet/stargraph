@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Regenerate ``docs/reference/openapi.json`` from harbor.serve OpenAPI spec.
+"""Regenerate ``docs/reference/openapi.json`` from stargraph.serve OpenAPI spec.
 
 Idempotent: running twice produces byte-identical output. CI gates on
 ``git diff --exit-code docs/reference/openapi.json`` to catch drift between
 the on-disk reference spec and the actual FastAPI route surface.
 
-Spec ref: harbor-serve-and-bosun §5.3, §16, §14.3 (FR-12, AC-7.4).
+Spec ref: stargraph-serve-and-bosun §5.3, §16, §14.3 (FR-12, AC-7.4).
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from harbor.serve.api import create_app
-from harbor.serve.openapi import regen_openapi_spec
-from harbor.serve.profiles import OssDefaultProfile
+from stargraph.serve.api import create_app
+from stargraph.serve.openapi import regen_openapi_spec
+from stargraph.serve.profiles import OssDefaultProfile
 
 
 def main() -> None:

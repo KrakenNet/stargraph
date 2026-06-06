@@ -1,4 +1,4 @@
-// Run tracker — lists runs from upstream harbor serve, loads paths,
+// Run tracker — lists runs from upstream stargraph serve, loads paths,
 // subscribes to live WebSocket streams.
 //
 // API surface (all proxied through graph-viewer's own host):
@@ -167,7 +167,7 @@ window.RunTrackerPanel = function RunTrackerPanel({ baseUrl, selectedRunId, onSe
 
   if (!baseUrl) {
     return h('div', { className: 'runs-empty' },
-      'Connect to harbor serve via "--upstream" to see runs');
+      'Connect to stargraph serve via "--upstream" to see runs');
   }
 
   return h('div', { className: 'runs-panel' }, [

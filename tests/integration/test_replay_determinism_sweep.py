@@ -14,7 +14,7 @@ Three contracts are pinned here:
    dicts hash equal under canonical JSON).
 2. **Mutated input_hash loud-fails** -- mutating the recorded
    ``input_hash`` on a single cassette in the sweep makes that replay
-   raise :class:`harbor.errors.ReplayError`.
+   raise :class:`stargraph.errors.ReplayError`.
 3. **Prompt-hash drift surfaces as input-hash mismatch** -- because the
    per-step ``input_payload`` carries the prompt fingerprint, a replay
    that re-derives a different ``prompt_hash`` than the record-pass
@@ -32,13 +32,13 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-from harbor.errors import ReplayError
-from harbor.replay.react_cassette import (
+from stargraph.errors import ReplayError
+from stargraph.replay.react_cassette import (
     ReactStepRecord,
     ReactStepReplayCassette,
     input_hash,
 )
-from harbor.skills.react import ReactSkill, ReactState
+from stargraph.skills.react import ReactSkill, ReactState
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
 

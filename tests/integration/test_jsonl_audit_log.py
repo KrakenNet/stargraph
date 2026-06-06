@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration tests for :class:`harbor.audit.JSONLAuditSink` (FR-22).
+"""Integration tests for :class:`stargraph.audit.JSONLAuditSink` (FR-22).
 
 Coverage:
 * ``test_basic_append`` -- unsigned three-event round-trip.
@@ -26,8 +26,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pydantic import TypeAdapter
 
-from harbor.audit import JSONLAuditSink
-from harbor.runtime.events import (
+from stargraph.audit import JSONLAuditSink
+from stargraph.runtime.events import (
     Event,
     TokenEvent,
     ToolCallEvent,
@@ -73,7 +73,7 @@ def test_basic_append(tmp_path: Path) -> None:
             ts=ts,
             tool_name="search",
             namespace="builtins",
-            args={"q": "harbor"},
+            args={"q": "stargraph"},
             call_id="call-1",
         ),
         TransitionEvent(

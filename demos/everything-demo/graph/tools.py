@@ -6,7 +6,7 @@ Two tools, one of each side-effect class:
 - :func:`lookup_history` -- ``side_effects=read`` -> ``replay_policy=recorded_result``.
 - :func:`notify_user` -- ``side_effects=external`` -> ``replay_policy=must_stub``.
 
-Both use the :func:`harbor.tools.tool` decorator; the resulting
+Both use the :func:`stargraph.tools.tool` decorator; the resulting
 callables expose ``.spec: ToolSpec`` and are registered via the
 ``register_tools`` hookspec when this module is loaded as a plugin
 (see ``pyproject.toml`` entry-point declarations in the demo's
@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from harbor.tools.decorator import tool
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.tools.decorator import tool
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 
 @tool(
@@ -49,7 +49,7 @@ async def lookup_history(*, ticket_id: str, limit: int = 5) -> dict[str, Any]:
 async def notify_user(*, ticket_id: str, decision: str, note: str = "") -> dict[str, Any]:
     """External notify (Slack / email) — replay-stubbed by must_stub.
 
-    Wire through the MCP adapter (``harbor.adapters.mcp.bind``) when an
+    Wire through the MCP adapter (``stargraph.adapters.mcp.bind``) when an
     MCP server provides the ``notify_user`` tool surface; otherwise this
     POC stub is the in-process path.
     """

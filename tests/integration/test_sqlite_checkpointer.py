@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-RED suite for the SQLite checkpointer driver (FR-17, design §3.2.3).
 
-These tests pin the contract for ``harbor.checkpoint.sqlite.SQLiteCheckpointer``
+These tests pin the contract for ``stargraph.checkpoint.sqlite.SQLiteCheckpointer``
 *before* the implementation lands in task 1.21. They MUST be RED -- the
-``harbor.checkpoint.sqlite`` module does not exist yet, so every case fails
+``stargraph.checkpoint.sqlite`` module does not exist yet, so every case fails
 with :class:`ModuleNotFoundError`/:class:`ImportError` at the deferred
 import. That is the expected RED state for this task.
 
@@ -15,7 +15,7 @@ Cases (per task 1.20):
    on the same path is a no-op (no error).
 3. ``test_bootstrap_rejects_network_fs``    -- prefix-matched paths
    (``/mnt/``, ``//host``, ``\\\\host``, ``/Volumes/.+SMB``) raise
-   :class:`harbor.errors.CheckpointError` carrying ``reason='network-fs'``.
+   :class:`stargraph.errors.CheckpointError` carrying ``reason='network-fs'``.
 4. ``test_write_then_read_latest_round_trip`` -- :py:meth:`write` followed by
    :py:meth:`read_latest` returns the same :class:`Checkpoint` payload.
 5. ``test_sqlite_multi_process_writer_refusal`` -- a foreign process holding
@@ -24,7 +24,7 @@ Cases (per task 1.20):
    supported'``. POSIX-only (skipped on win32; ``msvcrt.locking`` semantics
    differ, separate Windows path may follow).
 
-The deferred import pattern (`from harbor.checkpoint.sqlite import ...` inside
+The deferred import pattern (`from stargraph.checkpoint.sqlite import ...` inside
 each test, guarded by ``# pyright: ignore[reportMissingImports]``) keeps
 pyright + ruff green during RED while ensuring runtime collection still
 fails with ``ImportError`` (the RED signal).
@@ -43,8 +43,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from harbor.checkpoint import Checkpoint
-from harbor.errors import CheckpointError
+from stargraph.checkpoint import Checkpoint
+from stargraph.errors import CheckpointError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -64,7 +64,7 @@ def _import_sqlite_checkpointer() -> Any:
     """
     import importlib
 
-    mod = importlib.import_module("harbor.checkpoint.sqlite")
+    mod = importlib.import_module("stargraph.checkpoint.sqlite")
     return mod.SQLiteCheckpointer
 
 

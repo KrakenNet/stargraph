@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.skills.refs.autoresearch import (
+from stargraph.skills.refs.autoresearch import (
     AutoresearchSkill,
     AutoresearchState,
     Claim,

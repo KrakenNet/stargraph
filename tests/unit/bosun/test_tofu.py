@@ -29,14 +29,14 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from harbor.bosun.signing import (
+from stargraph.bosun.signing import (
     FilesystemTrustStore,
     PackSignatureError,
     StaticTrustStore,
     sign_pack,
     verify_pack,
 )
-from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
+from stargraph.serve.profiles import ClearedProfile, OssDefaultProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -178,7 +178,7 @@ def test_static_trust_store_unlisted_oss_warns(
     token = sign_pack(pack, priv_pem, key_id)
 
     other = StaticTrustStore({"unrelated_key": b"-----BEGIN PUBLIC KEY-----\n..."})
-    with caplog.at_level(logging.WARNING, logger="harbor.bosun.signing"):
+    with caplog.at_level(logging.WARNING, logger="stargraph.bosun.signing"):
         result = verify_pack(pack, token, other, OssDefaultProfile())
 
     assert result.verified is False

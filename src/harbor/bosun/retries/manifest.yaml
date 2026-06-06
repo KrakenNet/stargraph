@@ -1,8 +1,0 @@
-id: harbor.bosun.retries
-version: "1.0"
-requires:
-  harbor_facts_version: "1.0"
-  api_version: "1"
-provides:
-  - "harbor_facts:action.retry"
-  - "harbor_facts:bosun.violation"

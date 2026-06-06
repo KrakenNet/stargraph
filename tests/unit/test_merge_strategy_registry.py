@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests for the field-level merge-strategy registry (FR-11).
 
-Per design §3.6 / requirements FR-11, ``harbor.runtime.merge`` exposes a
+Per design §3.6 / requirements FR-11, ``stargraph.runtime.merge`` exposes a
 ``MergeRegistry`` keyed on the four built-in names (``last-write``,
 ``append``, ``max``, ``min``) plus dynamic ``custom:<callable_ref>`` lookup.
 
 This file is the **TDD-RED** half of the FR-11 cycle.  The
-``harbor.runtime.merge`` module does not yet exist; imports are deferred
+``stargraph.runtime.merge`` module does not yet exist; imports are deferred
 inside each test body so the file parses cleanly under ruff/pyright while
 the tests themselves fail with :class:`ImportError` until task 3.11 lands
 the implementation.
@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 
 
 def _load() -> _MergeModule:
-    """Deferred import of the not-yet-built ``harbor.runtime.merge`` module."""
-    return cast("_MergeModule", importlib.import_module("harbor.runtime.merge"))
+    """Deferred import of the not-yet-built ``stargraph.runtime.merge`` module."""
+    return cast("_MergeModule", importlib.import_module("stargraph.runtime.merge"))
 
 
 def test_registry_resolves_last_write() -> None:

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Property-based bit-identical round-trip for ``IRDocument`` (NFR-1, AC-11.3).
 
-Hypothesis composes arbitrary :class:`harbor.ir.IRDocument` instances from the
+Hypothesis composes arbitrary :class:`stargraph.ir.IRDocument` instances from the
 simpler IR sub-models, then asserts ``loads(dumps(doc)) == doc`` and
 ``dumps(loads(dumps(doc))) == dumps(doc)`` -- bit-identical wire form on the
 second round (the "canonical" property: the encoder is a fixed-point function
@@ -26,7 +26,7 @@ from __future__ import annotations
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from harbor.ir import (
+from stargraph.ir import (
     Action,
     AssertAction,
     GotoAction,

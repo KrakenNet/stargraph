@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""harbor.bosun.shipwright.gaps — gap-detection rules for graphs."""
+"""stargraph.bosun.shipwright.gaps — gap-detection rules for graphs."""
 
 from __future__ import annotations
 
 import pytest
 from fathom import Engine  # noqa: TC002
 
-from harbor.skills.shipwright._pack import fresh_engine, load_pack
+from stargraph.skills.shipwright._pack import fresh_engine, load_pack
 
 
 @pytest.fixture

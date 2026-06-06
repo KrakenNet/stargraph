@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.skills.shipwright.nodes.synthesize import SynthesizeGraph
-from harbor.skills.shipwright.state import SpecSlot, State
+from stargraph.skills.shipwright.nodes.synthesize import SynthesizeGraph
+from stargraph.skills.shipwright.state import SpecSlot, State
 
 if TYPE_CHECKING:
-    from harbor.nodes.base import ExecutionContext
+    from stargraph.nodes.base import ExecutionContext
 
 
 @pytest.mark.integration
@@ -49,11 +49,11 @@ async def test_synthesize_emits_three_files(monkeypatch: pytest.MonkeyPatch) -> 
     )
     files = out["artifact_files"]
 
-    assert set(files) == {"state.py", "harbor.yaml", "tests/test_smoke.py"}
+    assert set(files) == {"state.py", "stargraph.yaml", "tests/test_smoke.py"}
     assert "class State" in files["state.py"]
     assert "Annotated[str, Mirror()]" in files["state.py"]
-    assert "name: triage" in files["harbor.yaml"]
-    assert "classify" in files["harbor.yaml"]
+    assert "name: triage" in files["stargraph.yaml"]
+    assert "classify" in files["stargraph.yaml"]
     assert "test_smoke" in files["tests/test_smoke.py"]
 
 

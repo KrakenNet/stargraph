@@ -5,9 +5,9 @@
 # Pinned shape: every field optional; ``model_config = ConfigDict(extra="forbid")``
 # means typos surface at validate time. This file pins the happy-path
 # state_overrides + node_output_overrides combination the e2e test exercises;
-# the CLI ``harbor counterfactual <graph> --step N --mutate mutation.yaml``
+# the CLI ``stargraph counterfactual <graph> --step N --mutate mutation.yaml``
 # loads it via ``yaml.safe_load`` and validates through
-# :class:`harbor.replay.counterfactual.CounterfactualMutation`.
+# :class:`stargraph.replay.counterfactual.CounterfactualMutation`.
 state_overrides:
   message: "counterfactual-message"
   answer: "counterfactual-answer"

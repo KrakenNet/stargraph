@@ -24,7 +24,7 @@ validated, and replayable independently of the IR.
 - The [first graph](first-graph.md) project from the previous tutorial.
 - `uv add kraken-plugins-fathom` (provides the `/fathom:*` authoring
   commands referenced below).
-- `uv add harbor[fathom]` if your install excluded the Fathom
+- `uv add stargraph[fathom]` if your install excluded the Fathom
   integration.
 
 ## Step 1 — Add a routing field to state
@@ -66,7 +66,7 @@ The scaffolder produces `pack.yaml`, `templates/`, `rules/`,
 Save this as `packs/hello.routing/rules/route_by_risk.yaml`. The
 `when` pattern matches the `node-id` fact emitted at every node-exit
 boundary plus the projected `state` fact; the `then` action is a
-Harbor `goto`.
+Stargraph `goto`.
 
 ```yaml
 # packs/hello.routing/rules/route_by_risk.yaml
@@ -90,7 +90,7 @@ defrule:
 ```
 
 !!! note "Action vocabulary"
-    The pack's `then:` actions are the same six Harbor verbs the IR's
+    The pack's `then:` actions are the same six Stargraph verbs the IR's
     inline `rules:` block accepts (`goto`, `parallel`, `halt`, `retry`,
     `assert`, `retract`). Pack rules and inline rules merge into a
     single rule set at compile time.
@@ -116,7 +116,7 @@ the pack provides them now.
 ```yaml
 # graph.yaml
 ir_version: "1.0.0"
-id: "run:hello-harbor"
+id: "run:hello-stargraph"
 state_class: "state:HelloState"
 nodes:
   - id: node_a
@@ -129,7 +129,7 @@ governance:
   - id: hello.routing
     version: "1.0.0"
     requires:
-      harbor_facts_version: "1.0"
+      stargraph_facts_version: "1.0"
       api_version: "1"
 rules:
   - id: r-halt-review
@@ -144,17 +144,17 @@ rules:
         reason: "low-risk path — shipped"
 ```
 
-The `requires:` block pins the pack to a `harbor_facts_version` /
+The `requires:` block pins the pack to a `stargraph_facts_version` /
 `api_version` pair; mismatches fail loud at pack-load time per
-`harbor.ir._versioning.check_pack_compat`.
+`stargraph.ir._versioning.check_pack_compat`.
 
 ## Step 6 — Run the high-risk branch
 
 ```bash
-uv run harbor run graph.yaml \
+uv run stargraph run graph.yaml \
   --inputs message=hello \
   --inputs risk_class=high \
-  --log-file ./.harbor/audit.jsonl
+  --log-file ./.stargraph/audit.jsonl
 ```
 
 Expected progress lines:
@@ -171,8 +171,8 @@ run_id=run-… status=done
 Filter the audit log for the rule firing event:
 
 ```bash
-RUN_ID=$(uv run harbor inspect "$RUN_ID" --db ./.harbor/run.sqlite | head -1 | awk '{print $1}')
-grep '"rule_id":"r-route-high-risk"' ./.harbor/audit.jsonl
+RUN_ID=$(uv run stargraph inspect "$RUN_ID" --db ./.stargraph/run.sqlite | head -1 | awk '{print $1}')
+grep '"rule_id":"r-route-high-risk"' ./.stargraph/audit.jsonl
 ```
 
 You should see one record per matched step with the pack id, rule id,

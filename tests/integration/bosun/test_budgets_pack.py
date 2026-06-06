@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration: ``harbor.bosun.budgets@1.0`` round-trip (FR-34, design §7.1).
+"""Integration: ``stargraph.bosun.budgets@1.0`` round-trip (FR-34, design §7.1).
 
 Loads the pack rules into a fresh Fathom engine, asserts synthetic
 ``bosun.budget`` facts, runs the rule engine to quiescence, and reads

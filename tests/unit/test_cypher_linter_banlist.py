@@ -2,8 +2,8 @@
 """Cypher linter ban-list per-construct tests (FR-12, AC-9.1, NFR-4).
 
 One test per banned construct, each asserting that
-:meth:`harbor.stores.cypher.Linter.check` raises
-:class:`harbor.errors.UnportableCypherError`. Snippets contain the
+:meth:`stargraph.stores.cypher.Linter.check` raises
+:class:`stargraph.errors.UnportableCypherError`. Snippets contain the
 banned token plus the minimum scaffolding required to make the
 surrounding query syntactically plausible.
 """
@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.errors import UnportableCypherError
-from harbor.stores.cypher import Linter
+from stargraph.errors import UnportableCypherError
+from stargraph.stores.cypher import Linter
 
 pytestmark = [pytest.mark.knowledge, pytest.mark.unit]
 

@@ -32,12 +32,12 @@ tools:
     version: "1"
 
 governance:
-  - id: harbor.bosun.budgets
+  - id: stargraph.bosun.budgets
     version: "1.0"
-    requires: { harbor_facts_version: "1.0", api_version: "1" }
+    requires: { stargraph_facts_version: "1.0", api_version: "1" }
   - id: sdw.evolution
     version: "1.0"
-    requires: { harbor_facts_version: "1.0" }
+    requires: { stargraph_facts_version: "1.0" }
 
 stores: []
 

@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for :func:`harbor.tools.servicenow.create_change_request`.
+"""Unit tests for :func:`stargraph.tools.servicenow.create_change_request`.
 
 The tool is the documented write surface for ServiceNow CR creation in
-Harbor v1 (Nautilus's adapter is read-only; see module docstring).
+Stargraph v1 (Nautilus's adapter is read-only; see module docstring).
 Coverage:
 
-1. **Dry-run by default** -- without ``HARBOR_SERVICENOW_LIVE``, the
+1. **Dry-run by default** -- without ``STARGRAPH_SERVICENOW_LIVE``, the
    tool short-circuits before any network call and returns a synthetic
    envelope with ``status="dry-run"``.
 2. **Idempotency required** -- empty / whitespace ``correlation_id``
-   raises :class:`HarborRuntimeError` so a caller can never accidentally
+   raises :class:`StargraphRuntimeError` so a caller can never accidentally
    POST without a dedupe key.
-3. **Live POST shape** -- with ``HARBOR_SERVICENOW_LIVE=1`` and a
+3. **Live POST shape** -- with ``STARGRAPH_SERVICENOW_LIVE=1`` and a
    patched httpx transport, the tool issues a single POST to
    ``/api/now/table/change_request`` with the resolved body + auth and
    surfaces the parsed ``result`` plus the provenance envelope.
@@ -28,10 +28,10 @@ from typing import Any
 import httpx
 import pytest
 
-from harbor.errors import HarborRuntimeError
-from harbor.ir._models import ToolSpec
-from harbor.tools.servicenow.create_change_request import create_change_request
-from harbor.tools.spec import ReplayPolicy, SideEffects
+from stargraph.errors import StargraphRuntimeError
+from stargraph.ir._models import ToolSpec
+from stargraph.tools.servicenow.create_change_request import create_change_request
+from stargraph.tools.spec import ReplayPolicy, SideEffects
 
 # ---------------------------------------------------------------------------
 # Registry shape
@@ -56,7 +56,7 @@ def test_tool_spec_shape() -> None:
 
 @pytest.mark.asyncio
 async def test_dry_run_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("HARBOR_SERVICENOW_LIVE", raising=False)
+    monkeypatch.delenv("STARGRAPH_SERVICENOW_LIVE", raising=False)
     out = await create_change_request(
         short_description="CVE-2021-44228 remediation",
         description="Apply log4j 2.17 patch to affected hosts.",
@@ -68,7 +68,7 @@ async def test_dry_run_default(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["short_description"] == "CVE-2021-44228 remediation"
     assert body["correlation_id"] == "remediation-2021-44228-batch-1"
     assert body["priority"] == "2"
-    prov = out["__harbor_provenance__"]
+    prov = out["__stargraph_provenance__"]
     assert prov["source"] == "servicenow"
     assert prov["external_id"].startswith("dry-run:")
 
@@ -81,7 +81,7 @@ async def test_dry_run_default(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("bad", ["", "   ", "\t\n"])
 async def test_empty_correlation_id_rejected(bad: str) -> None:
-    with pytest.raises(HarborRuntimeError, match="correlation_id"):
+    with pytest.raises(StargraphRuntimeError, match="correlation_id"):
         await create_change_request(
             short_description="x",
             description="y",
@@ -96,7 +96,7 @@ async def test_empty_correlation_id_rejected(bad: str) -> None:
 
 @pytest.mark.asyncio
 async def test_live_post_basic_auth(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HARBOR_SERVICENOW_LIVE", "1")
+    monkeypatch.setenv("STARGRAPH_SERVICENOW_LIVE", "1")
     monkeypatch.setenv("SERVICENOW_BASE_URL", "https://ven00000.service-now.com/")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "basic")
     monkeypatch.setenv("SERVICENOW_USERNAME", "robot")
@@ -144,12 +144,12 @@ async def test_live_post_basic_auth(monkeypatch: pytest.MonkeyPatch) -> None:
     assert captured["auth_header"].startswith("Basic ")
     assert out["status"] == "ok"
     assert out["result"]["number"] == "CHG0010001"
-    assert out["__harbor_provenance__"]["external_id"] == "abc123"
+    assert out["__stargraph_provenance__"]["external_id"] == "abc123"
 
 
 @pytest.mark.asyncio
 async def test_live_post_bearer_auth(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HARBOR_SERVICENOW_LIVE", "1")
+    monkeypatch.setenv("STARGRAPH_SERVICENOW_LIVE", "1")
     monkeypatch.setenv("SERVICENOW_BASE_URL", "https://ven00000.service-now.com")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "bearer")
     monkeypatch.setenv("SERVICENOW_BEARER_TOKEN", "tok-123")
@@ -185,39 +185,39 @@ async def test_live_post_bearer_auth(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_live_missing_base_url_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HARBOR_SERVICENOW_LIVE", "1")
+    monkeypatch.setenv("STARGRAPH_SERVICENOW_LIVE", "1")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "basic")
     monkeypatch.setenv("SERVICENOW_USERNAME", "u")
     monkeypatch.setenv("SERVICENOW_PASSWORD", "p")
     monkeypatch.delenv("SERVICENOW_BASE_URL", raising=False)
-    with pytest.raises(HarborRuntimeError, match="SERVICENOW_BASE_URL"):
+    with pytest.raises(StargraphRuntimeError, match="SERVICENOW_BASE_URL"):
         await create_change_request(short_description="x", description="y", correlation_id="z")
 
 
 @pytest.mark.asyncio
 async def test_live_missing_basic_creds_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HARBOR_SERVICENOW_LIVE", "1")
+    monkeypatch.setenv("STARGRAPH_SERVICENOW_LIVE", "1")
     monkeypatch.setenv("SERVICENOW_BASE_URL", "https://ven.service-now.com")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "basic")
     monkeypatch.delenv("SERVICENOW_USERNAME", raising=False)
     monkeypatch.delenv("SERVICENOW_PASSWORD", raising=False)
-    with pytest.raises(HarborRuntimeError, match="USERNAME and SERVICENOW_PASSWORD"):
+    with pytest.raises(StargraphRuntimeError, match="USERNAME and SERVICENOW_PASSWORD"):
         await create_change_request(short_description="x", description="y", correlation_id="z")
 
 
 @pytest.mark.asyncio
 async def test_live_mtls_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HARBOR_SERVICENOW_LIVE", "1")
+    monkeypatch.setenv("STARGRAPH_SERVICENOW_LIVE", "1")
     monkeypatch.setenv("SERVICENOW_BASE_URL", "https://ven.service-now.com")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "mtls")
-    with pytest.raises(HarborRuntimeError, match="not supported"):
+    with pytest.raises(StargraphRuntimeError, match="not supported"):
         await create_change_request(short_description="x", description="y", correlation_id="z")
 
 
 @pytest.mark.asyncio
 async def test_live_unknown_auth_kind_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HARBOR_SERVICENOW_LIVE", "1")
+    monkeypatch.setenv("STARGRAPH_SERVICENOW_LIVE", "1")
     monkeypatch.setenv("SERVICENOW_BASE_URL", "https://ven.service-now.com")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "wat")
-    with pytest.raises(HarborRuntimeError, match="unknown SERVICENOW_AUTH_KIND"):
+    with pytest.raises(StargraphRuntimeError, match="unknown SERVICENOW_AUTH_KIND"):
         await create_change_request(short_description="x", description="y", correlation_id="z")

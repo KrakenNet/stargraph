@@ -3,24 +3,24 @@
 
 Phase 3 testing checkpoint for the FR-8 5-tuple drift gate
 ``(model_id, revision, content_hash, ndims, schema_v)`` written to the
-LanceDB sidecar ``_harbor_meta`` table at ``bootstrap()`` time.
+LanceDB sidecar ``_stargraph_meta`` table at ``bootstrap()`` time.
 
 Two integration tests:
 
 1. :func:`test_bootstrap_writes_5tuple_metadata` -- bootstrapping a fresh
-   :class:`~harbor.stores.lancedb.LanceDBVectorStore` writes all five
+   :class:`~stargraph.stores.lancedb.LanceDBVectorStore` writes all five
    keys (``model_id``, ``revision``, ``content_hash``, ``ndims``,
    ``schema_v``) into the sidecar table; absence of any key is a
    silent-corruption regression.
 2. :func:`test_reentry_with_mismatch_raises_IncompatibleEmbeddingHashError`
    -- re-opening the same on-disk store with an embedder whose
    ``content_hash`` differs raises
-   :class:`~harbor.errors.IncompatibleEmbeddingHashError` (NFR-4 loud-fail
+   :class:`~stargraph.errors.IncompatibleEmbeddingHashError` (NFR-4 loud-fail
    mandatory; silent acceptance would corrupt retrieval).
 
 Tests use a lightweight in-test fake embedder
 (:class:`_HashableFakeEmbedder`) that mirrors
-:class:`~harbor.stores.embeddings.FakeEmbedder`'s embed semantics but
+:class:`~stargraph.stores.embeddings.FakeEmbedder`'s embed semantics but
 exposes ``content_hash`` as a constructor kwarg so the second test can
 flip the hash without touching production code.
 """
@@ -34,9 +34,9 @@ import lancedb  # pyright: ignore[reportMissingTypeStubs]
 import numpy as np
 import pytest
 
-from harbor.errors import IncompatibleEmbeddingHashError
-from harbor.stores._common import _EMBED_META_TABLE  # pyright: ignore[reportPrivateUsage]
-from harbor.stores.lancedb import LanceDBVectorStore
+from stargraph.errors import IncompatibleEmbeddingHashError
+from stargraph.stores._common import _EMBED_META_TABLE  # pyright: ignore[reportPrivateUsage]
+from stargraph.stores.lancedb import LanceDBVectorStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,9 +51,9 @@ _EXPECTED_META_KEYS = frozenset(
 
 
 class _HashableFakeEmbedder:
-    """Test-only :class:`~harbor.stores.embeddings.Embedding` with overridable identity.
+    """Test-only :class:`~stargraph.stores.embeddings.Embedding` with overridable identity.
 
-    Mirrors :class:`~harbor.stores.embeddings.FakeEmbedder`'s deterministic
+    Mirrors :class:`~stargraph.stores.embeddings.FakeEmbedder`'s deterministic
     sha256-seeded embed semantics, but exposes ``content_hash`` (and
     ``model_id`` / ``revision``) as constructor kwargs so the drift-gate
     test can swap the hash on re-entry.
@@ -64,7 +64,7 @@ class _HashableFakeEmbedder:
         *,
         content_hash: str,
         ndims: int = 4,
-        model_id: str = "harbor-fake-embedder",
+        model_id: str = "stargraph-fake-embedder",
         revision: str = "v1",
     ) -> None:
         self._content_hash = content_hash
@@ -108,7 +108,7 @@ class _HashableFakeEmbedder:
 
 
 async def test_bootstrap_writes_5tuple_metadata(tmp_path: Path) -> None:
-    """Bootstrap writes all 5 FR-8 drift-gate keys into ``_harbor_meta``."""
+    """Bootstrap writes all 5 FR-8 drift-gate keys into ``_stargraph_meta``."""
     embedder = _HashableFakeEmbedder(content_hash="aaa", ndims=4)
     store = LanceDBVectorStore(tmp_path / "vectors", embedder)
     await store.bootstrap()
@@ -124,7 +124,7 @@ async def test_bootstrap_writes_5tuple_metadata(tmp_path: Path) -> None:
             actual[key] = value
 
     assert set(actual.keys()) == _EXPECTED_META_KEYS, f"missing 5-tuple keys; got {sorted(actual)}"
-    assert actual["model_id"] == "harbor-fake-embedder"
+    assert actual["model_id"] == "stargraph-fake-embedder"
     assert actual["revision"] == "v1"
     assert actual["content_hash"] == "aaa"
     assert actual["ndims"] == "4"

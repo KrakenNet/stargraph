@@ -2,7 +2,7 @@
 """Phase-3 integration test (task 3.9): full HTTP run lifecycle.
 
 Drives the canonical run lifecycle through the FastAPI serve surface
-(:func:`harbor.serve.api.create_app`) end-to-end:
+(:func:`stargraph.serve.api.create_app`) end-to-end:
 
 1. ``POST /v1/runs`` returns ``202 Accepted`` with ``{run_id, status}``.
 2. ``GET /v1/runs/{run_id}`` returns ``200`` with a structured
@@ -29,8 +29,8 @@ Real wiring:
   Scheduler-derived ``run_id``, not the legacy ``poc-{graph_id}``
   stub) but is not the run that the cancel route operates on.
 * :class:`JSONLAuditSink` is wired via
-  :data:`harbor.serve.contextvars._audit_sink_var.set(...)` so
-  :func:`harbor.serve.lifecycle.cancel_run`'s audit-emit lands on disk
+  :data:`stargraph.serve.contextvars._audit_sink_var.set(...)` so
+  :func:`stargraph.serve.lifecycle.cancel_run`'s audit-emit lands on disk
   and the test can read it back.
 
 Refs: tasks.md §3.9; design §16.2 + §5.1; FR-12, FR-22, AC-7.1, AC-13.6.
@@ -48,18 +48,18 @@ import anyio.lowlevel
 import httpx
 import pytest
 
-from harbor.audit import JSONLAuditSink
-from harbor.checkpoint.protocol import RunSummary
-from harbor.checkpoint.sqlite import SQLiteCheckpointer
-from harbor.graph import Graph, GraphRun
-from harbor.ir import IRDocument, NodeSpec
-from harbor.nodes.base import NodeBase
-from harbor.runtime.events import RunCancelledEvent, TransitionEvent
-from harbor.serve.api import create_app
-from harbor.serve.broadcast import EventBroadcaster
-from harbor.serve.contextvars import _audit_sink_var
-from harbor.serve.profiles import OssDefaultProfile
-from harbor.serve.scheduler import EnqueueHandle, Scheduler
+from stargraph.audit import JSONLAuditSink
+from stargraph.checkpoint.protocol import RunSummary
+from stargraph.checkpoint.sqlite import SQLiteCheckpointer
+from stargraph.graph import Graph, GraphRun
+from stargraph.ir import IRDocument, NodeSpec
+from stargraph.nodes.base import NodeBase
+from stargraph.runtime.events import RunCancelledEvent, TransitionEvent
+from stargraph.serve.api import create_app
+from stargraph.serve.broadcast import EventBroadcaster
+from stargraph.serve.contextvars import _audit_sink_var
+from stargraph.serve.profiles import OssDefaultProfile
+from stargraph.serve.scheduler import EnqueueHandle, Scheduler
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -122,7 +122,7 @@ def _build_long_running_registry() -> dict[str, NodeBase]:
 class _StubScheduler:
     """Minimal Scheduler-shaped stub for the POST /v1/runs route.
 
-    The real :class:`harbor.serve.scheduler.Scheduler` runs an
+    The real :class:`stargraph.serve.scheduler.Scheduler` runs an
     in-process dispatcher + cron loop and requires async start/stop;
     this stub satisfies the FastAPI route handler's ``scheduler.enqueue``
     contract without spawning any background tasks. Returns a resolved
@@ -248,7 +248,7 @@ async def test_full_run_lifecycle_post_get_cancel(tmp_path: Path) -> None:
         app = create_app(OssDefaultProfile(), deps=deps)
 
         # Wire the audit sink via the contextvar so
-        # :func:`harbor.serve.lifecycle.cancel_run` persists its
+        # :func:`stargraph.serve.lifecycle.cancel_run` persists its
         # :class:`BosunAuditEvent` to disk. The contextvar is read by
         # the lifecycle helper directly via the run-handler's stack
         # frame; httpx ASGI transport preserves the surrounding context

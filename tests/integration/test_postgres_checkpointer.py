@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """TDD-RED suite for the asyncpg + pgbouncer-safe Postgres checkpointer (FR-18).
 
-Pins the contract for ``harbor.checkpoint.postgres.PostgresCheckpointer`` per
+Pins the contract for ``stargraph.checkpoint.postgres.PostgresCheckpointer`` per
 research §4 amendment 5 / design §3.2.4 *before* the GREEN implementation
 lands in task 3.21. Every case here MUST be RED -- the
-``harbor.checkpoint.postgres`` module does not exist yet, so the deferred
+``stargraph.checkpoint.postgres`` module does not exist yet, so the deferred
 import inside each test raises :class:`ImportError`.
 
 Cases (per task 3.20):
@@ -17,9 +17,9 @@ Cases (per task 3.20):
    ``format='binary'`` is broken for jsonb).
 3. ``test_server_settings_tcp_keepalives``     -- pool ``server_settings``
    carry ``tcp_keepalives_idle='60'``, ``..._interval='10'``,
-   ``..._count='3'``, ``application_name='harbor.engine'``.
-4. ``test_tables_under_harbor_schema``         -- ``SELECT schemaname FROM
-   pg_tables WHERE tablename='checkpoints'`` returns ``harbor`` (Nautilus
+   ``..._count='3'``, ``application_name='stargraph.engine'``.
+4. ``test_tables_under_stargraph_schema``         -- ``SELECT schemaname FROM
+   pg_tables WHERE tablename='checkpoints'`` returns ``stargraph`` (Nautilus
    coexistence; design §3.2.4).
 5. ``test_close_pool_shielded_with_timeout``   -- ``close_pool`` is wrapped
    in ``asyncio.shield`` + ``asyncio.wait_for(timeout=10)`` to avoid
@@ -47,7 +47,7 @@ testcontainers = pytest.importorskip(
     reason="testcontainers[postgresql] not installed",
 )
 
-from harbor.checkpoint import Checkpoint  # noqa: E402
+from stargraph.checkpoint import Checkpoint  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -88,7 +88,7 @@ def _import_postgres_checkpointer() -> Any:
     lands, calling this raises :class:`ImportError` -- that is the RED signal.
     """
     mod = importlib.import_module(
-        "harbor.checkpoint.postgres",  # pyright: ignore[reportMissingImports]
+        "stargraph.checkpoint.postgres",  # pyright: ignore[reportMissingImports]
     )
     return mod.PostgresCheckpointer
 
@@ -178,11 +178,11 @@ def test_server_settings_tcp_keepalives(postgres_dsn: str) -> None:
     assert settings["tcp_keepalives_idle"] == "60"
     assert settings["tcp_keepalives_interval"] == "10"
     assert settings["tcp_keepalives_count"] == "3"
-    assert settings["application_name"] == "harbor.engine"
+    assert settings["application_name"] == "stargraph.engine"
 
 
-def test_tables_under_harbor_schema(postgres_dsn: str) -> None:
-    """All Harbor tables live under the ``harbor`` schema (Nautilus coexistence)."""
+def test_tables_under_stargraph_schema(postgres_dsn: str) -> None:
+    """All Stargraph tables live under the ``stargraph`` schema (Nautilus coexistence)."""
     import asyncpg  # pyright: ignore[reportMissingTypeStubs]
 
     pg_cp = _import_postgres_checkpointer()  # ImportError ⇒ RED
@@ -203,7 +203,7 @@ def test_tables_under_harbor_schema(postgres_dsn: str) -> None:
             await conn.close()
 
     schemaname = asyncio.run(_query())
-    assert schemaname == "harbor"
+    assert schemaname == "stargraph"
 
 
 def test_close_pool_shielded_with_timeout(postgres_dsn: str) -> None:

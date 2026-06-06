@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Mem0-style typed-delta consolidation integration tests (FR-28, AC-5.3, NFR-4).
 
-Exercises :meth:`harbor.stores.sqlite_memory.SQLiteMemoryStore.consolidate`
+Exercises :meth:`stargraph.stores.sqlite_memory.SQLiteMemoryStore.consolidate`
 across the four typed-delta variants (ADD / UPDATE / DELETE / NOOP) and
 verifies each delta round-trips through
-:meth:`harbor.stores.sqlite_fact.SQLiteFactStore.apply_delta` with the
+:meth:`stargraph.stores.sqlite_fact.SQLiteFactStore.apply_delta` with the
 expected pin/unpin behaviour and full lineage (design §4.2).
 
 POC scope: episodes carry an optional ``metadata["intent"]`` selector
@@ -27,8 +27,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from harbor.stores.fact import Fact, FactPattern
-from harbor.stores.memory import (
+from stargraph.stores.fact import Fact, FactPattern
+from stargraph.stores.memory import (
     AddDelta,
     ConsolidationRule,
     DeleteDelta,
@@ -36,8 +36,8 @@ from harbor.stores.memory import (
     NoopDelta,
     UpdateDelta,
 )
-from harbor.stores.sqlite_fact import SQLiteFactStore
-from harbor.stores.sqlite_memory import SQLiteMemoryStore
+from stargraph.stores.sqlite_fact import SQLiteFactStore
+from stargraph.stores.sqlite_memory import SQLiteMemoryStore
 
 if TYPE_CHECKING:
     from pathlib import Path

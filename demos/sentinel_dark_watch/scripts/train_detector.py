@@ -19,7 +19,7 @@ from pathlib import Path
 
 from ultralytics import YOLO
 
-from harbor.ml.registry import ModelRegistry
+from stargraph.ml.registry import ModelRegistry
 
 log = logging.getLogger(__name__)
 

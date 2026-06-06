@@ -1,6 +1,6 @@
 # Stores reference
 
-Per-provider reference for the five Harbor `Store` Protocols and their
+Per-provider reference for the five Stargraph `Store` Protocols and their
 default in-tree providers. The high-level concept page lives at
 [Knowledge / Stores](../../knowledge/stores.md); these pages document the
 exact Protocol surface, payload models, errors, and YAML wiring shape.
@@ -25,7 +25,7 @@ Two supporting surfaces feed the Vector path:
 ## Public surface
 
 ```python
-from harbor.stores import (
+from stargraph.stores import (
     # Protocols
     VectorStore, GraphStore, DocStore, MemoryStore, FactStore,
     Embedding, Reranker,
@@ -48,8 +48,8 @@ from harbor.stores import (
 ```
 
 `LanceDBVectorStore` and `RyuGraphStore` are loaded lazily through PEP 562
-`__getattr__` -- importing `harbor.stores` does **not** force the
-`harbor[stores]` extra (LanceDB / RyuGraph / pyarrow) to be installed.
+`__getattr__` -- importing `stargraph.stores` does **not** force the
+`stargraph[stores]` extra (LanceDB / RyuGraph / pyarrow) to be installed.
 Engine subsystems that only need the lightweight Protocol surface stay
 free of the heavy wheels.
 
@@ -89,7 +89,7 @@ class MigrationPlan(BaseModel):
 
 All embedded providers serialise writes through an in-process
 `asyncio.Lock` keyed by resolved store path
-(`harbor.stores._common._lock_for`). LanceDB on local FS, RyuGraph
+(`stargraph.stores._common._lock_for`). LanceDB on local FS, RyuGraph
 (Kuzu's documented single-writer model), and SQLite-WAL all assume one
 writer per file. `health()` warns when `fs_type` is networked
 (`nfs / nfs4 / smb / smbfs / cifs`) -- multi-host file locks are not

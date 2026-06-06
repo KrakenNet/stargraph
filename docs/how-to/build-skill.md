@@ -2,13 +2,13 @@
 
 ## Goal
 
-Register a Harbor [`Skill`][skill] — a typed bundle of `state_schema`,
+Register a Stargraph [`Skill`][skill] — a typed bundle of `state_schema`,
 tool ids, optional subgraph, and system prompt — that the engine can
 mount as a `SubGraphNode` with strict declared-output channels.
 
 ## Prerequisites
 
-- Harbor installed (`pip install stargraph>=0.2`).
+- Stargraph installed (`pip install stargraph>=0.2`).
 - A Pydantic `BaseModel` subclass for your skill's state.
 - Tools available: either built-in, or the
   [tool plugin you wrote earlier](write-tool-plugin.md).
@@ -51,7 +51,7 @@ manifest fields. The `@model_validator` populates
 
 ```python
 # src/my_skills/summarize/_skill.py
-from harbor.skills import Skill, SkillKind
+from stargraph.skills import Skill, SkillKind
 
 from my_skills.summarize.state import SummarizeState
 
@@ -77,9 +77,9 @@ summarize@0.1.0`.
 ### 3. Optional: bundle a subgraph
 
 For workflow- and agent-kind skills, point `subgraph` at a
-[harbor.yaml IR document](build-graph.md). The
-[shipwright skill](https://github.com/KrakenNet/harbor/tree/main/src/harbor/skills/shipwright)
-is the canonical bundled example: `manifest.yaml`, `harbor.yaml`,
+[stargraph.yaml IR document](build-graph.md). The
+[shipwright skill](https://github.com/KrakenNet/stargraph/tree/main/src/stargraph/skills/shipwright)
+is the canonical bundled example: `manifest.yaml`, `stargraph.yaml`,
 `state.py`, and a `nodes/` package live alongside the Skill instance.
 
 ```text
@@ -88,7 +88,7 @@ src/my_skills/summarize/
 ├── _skill.py           # Skill(...) instance
 ├── state.py            # SummarizeState
 ├── manifest.yaml       # id, version, kind, state_schema
-├── harbor.yaml         # subgraph IR
+├── stargraph.yaml         # subgraph IR
 └── nodes/
     └── chunk.py        # custom NodeBase subclasses
 ```
@@ -96,7 +96,7 @@ src/my_skills/summarize/
 ```python
 SUMMARIZE = Skill(
     ...,
-    subgraph="my_skills.summarize:harbor.yaml",
+    subgraph="my_skills.summarize:stargraph.yaml",
 )
 ```
 
@@ -104,8 +104,8 @@ SUMMARIZE = Skill(
 
 ```python
 # src/my_skills/summarize/_pack.py
-from harbor.ir import SkillSpec
-from harbor.plugin._markers import hookimpl
+from stargraph.ir import SkillSpec
+from stargraph.plugin._markers import hookimpl
 
 from my_skills.summarize._skill import SUMMARIZE
 
@@ -131,22 +131,22 @@ def register_skills() -> list[SkillSpec]:
 
 ```toml
 # pyproject.toml
-[project.entry-points."harbor"]
-harbor_plugin = "my_skills._plugin:harbor_plugin"
+[project.entry-points."stargraph"]
+stargraph_plugin = "my_skills._plugin:stargraph_plugin"
 
-[project.entry-points."harbor.skills"]
+[project.entry-points."stargraph.skills"]
 summarize = "my_skills.summarize._pack"
 ```
 
-The `harbor.skills` group's value is the **module** (not a callable) —
+The `stargraph.skills` group's value is the **module** (not a callable) —
 `pluggy` looks up `@hookimpl`-decorated functions there.
 
 ## Verify
 
 ```bash
 pip install -e .
-HARBOR_TRACE_PLUGINS=1 python -c "
-from harbor.plugin.loader import build_plugin_manager
+STARGRAPH_TRACE_PLUGINS=1 python -c "
+from stargraph.plugin.loader import build_plugin_manager
 pm = build_plugin_manager()
 for spec in pm.hook.register_skills():
     for s in spec:
@@ -167,7 +167,7 @@ You should see `my_skills summarize 0.1.0`.
     - **Skill not surfaced via `register_skills`** — verify the
       entry-point points at the **module** containing the
       `@hookimpl`-decorated function, and that you imported `hookimpl`
-      from `harbor.plugin._markers` (not pluggy directly).
+      from `stargraph.plugin._markers` (not pluggy directly).
 
 ## See also
 
@@ -176,7 +176,7 @@ You should see `my_skills summarize 0.1.0`.
 - [Build a graph](build-graph.md) — author the IR your `subgraph=` field
   points at.
 - [Reference: Skills](../knowledge/skills.md).
-- [`Skill` class](https://github.com/KrakenNet/harbor/blob/main/src/harbor/skills/base.py)
-- [Shipwright bundle](https://github.com/KrakenNet/harbor/tree/main/src/harbor/skills/shipwright)
+- [`Skill` class](https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/skills/base.py)
+- [Shipwright bundle](https://github.com/KrakenNet/stargraph/tree/main/src/stargraph/skills/shipwright)
 
-[skill]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/skills/base.py
+[skill]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/skills/base.py

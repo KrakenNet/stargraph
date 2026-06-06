@@ -1,16 +1,16 @@
-# How to Author a `harbor.yaml` Graph
+# How to Author a `stargraph.yaml` Graph
 
 ## Goal
 
-Write a Harbor IR document (`harbor.yaml`) that the engine can validate,
-hash, and execute end-to-end via `harbor run`.
+Write a Stargraph IR document (`stargraph.yaml`) that the engine can validate,
+hash, and execute end-to-end via `stargraph run`.
 
 ## Prerequisites
 
-- Harbor installed (`pip install stargraph>=0.2`).
+- Stargraph installed (`pip install stargraph>=0.2`).
 - Familiarity with [IR concepts](../concepts/ir.md) and the
   [Node Reference](../reference/nodes/index.md).
-- A working directory writable to `./.harbor/`.
+- A working directory writable to `./.stargraph/`.
 
 ## Steps
 
@@ -20,7 +20,7 @@ Every IR document is a [`IRDocument`][ir-document]: `ir_version`, `id`,
 `nodes` are required; everything else has a sensible default.
 
 ```yaml
-# harbor.yaml
+# stargraph.yaml
 ir_version: "1.0.0"
 id: "graph:demo.hello"
 
@@ -37,8 +37,8 @@ non-trivial state, use the escape hatch `state_class:
 "my_pkg.state:MyState"` to point at a Pydantic `BaseModel` subclass —
 the two are mutually exclusive.
 
-**Verify:** `python -c "import yaml; from harbor.ir import IRDocument;
-IRDocument.model_validate(yaml.safe_load(open('harbor.yaml')))"` exits
+**Verify:** `python -c "import yaml; from stargraph.ir import IRDocument;
+IRDocument.model_validate(yaml.safe_load(open('stargraph.yaml')))"` exits
 clean.
 
 ### 2. Add nodes
@@ -73,9 +73,9 @@ stores:
     provider: sqlite
 
 governance:
-  - id: harbor.bosun.budgets
+  - id: stargraph.bosun.budgets
     version: "1.0"
-  - id: harbor.bosun.audit
+  - id: stargraph.bosun.audit
     version: "1.0"
 
 rules:
@@ -100,7 +100,7 @@ nodes:
 ```
 
 The Sentinel Dark Watch demo
-([`demos/sentinel_dark_watch/graph/harbor.yaml`][sdw-graph]) is the
+([`demos/sentinel_dark_watch/graph/stargraph.yaml`][sdw-graph]) is the
 canonical worked example: ML detection, HITL review, governance packs.
 
 For one node from that graph:
@@ -114,7 +114,7 @@ For one node from that graph:
 ### 5. Validate the IR
 
 ```bash
-harbor run ./harbor.yaml --inspect
+stargraph run ./stargraph.yaml --inspect
 ```
 
 `--inspect` skips node execution: it constructs the [`Graph`][graph],
@@ -128,30 +128,30 @@ plus one line per rule firing.
 ### 6. Run it
 
 ```bash
-harbor run ./harbor.yaml \
+stargraph run ./stargraph.yaml \
     --inputs message="hello world" \
-    --checkpoint .harbor/run.sqlite \
-    --log-file .harbor/run.jsonl
+    --checkpoint .stargraph/run.sqlite \
+    --log-file .stargraph/run.jsonl
 ```
 
 `--inputs key=value` seeds initial state (validated against
 `state_schema`). The CLI defaults the checkpointer to
-`./.harbor/run.sqlite` if `--checkpoint` is omitted.
+`./.stargraph/run.sqlite` if `--checkpoint` is omitted.
 
 ## Wire it up
 
-`harbor.yaml` is consumed by:
+`stargraph.yaml` is consumed by:
 
-- `harbor run <graph.yaml>` — drives a single in-process run.
-- `harbor inspect <run_id> --db <ckpt.sqlite>` — replays the timeline.
-- `harbor replay <run_id> --db <ckpt.sqlite> --diff` — counterfactual
+- `stargraph run <graph.yaml>` — drives a single in-process run.
+- `stargraph inspect <run_id> --db <ckpt.sqlite>` — replays the timeline.
+- `stargraph replay <run_id> --db <ckpt.sqlite> --diff` — counterfactual
   fork.
-- `harbor serve` — the FastAPI app loads graphs out of a configured
+- `stargraph serve` — the FastAPI app loads graphs out of a configured
   directory; see [serve overview](../serve/overview.md).
 
 ## Verify
 
-After a successful `harbor run`, the last line of stdout is:
+After a successful `stargraph run`, the last line of stdout is:
 
 ```
 run_id=<uuid> status=done
@@ -167,12 +167,12 @@ Non-`done` statuses raise exit code 1 — useful for CI gating.
       to the schema.
     - **`unknown node kind ...`** — supply a registered key (`echo`,
       `retrieval`, ...) or a `module.path:ClassName` reference; the
-      class must subclass `harbor.nodes.base.NodeBase`.
+      class must subclass `stargraph.nodes.base.NodeBase`.
     - **`SimulationError: missing fixture for node ...`** — `--inspect`
       synthesises empty dicts per node automatically; this error means
       a node is unreachable from the entry — check your node IDs.
-    - **`PackCompatError`** — a `governance:` pack's `requires.harbor_facts_version`
-      doesn't match the running engine. Bump the pack or pin Harbor.
+    - **`PackCompatError`** — a `governance:` pack's `requires.stargraph_facts_version`
+      doesn't match the running engine. Bump the pack or pin Stargraph.
 
 ## See also
 
@@ -180,11 +180,11 @@ Non-`done` statuses raise exit code 1 — useful for CI gating.
   type.
 - [Tutorial: Your first graph](../tutorials/first-graph.md) — narrated
   walkthrough.
-- [Demos catalog](https://github.com/KrakenNet/harbor/blob/main/demos/CATALOG.md)
-- [CLI reference](../reference/cli.md) — `harbor run`, `harbor inspect`,
-  `harbor replay`.
+- [Demos catalog](https://github.com/KrakenNet/stargraph/blob/main/demos/CATALOG.md)
+- [CLI reference](../reference/cli.md) — `stargraph run`, `stargraph inspect`,
+  `stargraph replay`.
 
-[ir-document]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/ir/_models.py
-[node-spec]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/ir/_models.py
-[graph]: https://github.com/KrakenNet/harbor/blob/main/src/harbor/graph/__init__.py
-[sdw-graph]: https://github.com/KrakenNet/harbor/blob/main/demos/sentinel_dark_watch/graph/harbor.yaml
+[ir-document]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/ir/_models.py
+[node-spec]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/ir/_models.py
+[graph]: https://github.com/KrakenNet/stargraph/blob/main/src/stargraph/graph/__init__.py
+[sdw-graph]: https://github.com/KrakenNet/stargraph/blob/main/demos/sentinel_dark_watch/graph/stargraph.yaml

@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from rich.console import Console
 
-from harbor.checkpoint.protocol import RunSummary
-from harbor.cli._progress import ProgressStats
-from harbor.cli._summary import SummaryRenderer
+from stargraph.checkpoint.protocol import RunSummary
+from stargraph.cli._progress import ProgressStats
+from stargraph.cli._summary import SummaryRenderer
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -8,18 +8,18 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from harbor.skills.shipwright.nodes.fix import FixLoop
-from harbor.skills.shipwright.nodes.interview import GapCheck, ProposeQuestions
-from harbor.skills.shipwright.nodes.parse import ParseBrief
-from harbor.skills.shipwright.nodes.synthesize import SynthesizeGraph
-from harbor.skills.shipwright.nodes.triage import TriageGate
-from harbor.skills.shipwright.nodes.verify import VerifyStatic, VerifyTests
-from harbor.skills.shipwright.state import SpecSlot, State
+from stargraph.skills.shipwright.nodes.fix import FixLoop
+from stargraph.skills.shipwright.nodes.interview import GapCheck, ProposeQuestions
+from stargraph.skills.shipwright.nodes.parse import ParseBrief
+from stargraph.skills.shipwright.nodes.synthesize import SynthesizeGraph
+from stargraph.skills.shipwright.nodes.triage import TriageGate
+from stargraph.skills.shipwright.nodes.verify import VerifyStatic, VerifyTests
+from stargraph.skills.shipwright.state import SpecSlot, State
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from harbor.nodes.base import ExecutionContext
+    from stargraph.nodes.base import ExecutionContext
 
 
 _PARSED = {
@@ -82,9 +82,9 @@ async def test_new_graph_happy_path(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     # 4. synthesize
     synth_out = await SynthesizeGraph().execute(state, ctx)
     state = state.model_copy(update=synth_out)
-    assert set(state.artifact_files) == {"state.py", "harbor.yaml", "tests/test_smoke.py"}
+    assert set(state.artifact_files) == {"state.py", "stargraph.yaml", "tests/test_smoke.py"}
 
-    # 5. verify_static + verify_tests (smoke skipped — would need harbor CLI)
+    # 5. verify_static + verify_tests (smoke skipped — would need stargraph CLI)
     state = state.model_copy(update=await VerifyStatic(work_dir=tmp_path).execute(state, ctx))
     state = state.model_copy(update=await VerifyTests(work_dir=tmp_path).execute(state, ctx))
 

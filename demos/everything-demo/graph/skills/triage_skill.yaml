@@ -7,7 +7,7 @@
 # bundles the system prompt, signature map, and the two tools the
 # react-style loop is allowed to call.
 #
-# Loaded by Harbor at plugin-load time via the `register_skills`
+# Loaded by Stargraph at plugin-load time via the `register_skills`
 # hookspec — see ../../../docs/reference/skills.md.
 
 name: "demo.triage"
@@ -17,7 +17,7 @@ description: |
   Triages a support ticket: extract intent, classify, and emit a
   one-paragraph resolution summary. Tool-loop is bounded to two calls:
   one read (lookup_history), one external (notify_user). All other
-  capabilities are denied via the harbor-core capability gate.
+  capabilities are denied via the stargraph-core capability gate.
 
 tools:
   - "demo.lookup_history@1.0.0"

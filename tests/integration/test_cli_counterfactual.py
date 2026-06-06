@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Integration tests for ``harbor counterfactual`` (FR-27, design §3.10).
+"""Integration tests for ``stargraph counterfactual`` (FR-27, design §3.10).
 
 The CLI dry-runs a counterfactual fork: it loads a YAML mutation,
 validates it through :class:`CounterfactualMutation`, and prints the
@@ -21,7 +21,7 @@ SAMPLE_GRAPH: Path = REPO_ROOT / "tests" / "fixtures" / "sample-graph.yaml"
 
 def _run(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["harbor", *args],
+        ["stargraph", *args],
         capture_output=True,
         check=check,
         cwd=REPO_ROOT,
@@ -30,7 +30,7 @@ def _run(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
 
 
 def test_counterfactual_help_exits_zero() -> None:
-    """``harbor counterfactual --help`` must exit 0 (subcommand registered)."""
+    """``stargraph counterfactual --help`` must exit 0 (subcommand registered)."""
     result = _run("counterfactual", "--help")
     assert result.returncode == 0, result.stderr
     help_text = strip_ansi(result.stdout)
@@ -39,7 +39,7 @@ def test_counterfactual_help_exits_zero() -> None:
 
 
 def test_counterfactual_prints_derived_hash(tmp_path: Path) -> None:
-    """``harbor counterfactual`` prints original and derived graph hashes."""
+    """``stargraph counterfactual`` prints original and derived graph hashes."""
     mutate = tmp_path / "mutation.yaml"
     mutate.write_text(
         "state_overrides:\n  message: counterfactual\n",
