@@ -70,7 +70,6 @@ from harbor.stores.embeddings import FakeEmbedder
 from harbor.stores.fact import Fact, FactPattern
 from harbor.stores.graph import NodeRef, ResultSet
 from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.lancedb import LanceDBVectorStore
 from harbor.stores.memory import (
     AddDelta,
@@ -80,6 +79,7 @@ from harbor.stores.memory import (
     NoopDelta,
     UpdateDelta,
 )
+from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.sqlite_doc import SQLiteDocStore
 from harbor.stores.sqlite_fact import SQLiteFactStore
 from harbor.stores.sqlite_memory import SQLiteMemoryStore
@@ -90,7 +90,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
+pytestmark = [
+    pytest.mark.knowledge,
+    pytest.mark.integration,
+    pytest.mark.usefixtures("standin_lm"),
+]
 
 
 _DOCS: tuple[tuple[str, str], ...] = (

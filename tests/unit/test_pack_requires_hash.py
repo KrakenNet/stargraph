@@ -33,7 +33,7 @@ def _build_ir(governance: list[PackMount]) -> IRDocument:
     via model_copy before returning. Mirrors Graph.__init__:384 pattern, since
     structural_hash now force-louds on raw dict state_schema (FR-6).
     """
-    from harbor.graph.definition import _compile_state_schema
+    from harbor.graph.definition import _compile_state_schema  # pyright: ignore[reportPrivateUsage]
 
     ir = IRDocument(
         ir_version="1.0.0",

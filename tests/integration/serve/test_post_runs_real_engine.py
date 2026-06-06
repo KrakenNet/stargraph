@@ -13,8 +13,7 @@ handle in ``deps["runs"]`` (and an :class:`EventBroadcaster` in
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import httpx
@@ -27,6 +26,9 @@ from harbor.nodes.base import NodeBase
 from harbor.serve.api import create_app
 from harbor.serve.profiles import OssDefaultProfile
 from harbor.serve.scheduler import Scheduler
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = [pytest.mark.serve, pytest.mark.api]
 
@@ -86,13 +88,13 @@ async def test_post_runs_returns_canonical_id_and_drives_real_graph(
 
             # Wait for the dispatcher to register the run handle.
             with anyio.fail_after(2.0):
-                while run_id not in deps["runs"]:
+                while run_id not in deps["runs"]:  # noqa: ASYNC110 -- polling external run state, no event available
                     await asyncio.sleep(0.02)
 
             # Wait for the run to terminate.
             with anyio.fail_after(5.0):
                 run = deps["runs"][run_id]
-                while run.state not in {"done", "failed", "cancelled"}:
+                while run.state not in {"done", "failed", "cancelled"}:  # noqa: ASYNC110 -- polling external run state, no event available
                     await asyncio.sleep(0.02)
             assert run.state == "done", f"run terminated in unexpected state: {run.state!r}"
 

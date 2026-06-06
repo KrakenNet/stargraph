@@ -159,9 +159,15 @@ async def test_branch_transitions_emit_harbor_transition_facts() -> None:
     bus = _RecordingBus()
     fathom = _RecordingFathom()
 
-    # Fast winner + slow losers -> cancelled siblings.
+    # Fast winner + slow losers -> cancelled siblings. The winner gets a
+    # small non-zero delay: with delay=0.0 it completes synchronously on
+    # its first tick, and a loser task can be cancelled before the event
+    # loop ever starts it -- emitting neither a 'started' nor a
+    # 'cancelled' transition (observed as a flake on loaded CI runners).
+    # One yield is enough for every branch to enter its coroutine and
+    # emit 'started' before the winner finishes.
     factories = [
-        _make_factory(0, delay=0.0),
+        _make_factory(0, delay=0.05),
         _make_factory(1, delay=10.0),
         _make_factory(2, delay=10.0),
     ]

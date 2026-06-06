@@ -16,10 +16,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from harbor.nodes.base import ExecutionContext, NodeBase
-from harbor.skills.ai_builder.state import Route
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
+
+    from harbor.skills.ai_builder.state import Route
 
 
 _ROUTE_KEYWORDS: dict[Route, list[str]] = {
@@ -32,7 +33,7 @@ _ROUTE_KEYWORDS: dict[Route, list[str]] = {
 def _call_model(
     turn: str,
     history: list[dict[str, Any]],
-    model: Any | None = None,  # noqa: ANN401 -- model registry TBD (§8 Q4)
+    model: Any | None = None,
 ) -> tuple[Route, float, str]:
     """Classify `turn` into a route.
 

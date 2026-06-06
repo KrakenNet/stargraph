@@ -75,7 +75,9 @@ async def cmdb_resolve_hosts(
             }
             resp = await client.get(f"{base}{_PATH}", params=params, headers=headers)
             resp.raise_for_status()
-            for row in resp.json().get("result") or []:
+            payload: dict[str, Any] = resp.json() or {}
+            rows: list[dict[str, Any]] = payload.get("result") or []
+            for row in rows:
                 sid = str(row.get("sys_id", ""))
                 if sid:
                     name_by_sysid[sid] = str(row.get("name", "") or "")

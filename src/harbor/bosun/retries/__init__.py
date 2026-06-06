@@ -62,8 +62,6 @@ def decide(*, error: str, attempt: int, max_attempts: int) -> RetryDecision:
                     should_retry=False, delay_s=0.0, reason="max_attempts_exceeded"
                 )
             delay = float(2**attempt)
-            _LOG.info(
-                "retries.decide match=%s attempt=%d delay=%.1f", reason, attempt, delay
-            )
+            _LOG.info("retries.decide match=%s attempt=%d delay=%.1f", reason, attempt, delay)
             return RetryDecision(should_retry=True, delay_s=delay, reason=reason)
     return RetryDecision(should_retry=False, delay_s=0.0, reason="no_pattern_matched")

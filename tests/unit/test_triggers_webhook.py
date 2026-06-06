@@ -42,7 +42,7 @@ async def test_emit_audit_with_no_sink_logs_via_structlog() -> None:
     ``webhook_request`` structlog event carrying ``BosunAuditEvent`` fields (T16)."""
     trigger = _trigger_with_sink(None)
     with structlog.testing.capture_logs() as logs:
-        await trigger._emit_audit(  # pyright: ignore[reportPrivateUsage]
+        await trigger._emit_audit(  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType, reportAttributeAccessIssue]
             spec=_spec(),
             kind="signature_invalid",
             detail={"reason": "bad-signature"},
@@ -64,7 +64,7 @@ async def test_emit_audit_with_sink_does_not_log_fallback() -> None:
     sink = _CaptureSink()
     trigger = _trigger_with_sink(sink)
     with structlog.testing.capture_logs() as logs:
-        await trigger._emit_audit(  # pyright: ignore[reportPrivateUsage]
+        await trigger._emit_audit(  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType, reportAttributeAccessIssue]
             spec=_spec(),
             kind="signature_invalid",
             detail={"reason": "bad-signature"},

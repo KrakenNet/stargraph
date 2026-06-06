@@ -22,8 +22,8 @@ from unittest.mock import patch
 import pytest
 
 from harbor.stores.embeddings import FakeEmbedder
-from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.lancedb import LanceDBVectorStore
+from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.sqlite_doc import SQLiteDocStore
 from harbor.stores.sqlite_fact import SQLiteFactStore
 from harbor.stores.sqlite_memory import SQLiteMemoryStore

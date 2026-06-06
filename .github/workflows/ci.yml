@@ -42,8 +42,12 @@ jobs:
     # Docker daemon is not provisioned on GitHub-hosted Windows runners
     # so testcontainer-backed tests fail at fixture setup. Both are
     # environmental, not regressions in Harbor; the slot has been red
-    # on shipwright/runnable for the last several CI runs. Linux +
-    # macOS coverage stays in the matrix.
+    # on shipwright/runnable for the last several CI runs.
+    # macos-latest dropped 2026-06: the slot chronically hits the 25-min
+    # job timeout with the suite only ~10% complete (observed on main and
+    # on PR branches alike), so it has never produced a signal that
+    # ubuntu didn't. Linux is the canonical platform; restore the slot if
+    # macos-specific coverage is ever needed.
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -51,9 +55,6 @@ jobs:
         os: [ubuntu-latest]
         # Project requires-python is ">=3.13"; 3.12 cannot resolve.
         python-version: ["3.13"]
-        include:
-          - os: macos-latest
-            python-version: "3.13"
     timeout-minutes: 25
     env:
       # Pull the CPU-only torch wheel (~200 MB) instead of the full CUDA
@@ -68,14 +69,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-      # xgboost wheels on macOS link against ``libomp.dylib`` (OpenMP)
-      # at import time; without it ``import xgboost`` raises
-      # ``XGBoostError`` -- which ``pytest.importorskip`` does not catch
-      # because XGBoostError is not an ImportError subclass. Install the
-      # OpenMP runtime explicitly so the ml-extra import surface loads
-      # cleanly under the matrix's macOS slot.
-      - if: matrix.os == 'macos-latest'
-        run: brew install libomp
       # ``--all-extras`` so optional deps (pyarrow under ``stores``,
       # sklearn/joblib under ``ml``, sentence-transformers under
       # ``skills-rag``) are available for any test module that
@@ -186,7 +179,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
       - run: uv sync --group dev --extra stores --extra skills-rag --extra ml
-      - run: uv run pytest tests/ -m "knowledge" --cov=harbor.stores --cov=harbor.skills -q
+      - run: uv run pytest tests/ -m "knowledge" --cov=harbor -q
 
   cypher-subset:
     # Two-engine Cypher portable-subset CI gate (FR-12, AC-9.3, NFR-4).

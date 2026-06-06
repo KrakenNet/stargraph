@@ -9,11 +9,13 @@ branch is UNCHANGED -- INV-1 reproducibility depends on it.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from pydantic import BaseModel
 
 from harbor.errors import IRValidationError
-from harbor.graph.hash import _state_schema_signature
+from harbor.graph.hash import _state_schema_signature  # pyright: ignore[reportPrivateUsage]
 
 pytestmark = pytest.mark.unit
 
@@ -35,7 +37,7 @@ def test_state_schema_signature_succeeds_on_basemodel_subclass() -> None:
         x: str
         y: int
 
-    out = _state_schema_signature(_Schema)
+    out = cast("dict[str, dict[str, object]]", _state_schema_signature(_Schema))
     assert isinstance(out, dict)
     assert "properties" in out
     assert set(out["properties"].keys()) == {"x", "y"}

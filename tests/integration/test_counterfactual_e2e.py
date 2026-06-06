@@ -42,6 +42,7 @@ from pathlib import Path
 from typing import Any
 
 from fathom.chained_log import GENESIS_RECORD_TYPE
+from tests.fixtures.ansi import strip_ansi
 
 from harbor.audit.jsonl import unwrap_audit_record
 from harbor.checkpoint import Checkpoint
@@ -279,8 +280,9 @@ def test_counterfactual_e2e_smoke(tmp_path: Path) -> None:
     # ------------------------------------------------------------------ #
     help_result = _run_harbor("counterfactual", "--help")
     assert help_result.returncode == 0, help_result.stderr
-    assert "--step" in help_result.stdout
-    assert "--mutate" in help_result.stdout
+    help_text = strip_ansi(help_result.stdout)
+    assert "--step" in help_text
+    assert "--mutate" in help_text
 
     cli_cf = _run_harbor(
         "counterfactual",

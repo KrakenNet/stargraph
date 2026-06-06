@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any
+from typing import Any, cast
 
 from harbor.tools.decorator import tool
 from harbor.tools.spec import SideEffects
@@ -19,7 +19,12 @@ _REQUIRED_CAPABILITY = "tools:servicenow:read"
 
 
 def _live_enabled() -> bool:
-    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 @tool(
@@ -71,11 +76,12 @@ async def poll_approval(
                     headers=headers,
                 )
                 if resp.status_code < 300:
-                    rows = (resp.json() or {}).get("result", []) or []
+                    payload: dict[str, Any] = resp.json() or {}
+                    rows: list[dict[str, Any]] = payload.get("result", []) or []
                     if rows:
-                        approver_field = rows[0].get("approver") or ""
+                        approver_field: object = rows[0].get("approver") or ""
                         approver_id = (
-                            approver_field.get("value", "")
+                            str(cast("dict[str, Any]", approver_field).get("value", ""))
                             if isinstance(approver_field, dict)
                             else str(approver_field)
                         )
@@ -88,7 +94,7 @@ async def poll_approval(
                                 "external_id": cr_sys_id,
                             },
                         }
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         if asyncio.get_event_loop().time() >= deadline:
             return {"approved": False, "approver_id": ""}

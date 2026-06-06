@@ -55,7 +55,7 @@ FR-85, AC-14.4, AC-14.5, AC-14.6.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from harbor.errors import CapabilityError, HarborRuntimeError
 from harbor.runtime.events import BosunAuditEvent
@@ -198,7 +198,7 @@ def _resolve_run(
         if deps is not None:
             registry = deps.get("runs")
             if isinstance(registry, dict):
-                resolved = registry.get(run_id)
+                resolved = cast("dict[str, GraphRun]", registry).get(run_id)
                 if resolved is not None:
                     return resolved
         raise HarborRuntimeError(

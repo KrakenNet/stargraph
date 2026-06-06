@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -13,6 +13,8 @@ from harbor.skills.shipwright.state import State
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from harbor.nodes.base import ExecutionContext
 
 
 PASSING_STATE_PY = """\
@@ -42,7 +44,9 @@ async def test_verify_tests_passes(tmp_path: Path) -> None:
             "tests/__init__.py": "",
         }
     )
-    out = await VerifyTests(work_dir=tmp_path).execute(state, SimpleNamespace(run_id="r-test"))
+    out = await VerifyTests(work_dir=tmp_path).execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     tests = [r for r in out["verifier_results"] if r.kind == "tests"]
     assert len(tests) == 1
     assert tests[0].passed is True
@@ -57,7 +61,9 @@ async def test_verify_tests_fails(tmp_path: Path) -> None:
             "tests/__init__.py": "",
         }
     )
-    out = await VerifyTests(work_dir=tmp_path).execute(state, SimpleNamespace(run_id="r-test"))
+    out = await VerifyTests(work_dir=tmp_path).execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     tests = [r for r in out["verifier_results"] if r.kind == "tests"]
     assert len(tests) == 1
     assert tests[0].passed is False

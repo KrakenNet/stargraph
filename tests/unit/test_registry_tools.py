@@ -15,13 +15,16 @@ Pins:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from harbor.ir._models import ReplayPolicy, SkillSpec, ToolSpec
 from harbor.registry import ToolRegistry
 from harbor.tools.spec import SideEffects
+
+if TYPE_CHECKING:
+    from harbor.graph import Graph
 
 pytestmark = [pytest.mark.unit, pytest.mark.knowledge]
 
@@ -153,7 +156,7 @@ def test_compatible_with_no_capabilities_returns_all_tools() -> None:
     class _GraphNoCaps:
         capabilities = None
 
-    out = reg.compatible_with(_GraphNoCaps())
+    out = reg.compatible_with(cast("Graph", _GraphNoCaps()))
     assert out == [t1, t2]
 
 
@@ -184,5 +187,5 @@ def test_compatible_with_filters_disallowed_tools() -> None:
     class _Graph:
         capabilities = _Caps()
 
-    out = reg.compatible_with(_Graph())
+    out = reg.compatible_with(cast("Graph", _Graph()))
     assert out == [t_allowed]

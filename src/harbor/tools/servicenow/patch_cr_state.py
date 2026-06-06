@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, cast
 
 from harbor.tools.decorator import tool
 from harbor.tools.spec import SideEffects
@@ -20,7 +20,12 @@ _STATE_ORDER = ["-5", "-4", "-3", "-2", "-1", "0", "3"]
 
 
 def _live_enabled() -> bool:
-    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get("HARBOR_SERVICENOW_LIVE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 @tool(
@@ -83,11 +88,15 @@ async def patch_cr_state(
                     headers={k: v for k, v in headers.items() if k != "Content-Type"},
                 )
                 if r.status_code < 300:
-                    sv = (r.json() or {}).get("result", {}).get("state", {})
-                    state_val = str(sv.get("value", sv) if isinstance(sv, dict) else sv)
+                    body: dict[str, Any] = r.json() or {}
+                    result: dict[str, Any] = body.get("result", {})
+                    sv: object = result.get("state", {})
+                    state_val = str(
+                        cast("dict[str, Any]", sv).get("value", sv) if isinstance(sv, dict) else sv
+                    )
                 else:
                     state_val = ""
-            except Exception:  # noqa: BLE001
+            except Exception:
                 state_val = ""
 
             if state_val in _STATE_ORDER and _STATE_ORDER.index(state_val) >= idx_target:
@@ -103,5 +112,5 @@ async def patch_cr_state(
             if patch_status >= 300:
                 return {"ok": False, "error": f"patch={patch_status}:{resp.text[:120]}"}
             return {"ok": False, "error": f"state_after={state_val!r} target={target_state!r}"}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}

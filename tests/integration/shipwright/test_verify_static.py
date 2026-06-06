@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -13,6 +13,8 @@ from harbor.skills.shipwright.state import State
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from harbor.nodes.base import ExecutionContext
 
 
 VALID_STATE_PY = """\
@@ -40,7 +42,9 @@ async def test_static_pass_on_valid_files(tmp_path: Path) -> None:
             "harbor.yaml": VALID_HARBOR_YAML,
         }
     )
-    out = await VerifyStatic(work_dir=tmp_path).execute(state, SimpleNamespace(run_id="r-test"))
+    out = await VerifyStatic(work_dir=tmp_path).execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     statics = [r for r in out["verifier_results"] if r.kind == "static"]
     assert len(statics) == 1
     assert statics[0].passed is True
@@ -54,7 +58,9 @@ async def test_static_fail_on_syntax_error(tmp_path: Path) -> None:
             "harbor.yaml": VALID_HARBOR_YAML,
         }
     )
-    out = await VerifyStatic(work_dir=tmp_path).execute(state, SimpleNamespace(run_id="r-test"))
+    out = await VerifyStatic(work_dir=tmp_path).execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     statics = [r for r in out["verifier_results"] if r.kind == "static"]
     assert len(statics) == 1
     assert statics[0].passed is False

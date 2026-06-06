@@ -17,7 +17,11 @@ from harbor.skills.refs.autoresearch import (
     AutoresearchState,
 )
 
-pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
+pytestmark = [
+    pytest.mark.knowledge,
+    pytest.mark.integration,
+    pytest.mark.usefixtures("standin_lm"),
+]
 
 
 async def test_autoresearch_topic_to_wiki_entry() -> None:
@@ -50,4 +54,4 @@ async def test_autoresearch_topic_to_wiki_entry() -> None:
 
     # Stub web fetch contributes ≥ 1 claim per topic.
     assert len(out.claims) >= 1
-    assert "LangGraph" in out.wiki_entry.summary
+    assert out.wiki_entry.summary == "STANDIN_SUMMARY"  # canned StandinLM payload (T10 dspy seam)

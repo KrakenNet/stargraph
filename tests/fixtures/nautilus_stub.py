@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from nautilus import BrokerResponse
+from nautilus import BrokerResponse  # pyright: ignore[reportMissingTypeStubs]
 
 from harbor.nodes.base import ExecutionContext, NodeBase
 from harbor.nodes.nautilus.broker_node import BrokerNodeConfig

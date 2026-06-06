@@ -12,7 +12,7 @@ Covers:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,6 +22,9 @@ from harbor.config.triggers import (
     load_triggers,
 )
 from harbor.errors import HarborRuntimeError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _write_yaml(tmp_path: Path, body: str) -> Path:
@@ -106,7 +109,7 @@ cron:
     bogus_field: yes
 """,
     )
-    with pytest.raises(HarborRuntimeError, match="cron\\[cron.bad\\] invalid"):
+    with pytest.raises(HarborRuntimeError, match=r"cron\[cron\.bad\] invalid"):
         load_triggers(tmp_path)
 
 
@@ -159,9 +162,7 @@ webhook:
         load_triggers(tmp_path)
 
 
-def test_webhook_no_previous_secret_ok(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_webhook_no_previous_secret_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("WHK_CUR", "secret")
     _write_yaml(
         tmp_path,

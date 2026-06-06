@@ -31,6 +31,7 @@ Requirements: FR-41, FR-42, AC-3.3, AC-3.4. Design: §16.9, §17 #4.
 from __future__ import annotations
 
 import hashlib
+from typing import TYPE_CHECKING
 
 import jwt
 import pytest
@@ -50,8 +51,11 @@ from harbor.bosun.signing import (
 )
 from harbor.serve.profiles import ClearedProfile
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def _write_pack(root, files: dict[str, bytes]) -> None:
+
+def _write_pack(root: Path, files: dict[str, bytes]) -> None:
     for rel, content in files.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,7 +74,7 @@ def _keypair() -> tuple[bytes, bytes, str]:
 
 @pytest.mark.unit
 def test_sign_payload_alg_field_is_sha256_under_fips(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Under ``HARBOR_FIPS_MODE=1`` the JWT payload ``alg`` field is SHA-256.
 
@@ -98,7 +102,7 @@ def test_sign_payload_alg_field_is_sha256_under_fips(
 
 
 @pytest.mark.unit
-def test_fips_mode_roundtrip_verify(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_fips_mode_roundtrip_verify(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Sign + verify a pack under FIPS mode: same tree-hash algo end-to-end."""
     monkeypatch.setenv("HARBOR_FIPS_MODE", "1")
 
@@ -118,7 +122,7 @@ def test_fips_mode_roundtrip_verify(monkeypatch: pytest.MonkeyPatch, tmp_path) -
 
 
 @pytest.mark.unit
-def test_alg_none_rejected_focused(tmp_path) -> None:
+def test_alg_none_rejected_focused(tmp_path: Path) -> None:
     """``alg=none`` JWT rejected at decode (focused re-assertion of the security boundary).
 
     Overlaps with ``tests/unit/bosun/test_signing_roundtrip.py::
@@ -146,7 +150,7 @@ def test_alg_none_rejected_focused(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_x5c_header_rejected_focused(tmp_path) -> None:
+def test_x5c_header_rejected_focused(tmp_path: Path) -> None:
     """JWT with ``x5c`` header rejected — locked Decision #4 (focused re-assertion).
 
     Overlaps with ``tests/unit/bosun/test_tofu.py::test_jwt_with_x5c_header_rejected``.
@@ -179,7 +183,7 @@ def test_x5c_header_rejected_focused(tmp_path) -> None:
 
 @pytest.mark.unit
 def test_fips_signed_pack_fails_verify_in_blake3_mode(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Sign under FIPS (SHA-256 tree hash), verify under default (BLAKE3) → tree-hash-mismatch.
 

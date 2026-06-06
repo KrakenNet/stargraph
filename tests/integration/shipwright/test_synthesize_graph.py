@@ -4,16 +4,20 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from harbor.skills.shipwright.nodes.synthesize import SynthesizeGraph
 from harbor.skills.shipwright.state import SpecSlot, State
 
+if TYPE_CHECKING:
+    from harbor.nodes.base import ExecutionContext
+
 
 @pytest.mark.integration
 async def test_synthesize_emits_three_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_node_bodies(self, slots):  # type: ignore[misc]
+    def fake_node_bodies(self: SynthesizeGraph, slots: dict[str, Any]) -> dict[str, str]:
         return {
             "classify": "return {'intent': 'unknown'}",
             "act": "return {'result': state.intent}",
@@ -40,7 +44,9 @@ async def test_synthesize_emits_three_files(monkeypatch: pytest.MonkeyPatch) -> 
         },
     )
 
-    out = await SynthesizeGraph().execute(state, SimpleNamespace(run_id="r-test"))
+    out = await SynthesizeGraph().execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     files = out["artifact_files"]
 
     assert set(files) == {"state.py", "harbor.yaml", "tests/test_smoke.py"}
@@ -53,5 +59,7 @@ async def test_synthesize_emits_three_files(monkeypatch: pytest.MonkeyPatch) -> 
 
 @pytest.mark.integration
 async def test_synthesize_skips_when_kind_unset() -> None:
-    out = await SynthesizeGraph().execute(State(), SimpleNamespace(run_id="r-test"))
+    out = await SynthesizeGraph().execute(
+        State(), cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     assert out == {"artifact_files": {}}

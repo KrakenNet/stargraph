@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path  # noqa: TC003 -- runtime use by pytest fixture type
+from typing import cast
 
 import httpx
 import pytest
@@ -108,7 +109,7 @@ def test_respond_posts_to_server(
     assert result.exit_code == 0, result.output + str(result.exception)
     assert captured["url"] == "http://localhost:8000/v1/runs/r1/respond"
     assert captured["json"] == {"response": {"decision": "approve", "note": "looks good"}}
-    headers = captured["headers"]
+    headers = cast("dict[str, str]", captured["headers"])
     assert isinstance(headers, dict)
     # The CLI sends the actor identity via the Authorization header so
     # the BypassAuthProvider (POC) and BearerJwtProvider (Phase 2) can

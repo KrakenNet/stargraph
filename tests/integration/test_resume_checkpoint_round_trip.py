@@ -9,7 +9,7 @@ fields per ``checkpoint/protocol.py:34-63`` preserved.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -17,6 +17,9 @@ from harbor.checkpoint.protocol import Checkpoint
 from harbor.checkpoint.sqlite import SQLiteCheckpointer
 from harbor.graph import Graph, GraphRun
 from harbor.ir import IRDocument, NodeSpec
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _graph() -> Graph:

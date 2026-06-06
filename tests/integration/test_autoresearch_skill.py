@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.skills.refs.autoresearch import _AutoresearchSummarySignature
+from harbor.skills.refs.autoresearch import (
+    _AutoresearchSummarySignature,  # pyright: ignore[reportPrivateUsage]
+)
 
 pytestmark = pytest.mark.integration
 
@@ -19,18 +21,18 @@ pytestmark = pytest.mark.integration
 async def test_autoresearch_summary_routes_through_dspy_signature() -> None:
     """The summary call site invokes ``dspy.Predict(_AutoresearchSummarySignature)``;
     the returned ``WikiEntry.summary`` contains no ``"POC stub summary"`` literal (T10)."""
-    import dspy
+    import dspy  # type: ignore[import-untyped]
 
     from harbor.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
 
-    class _StandinLM(dspy.LM):
+    class _StandinLM(dspy.LM):  # pyright: ignore[reportUnknownMemberType]
         def __init__(self) -> None:
-            super().__init__(model="standin/standin")
+            super().__init__(model="standin/standin")  # pyright: ignore[reportUnknownMemberType]
 
-        def __call__(self, *_args: object, **_kwargs: object) -> list[str]:
+        def __call__(self, *_args: object, **_kwargs: object) -> list[str]:  # pyright: ignore[reportIncompatibleMethodOverride]
             return ['{"summary": "STANDIN_SUMMARY"}']
 
-    with dspy.context(lm=_StandinLM()):
+    with dspy.context(lm=_StandinLM()):  # pyright: ignore[reportUnknownMemberType]
         skill = AutoresearchSkill(
             name="autoresearch", version="1.0.0", description="autoresearch ref skill"
         )
@@ -44,16 +46,16 @@ async def test_autoresearch_summary_routes_through_dspy_signature() -> None:
 async def test_autoresearch_summary_raises_when_lm_not_configured() -> None:
     """Unset ``dspy.settings.lm`` surfaces the DSPy force-loud
     ``AdapterFallbackError`` rather than silently degrading (T10)."""
-    import dspy
+    import dspy  # type: ignore[import-untyped]
 
     from harbor.skills.refs.autoresearch import AutoresearchSkill, AutoresearchState
 
-    with dspy.context(lm=None):
+    with dspy.context(lm=None):  # pyright: ignore[reportUnknownMemberType]
         skill = AutoresearchSkill(
             name="autoresearch", version="1.0.0", description="autoresearch ref skill"
         )
         state = AutoresearchState(topic="dogs")
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             await skill.run(state)
 
 

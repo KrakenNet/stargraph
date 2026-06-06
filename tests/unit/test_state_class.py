@@ -11,7 +11,7 @@ from harbor.graph import Graph
 from harbor.ir._models import IRDocument, NodeSpec
 
 
-class _MyState(BaseModel):
+class _MyState(BaseModel):  # pyright: ignore[reportUnusedClass]
     name: str = ""
     items: list[str] = []
     nested: dict[str, int] = {}
@@ -36,8 +36,8 @@ def test_state_class_imports_and_uses_real_basemodel() -> None:
     assert g.state_schema is canonical
     assert issubclass(g.state_schema, BaseModel)
     instance = g.state_schema(name="hello", items=["a", "b"], nested={"x": 1})
-    assert instance.name == "hello"
-    assert instance.items == ["a", "b"]
+    assert instance.name == "hello"  # type: ignore[attr-defined]
+    assert instance.items == ["a", "b"]  # type: ignore[attr-defined]
 
 
 @pytest.mark.unit

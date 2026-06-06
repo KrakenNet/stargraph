@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import TYPE_CHECKING
 
 import jwt
 import pytest
@@ -37,6 +38,9 @@ from harbor.bosun.signing import (
 )
 from harbor.serve.profiles import ClearedProfile, OssDefaultProfile
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def _keypair() -> tuple[bytes, bytes, str]:
     priv = Ed25519PrivateKey.generate()
@@ -48,7 +52,9 @@ def _keypair() -> tuple[bytes, bytes, str]:
     return priv_pem, pub_pem, key_id
 
 
-def _write_pack_with_sidecar(pack, files: dict[str, bytes], key_id: str, pub_pem: bytes) -> None:
+def _write_pack_with_sidecar(
+    pack: Path, files: dict[str, bytes], key_id: str, pub_pem: bytes
+) -> None:
     for rel, content in files.items():
         path = pack / rel
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -57,7 +63,7 @@ def _write_pack_with_sidecar(pack, files: dict[str, bytes], key_id: str, pub_pem
 
 
 @pytest.mark.unit
-def test_tofu_first_sight_records_fingerprint(tmp_path) -> None:
+def test_tofu_first_sight_records_fingerprint(tmp_path: Path) -> None:
     """First verify under oss-default + FilesystemTrustStore records fingerprint to disk."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -80,7 +86,7 @@ def test_tofu_first_sight_records_fingerprint(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_tofu_second_load_passes(tmp_path) -> None:
+def test_tofu_second_load_passes(tmp_path: Path) -> None:
     """After first sight, second verify against same key_id passes silently."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -97,7 +103,7 @@ def test_tofu_second_load_passes(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_tofu_fingerprint_mismatch_fails_oss(tmp_path) -> None:
+def test_tofu_fingerprint_mismatch_fails_oss(tmp_path: Path) -> None:
     """If sidecar pub.pem changes for the same key_id, oss-default load fails."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -120,7 +126,7 @@ def test_tofu_fingerprint_mismatch_fails_oss(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_tofu_fingerprint_mismatch_fails_cleared(tmp_path) -> None:
+def test_tofu_fingerprint_mismatch_fails_cleared(tmp_path: Path) -> None:
     """Mismatch under cleared profile + filesystem store fails (TOFU is a security boundary)."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -143,7 +149,7 @@ def test_tofu_fingerprint_mismatch_fails_cleared(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_static_trust_store_unlisted_cleared_fails(tmp_path) -> None:
+def test_static_trust_store_unlisted_cleared_fails(tmp_path: Path) -> None:
     """StaticTrustStore: unlisted key_id under cleared profile must load-fail."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -158,7 +164,9 @@ def test_static_trust_store_unlisted_cleared_fails(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_static_trust_store_unlisted_oss_warns(tmp_path, caplog) -> None:
+def test_static_trust_store_unlisted_oss_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     """StaticTrustStore: unlisted key_id under oss-default warns, returns verified=False."""
     import logging
 
@@ -177,7 +185,7 @@ def test_static_trust_store_unlisted_oss_warns(tmp_path, caplog) -> None:
 
 
 @pytest.mark.unit
-def test_jwt_with_x5c_header_rejected(tmp_path) -> None:
+def test_jwt_with_x5c_header_rejected(tmp_path: Path) -> None:
     """JWT carrying ``x5c`` header is rejected at decode (untrusted certificate-in-JWT)."""
     pack = tmp_path / "pack"
     pack.mkdir()
@@ -199,7 +207,7 @@ def test_jwt_with_x5c_header_rejected(tmp_path) -> None:
 
 
 @pytest.mark.unit
-def test_cleared_profile_first_sight_static_unlisted_fails(tmp_path) -> None:
+def test_cleared_profile_first_sight_static_unlisted_fails(tmp_path: Path) -> None:
     """Cleared profile first-sight on a key_id not in static allow-list must load-fail."""
     pack = tmp_path / "pack"
     pack.mkdir()

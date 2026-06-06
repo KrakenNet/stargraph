@@ -33,14 +33,13 @@ from harbor.ir._models import ToolSpec
 from harbor.tools.servicenow.create_change_request import create_change_request
 from harbor.tools.spec import ReplayPolicy, SideEffects
 
-
 # ---------------------------------------------------------------------------
 # Registry shape
 # ---------------------------------------------------------------------------
 
 
 def test_tool_spec_shape() -> None:
-    spec = create_change_request.spec
+    spec = create_change_request.spec  # pyright: ignore[reportFunctionMemberAccess]
     assert isinstance(spec, ToolSpec)
     assert spec.namespace == "servicenow"
     assert spec.name == "create_change_request"
@@ -192,9 +191,7 @@ async def test_live_missing_base_url_raises(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("SERVICENOW_PASSWORD", "p")
     monkeypatch.delenv("SERVICENOW_BASE_URL", raising=False)
     with pytest.raises(HarborRuntimeError, match="SERVICENOW_BASE_URL"):
-        await create_change_request(
-            short_description="x", description="y", correlation_id="z"
-        )
+        await create_change_request(short_description="x", description="y", correlation_id="z")
 
 
 @pytest.mark.asyncio
@@ -205,9 +202,7 @@ async def test_live_missing_basic_creds_raises(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.delenv("SERVICENOW_USERNAME", raising=False)
     monkeypatch.delenv("SERVICENOW_PASSWORD", raising=False)
     with pytest.raises(HarborRuntimeError, match="USERNAME and SERVICENOW_PASSWORD"):
-        await create_change_request(
-            short_description="x", description="y", correlation_id="z"
-        )
+        await create_change_request(short_description="x", description="y", correlation_id="z")
 
 
 @pytest.mark.asyncio
@@ -216,9 +211,7 @@ async def test_live_mtls_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SERVICENOW_BASE_URL", "https://ven.service-now.com")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "mtls")
     with pytest.raises(HarborRuntimeError, match="not supported"):
-        await create_change_request(
-            short_description="x", description="y", correlation_id="z"
-        )
+        await create_change_request(short_description="x", description="y", correlation_id="z")
 
 
 @pytest.mark.asyncio
@@ -227,6 +220,4 @@ async def test_live_unknown_auth_kind_raises(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setenv("SERVICENOW_BASE_URL", "https://ven.service-now.com")
     monkeypatch.setenv("SERVICENOW_AUTH_KIND", "wat")
     with pytest.raises(HarborRuntimeError, match="unknown SERVICENOW_AUTH_KIND"):
-        await create_change_request(
-            short_description="x", description="y", correlation_id="z"
-        )
+        await create_change_request(short_description="x", description="y", correlation_id="z")

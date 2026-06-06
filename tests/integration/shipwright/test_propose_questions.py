@@ -4,18 +4,24 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from harbor.skills.shipwright.nodes.interview import ProposeQuestions
 from harbor.skills.shipwright.state import Question, SpecSlot, State
 
+if TYPE_CHECKING:
+    from harbor.nodes.base import ExecutionContext
+
 
 @pytest.mark.integration
 async def test_propose_questions_dedups_against_open_questions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_call(self, slots, existing):
+    def fake_call(
+        self: ProposeQuestions, slots: dict[str, Any], existing: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         return [
             {"slot": "purpose", "prompt": "what about timeouts?", "kind": "edge_case"},
             {"slot": "budget_cap", "prompt": "no budget cap?", "kind": "soft"},
@@ -31,7 +37,9 @@ async def test_propose_questions_dedups_against_open_questions(
         slots={"purpose": SpecSlot(name="purpose", value="x", origin="user")},
         open_questions=existing,
     )
-    out = await ProposeQuestions().execute(state, SimpleNamespace(run_id="r-test"))
+    out = await ProposeQuestions().execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
 
     slots = [q.slot for q in out["open_questions"]]
     origins = {q.slot: q.origin for q in out["open_questions"]}
@@ -43,6 +51,13 @@ async def test_propose_questions_dedups_against_open_questions(
 async def test_propose_questions_noop_with_no_kind(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ProposeQuestions, "_call_predictor", lambda self, s, e: [])
-    out = await ProposeQuestions().execute(State(), SimpleNamespace(run_id="r-test"))
+    def fake_call(
+        self: ProposeQuestions, slots: dict[str, Any], existing: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        return []
+
+    monkeypatch.setattr(ProposeQuestions, "_call_predictor", fake_call)
+    out = await ProposeQuestions().execute(
+        State(), cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     assert out == {"open_questions": []}

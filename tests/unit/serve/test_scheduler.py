@@ -225,9 +225,7 @@ async def test_capacity_limiter_per_graph_hash_serialises_same_graph() -> None:
         assert limiter_a.total_tokens == 1, "default per-graph capacity is 1"
 
         # Wait for the dispatcher to resolve all three (synthetic stub).
-        await asyncio.wait_for(
-            asyncio.gather(h_a.future, h_b.future, h_c.future), timeout=2.0
-        )
+        await asyncio.wait_for(asyncio.gather(h_a.future, h_b.future, h_c.future), timeout=2.0)
     finally:
         await scheduler.stop()
 

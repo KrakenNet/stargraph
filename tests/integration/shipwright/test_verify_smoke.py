@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import shutil
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -12,6 +12,8 @@ from harbor.skills.shipwright.state import State
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from harbor.nodes.base import ExecutionContext
 
 
 pytestmark = pytest.mark.skipif(
@@ -34,7 +36,9 @@ SMOKE_FIXTURES_EMPTY = "{}\n"
 @pytest.mark.integration
 async def test_smoke_runs_on_minimal_graph(tmp_path: Path) -> None:
     state = State(artifact_files={"harbor.yaml": SMOKE_IR_YAML, "fixtures.yaml": SMOKE_FIXTURES_OK})
-    out = await VerifySmoke(work_dir=tmp_path).execute(state, SimpleNamespace(run_id="r-test"))
+    out = await VerifySmoke(work_dir=tmp_path).execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     [r] = [r for r in out["verifier_results"] if r.kind == "smoke"]
     assert r.passed is True
 
@@ -44,6 +48,8 @@ async def test_smoke_fails_on_missing_fixture(tmp_path: Path) -> None:
     state = State(
         artifact_files={"harbor.yaml": SMOKE_IR_YAML, "fixtures.yaml": SMOKE_FIXTURES_EMPTY}
     )
-    out = await VerifySmoke(work_dir=tmp_path).execute(state, SimpleNamespace(run_id="r-test"))
+    out = await VerifySmoke(work_dir=tmp_path).execute(
+        state, cast("ExecutionContext", SimpleNamespace(run_id="r-test"))
+    )
     [r] = [r for r in out["verifier_results"] if r.kind == "smoke"]
     assert r.passed is False

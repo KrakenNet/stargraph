@@ -148,8 +148,8 @@ class _StubScheduler:
         now = datetime.now(UTC)
         # Mirror the real Scheduler's id derivation so the route's
         # response matches the contract callers rely on.
-        key = idempotency_key or Scheduler._synth_idempotency_key(graph_id, now)
-        run_id = Scheduler._derive_run_id(graph_id, key)
+        key = idempotency_key or Scheduler._synth_idempotency_key(graph_id, now)  # pyright: ignore[reportPrivateUsage]
+        run_id = Scheduler._derive_run_id(graph_id, key)  # pyright: ignore[reportPrivateUsage]
         future.set_result(
             RunSummary(
                 run_id=run_id,

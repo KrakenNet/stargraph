@@ -653,9 +653,7 @@ class GraphRun:
         from harbor.checkpoint.protocol import Checkpoint as _Ckpt
 
         state_dict: dict[str, Any] = (
-            self.initial_state.model_dump(mode="json")
-            if self.initial_state is not None
-            else {}
+            self.initial_state.model_dump(mode="json") if self.initial_state is not None else {}
         )
         return _Ckpt(
             run_id=self.run_id,

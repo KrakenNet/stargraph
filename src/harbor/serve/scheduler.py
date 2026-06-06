@@ -405,7 +405,7 @@ class Scheduler:
         """
         self._deps = deps
 
-    def set_run_history(self, run_history: "RunHistory") -> None:
+    def set_run_history(self, run_history: RunHistory) -> None:
         """Inject a :class:`RunHistory` after construction.
 
         cli/serve.py and other lifespan factories create the Scheduler
@@ -689,7 +689,7 @@ class Scheduler:
         """Return the registered Graph for ``graph_id`` or ``None``."""
         if self._deps is None:
             return None
-        graphs = self._deps.get("graphs") or {}
+        graphs: dict[str, Any] = self._deps.get("graphs") or {}
         return graphs.get(graph_id)
 
     async def _drive_real_run(self, item: QueueItem, graph: Any) -> RunSummary:
@@ -716,7 +716,7 @@ class Scheduler:
         assert deps is not None  # _run_one already verified the graph lookup
 
         run_id = item.pending.run_id
-        node_registry = deps.get("node_registry") or {}
+        node_registry: dict[str, Any] = deps.get("node_registry") or {}
         per_graph_nodes = node_registry.get(item.pending.graph_id)
 
         initial_state = graph.state_schema(**dict(item.pending.params or {}))
@@ -738,7 +738,7 @@ class Scheduler:
         # Pump the broadcaster so WS subscribers actually receive
         # events; exits on bus close (run termination). Fire-and-
         # forget: failure is logged but does not affect the run.
-        bcs_task = asyncio.create_task(  # noqa: RUF006 - logged on failure
+        bcs_task = asyncio.create_task(
             broadcaster.run(),
             name=f"harbor.serve.broadcaster.{run_id}",
         )
@@ -838,9 +838,8 @@ class Scheduler:
         2.14) takes ownership of run-id minting.
         """
         import hashlib  # local import: stdlib, only used here
-        digest = hashlib.blake2b(
-            idempotency_key.encode("utf-8"), digest_size=8
-        ).hexdigest()[:12]
+
+        digest = hashlib.blake2b(idempotency_key.encode("utf-8"), digest_size=8).hexdigest()[:12]
         return f"run-{graph_id[:8]}-{digest}"
 
     async def _persist_pending(self, pending: PendingRun) -> None:

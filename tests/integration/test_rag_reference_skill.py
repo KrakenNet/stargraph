@@ -29,7 +29,11 @@ if TYPE_CHECKING:
     from harbor.stores.vector import VectorStore
 
 
-pytestmark = [pytest.mark.knowledge, pytest.mark.integration]
+pytestmark = [
+    pytest.mark.knowledge,
+    pytest.mark.integration,
+    pytest.mark.usefixtures("standin_lm"),
+]
 
 
 class _StubCtx:
@@ -93,7 +97,7 @@ async def test_rag_reference_skill_e2e(tmp_path: Path) -> None:
     assert out.sources == [h.id for h in out.retrieved]
 
     # POC LLM stub format: deterministic answer string keyed off hit count.
-    assert out.answer == f"Based on {len(out.retrieved)} sources: POC stub answer"
+    assert out.answer == "STANDIN_ANSWER"  # canned StandinLM payload (T10 dspy seam)
 
     # context_window non-empty (NFR-4: loud-fail if assemble dropped hits).
     assert out.context_window

@@ -69,7 +69,7 @@ def _derive_input_schema(
     Skips ``*args`` / ``**kwargs`` in the signature path -- they are not part of
     the schema surface.
     """
-    if isinstance(input_schema, type) and issubclass(input_schema, BaseModel):
+    if isinstance(input_schema, type) and issubclass(input_schema, BaseModel):  # pyright: ignore[reportUnnecessaryIsInstance]
         return input_schema.model_json_schema(mode="serialization")
     if isinstance(input_schema, dict):
         return input_schema

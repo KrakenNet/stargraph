@@ -35,8 +35,8 @@ import pytest
 from harbor.stores._common import _lock_for  # pyright: ignore[reportPrivateUsage]
 from harbor.stores.embeddings import FakeEmbedder
 from harbor.stores.graph import NodeRef
-from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.lancedb import LanceDBVectorStore
+from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.sqlite_doc import SQLiteDocStore
 from harbor.stores.vector import Row
 

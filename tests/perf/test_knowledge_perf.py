@@ -47,9 +47,9 @@ from harbor.skills.base import Skill, SkillKind
 from harbor.stores.embeddings import FakeEmbedder
 from harbor.stores.graph import NodeRef
 from harbor.stores.kg_promotion import PromoteTriplesToFacts
-from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.lancedb import LanceDBVectorStore
 from harbor.stores.memory import ConsolidationRule, Episode
+from harbor.stores.ryugraph import RyuGraphStore
 from harbor.stores.sqlite_fact import SQLiteFactStore
 from harbor.stores.sqlite_memory import SQLiteMemoryStore
 from harbor.stores.vector import Hit, Row

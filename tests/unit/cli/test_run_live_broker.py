@@ -12,12 +12,17 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 from typer.testing import CliRunner
 
 import harbor.cli.run as run_mod
 from harbor.cli.run import cmd
+from tests.fixtures.ansi import strip_ansi
+
+if TYPE_CHECKING:
+    import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SAMPLE_GRAPH = REPO_ROOT / "tests" / "fixtures" / "sample-graph.yaml"
@@ -30,7 +35,7 @@ def _make_app() -> typer.Typer:
 
 
 def test_live_broker_flag_invokes_broker_lifespan(
-    monkeypatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """``--live-broker`` must enter ``broker_lifespan`` exactly once."""
     calls: list[str] = []
@@ -65,7 +70,7 @@ def test_live_broker_flag_invokes_broker_lifespan(
 
 
 def test_no_live_broker_skips_broker_lifespan(
-    monkeypatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Without ``--live-broker`` the broker lifespan must not be entered."""
     calls: list[str] = []
@@ -104,10 +109,10 @@ def test_live_broker_flag_help_listed() -> None:
     app = _make_app()
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "--live-broker" in result.output
+    assert "--live-broker" in strip_ansi(result.output)
 
 
-def test_live_broker_imports_lazily(monkeypatch) -> None:
+def test_live_broker_imports_lazily(monkeypatch: pytest.MonkeyPatch) -> None:
     """``harbor.serve.lifecycle`` must NOT be in ``sys.modules`` when --live-broker
     is unset (lazy import keeps cold ``harbor run`` light).
     """

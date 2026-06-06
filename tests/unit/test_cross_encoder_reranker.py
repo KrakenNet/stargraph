@@ -81,7 +81,7 @@ async def test_cross_encoder_scores_and_ranks_top_k() -> None:
     out = await rr.fuse(hits, k=2, query="query")
 
     assert [h.id for h in out] == ["b", "c"]
-    assert out[0].score == pytest.approx(0.9)
+    assert out[0].score == pytest.approx(0.9)  # pyright: ignore[reportUnknownMemberType]
     assert captured[0] == [
         ("query", "alpha doc"),
         ("query", "beta doc longest"),
@@ -168,9 +168,7 @@ def test_cross_encoder_registered_under_rerankers_entry_point_group() -> None:
     """``harbor.rerankers:cross-encoder`` resolves to the class."""
     from importlib.metadata import entry_points
 
-    matches = [
-        ep for ep in entry_points(group="harbor.rerankers") if ep.name == "cross-encoder"
-    ]
+    matches = [ep for ep in entry_points(group="harbor.rerankers") if ep.name == "cross-encoder"]
     assert matches, "cross-encoder entry point not registered under harbor.rerankers"
     cls: Any = matches[0].load()
     assert cls is CrossEncoderReranker

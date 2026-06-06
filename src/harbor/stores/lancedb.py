@@ -46,9 +46,9 @@ from harbor.stores._common import (
 from harbor.stores.rerankers import RRFReranker
 from harbor.stores.vector import Hit
 
-from pathlib import Path
-
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from harbor.stores._common import MigrationPlan
     from harbor.stores.embeddings import Embedding
     from harbor.stores.vector import Row

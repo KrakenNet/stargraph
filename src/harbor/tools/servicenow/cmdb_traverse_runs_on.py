@@ -11,7 +11,7 @@ Capability: ``tools:servicenow:read``.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -78,15 +78,17 @@ async def cmdb_traverse_runs_on(
     async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT_S, **kw) as client:
         resp = await client.get(f"{base}{_PATH}", params=params, headers=headers)
         resp.raise_for_status()
-        rows = resp.json().get("result") or []
+        payload: dict[str, Any] = resp.json() or {}
+        rows: list[dict[str, Any]] = payload.get("result") or []
     sys_ids: list[str] = []
     version_by_sys_id: dict[str, str] = {}
     for row in rows:
-        child = row.get("child")
-        if isinstance(child, dict):
-            sid = str(child.get("value") or "")
-        else:
-            sid = str(child or "")
+        child: object = row.get("child")
+        sid = (
+            str(cast("dict[str, Any]", child).get("value") or "")
+            if isinstance(child, dict)
+            else str(child or "")
+        )
         if not sid:
             continue
         sys_ids.append(sid)

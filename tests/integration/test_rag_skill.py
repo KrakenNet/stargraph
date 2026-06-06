@@ -15,7 +15,10 @@ from __future__ import annotations
 
 import pytest
 
-from harbor.skills.refs.rag import RagSkill, _RagAnswerSignature
+from harbor.skills.refs.rag import (
+    RagSkill,
+    _RagAnswerSignature,  # pyright: ignore[reportPrivateUsage]
+)
 from harbor.stores.vector import Hit
 
 pytestmark = pytest.mark.integration
@@ -32,19 +35,19 @@ def _hits() -> list[Hit]:
 def test_rag_call_llm_invokes_dspy_signature() -> None:
     """``_call_llm`` routes through ``dspy.Predict(_RagAnswerSignature)`` -- the
     returned string is the LM-produced answer, not the POC stub (T09)."""
-    import dspy
+    import dspy  # type: ignore[import-untyped]
 
     # Hand-rolled stand-in LM (no ``unittest.mock``). Returns a JSON-shaped
     # string in the canonical DSPy LM output format so JSONAdapter can parse
     # the ``answer`` field out.
-    class _StandinLM(dspy.LM):
+    class _StandinLM(dspy.LM):  # pyright: ignore[reportUnknownMemberType]
         def __init__(self) -> None:
-            super().__init__(model="standin/standin")
+            super().__init__(model="standin/standin")  # pyright: ignore[reportUnknownMemberType]
 
-        def __call__(self, *_args: object, **_kwargs: object) -> list[str]:
+        def __call__(self, *_args: object, **_kwargs: object) -> list[str]:  # pyright: ignore[reportIncompatibleMethodOverride]
             return ['{"answer": "STANDIN_ANSWER"}']
 
-    with dspy.context(lm=_StandinLM()):
+    with dspy.context(lm=_StandinLM()):  # pyright: ignore[reportUnknownMemberType]
         skill = RagSkill(name="rag", version="1.0.0", description="RAG ref skill")
         out = skill._call_llm(query="where did the cat sit", hits=_hits())  # pyright: ignore[reportPrivateUsage]
     assert isinstance(out, str)
@@ -55,11 +58,11 @@ def test_rag_call_llm_invokes_dspy_signature() -> None:
 def test_rag_call_llm_raises_when_lm_not_configured() -> None:
     """When ``dspy.settings.lm`` is unset, ``_call_llm`` surfaces the DSPy
     force-loud ``AdapterFallbackError`` rather than silently degrading (T09)."""
-    import dspy
+    import dspy  # type: ignore[import-untyped]
 
-    with dspy.context(lm=None):
+    with dspy.context(lm=None):  # pyright: ignore[reportUnknownMemberType]
         skill = RagSkill(name="rag", version="1.0.0", description="RAG ref skill")
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             skill._call_llm(query="q", hits=_hits())  # pyright: ignore[reportPrivateUsage]
 
 
