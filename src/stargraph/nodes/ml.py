@@ -163,9 +163,26 @@ class MLNode(NodeBase):
                     version=self.version,
                     runtime="onnx",
                 )
+            import numpy as np
+
             input_name = session.get_inputs()[0].name
-            result = session.run(None, {input_name: inputs})
-            return result[0]
+            # A single feature vector arrives rank-1 (``list[float]`` from a
+            # state field); ONNX ``[None, N]`` inputs need a batch axis. Coerce
+            # to float32 and add the axis when missing so a one-sample run works
+            # without the caller pre-batching. Already-batched rank-2 inputs
+            # pass through unchanged.
+            arr = np.asarray(inputs, dtype=np.float32)
+            if arr.ndim == 1:
+                arr = arr[np.newaxis, :]
+            result = session.run(None, {input_name: arr})[0]
+            # Unwrap the single-sample batch back to a JSON-serializable scalar
+            # / row so the field-merge writes a plain Python value into typed
+            # state (numpy scalars/arrays are not JSON-serializable). Multi-row
+            # batches are returned as a list.
+            out = np.asarray(result)
+            if out.shape[0] == 1:
+                return out[0].tolist()
+            return out.tolist()
 
         model = self._model
         if model is None:

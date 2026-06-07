@@ -1,0 +1,9 @@
+id: soc-policy
+version: "1.0"
+flavor: governance
+requires:
+  stargraph_facts_version: "1.0"
+  api_version: "1"
+provides:
+  - "stargraph_facts:soc.policy.action"
+  - "stargraph_facts:bosun.provenance"

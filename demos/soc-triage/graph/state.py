@@ -74,6 +74,12 @@ class RunState(BaseModel):
     pipeline_phase: str = "ingest"
     last_error: str = ""
 
+    # The ``passthrough``/``echo`` dispatch points (soc_policy, audit, halt)
+    # resolve to stargraph's fixture ``EchoNode``, which copies ``state.message``
+    # through; default it to "" so those no-op gates dispatch cleanly instead
+    # of raising AttributeError on the missing field.
+    message: str = ""
+
     # -- Alert source selection (read by IngestAlert) ------------------
     # ``module:ClassName`` nodes are constructed zero-arg, so the alert the
     # run should ingest is selected via state (not node config). Default

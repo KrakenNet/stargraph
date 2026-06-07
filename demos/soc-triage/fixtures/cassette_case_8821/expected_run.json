@@ -1,0 +1,20 @@
+{
+  "_comment": "Recorded terminal-state snapshot of the case_8821 hero run. The auditor drill (scripts/replay_drill.sh) starts a fresh run with {alert_id: case_8821}, then replays it from its first checkpoint and asserts the replayed terminal state matches these fields byte-for-byte (deterministic ML + cassette LLM). This is the 'cryptographic replay months later' proof.",
+  "alert_id": "case_8821",
+  "asset_id": "billing-db-01",
+  "asset_tier": "prod",
+  "signature": "T1486.ransomware.mass_file_encrypt",
+  "severity_raw": 9.6,
+  "source_reputation": 0.1,
+  "hour_of_day": 3,
+  "repeat_count": 8,
+  "features": [9.6, 0.0, 0.0, 1.0, 0.1, 3.0, 8.0],
+  "risk": 2,
+  "risk_band": "high",
+  "disposition": "auto_remediate",
+  "expected_route": ["ingest", "retrieval", "risk_score", "triage_decide", "soc_policy", "analyst_gate", "write_artifact", "audit", "halt"],
+  "hitl_gate": "analyst_gate",
+  "hitl_reason": "prod asset + auto_remediate disposition -> soc-policy routes through the analyst gate (HITL) before isolation executes",
+  "expected_priors": ["hist-7701", "hist-7702", "hist-7703", "hist-7704"],
+  "model_sha256": "c314b6f678f4fcf265736c3f1de21c3f5284b7804c1cdd1f9965d41dd325ce2b"
+}
