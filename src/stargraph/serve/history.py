@@ -88,6 +88,12 @@ class RunRecord(BaseModel):
     finished_at: datetime | None = None
     duration_ms: int | None = None
     parent_run_id: str | None = None
+    # Failure diagnostics (#68): populated only on the error/failed path so
+    # a node error is distinguishable from a HITL timeout (both otherwise
+    # read as a bare terminal status). ``error_class`` is the exception type
+    # name; ``error_cause`` is the message (``str(exc)``).
+    error_class: str | None = None
+    error_cause: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -160,7 +166,9 @@ class RunHistory:
                 started_at      TEXT NOT NULL,
                 finished_at     TEXT,
                 parent_run_id   TEXT,
-                created_at      TEXT NOT NULL
+                created_at      TEXT NOT NULL,
+                error_class     TEXT,
+                error_cause     TEXT
             )
             """
         )
@@ -326,6 +334,8 @@ class RunHistory:
         *,
         finished_at: datetime | None = None,
         duration_ms: int | None = None,
+        error_class: str | None = None,
+        error_cause: str | None = None,
     ) -> None:
         """Update ``status`` (and optionally terminal fields) for ``run_id``.
 
@@ -333,26 +343,32 @@ class RunHistory:
         ``awaiting-input``) ``finished_at``/``duration_ms`` should be
         ``None``. For terminal transitions (``done``, ``failed``,
         ``cancelled``, ``error``) the caller passes the wall-clock
-        finish time and the elapsed milliseconds. If the row does not
-        exist (e.g. lifecycle update arrives before the scheduler had
-        a chance to insert), the UPDATE is a no-op — the scheduler's
-        :meth:`insert_pending` always lands first in the documented
-        flow, so this no-op is the rare race-window case.
+        finish time and the elapsed milliseconds. On the failure path
+        (``error``/``failed``) ``error_class``/``error_cause`` carry the
+        diagnostic (#68) so a node error is distinguishable from a HITL
+        timeout. If the row does not exist (e.g. lifecycle update arrives
+        before the scheduler had a chance to insert), the UPDATE is a
+        no-op — the scheduler's :meth:`insert_pending` always lands first
+        in the documented flow, so this no-op is the rare race-window case.
         """
         # Update only the columns the caller supplied; preserve nulls
-        # when finished_at/duration_ms are still TBD.
+        # when finished_at/duration_ms/error_* are still TBD.
         await self._db.execute(
             """
             UPDATE runs_history
                SET status = ?,
                    finished_at = COALESCE(?, finished_at),
-                   duration_ms = COALESCE(?, duration_ms)
+                   duration_ms = COALESCE(?, duration_ms),
+                   error_class = COALESCE(?, error_class),
+                   error_cause = COALESCE(?, error_cause)
              WHERE run_id = ?
             """,
             (
                 status,
                 finished_at.isoformat() if finished_at is not None else None,
                 duration_ms,
+                error_class,
+                error_cause,
                 run_id,
             ),
         )
@@ -362,7 +378,8 @@ class RunHistory:
         """Return the ``RunRecord`` for ``run_id`` or ``None`` if absent."""
         async with self._db.execute(
             "SELECT run_id, status, duration_ms, graph_hash, trigger_source, "
-            "started_at, finished_at, parent_run_id, created_at "
+            "started_at, finished_at, parent_run_id, created_at, "
+            "error_class, error_cause "
             "FROM runs_history WHERE run_id = ?",
             (run_id,),
         ) as cur:
@@ -407,7 +424,8 @@ class RunHistory:
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         sql = (
             "SELECT run_id, status, duration_ms, graph_hash, trigger_source, "
-            "started_at, finished_at, parent_run_id, created_at "
+            "started_at, finished_at, parent_run_id, created_at, "
+            "error_class, error_cause "
             f"FROM runs_history {where} "
             "ORDER BY started_at DESC LIMIT ? OFFSET ?"
         )
@@ -525,6 +543,8 @@ def _row_to_record(row: Any) -> RunRecord:
         finished_at,
         parent_run_id,
         created_at,
+        error_class,
+        error_cause,
     ) = tuple(row)
     return RunRecord(
         run_id=run_id,
@@ -535,6 +555,8 @@ def _row_to_record(row: Any) -> RunRecord:
         started_at=datetime.fromisoformat(started_at),
         finished_at=(datetime.fromisoformat(finished_at) if finished_at else None),
         parent_run_id=parent_run_id,
+        error_class=error_class,
+        error_cause=error_cause,
         created_at=datetime.fromisoformat(created_at),
     )
 

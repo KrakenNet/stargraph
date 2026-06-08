@@ -271,6 +271,12 @@ class _RunSummaryItem(BaseModel):
     finished_at: datetime | None = None
     duration_ms: int | None = None
     parent_run_id: str | None = None
+    #: Terminal failure diagnostics (#68), mirrored straight off the
+    #: ``runs_history`` row. ``error_class`` is a coarse discriminator
+    #: (``"interrupt_timeout"`` or the node exception type name),
+    #: ``error_cause`` a short message. ``None`` on the success path.
+    error_class: str | None = None
+    error_cause: str | None = None
 
 
 class _RunsPage(BaseModel):
@@ -810,6 +816,8 @@ def create_app(
                 finished_at=r.finished_at,
                 duration_ms=r.duration_ms,
                 parent_run_id=r.parent_run_id,
+                error_class=r.error_class,
+                error_cause=r.error_cause,
             )
             for r in records
         ]
@@ -1336,4 +1344,7 @@ def _summarize(run: GraphRun) -> RunSummary:
         last_step_at=now,
         status=status_mapped,  # pyright: ignore[reportArgumentType]
         parent_run_id=run.parent_run_id,
+        # #68: surface the terminal failure reason on the run-detail view.
+        error_class=run.error_class,
+        error_cause=run.error_cause,
     )

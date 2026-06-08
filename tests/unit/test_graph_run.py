@@ -204,3 +204,33 @@ def test_graph_run_init_accepts_fact_store_and_audit_sink_kwargs() -> None:
     )
     assert run2.fact_store is sentinel_fs
     assert run2.audit_sink is sentinel_as
+
+
+# ---------------------------------------------------------------------------
+# Respond-gate re-arm (#81 multi-interrupt correctness)
+# ---------------------------------------------------------------------------
+
+
+def test_rearm_respond_gate_resets_to_fresh_unset_event() -> None:
+    """``_rearm_respond_gate`` swaps in a fresh, unset respond event (#81).
+
+    ``anyio.Event`` has no ``clear()``; once :meth:`respond` sets it the event
+    stays set for the run's lifetime. A single :class:`GraphRun` now survives
+    every interrupt it hits (hot-resume), so the loop must re-arm before each
+    park or the second interrupt's ``wait()`` returns instantly on the prior
+    interrupt's set -- silently skipping the pause. This pins the reset
+    contract the loop relies on: a brand-new event object, and ``is_set()``
+    back to ``False`` even after a prior ``set()``.
+    """
+    run = GraphRun(run_id="run-rearm", graph=_graph())
+    original = run._respond_event  # pyright: ignore[reportPrivateUsage]
+    original.set()
+    assert original.is_set()
+
+    run._rearm_respond_gate()  # pyright: ignore[reportPrivateUsage]
+
+    rearmed = run._respond_event  # pyright: ignore[reportPrivateUsage]
+    assert rearmed is not original, "re-arm must install a fresh event object"
+    assert not rearmed.is_set(), "re-armed event must start unset"
+    # The old event keeps its set state -- nothing aliases back to it.
+    assert original.is_set()
