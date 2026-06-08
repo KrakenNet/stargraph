@@ -79,19 +79,22 @@ edges that have not yet landed:
   pollution-free: :data:`~stargraph.runtime.action.RoutingDecision` never
   carries an interrupt variant; the signal flow is orthogonal.
 * **Resume-from-respond hook** (continuing past
-  :meth:`~stargraph.graph.run.GraphRun.respond`): cold-restart-only in
-  Phase 1. :meth:`~stargraph.graph.run.GraphRun.respond` transitions
-  ``state`` from ``"awaiting-input"`` back to ``"running"`` and asserts
-  the response as a ``stargraph.evidence`` Fathom fact, but the loop
-  itself has already exited via the ``_HitInterrupt`` arm above. Resume
-  is the standard cold-restart path via :meth:`~stargraph.graph.run.GraphRun.resume`
-  -- the loop does not poll ``run.state`` for an in-process transition
-  back to ``"running"``. A future task can layer a polling-on-state
-  pattern (``anyio.sleep`` + state check at loop top) if hot-resume
-  semantics are wanted, but Phase 1's contract is cold-restart-only.
-  This is the documented gap from task 1.8 (deferred resume hook); the
-  interrupt-emit half of the contract lands here, the resume half stays
-  on the cold-restart path.
+  :meth:`~stargraph.graph.run.GraphRun.respond`): hot-resume on the same
+  live coroutine, for both timeout shapes (#81). The ``_HitInterrupt``
+  arm transitions ``state="awaiting-input"``, emits
+  :class:`~stargraph.runtime.events.WaitingForInputEvent`, then blocks in
+  :func:`_await_respond_or_timeout` on ``run._respond_event``.
+  :meth:`~stargraph.graph.run.GraphRun.respond` flips ``state`` back to
+  ``"running"``, asserts the response as a ``stargraph.evidence`` Fathom
+  fact, and sets that event -- waking this coroutine, which advances past
+  the interrupt node along the static IR edge to a terminal state. A
+  ``timeout`` (if set) is an inline watchdog over the same wait; a
+  ``timeout`` of ``None`` waits indefinitely. The legacy ``timeout is
+  None`` cold-restart arm (which returned ``status="running"`` and left
+  the run hung because nothing re-drove the loop after ``respond()``) is
+  gone. Cross-process resume from a checkpoint after a restart is still
+  the separate cold-restart path via
+  :meth:`~stargraph.graph.run.GraphRun.resume`.
 * **Side-effects hash**: empty string in v1 (no tool calls recorded yet).
 * **JSON serialization** of state for the checkpoint goes through Pydantic's
   ``model_dump(mode='json')`` so the row matches the JCS contract on the
@@ -218,25 +221,30 @@ async def execute(run: GraphRun) -> RunSummary:
                 # HITL interrupt boundary (design §4.4, §17 Decision #1, FR-81,
                 # AC-14.1, FR-87/NFR-22 timeout per task 2.34).
                 #
-                # Two paths depending on ``signal.action.timeout``:
+                # Both timeout shapes resume on this same live coroutine via
+                # ``_await_respond_or_timeout`` (#81 -- the legacy cold-restart
+                # arm for ``timeout is None`` returned ``status="running"`` and
+                # left the run hung forever because nothing re-drove the loop
+                # after ``respond()``):
                 #
-                # * ``timeout is None`` (legacy cold-restart contract):
-                #   transition ``state="awaiting-input"``, emit
-                #   ``WaitingForInputEvent``, return ``status="running"``.
-                #   Resume happens via cold-restart through :meth:`GraphRun.resume`
-                #   once :meth:`GraphRun.respond` has flipped ``state`` back
-                #   to ``"running"``.
-                #
-                # * ``timeout is not None`` (FR-87 inline watchdog): emit
-                #   ``WaitingForInputEvent``, then race ``anyio.move_on_after``
-                #   against ``run._respond_event.wait()``. Respond wins ->
-                #   resume past the interrupt node (next IR-edge target).
-                #   Timer wins -> emit ``InterruptTimeoutEvent`` and apply the
-                #   ``on_timeout`` policy (``"halt"`` or ``"goto:<node_id>"``).
+                # * ``timeout is None``: wait indefinitely on
+                #   ``run._respond_event``. ``respond()`` wakes this coroutine,
+                #   which advances past the interrupt node (next IR-edge target).
+                # * ``timeout is not None`` (FR-87 inline watchdog): race
+                #   ``anyio.move_on_after`` against the respond event. Respond
+                #   wins -> resume past the interrupt node. Timer wins -> emit
+                #   ``InterruptTimeoutEvent`` and apply the ``on_timeout`` policy
+                #   (``"halt"`` or ``"goto:<node_id>"``).
+                # Re-arm the respond handshake before parking (#81): a prior
+                # interrupt on this same hot-resumed run leaves the event set,
+                # which would otherwise let this wait() return instantly and
+                # skip the pause (advancing past the node while ``state`` stays
+                # a stale ``"awaiting-input"``). Must precede the state flip --
+                # respond() is gated on state=="awaiting-input" -- keeping it
+                # race-free.
+                run._rearm_respond_gate()  # pyright: ignore[reportPrivateUsage]
                 run.state = "awaiting-input"
                 await _emit_waiting_for_input(run, signal.action, step)
-                if signal.action.timeout is None:
-                    return _summary(run, status="running")
                 outcome = await _await_respond_or_timeout(
                     run, signal.action, step, current_id=current_node.id, nodes=nodes
                 )
@@ -292,10 +300,13 @@ async def execute(run: GraphRun) -> RunSummary:
                     # :func:`execute_parallel`'s task-group surface; the loop
                     # owns the state transition + clean exit. Timeout policy
                     # (task 2.34) mirrors the single-node arm above.
+                    # Re-arm before parking (#81), as in the single-node arm:
+                    # precede the state flip so a stale set from a prior
+                    # interrupt cannot skip this pause.
+                    run._rearm_respond_gate()  # pyright: ignore[reportPrivateUsage]
                     run.state = "awaiting-input"
                     await _emit_waiting_for_input(run, signal.action, step)
-                    if signal.action.timeout is None:
-                        return _summary(run, status="running")
+                    # Both timeout shapes resume on this live coroutine (#81).
                     # Post-parallel resume: pass the block's first target as
                     # the "current" id so a respond resolution advances along
                     # the static IR edge from there. ``current_id`` is the
@@ -336,8 +347,15 @@ async def execute(run: GraphRun) -> RunSummary:
         # Re-raise so callers of :meth:`GraphRun.start` / :meth:`GraphRun.wait`
         # see the cooperative-cancel signal per NFR-17.
         raise
-    except Exception:
+    except Exception as exc:
         run.state = "failed"
+        # Record the failure reason on the run (#68) so any post-mortem
+        # reader (and, on the re-raise, the scheduler's exception handler)
+        # can distinguish a node error from an interrupt timeout. The
+        # scheduler also derives the same pair from the propagated
+        # exception; setting it here keeps the run handle self-describing.
+        run.error_class = type(exc).__name__
+        run.error_cause = str(exc)
         raise
 
     run.state = "done"
@@ -382,7 +400,12 @@ async def _await_respond_or_timeout(
     current_id: str,
     nodes: list[NodeSpec],
 ) -> _InterruptOutcome:
-    """Race ``anyio.move_on_after(timeout)`` against ``respond()`` (FR-87, NFR-22).
+    """Block on ``respond()``, optionally under a timeout watchdog (FR-87, NFR-22).
+
+    When ``action.timeout is None`` the wait is unbounded -- the loop parks
+    on ``run._respond_event`` until :meth:`GraphRun.respond` wakes it (#81).
+    When a timeout is set, ``anyio.move_on_after(timeout)`` races the same
+    respond event.
 
     Per design §9.5 + locked Decision #1, the loop's ``_HitInterrupt``
     arm handles ``InterruptAction.timeout`` inline (not via a detached
@@ -415,11 +438,17 @@ async def _await_respond_or_timeout(
     event loop's scheduler granularity (sub-ms on Linux). The ±100ms
     budget is the audit-log envelope, not the timer's accuracy floor.
     """
-    timeout_seconds = action.timeout.total_seconds() if action.timeout else 0.0
     responded = False
-    with anyio.move_on_after(timeout_seconds):
+    if action.timeout is None:
+        # No watchdog (#81): wait indefinitely for respond(). respond()
+        # flips state back to "running" and sets _respond_event, waking
+        # this same coroutine so it advances past the interrupt node.
         await run._respond_event.wait()  # pyright: ignore[reportPrivateUsage]
         responded = True
+    else:
+        with anyio.move_on_after(action.timeout.total_seconds()):
+            await run._respond_event.wait()  # pyright: ignore[reportPrivateUsage]
+            responded = True
 
     if responded:
         # Respond arrived: state has already been flipped to "running"
@@ -452,6 +481,11 @@ async def _await_respond_or_timeout(
     # logged warning at IR-load time, never a runtime crash).
     if on_timeout == "halt":
         run.state = "failed"
+        # Record *why* the run failed (#68): a HITL interrupt that timed out
+        # waiting for a respond is a distinct failure class from a node
+        # error -- the scheduler threads these onto the ``runs_history`` row.
+        run.error_class = "interrupt_timeout"
+        run.error_cause = f"interrupt timed out after {action.timeout}; on_timeout=halt"
         return _InterruptOutcome(next_id=None, terminal_status="failed")
     if on_timeout.startswith("goto:"):
         target = on_timeout[len("goto:") :]
@@ -808,4 +842,9 @@ def _summary(run: GraphRun, *, status: str) -> RunSummary:
         last_step_at=now,
         status=status,  # pyright: ignore[reportArgumentType] -- caller passes valid Literal
         parent_run_id=run.parent_run_id,
+        # Terminal failure diagnostics (#68): ``None`` unless the run set
+        # them on a failed terminal path (interrupt-timeout-halt below, or
+        # the ``except Exception`` arm in :func:`execute`).
+        error_class=run.error_class,
+        error_cause=run.error_cause,
     )

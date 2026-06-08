@@ -110,6 +110,19 @@ _DEFAULT_GRAPH_CONCURRENCY = 1
 #: case still lands well inside the budget.
 _CRON_POLL_INTERVAL_S = 0.05
 
+#: Non-terminal lifecycle states. A clean return from ``_run_one`` means
+#: the run finished (``run.start()`` only returns at a terminal state), so a
+#: summary still carrying one of these is a run-loop edge case: the history
+#: projection coerces it to ``"done"`` rather than persisting a finished run
+#: as ``"running"``/``"pending"`` with a finish timestamp -- a row the UI
+#: reads as forever-running and cannot pause or cancel (#65). The primary
+#: source of such rows (the pre-#81 HITL ``timeout=None`` arm that returned
+#: ``"running"``) is gone now that the park resumes hot (#81); this guard
+#: keeps the projection correct regardless of future edge cases.
+#: ``"paused"`` is intentionally NOT included: a clean ``"paused"`` return is
+#: a legitimate alive-but-parked run, not a finished one to coerce.
+_NON_TERMINAL_STATUSES = frozenset({"pending", "running", "awaiting-input"})
+
 
 class PendingRun:
     """Single durable pending-run row (design §6.1).
@@ -644,9 +657,16 @@ class Scheduler:
                 if not item.future.done():
                     item.future.set_exception(exc)
                 # Terminal: clear the pending row + record failure
-                # even on exception.
+                # even on exception. Thread the exception type + message
+                # into history so a node error is distinguishable from a
+                # HITL timeout downstream (#68).
                 await self._clear_pending(item.pending.run_id)
-                await self._record_history_terminal(item.pending.run_id, status="error")
+                await self._record_history_terminal(
+                    item.pending.run_id,
+                    status="error",
+                    error_class=type(exc).__name__,
+                    error_cause=str(exc),
+                )
                 # Re-raise CancelledError so the task group sees the
                 # cancel; other exceptions are isolated per-item (one
                 # bad run does not tear down the dispatcher).
@@ -659,8 +679,38 @@ class Scheduler:
         # released by the ``async with`` exit above. Pending row removal
         # happens after the limiter release so the next same-graph run
         # can begin promptly.
+        #
+        # #65: a clean return from ``_run_one`` means the run finished --
+        # ``run.start()`` only returns once the loop reaches a terminal
+        # state. If the summary still carries a non-terminal status (a
+        # run-loop edge case -- e.g. the pre-#81 HITL ``timeout=None`` arm
+        # that returned ``"running"``), coerce it to ``"done"`` for the
+        # durable projection: a finished run must never persist as
+        # ``"running"``/``"pending"`` with a finish timestamp, which
+        # ``GET /v1/runs`` reads as forever-running and the lifecycle
+        # routes answer ``409`` (the in-memory run is terminal). The
+        # caller's future still carries the raw loop summary; only the
+        # history projection is corrected.
+        terminal_status = summary.status
+        if terminal_status in _NON_TERMINAL_STATUSES:
+            _logger.warning(
+                "Run %s returned non-terminal status %r from a clean completion; "
+                "coercing to 'done' for the runs_history projection (#65)",
+                item.pending.run_id,
+                terminal_status,
+            )
+            terminal_status = "done"
         await self._clear_pending(item.pending.run_id)
-        await self._record_history_terminal(item.pending.run_id, status=summary.status)
+        # Carry the loop's terminal failure diagnostics (#68): a clean
+        # ``status="failed"`` return (e.g. an interrupt-timeout-halt) sets
+        # ``summary.error_class``/``error_cause`` even though no exception
+        # propagated, so the history row records *why* it failed.
+        await self._record_history_terminal(
+            item.pending.run_id,
+            status=terminal_status,
+            error_class=summary.error_class,
+            error_cause=summary.error_cause,
+        )
 
     async def _run_one(self, item: QueueItem) -> RunSummary:
         """Drive one run to completion.
@@ -894,8 +944,19 @@ class Scheduler:
                 run_id,
             )
 
-    async def _record_history_terminal(self, run_id: str, *, status: str) -> None:
-        """Update ``runs_history`` on terminal state with finished_at + duration_ms."""
+    async def _record_history_terminal(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        error_class: str | None = None,
+        error_cause: str | None = None,
+    ) -> None:
+        """Update ``runs_history`` on terminal state with finished_at + duration_ms.
+
+        On the failure path ``error_class``/``error_cause`` carry the
+        diagnostic (#68) so the persisted row records *why* the run failed.
+        """
         if self._run_history is None:
             self._enqueue_started_at.pop(run_id, None)
             return
@@ -910,6 +971,8 @@ class Scheduler:
                 status,
                 finished_at=finished,
                 duration_ms=duration_ms,
+                error_class=error_class,
+                error_cause=error_cause,
             )
         except Exception:  # pragma: no cover - defensive
             _logger.exception(
