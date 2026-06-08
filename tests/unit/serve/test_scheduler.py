@@ -24,8 +24,9 @@ import cronsim
 import pytest
 import time_machine
 
+from stargraph.checkpoint.protocol import RunSummary
 from stargraph.errors import StargraphRuntimeError
-from stargraph.serve.scheduler import PendingRun, Scheduler
+from stargraph.serve.scheduler import PendingRun, QueueItem, Scheduler
 from stargraph.triggers.cron import CronSpec, CronTrigger
 
 if TYPE_CHECKING:
@@ -64,6 +65,74 @@ class _MemoryPendingStore:
 
     async def has_pending_for_key(self, idempotency_key: str) -> bool:
         return idempotency_key in self._keys
+
+
+class _RecordingRunHistory:
+    """In-memory :class:`RunHistory` stand-in that records every write.
+
+    The scheduler only calls ``insert_pending`` (on enqueue) and
+    ``update_status`` (on terminal state) in the paths under test, so this
+    narrow stub captures the exact call arguments without touching SQLite.
+    """
+
+    def __init__(self) -> None:
+        self.inserts: list[dict[str, Any]] = []
+        self.updates: list[dict[str, Any]] = []
+
+    async def insert_pending(
+        self,
+        run_id: str,
+        graph_hash: str,
+        trigger_source: str,
+        *,
+        parent_run_id: str | None = None,
+    ) -> None:
+        self.inserts.append(
+            {"run_id": run_id, "graph_hash": graph_hash, "trigger_source": trigger_source}
+        )
+
+    async def update_status(
+        self,
+        run_id: str,
+        status: str,
+        *,
+        finished_at: Any = None,
+        duration_ms: int | None = None,
+        error_class: str | None = None,
+        error_cause: str | None = None,
+    ) -> None:
+        self.updates.append(
+            {
+                "run_id": run_id,
+                "status": status,
+                "finished_at": finished_at,
+                "duration_ms": duration_ms,
+                "error_class": error_class,
+                "error_cause": error_cause,
+            }
+        )
+
+
+def _make_pending(run_id: str, graph_id: str = "graph-x") -> PendingRun:
+    return PendingRun(
+        run_id=run_id,
+        graph_id=graph_id,
+        params={},
+        idempotency_key=f"key-{run_id}",
+        scheduled_fire=datetime.now(UTC),
+    )
+
+
+def _summary(run_id: str, status: str, graph_hash: str = "graph-x") -> RunSummary:
+    now = datetime.now(UTC)
+    return RunSummary(
+        run_id=run_id,
+        graph_hash=graph_hash,
+        started_at=now,
+        last_step_at=now,
+        status=status,  # pyright: ignore[reportArgumentType]
+        parent_run_id=None,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -361,3 +430,120 @@ def test_synth_idempotency_key_is_deterministic() -> None:
     later = now + timedelta(microseconds=1)
     key3 = Scheduler._synth_idempotency_key("graph", later)  # pyright: ignore[reportPrivateUsage]
     assert key3 != key1
+
+
+async def test_non_terminal_clean_completion_coerced_to_done_in_history() -> None:
+    """A clean completion that returns a non-terminal status is coerced to 'done' (#65).
+
+    ``run.start()`` only returns at a terminal state, so a clean return
+    carrying a non-terminal status (the pre-#81 HITL ``timeout=None`` arm
+    that returned ``"running"`` was the canonical source) is a finished
+    run with a stale status. The dispatcher must persist it as terminal
+    (``"done"``) -- never as ``"running"``/``"pending"`` with a finish
+    timestamp, which ``GET /v1/runs`` reads as forever-running -- and clear
+    the pending row so a restart does not replay a finished run. The
+    caller's future still carries the raw (uncoerced) loop summary.
+    """
+    pending_store = _MemoryPendingStore()
+    history = _RecordingRunHistory()
+    scheduler = Scheduler(pending_store=pending_store, run_history=history)  # type: ignore[arg-type]
+
+    pending = _make_pending("run-stale-running")
+    await pending_store.put_pending(pending)
+
+    async def _fake_run_one(_item: QueueItem) -> RunSummary:
+        return _summary("run-stale-running", "running")
+
+    scheduler._run_one = _fake_run_one  # type: ignore[assignment, method-assign]  # pyright: ignore[reportAttributeAccessIssue]
+
+    future: asyncio.Future[RunSummary] = asyncio.get_running_loop().create_future()
+    await scheduler._run_under_limiter(  # pyright: ignore[reportPrivateUsage]
+        QueueItem(pending=pending, future=future)
+    )
+
+    # Finished run: pending row cleared (no restart replay).
+    assert await pending_store.list_pending() == [], "finished run must clear its pending row"
+    # History records exactly one terminal write, coerced to 'done'.
+    assert len(history.updates) == 1, f"expected 1 terminal write; got {history.updates!r}"
+    assert history.updates[0]["status"] == "done", (
+        f"non-terminal clean completion must coerce to 'done'; got {history.updates[0]!r}"
+    )
+    # The caller's future still carries the raw loop summary (uncoerced).
+    assert future.done()
+    assert future.result().status == "running"
+
+
+async def test_clean_failed_summary_threads_error_reason_to_history() -> None:
+    """A clean ``status="failed"`` return threads ``error_class`` into history (#68).
+
+    An interrupt-timeout-halt reaches ``failed`` via the loop's terminal
+    path (no exception propagates), carrying ``error_class`` on the
+    :class:`RunSummary`. The dispatcher's success path must forward it to
+    ``runs_history`` so the row records the failure reason -- the exception
+    path is not the only way a run records *why* it failed.
+    """
+    pending_store = _MemoryPendingStore()
+    history = _RecordingRunHistory()
+    scheduler = Scheduler(pending_store=pending_store, run_history=history)  # type: ignore[arg-type]
+
+    pending = _make_pending("run-timed-out")
+    await pending_store.put_pending(pending)
+
+    async def _fake_run_one(_item: QueueItem) -> RunSummary:
+        summary = _summary("run-timed-out", "failed")
+        summary.error_class = "interrupt_timeout"
+        summary.error_cause = "interrupt timed out after 0:05:00; on_timeout=halt"
+        return summary
+
+    scheduler._run_one = _fake_run_one  # type: ignore[assignment, method-assign]  # pyright: ignore[reportAttributeAccessIssue]
+
+    future: asyncio.Future[RunSummary] = asyncio.get_running_loop().create_future()
+    await scheduler._run_under_limiter(  # pyright: ignore[reportPrivateUsage]
+        QueueItem(pending=pending, future=future)
+    )
+
+    assert len(history.updates) == 1, f"expected 1 terminal write; got {history.updates!r}"
+    upd = history.updates[0]
+    assert upd["status"] == "failed"
+    assert upd["error_class"] == "interrupt_timeout"
+    assert upd["error_cause"] == "interrupt timed out after 0:05:00; on_timeout=halt"
+    assert await pending_store.list_pending() == []
+
+
+async def test_node_exception_records_error_class_and_cause() -> None:
+    """A run that raises records ``error_class`` + ``error_cause`` in history (#68).
+
+    The dispatcher's exception path must thread the exception type name and
+    message into ``runs_history`` so a node failure is distinguishable from
+    a HITL interrupt timeout downstream. The pending row is cleared (the
+    run is terminal-error) and the caller's future carries the exception.
+    """
+    pending_store = _MemoryPendingStore()
+    history = _RecordingRunHistory()
+    scheduler = Scheduler(pending_store=pending_store, run_history=history)  # type: ignore[arg-type]
+
+    pending = _make_pending("run-boom")
+    await pending_store.put_pending(pending)
+
+    async def _boom(_item: QueueItem) -> RunSummary:
+        raise ValueError("node exploded")
+
+    scheduler._run_one = _boom  # type: ignore[assignment, method-assign]  # pyright: ignore[reportAttributeAccessIssue]
+
+    future: asyncio.Future[RunSummary] = asyncio.get_running_loop().create_future()
+    await scheduler._run_under_limiter(  # pyright: ignore[reportPrivateUsage]
+        QueueItem(pending=pending, future=future)
+    )
+
+    # Exactly one terminal history write carrying the diagnostic.
+    assert len(history.updates) == 1, f"expected 1 terminal update; got {history.updates!r}"
+    upd = history.updates[0]
+    assert upd["status"] == "error"
+    assert upd["error_class"] == "ValueError"
+    assert upd["error_cause"] == "node exploded"
+    # Terminal-error path clears the pending row.
+    assert await pending_store.list_pending() == []
+    # The future carries the original exception.
+    assert future.done()
+    with pytest.raises(ValueError, match="node exploded"):
+        future.result()

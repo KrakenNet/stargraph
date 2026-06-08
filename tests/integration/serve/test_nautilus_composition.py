@@ -13,8 +13,9 @@ two composition variants and asserts the same invariants hold in both:
    :class:`~stargraph.runtime.events.ArtifactWrittenEvent`, then halts at
    the InterruptNode at `approval_gate`, emitting a
    :class:`~stargraph.runtime.events.WaitingForInputEvent`. The test
-   issues ``POST /v1/runs/{id}/respond`` to release the gate and
-   asserts the route returns 200 with state="running".
+   issues ``POST /v1/runs/{id}/respond`` to release the gate; under
+   hot-resume (#81) the same live coroutine advances past the interrupt
+   through `action` to a terminal :class:`ResultEvent`.
 
 2. **`test_with_removed`** loads
    :file:`tests/fixtures/triage_no_nautilus.yaml`. The broker step
@@ -26,17 +27,15 @@ HITL + artifact are not load-bearing on the broker step. Removing or
 stubbing Nautilus does NOT break the gate; it preserves the analyst-
 approval + record-write contract end-to-end.
 
-Topology choice -- artifact BEFORE interrupt: Phase-1 loop's
-``_HitInterrupt`` arm exits cleanly after raising
-:class:`WaitingForInputEvent` (no in-process resume hook; cold-restart
-contract per task-1.16 + task-1.23). Driving through HITL respond past
-the interrupt requires the cf-loop wiring landed in Phase-2 task 2.34
-(documented gap; cf 3.23/3.24 progress notes). Placing the artifact
-write BEFORE the interrupt keeps both invariants verifiable in a single
-drive without crossing the documented gap. The full canonical IR layout
-(broker -> ML -> DSPy -> CLIPS -> InterruptNode -> WriteArtifactNode
--> Action) lands with the validation-gate IR in Phase 5 task 5.1, when
-the cf-loop wiring is available.
+Topology choice -- artifact BEFORE interrupt: the artifact write fires
+on the drive INTO the interrupt boundary, so its
+:class:`ArtifactWrittenEvent` is captured before the run parks at
+``approval_gate``. Hot-resume (#81) then carries the same coroutine past
+the interrupt through ``action`` to a terminal :class:`ResultEvent`, so
+both invariants (artifact + HITL) are verifiable in a single end-to-end
+drive. The full canonical IR layout (broker -> ML -> DSPy -> CLIPS ->
+InterruptNode -> WriteArtifactNode -> Action) lands with the
+validation-gate IR in Phase 5 task 5.1.
 
 Implementation notes:
 
@@ -65,6 +64,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import anyio
+import anyio.lowlevel
 import httpx
 import pytest
 import yaml
@@ -85,6 +85,7 @@ from stargraph.nodes.nautilus.broker_node import BrokerNodeConfig
 from stargraph.runtime.events import (
     ArtifactWrittenEvent,
     Event,
+    ResultEvent,
     WaitingForInputEvent,
 )
 from stargraph.serve.api import create_app
@@ -275,32 +276,26 @@ async def _drain_until(
             return
 
 
-async def _drive_to_interrupt_with_drain(
+async def _wait_for_state(
     run: GraphRun,
-    audit_sink: JSONLAuditSink,
-    received: list[Event],
+    target: str,
+    *,
+    timeout: float = 10.0,  # noqa: ASYNC109 -- caller wraps in anyio.fail_after
 ) -> None:
-    """Drive ``run`` to the InterruptNode boundary, draining bus events.
+    """Poll until ``run.state == target`` (cooperative, checkpoint-yielding).
 
-    The drainer stops on the first :class:`WaitingForInputEvent`; the
-    drive task returns when the loop's interrupt arm fires.
+    Hot-resume (#81): the long-lived drive parks inside the loop on the
+    interrupt's respond event, so the responder co-task polls the live
+    state lattice rather than waiting for ``run.start()`` to return.
     """
-
-    async def _drive() -> None:
-        await run.start()
-
-    async def _drain() -> None:
-        await _drain_until(
-            run,
-            audit_sink,
-            received,
-            stop_on=WaitingForInputEvent,
-        )
-
-    with anyio.fail_after(10.0):
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(_drain)
-            tg.start_soon(_drive)
+    deadline = anyio.current_time() + timeout
+    while run.state != target:
+        if anyio.current_time() > deadline:
+            raise TimeoutError(
+                f"run {run.run_id!r} did not reach {target!r} within {timeout}s "
+                f"(state={run.state!r})"
+            )
+        await anyio.lowlevel.checkpoint()
 
 
 # --------------------------------------------------------------------------- #
@@ -357,38 +352,44 @@ async def _run_composition(
     _audit_sink_var.set(audit_sink)
 
     received: list[Event] = []
+    respond_box: dict[str, Any] = {}
 
-    # Drive to the interrupt boundary; the drainer stops on the first
-    # WaitingForInputEvent so both ArtifactWrittenEvent (emitted earlier
-    # in the drive) and WaitingForInputEvent are captured.
-    await _drive_to_interrupt_with_drain(run, audit_sink, received)
+    # Hot-resume (#81): the interrupt's timeout is None, so ``run.start()``
+    # parks at ``approval_gate`` until ``respond()`` sets the event, then
+    # resumes through ``action`` to a terminal ResultEvent. A single
+    # long-lived drive carries the whole run; the responder waits for the
+    # ``awaiting-input`` boundary then POSTs /respond; the drainer stops on
+    # the terminal ResultEvent (capturing the earlier ArtifactWrittenEvent
+    # + WaitingForInputEvent in the same pass).
+    async def _drive() -> None:
+        await run.start()
 
-    # Sanity: state lattice is now ``awaiting-input``.
-    assert run.state == "awaiting-input", (
-        f"expected awaiting-input after drive-to-interrupt; got {run.state!r}"
-    )
+    async def _drain() -> None:
+        await _drain_until(run, audit_sink, received, stop_on=ResultEvent)
 
-    # Issue the respond POST to release the gate. The respond path
-    # transitions state to "running" and asserts a stargraph.evidence
-    # fact via the wired Fathom adapter; the cf-loop replay past the
-    # interrupt is a documented Phase-2 task 2.34 gap (cf 3.23/3.24
-    # progress notes). The composition test's assertion bar is "respond
-    # returns 200 with status='running'", which is the implementation-
-    # complete contract today.
-    transport = httpx.ASGITransport(app=app)
-    with anyio.fail_after(10.0):
-        async with httpx.AsyncClient(
-            transport=transport,
-            base_url="http://test",
-        ) as client:
+    async def _respond_when_awaiting() -> None:
+        await _wait_for_state(run, "awaiting-input")
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             r = await client.post(
                 f"/v1/runs/{run_id}/respond",
                 json={"actor": _ACTOR, "response": _RESPONSE_BODY},
             )
-    assert r.status_code == 200, r.text
-    summary = r.json()
-    assert summary["status"] == "running", (
-        f"expected respond to fold state='running'; got {summary!r}"
+        assert r.status_code == 200, r.text
+        respond_box["body"] = r.json()
+
+    with anyio.fail_after(10.0):
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(_drain)
+            tg.start_soon(_drive)
+            tg.start_soon(_respond_when_awaiting)
+
+    # The respond folds state onto "running"; under hot-resume the loop may
+    # already have advanced past ``action`` to "done" by the time the HTTP
+    # summary is built (race on the post-respond checkpoint yield).
+    summary = respond_box["body"]
+    assert summary["status"] in ("running", "done"), (
+        f"expected respond to fold state onto 'running'/'done'; got {summary!r}"
     )
 
     await audit_sink.close()
