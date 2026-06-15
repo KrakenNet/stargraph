@@ -56,6 +56,30 @@ def test_stargraph_error_captures_kwargs_into_context() -> None:
 
 
 @pytest.mark.unit
+def test_hint_and_see_surface_as_properties_and_render() -> None:
+    """``hint=``/``see=`` are context keys exposed as properties and appended to str()."""
+    err = ValidationError("bad state_class", hint="use module:Class", see="docs/x.md")
+
+    # Remain plain context keys (structured logging + back-compat).
+    assert err.context == {"hint": "use module:Class", "see": "docs/x.md"}
+    # Surfaced as typed properties.
+    assert err.hint == "use module:Class"
+    assert err.see == "docs/x.md"
+    # Rendered for the reader.
+    assert str(err) == "bad state_class\nhint: use module:Class\nsee: docs/x.md"
+
+
+@pytest.mark.unit
+def test_missing_hint_and_see_are_none_and_str_is_message_only() -> None:
+    """Without hint/see, properties are None and str() is the bare message."""
+    err = ValidationError("plain")
+
+    assert err.hint is None
+    assert err.see is None
+    assert str(err) == "plain"
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("cls", _SUBCLASSES)
 def test_each_subclass_instantiates_with_message_and_context(cls: type[StargraphError]) -> None:
     """Each of the five subclasses accepts ``message`` + kwargs identically."""

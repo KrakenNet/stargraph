@@ -71,6 +71,7 @@ def _resolve_state_class(state_class_ref: str) -> type[BaseModel]:
             expected="'module.path:ClassName'",
             actual=state_class_ref,
             hint="separate module path and class name with a colon",
+            see="docs/tutorials/first-graph.md",
         )
     module_path, _, class_name = state_class_ref.partition(":")
     try:
@@ -140,6 +141,7 @@ def _compile_state_schema(
                 expected=f"one of {sorted(_TYPE_MAP)}",
                 actual=type_name,
                 hint="Phase 1 POC accepts a small primitive set; extend _TYPE_MAP if needed.",
+                see="docs/tutorials/first-graph.md",
             )
         fields[field_name] = (py_type, ...)
 

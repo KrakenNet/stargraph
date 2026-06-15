@@ -13,6 +13,7 @@ from __future__ import annotations
 import typer
 
 from stargraph.cli import (
+    context,
     counterfactual,
     inspect,
     replay,
@@ -41,6 +42,7 @@ app.command("replay")(replay.cmd)
 app.command("respond")(respond.cmd)
 app.command("serve")(serve.cmd)
 app.command("verify-audit")(verify_audit.cmd)
+app.command("context")(context.cmd)
 
 
 def main() -> None:

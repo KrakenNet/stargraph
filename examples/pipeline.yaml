@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# examples/pipeline.yaml — a three-step linear pipeline.
+#
+# Builds on hello.yaml: instead of one hop, the run walks node_a -> node_b
+# -> node_c, with one Fathom rule per hop. Each transition is decided by a
+# rule matching the `(node-id (id ...))` fact the runtime asserts when a node
+# becomes current — there are no static edges in the IR.
+#
+# Run it:
+#     stargraph run examples/pipeline.yaml --inputs message=hello
+#
+# Inspect the rule firings (4 expected: three goto, one halt):
+#     stargraph run examples/pipeline.yaml --inspect
+#
+# For rule-routing on state values (confidence thresholds, branch on a
+# field), and for LLM / ML / retrieval nodes, see the full graphs under
+# demos/ (e.g. demos/soc-triage) — those exercise the parts the CLI's
+# linear driver does not.
+ir_version: "1.0.0"
+id: "run:pipeline"
+nodes:
+  - id: node_a          # echo: seed `message` into state
+    kind: echo
+  - id: node_b          # echo: carry state through a second step
+    kind: echo
+  - id: node_c          # halt: terminal
+    kind: halt
+state_schema:
+  message: str
+rules:
+  - id: r-a-to-b
+    when: "(initial-fact)"
+    then:
+      - kind: goto
+        target: node_b
+  - id: r-b-to-c
+    when: "?n <- (node-id (id node_b))"
+    then:
+      - kind: goto
+        target: node_c
+  - id: r-halt
+    when: "?n <- (node-id (id node_c))"
+    then:
+      - kind: halt
+        reason: "pipeline example reached node_c"
