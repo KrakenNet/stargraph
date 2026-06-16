@@ -58,6 +58,11 @@ __all__ = ["EventBroadcaster"]
 #: Per-subscriber buffer size per design §5.6.
 _SUBSCRIBER_BUFFER_SIZE = 100
 
+#: Max events retained for startup replay before the first subscriber
+#: attaches (#67). Bounded + drop-oldest so a run nobody ever watches
+#: cannot grow the backlog without limit.
+_BACKLOG_MAX = 1024
+
 
 class _Subscriber:
     """Pair of ``(send, recv)`` streams plus an overflow flag.
@@ -104,6 +109,15 @@ class EventBroadcaster:
         self._bus = bus
         self._subscribers: list[_Subscriber] = []
         self._closed = False
+        # Startup replay backlog (#67): events the broadcaster reads from
+        # the bus before any subscriber has attached would otherwise fan
+        # out to nobody and be lost -- fatal for fast/trivial runs that
+        # finish before a WS client or event sink subscribes. Retain them
+        # (bounded, drop-oldest) until the first subscriber attaches, then
+        # replay. Once any subscriber has attached, live fan-out covers
+        # delivery and buffering stops.
+        self._backlog: list[Event] = []
+        self._had_subscriber = False
 
     async def run(self) -> None:
         """Drive the bus-receive loop until :meth:`aclose` or bus closure.
@@ -135,6 +149,16 @@ class EventBroadcaster:
                     except (anyio.BrokenResourceError, anyio.ClosedResourceError):
                         # Subscriber tore down its receive side; drop it.
                         self._drop_subscriber(sub)
+                # Retain for startup replay until the first subscriber
+                # attaches (#67). This whole post-receive block is
+                # await-free, so it is atomic w.r.t. ``subscribe``'s
+                # equally await-free attach prefix: an event is either
+                # backlogged here or fanned out live above to a just-
+                # attached subscriber -- never both, never neither.
+                if not self._had_subscriber:
+                    self._backlog.append(ev)
+                    if len(self._backlog) > _BACKLOG_MAX:
+                        del self._backlog[0]
         finally:
             await self._close_all_subscribers()
 
@@ -160,7 +184,20 @@ class EventBroadcaster:
         )
         sub = _Subscriber(send, recv)
         self._subscribers.append(sub)
+        # Startup replay (#67): the first subscriber drains any events the
+        # broadcaster buffered before it attached. Snapshot + flip the flag
+        # synchronously (no await between the append above and here, and the
+        # run-loop's buffering block is also await-free) so a concurrently
+        # arriving event is either in this backlog or fanned out live to
+        # ``sub`` -- never duplicated, never dropped.
+        replay: list[Event] = []
+        if not self._had_subscriber:
+            self._had_subscriber = True
+            replay = self._backlog
+            self._backlog = []
         try:
+            for ev in replay:
+                yield ev
             async for ev in recv:
                 yield ev
             # Receive iterator ended naturally. If the broadcaster

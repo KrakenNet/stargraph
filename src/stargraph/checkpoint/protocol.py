@@ -72,6 +72,13 @@ class RunSummary(BaseModel):
     last_step_at: datetime
     status: Literal["running", "done", "failed", "paused", "cancelled"]
     parent_run_id: str | None
+    #: Terminal failure diagnostics (#68). Populated only on a failed
+    #: terminal state -- ``error_class`` is a coarse discriminator
+    #: (e.g. ``"interrupt_timeout"`` or the exception type name), ``error_cause``
+    #: a short message. ``None`` on the success path. Optional with defaults
+    #: so existing constructors (and persisted rows) stay valid.
+    error_class: str | None = None
+    error_cause: str | None = None
 
 
 class Checkpointer(Protocol):

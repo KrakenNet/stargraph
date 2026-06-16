@@ -53,11 +53,13 @@ FR-85, FR-89; AC-14.4, AC-14.5, AC-14.6, AC-14.9.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 from typing import TYPE_CHECKING, Any, cast
 
 import anyio
+import anyio.lowlevel
 import httpx
 import pytest
 import rfc8785
@@ -73,6 +75,7 @@ from stargraph.nodes.interrupt.interrupt_node import InterruptNodeConfig
 from stargraph.runtime.events import (
     BosunAuditEvent,
     Event,
+    ResultEvent,
     WaitingForInputEvent,
 )
 from stargraph.serve.api import create_app
@@ -269,6 +272,30 @@ async def _drain_bus_to_sink(
             return
 
 
+async def _wait_for_state(
+    run: GraphRun,
+    target: str,
+    *,
+    timeout: float = 5.0,  # noqa: ASYNC109 -- caller wraps in anyio.fail_after
+) -> None:
+    """Poll until ``run.state == target`` (cooperative, checkpoint-yielding).
+
+    Hot-resume (#81): the long-lived drive task parks inside the loop on
+    the interrupt's respond event, so the responder co-task can no longer
+    rely on ``run.start()`` returning at the boundary. It polls the live
+    state lattice instead, yielding via :func:`anyio.lowlevel.checkpoint`
+    so the parked drive keeps the event loop's turn.
+    """
+    deadline = anyio.current_time() + timeout
+    while run.state != target:
+        if anyio.current_time() > deadline:
+            raise TimeoutError(
+                f"run {run.run_id!r} did not reach {target!r} within {timeout}s "
+                f"(state={run.state!r})"
+            )
+        await anyio.lowlevel.checkpoint()
+
+
 # --------------------------------------------------------------------------- #
 # Test 1: InterruptNode -> WaitingForInputEvent + GET state                   #
 # --------------------------------------------------------------------------- #
@@ -308,21 +335,18 @@ async def test_interrupt_node_emits_waiting_for_input(tmp_path: Path) -> None:
     received: list[Event] = []
 
     async def _drive() -> None:
-        await run.start()
+        # Hot-resume (#81): with no respond delivered, ``run.start()`` parks
+        # inside the loop on the interrupt's respond event. The body drains
+        # to the WaitingForInputEvent and then cancels the scope to unwind
+        # this parked drive; the run is left at ``awaiting-input``.
+        with contextlib.suppress(BaseException):
+            await run.start()
 
-    # Drainer stops on the first WaitingForInputEvent so the task group
-    # exits cleanly. The drive task returns when the loop's interrupt
-    # arm fires (cold-restart contract; no resume hook in Phase-1 loop).
     with anyio.fail_after(5.0):
         async with anyio.create_task_group() as tg:
-            tg.start_soon(
-                _drain_bus_to_sink,
-                run,
-                audit_sink,
-                received,
-                WaitingForInputEvent,
-            )
             tg.start_soon(_drive)
+            await _drain_bus_to_sink(run, audit_sink, received, WaitingForInputEvent)
+            tg.cancel_scope.cancel()
 
     # ---- Bus assertions ---------------------------------------------------
     waiting = [ev for ev in received if isinstance(ev, WaitingForInputEvent)]
@@ -412,31 +436,19 @@ async def test_respond_asserts_evidence_and_emits_audit(tmp_path: Path) -> None:
     _audit_sink_var.set(audit_sink)
 
     received: list[Event] = []
-
-    # ---- Phase 1: drive to the interrupt boundary -------------------------
-    async def _drive_to_interrupt() -> None:
-        await run.start()
-
-    with anyio.fail_after(5.0):
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(
-                _drain_bus_to_sink,
-                run,
-                audit_sink,
-                received,
-                WaitingForInputEvent,
-            )
-            tg.start_soon(_drive_to_interrupt)
-
-    assert run.state == "awaiting-input"
-
-    # ---- Phase 2: POST /respond + drain BosunAuditEvent -------------------
     respond_body_box: dict[str, Any] = {}
 
-    async def _drain_respond_audit() -> None:
-        await _drain_bus_to_sink(run, audit_sink, received, stop_on=BosunAuditEvent)
+    # Hot-resume (#81): a single long-lived drive parks at the interrupt and
+    # resumes when ``respond()`` sets the event. ``approval_gate`` is the
+    # last node, so resume runs the loop to its terminal ResultEvent -- the
+    # drainer stops there, capturing the WaitingForInputEvent, the respond
+    # BosunAuditEvent, and the terminal result in one pass. The responder
+    # waits for the ``awaiting-input`` boundary, then POSTs /respond.
+    async def _drive() -> None:
+        await run.start()
 
-    async def _issue_respond() -> None:
+    async def _respond_when_awaiting() -> None:
+        await _wait_for_state(run, "awaiting-input")
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
@@ -448,14 +460,17 @@ async def test_respond_asserts_evidence_and_emits_audit(tmp_path: Path) -> None:
 
     with anyio.fail_after(5.0):
         async with anyio.create_task_group() as tg:
-            tg.start_soon(_drain_respond_audit)
-            tg.start_soon(_issue_respond)
+            tg.start_soon(_drain_bus_to_sink, run, audit_sink, received, ResultEvent)
+            tg.start_soon(_drive)
+            tg.start_soon(_respond_when_awaiting)
 
-    # ---- Assertion: route returned 200 + status="running" ---------------
+    # ---- Assertion: route returned 200 + status running|done ------------
     summary = respond_body_box["body"]
     assert summary["run_id"] == run_id
-    assert summary["status"] == "running", (
-        f"respond should fold state='running' onto status='running'; got {summary!r}"
+    assert summary["status"] in ("running", "done"), (
+        f"respond folds state onto status='running'; under hot-resume the "
+        f"loop may already have reached 'done' by the time the summary is "
+        f"built (race on the post-respond checkpoint yield); got {summary!r}"
     )
 
     # ---- Assertion: stargraph.evidence fact asserted with locked shape -----
@@ -567,26 +582,14 @@ async def test_audit_jsonl_contains_body_hash_not_raw_body(
 
     received: list[Event] = []
 
+    # Hot-resume (#81): single long-lived drive parks at the interrupt and
+    # resumes on respond (see test 2). The drainer stops on the terminal
+    # ResultEvent so the respond BosunAuditEvent is captured + persisted.
     async def _drive() -> None:
         await run.start()
 
-    with anyio.fail_after(5.0):
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(
-                _drain_bus_to_sink,
-                run,
-                audit_sink,
-                received,
-                WaitingForInputEvent,
-            )
-            tg.start_soon(_drive)
-
-    assert run.state == "awaiting-input"
-
-    async def _drain_audit() -> None:
-        await _drain_bus_to_sink(run, audit_sink, received, stop_on=BosunAuditEvent)
-
-    async def _post_respond() -> None:
+    async def _post_respond_when_awaiting() -> None:
+        await _wait_for_state(run, "awaiting-input")
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             r = await client.post(
@@ -597,8 +600,9 @@ async def test_audit_jsonl_contains_body_hash_not_raw_body(
 
     with anyio.fail_after(5.0):
         async with anyio.create_task_group() as tg:
-            tg.start_soon(_drain_audit)
-            tg.start_soon(_post_respond)
+            tg.start_soon(_drain_bus_to_sink, run, audit_sink, received, ResultEvent)
+            tg.start_soon(_drive)
+            tg.start_soon(_post_respond_when_awaiting)
 
     await audit_sink.close()
 
