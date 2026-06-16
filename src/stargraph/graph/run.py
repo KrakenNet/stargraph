@@ -339,9 +339,37 @@ class GraphRun:
         # carries a ``timeout``. The loop races
         # :func:`anyio.move_on_after` against ``self._respond_event.wait()``
         # so the timeout watchdog fires within ±100ms of expiry (NFR-22)
-        # and the respond path stays cooperative. ``timeout=None`` keeps
-        # the legacy cold-restart contract (the loop exits on
-        # ``WaitingForInputEvent`` without consulting this event).
+        # and the respond path stays cooperative. With ``timeout=None`` the
+        # loop waits on this event indefinitely -- hot-resume on the same
+        # live coroutine, no watchdog (#81).
+        self._respond_event = anyio.Event()
+        # Terminal failure diagnostics (#68). Populated by
+        # :func:`stargraph.graph.loop.execute` when the run reaches a failed
+        # terminal state -- ``error_class`` is a coarse discriminator
+        # (``"interrupt_timeout"`` for a HITL timeout-halt, the exception
+        # type name for a node error) and ``error_cause`` is a short message.
+        # Both stay ``None`` on the success path; the loop's terminal
+        # :class:`RunSummary` carries them through to ``runs_history`` so a
+        # failed run records *why* it failed (distinguishing a timeout from
+        # a node error).
+        self.error_class: str | None = None
+        self.error_cause: str | None = None
+
+    def _rearm_respond_gate(self) -> None:
+        """Reset the respond handshake before parking on a fresh interrupt (#81).
+
+        ``anyio.Event`` has no ``clear()``: once :meth:`respond` calls
+        ``.set()`` the event stays set for this run's lifetime. With
+        hot-resume (#81) a single :class:`GraphRun` survives across every
+        interrupt it hits, so without a reset a prior interrupt's set would
+        let the *next* interrupt's ``_respond_event.wait()`` return instantly
+        -- silently skipping the second human pause. The loop calls this
+        immediately *before* flipping ``state`` to ``"awaiting-input"`` for
+        each interrupt. Re-arming before the state flip is race-free:
+        :meth:`respond` is gated on ``state == "awaiting-input"`` (it no-ops
+        otherwise), so a concurrent respond can only ever set the freshly
+        armed event, never a stale one that the loop is about to discard.
+        """
         self._respond_event = anyio.Event()
 
     async def start(self) -> _RunSummary:
@@ -601,13 +629,13 @@ class GraphRun:
         # status="running" per design §9.4 step 5.
         self.state = "running"
 
-        # Step 4: signal the respond-event so a still-live loop iteration
-        # waiting on :class:`~stargraph.ir._models.InterruptAction.timeout`
-        # (task 2.34) wakes up and proceeds. ``anyio.Event.set`` is
-        # idempotent, so spurious sets (e.g. respond after the loop
-        # already exited cold) are harmless. Cold-restart resume paths
-        # (no live wait inside ``_HitInterrupt`` because ``timeout=None``)
-        # never consult this event, so the legacy contract is preserved.
+        # Step 4: signal the respond-event so the parked loop iteration
+        # inside the ``_HitInterrupt`` arm wakes up and advances past the
+        # interrupt node. Both timeout shapes wait on this event now
+        # (hot-resume, #81): ``timeout=None`` waits indefinitely; a finite
+        # ``timeout`` races a watchdog against it. ``anyio.Event.set`` is
+        # idempotent, so a spurious set (e.g. respond racing a watchdog
+        # that already fired, or a loop that already exited) is harmless.
         self._respond_event.set()
 
     async def stream(self) -> AsyncIterator[Event]:

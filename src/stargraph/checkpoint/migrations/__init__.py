@@ -16,7 +16,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from stargraph.checkpoint.migrations import _m001_initial, _m002_run_history
+from stargraph.checkpoint.migrations import (
+    _m001_initial,
+    _m002_run_history,
+    _m003_run_error_cols,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -45,5 +49,10 @@ MIGRATIONS: list[Migration] = [
         version=2,
         description="create runs_history + pending_runs (serve layer)",
         up=_m002_run_history.up,
+    ),
+    Migration(
+        version=3,
+        description="add runs_history.error_class + error_cause (#68)",
+        up=_m003_run_error_cols.up,
     ),
 ]

@@ -156,11 +156,14 @@ def test_cf_prefix_detection_on_run_summary() -> None:
 
 
 # ---------------------------------------------------------------------------
-# RunSummary -- 6 fields, status enum
+# RunSummary -- 6 core fields + 2 optional failure-diagnostic fields, status enum
 # ---------------------------------------------------------------------------
 
 
-def test_run_summary_has_six_fields() -> None:
+def test_run_summary_has_expected_fields() -> None:
+    # Six core inspect/CLI fields plus the two optional terminal-failure
+    # diagnostics (#68): ``error_class`` / ``error_cause`` default to ``None``
+    # so existing constructors and persisted rows stay valid.
     assert set(RunSummary.model_fields.keys()) == {
         "run_id",
         "graph_hash",
@@ -168,7 +171,23 @@ def test_run_summary_has_six_fields() -> None:
         "last_step_at",
         "status",
         "parent_run_id",
+        "error_class",
+        "error_cause",
     }
+
+
+def test_run_summary_failure_fields_default_to_none() -> None:
+    now = datetime.now(UTC)
+    rs = RunSummary(
+        run_id="r",
+        graph_hash="a" * 64,
+        started_at=now,
+        last_step_at=now,
+        status="done",
+        parent_run_id=None,
+    )
+    assert rs.error_class is None
+    assert rs.error_cause is None
 
 
 def test_run_summary_status_enum_rejects_unknown() -> None:

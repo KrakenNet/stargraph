@@ -25,7 +25,7 @@ This is the **Phase 1 POC gate**. Failure here halts Phase 2 entry per
 The 6 variants, mapped to test invocations:
 
 * :class:`WaitingForInputEvent` -- Run A (interrupt boundary).
-* :class:`ArtifactWrittenEvent` -- Run A (resume tail's writer node).
+* :class:`ArtifactWrittenEvent` -- Run A (writer node, post-respond resume).
 * :class:`BosunAuditEvent` -- Run A (``GraphRun.respond()`` step 2;
   commit a680374, task 1.7).
 * :class:`RunPausedEvent` -- Run B (long-running stub graph + HTTP pause;
@@ -33,11 +33,13 @@ The 6 variants, mapped to test invocations:
 * :class:`RunCancelledEvent` -- Run C (long-running stub graph + HTTP
   cancel; fixture mirrors task 1.31).
 * :class:`InterruptTimeoutEvent` -- Run D, **synthesized** directly into
-  the audit sink. Engine-level interrupt-timeout enforcement is deferred
-  to Phase 2 (task 1.11's resume hook is not wired in the loop). The
-  POC milestone is "all 6 variants are producible and serializable
-  end-to-end through the engine + audit sink"; synthesis with
-  documented context is acceptable per the task callout.
+  the audit sink. Engine-level enforcement now lands in the loop
+  (:func:`stargraph.graph.loop._await_respond_or_timeout` emits the event
+  when the watchdog wins; #81), and its timer behaviour is covered by
+  :mod:`tests.integration.test_interrupt_timeout`. This aggregate
+  milestone asserts serialization, not timer precision, so Run D keeps
+  the direct synthesis to stay timing-free; the variant's
+  ``TypeAdapter[Event]`` round-trip is identical either way.
 
 The single :class:`JSONLAuditSink` ingests every event from every run.
 The terminal assertion reads the JSONL back, decodes each line, and
@@ -224,6 +226,28 @@ async def _wait_for_running(
         await anyio.lowlevel.checkpoint()
 
 
+async def _wait_for_state(
+    run: GraphRun,
+    target: str,
+    *,
+    timeout: float = 5.0,  # noqa: ASYNC109 -- anyio.fail_after wraps the call site
+) -> None:
+    """Poll until ``run.state == target`` (hot-resume responder helper, #81).
+
+    The long-lived drive parks inside the loop on the interrupt's respond
+    event, so the responder co-task polls the live state lattice instead of
+    waiting for ``run.start()`` to return at the boundary.
+    """
+    deadline = anyio.current_time() + timeout
+    while run.state != target:
+        if anyio.current_time() > deadline:
+            raise TimeoutError(
+                f"run {run.run_id!r} did not reach {target!r} within {timeout}s "
+                f"(state={run.state!r})"
+            )
+        await anyio.lowlevel.checkpoint()
+
+
 async def _drain_to_sink(
     run: GraphRun,
     sink: JSONLAuditSink,
@@ -261,12 +285,14 @@ async def _run_a_interrupt_respond_write(
 ) -> dict[str, Any]:
     """Run A -- emits ``WaitingForInputEvent`` + ``BosunAuditEvent`` + ``ArtifactWrittenEvent``.
 
-    Mirrors task 1.30's three-phase fixture: drive the 3-node graph to
-    the interrupt boundary, hit ``POST /respond`` (which emits a
-    :class:`BosunAuditEvent` from :meth:`GraphRun.respond` step 2), then
-    drive a fresh ``[passthrough, writer]`` tail run for the
-    :class:`ArtifactWrittenEvent`. Resume is cold-restart only (task 1.30
-    docstring); the in-process resume hook is not yet wired.
+    Hot-resume (#81): drive the 3-node graph (approval_gate -> passthrough
+    -> writer) on a single live coroutine. ``run.start()`` parks at the
+    interrupt; ``POST /respond`` (emitting a :class:`BosunAuditEvent` from
+    :meth:`GraphRun.respond` step 2) wakes the same coroutine, which
+    advances through ``passthrough`` and ``writer`` (emitting the
+    :class:`ArtifactWrittenEvent`) to a terminal :class:`ResultEvent`. All
+    three Run-A variants land in one end-to-end drive -- no synthetic tail
+    run, because the loop now resumes past the interrupt in-process.
     """
     checkpointer = SQLiteCheckpointer(tmp_path / "runA.sqlite")
     await checkpointer.bootstrap()
@@ -294,37 +320,18 @@ async def _run_a_interrupt_respond_write(
 
     received: list[Event] = []
 
-    async def _drive_to_interrupt() -> None:
+    # Hot-resume (#81): the 3-node graph (approval_gate -> passthrough ->
+    # writer) runs on a single live coroutine. ``run.start()`` parks at the
+    # interrupt; the responder POSTs /respond once the run reaches
+    # ``awaiting-input``; the loop then advances through ``passthrough`` and
+    # ``writer`` (emitting ArtifactWrittenEvent) to a terminal ResultEvent.
+    # One drive yields all three Run-A variants in a single pass:
+    # WaitingForInputEvent, BosunAuditEvent (respond), ArtifactWrittenEvent.
+    async def _drive() -> None:
         await run.start()
 
-    # Drainer stops on first ``WaitingForInputEvent`` so the surrounding
-    # task group exits cleanly without polling. The drive task's
-    # ``run.start()`` returns when the loop's ``_HitInterrupt`` arm fires;
-    # the drainer's stop-on-match return ends the task group naturally.
-    with anyio.fail_after(5.0):
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(
-                _drain_to_sink,
-                run,
-                sink,
-                received,
-                WaitingForInputEvent,
-            )
-            tg.start_soon(_drive_to_interrupt)
-
-    assert any(isinstance(ev, WaitingForInputEvent) for ev in received), (
-        f"Run A: expected WaitingForInputEvent in pre-respond stream; got "
-        f"{[type(e).__name__ for e in received]!r}"
-    )
-    assert run.state == "awaiting-input"
-
-    # --- Phase 2: POST /respond -- emits BosunAuditEvent on the bus -------
-    async def _drain_respond_audit() -> None:
-        # The bus is still open; the respond emission lands here.
-        # Stop on first BosunAuditEvent.
-        await _drain_to_sink(run, sink, received, stop_on=BosunAuditEvent)
-
-    async def _issue_respond() -> None:
+    async def _respond_when_awaiting() -> None:
+        await _wait_for_state(run, "awaiting-input")
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
@@ -335,69 +342,26 @@ async def _run_a_interrupt_respond_write(
             f"Run A respond: {response.status_code} body={response.text!r}"
         )
 
-    with anyio.fail_after(5.0):
+    with anyio.fail_after(10.0):
         async with anyio.create_task_group() as tg:
-            tg.start_soon(_drain_respond_audit)
-            tg.start_soon(_issue_respond)
+            tg.start_soon(_drain_to_sink, run, sink, received, ResultEvent)
+            tg.start_soon(_drive)
+            tg.start_soon(_respond_when_awaiting)
 
+    assert any(isinstance(ev, WaitingForInputEvent) for ev in received), (
+        f"Run A: expected WaitingForInputEvent in stream; got "
+        f"{[type(e).__name__ for e in received]!r}"
+    )
     assert any(isinstance(ev, BosunAuditEvent) for ev in received), (
         f"Run A: expected BosunAuditEvent post-respond; got "
         f"{[type(e).__name__ for e in received]!r}"
     )
-
-    # --- Phase 3: drive the post-respond resume tail (writer) -------------
-    tail_ir = IRDocument(
-        ir_version="1.0.0",
-        id="run:poc-milestone-runA-tail",
-        nodes=[
-            NodeSpec(id="passthrough", kind="passthrough"),
-            NodeSpec(id="writer", kind="write_artifact"),
-        ],
-        state_schema={"content_to_write": "bytes"},
-    )
-    tail_graph = Graph(tail_ir)
-    tail_run = GraphRun(
-        run_id="poc-milestone-runA-tail",
-        graph=tail_graph,
-        initial_state=tail_graph.state_schema(content_to_write=b"hello milestone"),
-        node_registry={
-            "passthrough": _PassthroughNode(),
-            "writer": WriteArtifactNode(
-                config=WriteArtifactNodeConfig(
-                    content_field="content_to_write",
-                    name="milestone.txt",
-                    content_type="text/plain",
-                ),
-            ),
-        },
-        checkpointer=checkpointer,
-    )
-    _attach_write_context(tail_run, artifact_store=artifact_store)
-
-    tail_received: list[Event] = []
-
-    async def _drive_tail() -> None:
-        await tail_run.start()
-
-    # Drainer stops on terminal ResultEvent (writer node emits one); the
-    # drive task returns when the loop's natural-completion arm fires.
-    with anyio.fail_after(5.0):
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(
-                _drain_to_sink,
-                tail_run,
-                sink,
-                tail_received,
-                ResultEvent,
-            )
-            tg.start_soon(_drive_tail)
-
-    assert any(isinstance(ev, ArtifactWrittenEvent) for ev in tail_received), (
-        f"Run A tail: expected ArtifactWrittenEvent; got "
-        f"{[type(e).__name__ for e in tail_received]!r}"
+    assert any(isinstance(ev, ArtifactWrittenEvent) for ev in received), (
+        f"Run A: expected ArtifactWrittenEvent after hot-resume past the "
+        f"interrupt; got {[type(e).__name__ for e in received]!r}"
     )
 
-    return {"received": received + tail_received}
+    return {"received": received}
 
 
 # --------------------------------------------------------------------------- #
@@ -541,20 +505,20 @@ async def _run_d_synthesize_interrupt_timeout(
 ) -> None:
     """Run D -- synthesize :class:`InterruptTimeoutEvent` directly into the sink.
 
-    **Honest synthesis**: engine-level interrupt-timeout enforcement
-    (firing the event when ``InterruptAction.timeout`` elapses without a
-    :meth:`respond` call) is **deferred to Phase 2**. The loop's resume
-    hook (task 1.11) is not yet wired -- the cold-restart path raises
-    ``_HitInterrupt`` and exits, so there is no in-loop timer to enforce.
+    Engine-level interrupt-timeout enforcement now lands in the loop:
+    :func:`stargraph.graph.loop._await_respond_or_timeout` races the
+    ``InterruptAction.timeout`` watchdog against the respond event and
+    emits :class:`InterruptTimeoutEvent` when the timer wins (#81). Its
+    timer behaviour (±100ms precision, ``halt`` / ``goto`` policy) is
+    covered by :mod:`tests.integration.test_interrupt_timeout`.
 
-    The POC milestone bar is "all 6 variants are producible and
-    serializable end-to-end through the engine + audit sink". A directly
-    constructed :class:`InterruptTimeoutEvent` written through
-    :meth:`JSONLAuditSink.write` proves that the
-    ``TypeAdapter[Event]`` dispatch handles the variant identically to
-    the loop-emitted ones (same Pydantic union, same JSON shape).
-    Loop-level enforcement lands as a Phase 2 task (filed against the
-    task 1.11 follow-up).
+    This aggregate milestone asserts "all 6 variants are producible and
+    serializable end-to-end through the engine + audit sink" -- not timer
+    precision -- so Run D keeps the direct synthesis to stay timing-free.
+    A directly constructed :class:`InterruptTimeoutEvent` written through
+    :meth:`JSONLAuditSink.write` proves the ``TypeAdapter[Event]`` dispatch
+    handles the variant identically to the loop-emitted ones (same
+    Pydantic union, same JSON shape).
     """
     ev = InterruptTimeoutEvent(
         run_id="poc-milestone-runD-synth",

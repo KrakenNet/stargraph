@@ -100,6 +100,153 @@ __all__ = [
 ]
 
 
+class EnqueueHandle(NamedTuple):
+    """Result of :meth:`Scheduler.enqueue`: ``(run_id, future)``.
+
+    ``run_id`` is the canonical id derived from
+    ``(graph_id, idempotency_key)``; callers need it synchronously to
+    return / persist the run handle. ``future`` resolves to the
+    terminal :class:`RunSummary` -- most production callers discard
+    it and retrieve the run via ``GET /v1/runs/{run_id}``.
+    """
+
+    run_id: str
+    future: asyncio.Future[RunSummary]
+
+
+#: Default per-``graph_hash`` concurrency limit. The IR has no
+#: ``concurrency_limit`` field yet (design §6.2 expects one); ``1`` keeps
+#: per-graph runs sequential -- safe POC default. Phase 2 reads
+#: ``graph.concurrency_limit`` from the parent IR (task 2.22+).
+_DEFAULT_GRAPH_CONCURRENCY = 1
+
+#: Cron-loop polling interval. NFR-3 mandates ±100ms scheduler precision;
+#: 50ms gives a 2x margin so the worst-case "fire missed by one tick"
+#: case still lands well inside the budget.
+_CRON_POLL_INTERVAL_S = 0.05
+
+#: Non-terminal lifecycle states. A clean return from ``_run_one`` means
+#: the run finished (``run.start()`` only returns at a terminal state), so a
+#: summary still carrying one of these is a run-loop edge case: the history
+#: projection coerces it to ``"done"`` rather than persisting a finished run
+#: as ``"running"``/``"pending"`` with a finish timestamp -- a row the UI
+#: reads as forever-running and cannot pause or cancel (#65). The primary
+#: source of such rows (the pre-#81 HITL ``timeout=None`` arm that returned
+#: ``"running"``) is gone now that the park resumes hot (#81); this guard
+#: keeps the projection correct regardless of future edge cases.
+#: ``"paused"`` is intentionally NOT included: a clean ``"paused"`` return is
+#: a legitimate alive-but-parked run, not a finished one to coerce.
+_NON_TERMINAL_STATUSES = frozenset({"pending", "running", "awaiting-input"})
+
+
+class PendingRun:
+    """Single durable pending-run row (design §6.1).
+
+    Carries the trigger payload (``graph_id`` + ``params``) plus the
+    idempotency key used to dedupe across restarts (cron:
+    ``sha256(trigger_id || scheduled_fire)``; webhook:
+    ``sha256(trigger_id || body_hash)``; manual: caller-supplied UUID).
+
+    A pending row is inserted before the in-memory queue push and removed
+    on terminal state (success or failure); restart loads remaining rows
+    and re-pushes them onto the queue so in-flight work survives a
+    process kill. The ``run_id`` is assigned at enqueue time so the
+    Checkpointer's ``runs`` row (task 2.14) can reference it directly.
+
+    Attributes:
+        run_id: Stable identifier for this run; format depends on the
+            trigger source. Cron uses ``cron-{trigger_id}-{iso_fire}``;
+            webhook uses ``webhook-{trigger_id}-{body_sha8}``; manual
+            uses ``manual-{idempotency_key[:12]}``. Formatting is the
+            scheduler's responsibility -- callers don't construct it.
+        graph_id: Target graph hash / id; doubles as the
+            ``graph_hash`` key for the :class:`anyio.CapacityLimiter`
+            map (design §6.2 expects ``graph.concurrency_limit`` once
+            the IR field lands).
+        params: JSON-serializable parameter dict forwarded to the run.
+        idempotency_key: Pre-computed dedup key per design §6.1.
+        scheduled_fire: Wall-clock instant the trigger fired (cron) or
+            was received (webhook/manual). Used by the catchup probe in
+            :meth:`Scheduler.replay_pending`.
+    """
+
+    __slots__ = (
+        "graph_id",
+        "idempotency_key",
+        "params",
+        "run_id",
+        "scheduled_fire",
+    )
+
+    def __init__(
+        self,
+        *,
+        run_id: str,
+        graph_id: str,
+        params: Mapping[str, Any],
+        idempotency_key: str,
+        scheduled_fire: datetime,
+    ) -> None:
+        self.run_id = run_id
+        self.graph_id = graph_id
+        self.params = params
+        self.idempotency_key = idempotency_key
+        self.scheduled_fire = scheduled_fire
+
+
+@runtime_checkable
+class PendingStore(Protocol):
+    """Durable pending-run state contract (design §6.1, §6.2).
+
+    Defined locally so the scheduler can accept a checkpointer-shaped
+    object without forcing the v1 :class:`stargraph.checkpoint.Checkpointer`
+    Protocol to grow scheduler-specific methods. A SQLite implementation
+    lands in task 2.14 alongside the ``runs`` table; until then the
+    scheduler accepts ``pending_store=None`` and degrades to in-memory.
+
+    The contract is intentionally narrow -- four async methods, no
+    transactional guarantees beyond per-call durability. The scheduler
+    handles dedupe (idempotency key uniqueness) and crash-recovery
+    (replay on startup).
+    """
+
+    async def put_pending(self, run: PendingRun) -> None:
+        """Persist ``run`` so it survives a process restart."""
+        ...
+
+    async def delete_pending(self, run_id: str) -> None:
+        """Remove the pending row for ``run_id`` (terminal state reached)."""
+        ...
+
+    async def list_pending(self) -> list[PendingRun]:
+        """Return all pending rows (used at startup for replay)."""
+        ...
+
+    async def has_pending_for_key(self, idempotency_key: str) -> bool:
+        """Return ``True`` if a pending row already exists for ``idempotency_key``."""
+        ...
+
+
+class QueueItem:
+    """Single enqueued unit of work (in-memory queue row).
+
+    Pairs a :class:`PendingRun` with the caller's awaiting
+    :class:`asyncio.Future`. The dispatcher resolves the future on
+    success or sets the worker's exception on failure.
+    """
+
+    __slots__ = ("future", "pending")
+
+    def __init__(
+        self,
+        *,
+        pending: PendingRun,
+        future: asyncio.Future[RunSummary],
+    ) -> None:
+        self.pending = pending
+        self.future = future
+
+
 class Scheduler:
     """Async cron loop + per-``graph_hash`` concurrency + durable pending state.
 
@@ -525,9 +672,16 @@ class Scheduler:
                 if not item.future.done():
                     item.future.set_exception(exc)
                 # Terminal: clear the pending row + record failure
-                # even on exception.
+                # even on exception. Thread the exception type + message
+                # into history so a node error is distinguishable from a
+                # HITL timeout downstream (#68).
                 await self._clear_pending(item.pending.run_id)
-                await self._record_history_terminal(item.pending.run_id, status="error")
+                await self._record_history_terminal(
+                    item.pending.run_id,
+                    status="error",
+                    error_class=type(exc).__name__,
+                    error_cause=str(exc),
+                )
                 # Re-raise CancelledError so the task group sees the
                 # cancel; other exceptions are isolated per-item (one
                 # bad run does not tear down the dispatcher).
@@ -540,8 +694,38 @@ class Scheduler:
         # released by the ``async with`` exit above. Pending row removal
         # happens after the limiter release so the next same-graph run
         # can begin promptly.
+        #
+        # #65: a clean return from ``_run_one`` means the run finished --
+        # ``run.start()`` only returns once the loop reaches a terminal
+        # state. If the summary still carries a non-terminal status (a
+        # run-loop edge case -- e.g. the pre-#81 HITL ``timeout=None`` arm
+        # that returned ``"running"``), coerce it to ``"done"`` for the
+        # durable projection: a finished run must never persist as
+        # ``"running"``/``"pending"`` with a finish timestamp, which
+        # ``GET /v1/runs`` reads as forever-running and the lifecycle
+        # routes answer ``409`` (the in-memory run is terminal). The
+        # caller's future still carries the raw loop summary; only the
+        # history projection is corrected.
+        terminal_status = summary.status
+        if terminal_status in _NON_TERMINAL_STATUSES:
+            _logger.warning(
+                "Run %s returned non-terminal status %r from a clean completion; "
+                "coercing to 'done' for the runs_history projection (#65)",
+                item.pending.run_id,
+                terminal_status,
+            )
+            terminal_status = "done"
         await self._clear_pending(item.pending.run_id)
-        await self._record_history_terminal(item.pending.run_id, status=summary.status)
+        # Carry the loop's terminal failure diagnostics (#68): a clean
+        # ``status="failed"`` return (e.g. an interrupt-timeout-halt) sets
+        # ``summary.error_class``/``error_cause`` even though no exception
+        # propagated, so the history row records *why* it failed.
+        await self._record_history_terminal(
+            item.pending.run_id,
+            status=terminal_status,
+            error_class=summary.error_class,
+            error_cause=summary.error_cause,
+        )
 
     async def _run_one(self, item: QueueItem) -> RunSummary:
         """Drive one run to completion.
@@ -775,8 +959,19 @@ class Scheduler:
                 run_id,
             )
 
-    async def _record_history_terminal(self, run_id: str, *, status: str) -> None:
-        """Update ``runs_history`` on terminal state with finished_at + duration_ms."""
+    async def _record_history_terminal(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        error_class: str | None = None,
+        error_cause: str | None = None,
+    ) -> None:
+        """Update ``runs_history`` on terminal state with finished_at + duration_ms.
+
+        On the failure path ``error_class``/``error_cause`` carry the
+        diagnostic (#68) so the persisted row records *why* the run failed.
+        """
         if self._run_history is None:
             self._enqueue_started_at.pop(run_id, None)
             return
@@ -791,6 +986,8 @@ class Scheduler:
                 status,
                 finished_at=finished,
                 duration_ms=duration_ms,
+                error_class=error_class,
+                error_cause=error_cause,
             )
         except Exception:  # pragma: no cover - defensive
             _logger.exception(

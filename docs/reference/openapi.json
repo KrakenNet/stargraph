@@ -2118,6 +2118,30 @@
       "RunSummary": {
         "description": "Lightweight run-level row returned by ``Checkpointer.list_runs``.",
         "properties": {
+          "error_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Cause"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Class"
+          },
           "graph_hash": {
             "title": "Graph Hash",
             "type": "string"
@@ -2298,6 +2322,28 @@
               }
             ],
             "title": "Duration Ms"
+          },
+          "error_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Cause"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Class"
           },
           "finished_at": {
             "anyOf": [
