@@ -224,4 +224,7 @@ def _summarize(run: GraphRun) -> RunSummary:
         last_step_at=now,
         status=status_mapped,  # pyright: ignore[reportArgumentType]
         parent_run_id=run.parent_run_id,
+        # #68: surface the terminal failure reason on the run-detail view.
+        error_class=run.error_class,
+        error_cause=run.error_cause,
     )

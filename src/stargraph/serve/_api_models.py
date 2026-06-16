@@ -87,6 +87,12 @@ class _RunSummaryItem(BaseModel):
     finished_at: datetime | None = None
     duration_ms: int | None = None
     parent_run_id: str | None = None
+    #: Terminal failure diagnostics (#68), mirrored straight off the
+    #: ``runs_history`` row. ``error_class`` is a coarse discriminator
+    #: (``"interrupt_timeout"`` or the node exception type name),
+    #: ``error_cause`` a short message. ``None`` on the success path.
+    error_class: str | None = None
+    error_cause: str | None = None
 
 
 class _RunsPage(BaseModel):
