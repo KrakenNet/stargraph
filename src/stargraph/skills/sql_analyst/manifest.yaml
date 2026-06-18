@@ -1,0 +1,9 @@
+id: stargraph.skills.sql_analyst
+version: "0.1.0"
+kind: agent
+description: |
+  SQL Analyst — answer a natural-language question over structured data by
+  generating SQL, running it, and repairing from the last error in a bounded
+  loop. An agent: the declared output channels are `query`, `rows`, `answer`,
+  `error`, `attempts`, and `succeeded`.
+state_schema: stargraph.skills.sql_analyst.state:SqlAnalystState

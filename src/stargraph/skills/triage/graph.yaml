@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Triage IR — an incoming item → a category + route decision.
+#
+# Single-node workflow; runs under plain `stargraph run` (linear, no graph-level
+# rules — the rule pack lives inside the node):
+#
+#   triage  (assert signals + keywords as facts, fire rules, read the decision)
+#
+# Run:
+#   stargraph run src/stargraph/skills/triage/graph.yaml \
+#     -i subject="Suspicious login from new device" \
+#     -i body="EDR flagged a credential-stuffing attempt" \
+#     -i signals='{"severity":"high","source":"edr"}'
+ir_version: "1.0.0"
+id: "graph:triage"
+state_class: "stargraph.skills.triage.state:TriageState"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.triage.nodes.triage:Triage"
+rules: []

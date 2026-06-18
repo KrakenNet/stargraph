@@ -1,0 +1,9 @@
+id: stargraph.skills.approval
+version: "0.1.0"
+kind: workflow
+description: |
+  Approval — gate a proposed side-effecting action behind an optional policy
+  pre-approval and a human verdict. A fixed-topology workflow (no LLM): the
+  declared output channels are `status`, `approved`, `decided_by`, and
+  `reason`.
+state_schema: stargraph.skills.approval.state:ApprovalState
