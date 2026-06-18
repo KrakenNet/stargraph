@@ -66,5 +66,3 @@ uv run pytest tests/integration/<name>/ -q
   CLIPS-rule routing), `sql_analyst` (agent, NL→query→repair), `digest`
   (workflow, map-reduce summary). The `pii_guard` plugin example lives under
   `src/stargraph/plugins/`.
-- `ai_builder/` — incomplete Phase-A router scaffold (no tests, not registered;
-  finish-or-remove candidate).
