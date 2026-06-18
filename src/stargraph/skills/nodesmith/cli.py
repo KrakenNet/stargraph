@@ -239,7 +239,7 @@ def trainset_rm(ref: str = typer.Argument(...)) -> None:
 
 @app.command()
 def tui() -> None:
-    """Launch the interactive Textual trainset curator."""
+    """Launch the interactive Textual console (Generate / Curate / Doctor / Stats)."""
     try:
         from stargraph.skills.nodesmith.tui import run_tui
     except ModuleNotFoundError:

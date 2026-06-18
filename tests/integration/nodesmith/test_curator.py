@@ -10,20 +10,37 @@ apply to a terminal UI; Textual's own headless driver is the equivalent.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import click
 import pytest
+from textual.widgets import DataTable, Input, TabbedContent
 from typer.testing import CliRunner
 
 from stargraph.skills.nodesmith import _ledger
 from stargraph.skills.nodesmith._doctor import healthy, run_doctor
 from stargraph.skills.nodesmith.cli import app
+from stargraph.skills.nodesmith.nodes import build as build_mod
 from stargraph.skills.nodesmith.seeds import SEEDS
-from stargraph.skills.nodesmith.tui import TrainsetTUI
+from stargraph.skills.nodesmith.tui import NodesmithTUI
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+class _StubProgram:
+    """Stand-in for ``NodeProgram`` — returns a known-good pair, no LLM."""
+
+    _KEYS = ("class_name", "reads", "writes", "fixture", "node_source", "test_source")
+
+    def __init__(self, *_a: object, **_k: object) -> None:
+        self._pair = SEEDS[0]
+
+    def generate(
+        self, _brief: str, _lessons: list[str], _findings: list[dict[str, object]]
+    ) -> dict[str, object]:
+        return {k: self._pair[k] for k in self._KEYS}
+
 
 pytestmark = pytest.mark.integration
 
@@ -148,8 +165,10 @@ def test_cli_edit_rejects_a_broken_fix(monkeypatch: pytest.MonkeyPatch) -> None:
 # TUI journey (Textual headless Pilot)
 # --------------------------------------------------------------------------- #
 async def test_tui_seeds_then_labels() -> None:
-    app_ = TrainsetTUI()
+    app_ = NodesmithTUI()
     async with app_.run_test() as pilot:
+        await pilot.pause()
+        app_.query_one(TabbedContent).active = "curate"
         await pilot.pause()
         await pilot.press("s")  # load seeds
         await pilot.pause()
@@ -167,8 +186,10 @@ async def test_tui_edit_to_gold(monkeypatch: pytest.MonkeyPatch) -> None:
     buf = f"{fixed_node}\n{_MARKER}\n{row['test_source']}"
     monkeypatch.setattr(click, "edit", _editor_returning(buf))
 
-    app_ = TrainsetTUI()
+    app_ = NodesmithTUI()
     async with app_.run_test() as pilot:
+        await pilot.pause()
+        app_.query_one(TabbedContent).active = "curate"
         await pilot.pause()
         await pilot.press("e")
         await pilot.pause()
@@ -176,3 +197,49 @@ async def test_tui_edit_to_gold(monkeypatch: pytest.MonkeyPatch) -> None:
     assert after is not None
     assert after["source"] == _ledger.SOURCE_EDITED
     assert "# tui edited" in after["node_source"]
+
+
+async def test_tui_generate_records_a_gate_passing_pair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Generate tab drives the real generate→gate→record loop (LLM stubbed)."""
+    monkeypatch.setattr(build_mod, "NodeProgram", _StubProgram)
+
+    app_ = NodesmithTUI()
+    async with app_.run_test() as pilot:
+        await pilot.pause()
+        app_.query_one("#brief", Input).value = "a node that bands severity"
+        await pilot.click("#gen-btn")
+        await cast("Any", app_.workers).wait_for_complete()
+        await pilot.pause()
+        generated = [r for r in _ledger.load_trainset() if r.get("source") == "generated"]
+        assert len(generated) == 1
+        assert generated[0]["verdict"] is None  # recorded, unreviewed
+        # accept the just-generated pair from the Generate tab
+        await pilot.click("#gen-accept")
+        await pilot.pause()
+    after = next(r for r in _ledger.load_trainset() if r.get("source") == "generated")
+    assert after["verdict"] == "accept"
+
+
+async def test_tui_doctor_tab_runs_checks() -> None:
+    app_ = NodesmithTUI()
+    async with app_.run_test() as pilot:
+        await pilot.pause()
+        app_.action_tab("doctor")
+        await cast("Any", app_.workers).wait_for_complete()
+        await pilot.pause()
+        rows = cast("DataTable[Any]", app_.query_one("#doctor-rows", DataTable))
+        assert rows.row_count == len(run_doctor())
+        assert "healthy" in app_._doctor_text  # pyright: ignore[reportPrivateUsage]
+
+
+async def test_tui_stats_tab_reports_counts() -> None:
+    _ledger.seed_trainset(SEEDS)
+    app_ = NodesmithTUI()
+    async with app_.run_test() as pilot:
+        await pilot.pause()
+        app_.action_tab("stats")
+        await pilot.pause()
+        assert f"total: {len(SEEDS)}" in app_._stats_text  # pyright: ignore[reportPrivateUsage]
+        assert "drift" in app_._stats_text  # pyright: ignore[reportPrivateUsage]

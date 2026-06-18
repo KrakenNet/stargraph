@@ -16,7 +16,9 @@ The **trainset is the substrate both loops + RAG/fine-tune feed on**, so it is
 curatable: the `nodesmith` CLI + a Textual TUI let a human review each generated
 pair and attach an accept/reject verdict (both feed the set), or edit-to-gold a
 node (fix it, re-gate it, store the fix as a positive). Hand-verified seeds give
-it a cold start.
+it a cold start. The TUI is the full console — *use* (Generate: run the
+generate→gate→repair loop from a brief) **and** *tweak* (Curate / Doctor /
+Stats) — not just the labeler.
 
 ## Ownership
 
@@ -49,8 +51,10 @@ optimizer — keep it that way so the optimization metric == the ship criterion.
   `build_edit_buffer`, `apply_edit`, `short_id`) shared by CLI + TUI; front-ends
   differ only in how they open `$EDITOR` and report results.
 - `cli.py` (`nodesmith` console script) — `doctor`, `seed`, `make`, and
-  `trainset {list,show,stats,label,edit,rm}`. `tui.py` is the same curation,
-  interactive (Textual; optional `nodesmith` extra).
+  `trainset {list,show,stats,label,edit,rm}`. `tui.py` (`NodesmithTUI`, Textual,
+  optional `nodesmith` extra) is the interactive console: a **Generate** tab
+  drives the same `make` loop (LLM behind `Build._program`, run in a Textual
+  worker), plus **Curate** / **Doctor** / **Stats** tabs. `run_tui()` launches it.
 - `_doctor.py::run_doctor` — preflight that proves the toolchain (python, pytest,
   ruff, write, dspy) and runs a probe node through the gate end-to-end.
 - Graph order is linear (`graph.yaml`, `rules: []`): triage → recall → build →
@@ -94,7 +98,7 @@ uv run nodesmith make "<brief>" --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs
 uv run nodesmith trainset list|stats    # review
 uv run nodesmith trainset label <id> --accept|--reject [--reason ...]
 uv run nodesmith trainset edit <id>     # edit-to-gold ($EDITOR, re-gated)
-uv run nodesmith tui                    # all of the above, interactive
+uv run nodesmith tui                    # console: Generate | Curate | Doctor | Stats
 ```
 
 Idea-2 ops (no LLM needed for drift):
