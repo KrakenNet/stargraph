@@ -92,13 +92,6 @@ BAD_GEN: dict[str, Any] = {
 }
 
 
-@pytest.fixture(autouse=True)
-def _isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:  # pyright: ignore[reportUnusedFunction]
-    home = tmp_path / "nm"
-    monkeypatch.setenv("NODESMITH_HOME", str(home))
-    return home
-
-
 def _stub_build(gen: dict[str, Any]) -> Build:
     b = Build()
     b._program.generate = lambda brief, lessons, last_findings: gen  # type: ignore[assignment]

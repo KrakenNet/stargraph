@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -283,3 +284,23 @@ def all_passed(results: list[VerifierResult]) -> bool:
     by_kind = {r.kind: r for r in results}
     needed = {"static", "contract", "tests"}
     return needed.issubset(by_kind) and all(by_kind[k].passed for k in needed)
+
+
+def verify_sources(
+    node_source: str,
+    test_source: str,
+    *,
+    reads: list[str],
+    writes: list[str],
+    fixture: dict[str, Any],
+) -> tuple[bool, list[VerifierResult]]:
+    """Run the full gate on raw source in a throwaway temp dir.
+
+    The convenience entry point for callers that hold source strings rather
+    than a work dir — edit-to-gold, ``nodesmith make``, the doctor preflight,
+    and seed verification. Returns ``(passed, results)``.
+    """
+    files = {NODE_FILE: node_source, TEST_FILE: test_source}
+    with tempfile.TemporaryDirectory(prefix="nodesmith-verify-") as d:
+        results = run_full_gate(Path(d), files, reads=reads, writes=writes, fixture=fixture)
+    return all_passed(results), results

@@ -22,6 +22,12 @@ from stargraph.skills.nodesmith import _ledger
 INPUT_FIELDS = ("brief", "lessons", "last_findings")
 
 
+def configure_lm(url: str, model: str, key: str = "placeholder") -> None:
+    """Point DSPy at an OpenAI-compatible endpoint (e.g. Ollama). Shared by the
+    ``nodesmith make`` CLI and the offline optimizer so the wiring is identical."""
+    dspy.configure(lm=dspy.LM(f"openai/{model}", api_base=url, api_key=key))  # pyright: ignore[reportUnknownMemberType]
+
+
 class NodeSignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]
     """Write one Stargraph node and a pytest test for it, from a brief.
 

@@ -37,13 +37,9 @@ import dspy  # pyright: ignore[reportMissingTypeStubs]
 
 from stargraph.skills.nodesmith import _ledger
 from stargraph.skills.nodesmith.gate import all_passed, run_full_gate
-from stargraph.skills.nodesmith.program import INPUT_FIELDS, NodeProgram, coerce
+from stargraph.skills.nodesmith.program import INPUT_FIELDS, NodeProgram, coerce, configure_lm
 
 _OUTPUT_FIELDS = ("class_name", "reads", "writes", "fixture", "node_source", "test_source")
-
-
-def _configure_lm(url: str, model: str, key: str = "placeholder") -> None:
-    dspy.configure(lm=dspy.LM(f"openai/{model}", api_base=url, api_key=key))  # pyright: ignore[reportUnknownMemberType]
 
 
 def _examples(limit: int | None) -> list[Any]:
@@ -105,7 +101,7 @@ def cmd_bench(args: argparse.Namespace) -> None:
     print(f"benching {len(models)} model(s) over {len(examples)} brief(s)\n")
     table: list[tuple[str, float]] = []
     for model in models:
-        _configure_lm(args.lm_url, model, args.lm_key)
+        configure_lm(args.lm_url, model, args.lm_key)
         program = NodeProgram(load_compiled=False)
         passes = 0
         for ex in examples:
@@ -127,7 +123,7 @@ def cmd_compile(args: argparse.Namespace) -> None:
     if not examples:
         print("no trainset yet — nothing to compile.")
         return
-    _configure_lm(args.lm_url, args.lm_model, args.lm_key)
+    configure_lm(args.lm_url, args.lm_model, args.lm_key)
     from dspy.teleprompt import BootstrapFewShot  # pyright: ignore[reportMissingImports]
 
     optimizer = BootstrapFewShot(metric=gate_metric, max_bootstrapped_demos=args.max_demos)
