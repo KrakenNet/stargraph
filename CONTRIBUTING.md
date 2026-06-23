@@ -14,7 +14,7 @@ This appends `Signed-off-by: Your Name <you@example.com>` to the commit message,
 
 ## Development Setup
 
-Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/).
+Prerequisites: Python 3.13+, [uv](https://docs.astral.sh/uv/).
 
     git clone https://github.com/KrakenNet/stargraph
     cd stargraph
@@ -28,6 +28,13 @@ Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/).
     uv run ruff format --check src/ tests/
     uv run pyright
     uv run pytest
+
+`pyright` resolves the optional subsystems (ml, stores, skills-rag, …), so type-check against an environment that has the extras installed:
+
+    uv sync --group dev --all-extras
+    uv run pyright
+
+With the extras present, `pyright` is clean on `main` (0 errors). A bare install reports hundreds of spurious `reportMissingImports`/`reportUnknown*` errors from the unresolved optional deps — that is an environment gap, not a code problem. New code must keep `pyright --all-extras` at zero errors.
 
 ## License
 

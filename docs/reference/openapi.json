@@ -2497,7 +2497,7 @@
   "info": {
     "description": "Stargraph serve API (POC slice -- design §5.1 minimal subset). 5 routes: POST /v1/runs, GET /v1/runs/{run_id}, POST /v1/runs/{run_id}/cancel, POST /v1/runs/{run_id}/pause, POST /v1/runs/{run_id}/respond. Remaining endpoints land in Phase 2 (tasks 2.15, 2.17) and the WS route in task 1.26.",
     "title": "stargraph",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
