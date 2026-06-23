@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# SQL Analyst IR — natural-language question over structured data → validated
+# query result, with a bounded generate→run→repair loop.
+#
+# Single-node agent; the loop closes inside the node so it runs under plain
+# `stargraph run` (linear, no rules):
+#
+#   analyze  (generate SQL for the question, run it, repair from the last error)
+#
+# Run:
+#   stargraph run src/stargraph/skills/sql_analyst/graph.yaml \
+#     -i question="How many orders shipped in 2026?" \
+#     -i table_schema="orders(id INT, shipped_at DATE)"
+ir_version: "1.0.0"
+id: "graph:sql-analyst"
+state_class: "stargraph.skills.sql_analyst.state:SqlAnalystState"
+nodes:
+  - id: analyze
+    kind: "stargraph.skills.sql_analyst.nodes.analyze:Analyze"
+rules: []

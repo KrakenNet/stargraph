@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Extract IR — unstructured text → validated named fields.
+#
+# Single-node transform; runs under plain `stargraph run` (linear, no rules):
+#
+#   extract  (pull target_fields out of text; flag the ones the model missed)
+#
+# Run:
+#   stargraph run src/stargraph/skills/extract/graph.yaml \
+#     -i text="Acme Corp invoice #4471, due 2026-07-01, total $1,240.00" \
+#     -i target_fields='["vendor","invoice_no","due_date","total"]'
+ir_version: "1.0.0"
+id: "graph:extract"
+state_class: "stargraph.skills.extract.state:ExtractState"
+nodes:
+  - id: extract
+    kind: "stargraph.skills.extract.nodes.extract:Extract"
+rules: []

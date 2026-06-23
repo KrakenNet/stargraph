@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Approval IR — proposed action → policy/human verdict.
+#
+# Fixed two-node topology (workflow); runs under plain `stargraph run`:
+#
+#   request  (validate action; policy may pre-approve, else mark pending)
+#   decide   (pass policy-approval through, else apply the human verdict)
+#
+# Run:
+#   stargraph run src/stargraph/skills/approval/graph.yaml \
+#     -i action="delete prod database" \
+#     -i payload='{"target":"prod-db-01"}'
+ir_version: "1.0.0"
+id: "graph:approval"
+state_class: "stargraph.skills.approval.state:ApprovalState"
+nodes:
+  - id: request
+    kind: "stargraph.skills.approval.nodes.request:RequestApproval"
+  - id: decide
+    kind: "stargraph.skills.approval.nodes.decide:ApplyDecision"
+rules: []

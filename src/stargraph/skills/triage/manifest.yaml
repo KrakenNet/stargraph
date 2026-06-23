@@ -1,0 +1,8 @@
+id: stargraph.skills.triage
+version: "0.1.0"
+kind: workflow
+description: |
+  Triage — classify an incoming item (subject + body + signals) and pick a
+  route using a bundled CLIPS rule pack (no LLM). A workflow: the only declared
+  output channels are `category`, `route`, `priority`, and `matched_rules`.
+state_schema: stargraph.skills.triage.state:TriageState

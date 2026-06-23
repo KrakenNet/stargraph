@@ -1,0 +1,8 @@
+id: stargraph.skills.extract
+version: "0.1.0"
+kind: utility
+description: |
+  Extract — pull a named set of fields out of unstructured text and report
+  which ones the model could not find. A pure transform (utility): the only
+  declared output channels are `fields`, `missing`, and `valid`.
+state_schema: stargraph.skills.extract.state:ExtractState

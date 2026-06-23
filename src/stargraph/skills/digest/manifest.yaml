@@ -1,0 +1,9 @@
+id: stargraph.skills.digest
+version: "0.1.0"
+kind: workflow
+description: |
+  Digest — condense long text via a chunked map-reduce summary. A fixed-topology
+  workflow: chunk the input, summarize each chunk (map), then summarize the
+  partial summaries (reduce). The only declared output channels are `chunks`,
+  `partials`, and `summary`.
+state_schema: stargraph.skills.digest.state:DigestState

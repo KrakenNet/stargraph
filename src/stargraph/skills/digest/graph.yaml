@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Digest IR — long text → chunked map-reduce summary.
+#
+# Fixed-topology workflow; runs under plain `stargraph run` (linear, no rules):
+#
+#   chunk  (split text into chunk_size-bounded pieces)
+#   map    (summarize each chunk into a partial summary)
+#   reduce (summarize the partials into a single final summary)
+#
+# Run:
+#   stargraph run src/stargraph/skills/digest/graph.yaml \
+#     -i text="<a long document...>" \
+#     -i chunk_size=2000
+ir_version: "1.0.0"
+id: "graph:digest"
+state_class: "stargraph.skills.digest.state:DigestState"
+nodes:
+  - id: chunk
+    kind: "stargraph.skills.digest.nodes.chunk:Chunk"
+  - id: map
+    kind: "stargraph.skills.digest.nodes.map:MapSummarize"
+  - id: reduce
+    kind: "stargraph.skills.digest.nodes.reduce:Reduce"
+rules: []
