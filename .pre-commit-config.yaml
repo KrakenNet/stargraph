@@ -1,10 +1,4 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
-    hooks:
-      - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-      - id: ruff-format
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -22,9 +16,48 @@ repos:
         args: [--skip, "uv.lock,docs/reference/*"]
   - repo: local
     hooks:
+      # ruff lint + format run via `uv run` so the version always tracks
+      # uv.lock -- i.e. the exact ruff the CI `lint` job uses. The hosted
+      # ruff-pre-commit mirror pinned its own `rev`, which silently drifted
+      # from the locked version and produced "passes pre-commit, fails CI
+      # ruff format --check" churn. A local hook can never skew.
+      - id: ruff
+        name: ruff (lint)
+        entry: uv run ruff check --fix --exit-non-zero-on-fix
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+      - id: ruff-format
+        name: ruff (format)
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
       - id: pyright
         name: pyright
         entry: uv run pyright
         language: system
         types: [python]
         pass_filenames: false
+      # Generated-artifact drift guards. These mirror the two CI drift gates
+      # so the artifact is refreshed locally at commit time instead of going
+      # red in CI after push:
+      #   * `schemas` job     -> src/stargraph/schemas/ir-v1-draft7.json
+      #   * `serve-test` job  -> docs/reference/openapi.json
+      # Each regenerates from source; if the on-disk artifact changes,
+      # pre-commit fails the commit (re-stage the regenerated file and
+      # recommit), exactly like ruff-format or end-of-file-fixer.
+      - id: regen-ir-schemas
+        name: regen IR JSON schemas (ir-v1 + draft7 mirror)
+        entry: bash -c 'uv run python scripts/regen_schemas.py && uv run python scripts/build_draft7.py'
+        language: system
+        pass_filenames: false
+        files: '^src/stargraph/(ir/|schemas/).*\.(py|json)$'
+      - id: regen-openapi
+        name: regen docs/reference/openapi.json
+        entry: uv run python scripts/regen_openapi.py
+        language: system
+        pass_filenames: false
+        # openapi info.version is sourced from stargraph.__version__, so a
+        # version bump in __init__.py drifts the spec too -- guard both.
+        files: '^src/stargraph/(serve/|__init__\.py$)'
