@@ -74,9 +74,10 @@ def seed() -> None:
 @app.command()
 def make(
     brief: str = typer.Argument(..., help="what the node should do"),
-    lm_url: str = typer.Option(..., "--lm-url", help="LLM endpoint (e.g. Ollama)"),
     lm_model: str = typer.Option(..., "--lm-model", help="model id, e.g. laguna-xs"),
-    lm_key: str = typer.Option("placeholder", "--lm-key"),
+    lm_url: str = typer.Option("http://localhost:41001", "--lm-url", help="Ollama endpoint"),
+    lm_num_ctx: int | None = typer.Option(None, "--lm-num-ctx", help="context length (num_ctx)"),
+    lm_temperature: float | None = typer.Option(None, "--lm-temperature"),
     review: bool = typer.Option(True, help="prompt for an accept/reject verdict after building"),
 ) -> None:
     """Generate a node from BRIEF (bounded repair loop), gate it, then review."""
@@ -85,7 +86,7 @@ def make(
     from stargraph.skills.nodesmith.program import configure_lm
     from stargraph.skills.nodesmith.state import State
 
-    configure_lm(lm_url, lm_model, lm_key)
+    configure_lm(lm_model, url=lm_url, temperature=lm_temperature, num_ctx=lm_num_ctx)
     ctx = SimpleNamespace(run_id="nodesmith-make")
 
     async def _run() -> dict[str, Any]:

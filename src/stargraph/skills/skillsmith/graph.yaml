@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Skillsmith IR — a Stargraph graph that builds whole Stargraph skills from a brief.
+#
+# A composite smith one rung above graphsmith: it emits a registerable skill — a
+# runnable subgraph bundle (state.py + nodes.py + an auto-wired graph.yaml) plus an
+# auto-wired manifest.yaml (the Skill manifest). Same linear pipeline (routes on the
+# static IR edge; no rule engine, so it runs under plain `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + Skill/NodeBase-corpus RAG)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the contract tier LOADS + RUNS the subgraph to status=done AND
+#                  constructs the Skill manifest, asserting it is a valid skill)
+#         -> record  (success: log (brief -> skill) trainset pair + land the
+#                     five-file bundle under output_dir/<skill_name>/;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/skillsmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a workflow skill that normalizes an alert then labels it" \
+#     -i model_id=laguna-xs -i output_dir=./generated_skills
+ir_version: "1.0.0"
+id: "graph:skillsmith"
+state_class: "stargraph.skills.skillsmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.skillsmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.skillsmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.skillsmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.skillsmith.nodes.record:RecordBuild"
+rules: []

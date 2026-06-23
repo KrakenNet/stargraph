@@ -1,19 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Recall — load reflexion lessons relevant to this brief (idea 1)."""
+"""Recall — gather grounding before the build (shared logic, bound to
+:data:`NODE_SPEC`: reflexion lessons + node-corpus RAG + model-decided web)."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
-from stargraph.nodes.base import ExecutionContext, NodeBase
-from stargraph.skills.nodesmith import _ledger
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
+from stargraph.skills._smith.nodes import SmithRecall
+from stargraph.skills.nodesmith.nodes.build import NODE_SPEC
 
 
-class Recall(NodeBase):
-    async def execute(self, state: BaseModel, ctx: ExecutionContext) -> dict[str, Any]:
-        brief = str(getattr(state, "brief", "") or "")
-        lessons = _ledger.recall_lessons(brief, limit=3)
-        return {"recalled_lessons": lessons}
+class Recall(SmithRecall):
+    def __init__(self) -> None:
+        super().__init__(spec=NODE_SPEC)

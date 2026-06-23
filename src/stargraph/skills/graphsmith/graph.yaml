@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Graphsmith IR — a Stargraph graph that builds whole Stargraph graphs from a brief.
+#
+# The first composite smith: where the leaf smiths emit one artifact, graphsmith
+# emits a runnable multi-file bundle (state.py + nodes.py + an auto-wired
+# graph.yaml + test_nodes.py). Same linear pipeline as the leaf smiths (routes on
+# the static IR edge; no rule engine, so it runs under plain `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + node-corpus RAG relevant to the brief)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the contract tier LOADS the assembled bundle into a real Graph
+#                  and RUNS it to status=done, asserting the nodes wired end-to-end)
+#         -> record  (success: log (brief -> bundle) trainset pair + land the
+#                     four-file bundle under output_dir/<graph_id>/;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/graphsmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a two-node graph that normalizes an alert then labels it" \
+#     -i model_id=laguna-xs -i output_dir=./generated_graphs
+ir_version: "1.0.0"
+id: "graph:graphsmith"
+state_class: "stargraph.skills.graphsmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.graphsmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.graphsmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.graphsmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.graphsmith.nodes.record:RecordBuild"
+rules: []

@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Pluginsmith IR — a Stargraph graph that builds Stargraph plugins from a brief.
+#
+# A composite smith: it emits a registerable plugin — a single plugin.py carrying a
+# @tool-decorated callable plus pluggy @hookimpl functions (register_tools,
+# authorize_action, before/after_tool_call) — plus its test. Same linear pipeline
+# (routes on the static IR edge; no rule engine, so it runs under plain
+# `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + plugin/@tool-contract RAG)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the contract tier REGISTERS the plugin on an isolated
+#                  PluginManager and drives its hooks + tool for real)
+#         -> record  (success: log (brief -> plugin) trainset pair + land the
+#                     two-file bundle under output_dir/<plugin_name>/;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/pluginsmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a plugin whose tool redacts emails and denies external_send" \
+#     -i model_id=laguna-xs -i output_dir=./generated_plugins
+ir_version: "1.0.0"
+id: "graph:pluginsmith"
+state_class: "stargraph.skills.pluginsmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.pluginsmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.pluginsmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.pluginsmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.pluginsmith.nodes.record:RecordBuild"
+rules: []

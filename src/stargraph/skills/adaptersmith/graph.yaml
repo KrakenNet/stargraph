@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Adaptersmith IR — a Stargraph graph that builds Stargraph adapters from a brief.
+#
+# Linear pipeline (routes on the static IR edge; no rule engine required, so it
+# runs under plain `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + RAG grounding relevant to the brief)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the verify gate is the "always works" contract)
+#         -> record  (success: log (spec -> adapter) trainset pair + land files;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/adaptersmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="an MCP adapter that binds a tool catalogue and gates call_tool" \
+#     -i model_id=laguna-xs -i output_dir=./generated_adapters
+ir_version: "1.0.0"
+id: "graph:adaptersmith"
+state_class: "stargraph.skills.adaptersmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.adaptersmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.adaptersmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.adaptersmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.adaptersmith.nodes.record:RecordBuild"
+rules: []

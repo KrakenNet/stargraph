@@ -10,22 +10,30 @@ at construction — the idea-2 → idea-1 feedback edge.
 
 from __future__ import annotations
 
-import contextlib
-import json
-from typing import Any, cast
+from typing import Any
 
 import dspy  # pyright: ignore[reportMissingTypeStubs]
 
+from stargraph.skills._smith.lm import (
+    DEFAULT_OLLAMA_URL,
+    clarify,
+    configure_lm,
+    make_lm,
+)
+from stargraph.skills._smith.program import INPUT_FIELDS, SmithProgram, as_dict, as_list
 from stargraph.skills.nodesmith import _ledger
 
-# The fields the predictor takes as inputs (used when rebuilding demos).
-INPUT_FIELDS = ("brief", "lessons", "last_findings")
-
-
-def configure_lm(url: str, model: str, key: str = "placeholder") -> None:
-    """Point DSPy at an OpenAI-compatible endpoint (e.g. Ollama). Shared by the
-    ``nodesmith make`` CLI and the offline optimizer so the wiring is identical."""
-    dspy.configure(lm=dspy.LM(f"openai/{model}", api_base=url, api_key=key))  # pyright: ignore[reportUnknownMemberType]
+# Re-exported from the shared core so callers keep importing them from here.
+__all__ = [
+    "DEFAULT_OLLAMA_URL",
+    "INPUT_FIELDS",
+    "NodeProgram",
+    "NodeSignature",
+    "clarify",
+    "coerce",
+    "configure_lm",
+    "make_lm",
+]
 
 
 class NodeSignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]
@@ -45,6 +53,9 @@ class NodeSignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]
     brief: str = dspy.InputField(desc="what the node should do")  # pyright: ignore[reportUnknownMemberType]
     lessons: list[str] = dspy.InputField(desc="past failures to avoid")  # pyright: ignore[reportUnknownMemberType]
     last_findings: list[dict[str, Any]] = dspy.InputField(desc="prior attempt findings")  # pyright: ignore[reportUnknownMemberType]
+    relevant_context: str = dspy.InputField(  # pyright: ignore[reportUnknownMemberType]
+        desc="grounding: similar existing nodes + accepted examples + web research"
+    )
 
     class_name: str = dspy.OutputField(desc="PascalCase class name")  # pyright: ignore[reportUnknownMemberType]
     reads: list[str] = dspy.OutputField(desc="state fields read")  # pyright: ignore[reportUnknownMemberType]
@@ -54,58 +65,23 @@ class NodeSignature(dspy.Signature):  # pyright: ignore[reportUnknownMemberType]
     test_source: str = dspy.OutputField(desc="test_node.py for the node")  # pyright: ignore[reportUnknownMemberType]
 
 
-def _as_list(value: Any) -> list[str]:
-    if isinstance(value, list):
-        return [str(v) for v in cast("list[Any]", value)]
-    if isinstance(value, str) and value.strip():
-        return [p.strip() for p in value.split(",") if p.strip()]
-    return []
-
-
-def _as_dict(value: Any) -> dict[str, Any]:
-    if isinstance(value, dict):
-        return cast("dict[str, Any]", value)
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return {}
-        return cast("dict[str, Any]", parsed) if isinstance(parsed, dict) else {}
-    return {}
-
-
 def coerce(pred: Any) -> dict[str, Any]:
     """Normalize a ``dspy.Prediction`` (or any attr-bag) into a plain dict."""
     return {
         "class_name": str(getattr(pred, "class_name", "")),
-        "reads": _as_list(getattr(pred, "reads", [])),
-        "writes": _as_list(getattr(pred, "writes", [])),
-        "fixture": _as_dict(getattr(pred, "fixture", {})),
+        "reads": as_list(getattr(pred, "reads", [])),
+        "writes": as_list(getattr(pred, "writes", [])),
+        "fixture": as_dict(getattr(pred, "fixture", {})),
         "node_source": str(getattr(pred, "node_source", "")),
         "test_source": str(getattr(pred, "test_source", "")),
     }
 
 
-class NodeProgram(dspy.Module):  # pyright: ignore[reportUnknownMemberType]
+class NodeProgram(SmithProgram):
     def __init__(self, *, load_compiled: bool = True) -> None:
-        super().__init__()  # pyright: ignore[reportUnknownMemberType]
-        self.gen = dspy.Predict(NodeSignature)  # pyright: ignore[reportUnknownMemberType]
-        if load_compiled:
-            self._load_demos()
-
-    def _load_demos(self) -> None:
-        demos = _ledger.load_compiled_demos()
-        if not demos:
-            return
-        # malformed compiled.json must never break generation
-        with contextlib.suppress(TypeError, ValueError):
-            built = [dspy.Example(**d).with_inputs(*INPUT_FIELDS) for d in demos]  # pyright: ignore[reportUnknownMemberType]
-            self.gen.demos = built  # pyright: ignore[reportUnknownMemberType]
-
-    def forward(self, brief: str, lessons: list[str], last_findings: list[dict[str, Any]]) -> Any:
-        return self.gen(brief=brief, lessons=lessons, last_findings=last_findings)  # pyright: ignore[reportUnknownMemberType]
-
-    def generate(
-        self, brief: str, lessons: list[str], last_findings: list[dict[str, Any]]
-    ) -> dict[str, Any]:
-        return coerce(self.forward(brief=brief, lessons=lessons, last_findings=last_findings))
+        super().__init__(
+            signature=NodeSignature,
+            coerce=coerce,
+            load_compiled_demos=_ledger.load_compiled_demos,
+            load_compiled=load_compiled,
+        )

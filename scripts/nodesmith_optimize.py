@@ -101,7 +101,7 @@ def cmd_bench(args: argparse.Namespace) -> None:
     print(f"benching {len(models)} model(s) over {len(examples)} brief(s)\n")
     table: list[tuple[str, float]] = []
     for model in models:
-        configure_lm(args.lm_url, model, args.lm_key)
+        configure_lm(model, url=args.lm_url)
         program = NodeProgram(load_compiled=False)
         passes = 0
         for ex in examples:
@@ -123,7 +123,7 @@ def cmd_compile(args: argparse.Namespace) -> None:
     if not examples:
         print("no trainset yet — nothing to compile.")
         return
-    configure_lm(args.lm_url, args.lm_model, args.lm_key)
+    configure_lm(args.lm_model, url=args.lm_url)
     from dspy.teleprompt import BootstrapFewShot  # pyright: ignore[reportMissingImports]
 
     optimizer = BootstrapFewShot(metric=gate_metric, max_bootstrapped_demos=args.max_demos)
@@ -148,16 +148,14 @@ def main() -> None:
     d.set_defaults(func=cmd_drift)
 
     b = sub.add_parser("bench", help="compare candidate models by first-try gate pass rate")
-    b.add_argument("--lm-url", required=True)
+    b.add_argument("--lm-url", default="http://localhost:41001", help="Ollama endpoint")
     b.add_argument("--models", required=True, help="comma-separated model ids")
-    b.add_argument("--lm-key", default="placeholder")
     b.add_argument("--limit", type=int, default=None, help="cap eval briefs (default: all)")
     b.set_defaults(func=cmd_bench)
 
     c = sub.add_parser("compile", help="DSPy BootstrapFewShot → compiled.json")
-    c.add_argument("--lm-url", required=True)
+    c.add_argument("--lm-url", default="http://localhost:41001", help="Ollama endpoint")
     c.add_argument("--lm-model", required=True)
-    c.add_argument("--lm-key", default="placeholder")
     c.add_argument("--limit", type=int, default=None)
     c.add_argument("--max-demos", type=int, default=4)
     c.set_defaults(func=cmd_compile)

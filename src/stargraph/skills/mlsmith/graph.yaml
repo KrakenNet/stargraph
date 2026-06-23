@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Mlsmith IR — a Stargraph graph that builds Stargraph ML model nodes from a brief.
+#
+# A leaf smith: it emits a trainer.py (a build_model(path) that fits + serializes a
+# small classical-ML model for the sklearn or onnx runtime) plus its test. Same linear
+# pipeline (routes on the static IR edge; no rule engine, so it runs under plain
+# `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + MLNode/loader-contract RAG)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the contract tier RUNS the trainer, pins the model sha256,
+#                  constructs a live MLNode against it, and runs execute() on the
+#                  fixture)
+#         -> record  (success: log (brief -> trainer) trainset pair + land the
+#                     two-file bundle under output_dir/<model_name>/;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/mlsmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a model that scores an alert's severity from a feature vector (onnx)" \
+#     -i model_id=laguna-xs -i output_dir=./generated_models
+ir_version: "1.0.0"
+id: "graph:mlsmith"
+state_class: "stargraph.skills.mlsmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.mlsmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.mlsmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.mlsmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.mlsmith.nodes.record:RecordBuild"
+rules: []

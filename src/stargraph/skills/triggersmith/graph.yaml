@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Triggersmith IR — a Stargraph graph that builds Stargraph triggers from a brief.
+#
+# Linear pipeline (routes on the static IR edge; no rule engine required, so it
+# runs under plain `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + RAG grounding relevant to the brief)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the verify gate is the "always works" contract)
+#         -> record  (success: log (spec -> trigger) trainset pair + land files;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/triggersmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a manual trigger that enqueues a run via the scheduler" \
+#     -i model_id=laguna-xs -i output_dir=./generated_triggers
+ir_version: "1.0.0"
+id: "graph:triggersmith"
+state_class: "stargraph.skills.triggersmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.triggersmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.triggersmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.triggersmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.triggersmith.nodes.record:RecordBuild"
+rules: []
