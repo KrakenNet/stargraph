@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     from stargraph.checkpoint.protocol import RunSummary
     from stargraph.ir._models import NodeSpec
 
-__all__ = ["cmd"]
+__all__ = ["cmd", "node_kinds"]
 
 
 class _StubDSPyNode(NodeBase):
@@ -235,6 +235,15 @@ _NODE_FACTORIES: dict[str, _NodeBuilder] = {
     "subgraph": _build_subgraph,
     "tool": _build_tool,
 }
+
+
+def node_kinds() -> list[str]:
+    """Sorted list of built-in node ``kind:`` values the CLI run driver builds.
+
+    Custom nodes are addressable via ``module.path:ClassName`` in addition to
+    these. Used by ``stargraph context dump`` to advertise the node surface.
+    """
+    return sorted(_NODE_FACTORIES)
 
 
 def _resolve_class_kind(kind: str) -> type[NodeBase]:

@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# examples/hello.yaml — the smallest runnable Stargraph graph.
+#
+# Two nodes, two rules, one state field. No LLM, no store, no tool call.
+# The point is to see the engine load IR YAML, build a Graph, drive a
+# GraphRun, fire Fathom rules to route, and persist a checkpoint.
+#
+# Run it:
+#     stargraph run examples/hello.yaml --inputs message=hello
+#
+# Trace the rule firings without executing nodes:
+#     stargraph run examples/hello.yaml --inspect
+#
+# state_schema declares a flat primitives-only state model inline, so this
+# file is self-contained (no companion state.py). For richer state, swap to
+#     state_class: "your_module:YourState"
+# pointing at a Pydantic BaseModel.
+ir_version: "1.0.0"
+id: "run:hello"
+nodes:
+  - id: node_a          # echo: copies seeded `message` through state
+    kind: echo
+  - id: node_b          # halt: terminal marker, ends the run cleanly
+    kind: halt
+state_schema:
+  message: str
+rules:
+  # Fire on run start, route start -> node_b. Transitions are decided by
+  # Fathom rules over facts, never by static edges.
+  - id: r-advance
+    when: "(initial-fact)"
+    then:
+      - kind: goto
+        target: node_b
+  # When node_b is reached, halt.
+  - id: r-halt
+    when: "?n <- (node-id (id node_b))"
+    then:
+      - kind: halt
+        reason: "hello example reached node_b"

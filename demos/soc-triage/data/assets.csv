@@ -1,0 +1,9 @@
+asset_id,tier,owner,exec_owner,business_unit,data_classification
+billing-db-01,prod,cfo-office,true,finance,restricted
+prod-data-lake-01,prod,chief-data-officer,true,analytics,restricted
+prod-jumpbox-01,prod,platform-sre,false,infrastructure,internal
+staging-sso-02,staging,identity-team,false,security,internal
+staging-api-04,staging,api-platform,false,engineering,internal
+dev-web-07,dev,web-team,false,engineering,public
+dev-laptop-22,dev,k.patel,false,engineering,public
+dev-vpn-01,dev,network-team,false,infrastructure,internal

@@ -1,0 +1,19 @@
+{
+  "_comment": "Deterministic triage_decide LLM responses for the case_8821 auditor drill. Keyed by alert signature so a mock LM can replay triage_decide without a live model (mirrors demos/sentinel_dark_watch/fixtures/llm_responses.json). 'default' is returned for any unkeyed prompt. Each value is the disposition + reason the dspy triage_decide node emits onto RunState.disposition / RunState.reason.",
+  "T1486.ransomware.mass_file_encrypt": {
+    "disposition": "auto_remediate",
+    "reason": "## Triage: case_8821 — LockBit-style ransomware on billing-db-01 (PROD, tier-0)\n\n**Risk:** HIGH (ML risk band 2). Mass file-encryption (.lockbit), shadow-copy deletion via vssadmin, and an active C2 beacon to 185.220.101.47 on a production billing database — a tier-0, restricted-data, exec-owned asset.\n\n**Precedent:** hist-7701 — an identical LockBit signature on a prod payroll DB was auto-isolated and snapshot-restored in 6 minutes (contained, confirmed true positive).\n\n**Recommended disposition:** AUTO_REMEDIATE (network-isolate + snapshot + restore-from-clean per runbook ransomware_prod.md). Because the asset is PROD and exec-owned, soc-policy routes this through the analyst gate (HITL) before isolation executes."
+  },
+  "beacon.cobaltstrike.jitter": {
+    "disposition": "auto_remediate",
+    "reason": "High-confidence Cobalt-Strike C2 beacon on a production jumpbox. Auto-isolate + reimage per c2_beacon.md; prod tier routes through the analyst gate."
+  },
+  "exfil.s3.anomalous_egress": {
+    "disposition": "escalate",
+    "reason": "Anomalous 240GB egress from the production data lake. Escalate to IR on-call; block egress and rotate the analytics IAM role per data_exfil.md."
+  },
+  "default": {
+    "disposition": "needs_human",
+    "reason": "Insufficient precedent for an automated disposition; routing to a human analyst for review."
+  }
+}

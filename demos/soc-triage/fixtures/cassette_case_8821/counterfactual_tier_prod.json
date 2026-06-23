@@ -1,0 +1,10 @@
+{
+  "_comment": "Counterfactual mutation for the auditor drill: fork a finished run at the triage step and override asset_tier=prod. On a non-prod alert this flips soc-policy from a straight-through disposition to the prod auto_remediate/escalate -> analyst_gate (HITL) branch, producing an observable diff. Body shape matches POST /v1/runs/{id}/counterfactual: {step, mutation, reason}.",
+  "step": 2,
+  "mutation": {
+    "state_overrides": {
+      "asset_tier": "prod"
+    }
+  },
+  "reason": "auditor-drill: what-if the affected asset were production tier?"
+}

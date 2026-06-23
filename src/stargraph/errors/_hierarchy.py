@@ -25,13 +25,40 @@ class StargraphError(Exception):
     """Base class for all Stargraph exceptions.
 
     Stores ``message`` (the user-facing string) and ``context`` (a dict
-    populated from keyword arguments) for structured logging downstream.
+    populated verbatim from keyword arguments) for structured logging.
+
+    Two context keys are conventional remediation channels: ``hint`` (the
+    concrete fix) and ``see`` (a docs path/URL). They are surfaced as the
+    :attr:`hint`/:attr:`see` properties and appended by :meth:`__str__` when
+    present, so a reader gets the remedy, not just the symptom. They remain
+    plain context keys, so existing callers and structured logging are
+    unaffected.
     """
 
     def __init__(self, message: str, **context: Any) -> None:
         super().__init__(message)
         self.message: str = message
         self.context: dict[str, Any] = context
+
+    @property
+    def hint(self) -> str | None:
+        """Concrete fix for this error, if the raiser provided ``hint=``."""
+        value = self.context.get("hint")
+        return value if isinstance(value, str) else None
+
+    @property
+    def see(self) -> str | None:
+        """Docs path/URL for this error, if the raiser provided ``see=``."""
+        value = self.context.get("see")
+        return value if isinstance(value, str) else None
+
+    def __str__(self) -> str:
+        parts = [self.message]
+        if self.hint:
+            parts.append(f"hint: {self.hint}")
+        if self.see:
+            parts.append(f"see: {self.see}")
+        return "\n".join(parts)
 
 
 class ValidationError(StargraphError):

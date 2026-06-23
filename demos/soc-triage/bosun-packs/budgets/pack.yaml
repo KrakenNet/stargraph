@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# SOC Triage++ signed Bosun budgets pack — descriptor.
+#
+# Companion to ``manifest.yaml`` + detached ``manifest.jwt`` (Ed25519/JWS,
+# verified by ``stargraph.bosun.signing.verify_pack`` against ../keys/).
+# Per-alert token / cost / latency caps; rule bodies live in ``rules.clp``.
+
+id: soc-budgets
+version: "1.0"
+flavor: governance
+
+api_version: "1"
+stargraph_facts_version: "1.0"
+
+rules_file: rules.clp
+
+# Committed per-alert defaults (tunable by a SOC manager via the signed
+# pack without redeploying the agent): 8000 tokens, $0.25, 30s wall-clock.
+defaults:
+  tokens: 8000
+  cost_usd: 0.25
+  latency_s: 30
+
+rules:
+  - budget-exhausted-token
+  - budget-exhausted-cost
+  - budget-exhausted-latency

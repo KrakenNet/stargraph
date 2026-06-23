@@ -38,9 +38,16 @@ plugins:
 extra:
   version: { provider: mike, default: latest, alias: true }
 
+# AGENTS.md files are agent work-contracts (DOX), not site pages. graphify-out/
+# is gitignored tooling output that may appear under docs/ locally.
+exclude_docs: |
+  AGENTS.md
+  graphify-out/
+
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Architecture map: architecture-map.md
   - Tutorials:
       - Overview: tutorials/index.md
       - First graph: tutorials/first-graph.md

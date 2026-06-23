@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# SOC Triage++ signed Bosun governance pack — descriptor.
+#
+# Companion to ``manifest.yaml`` (id/version/requires/provides) and the
+# detached ``manifest.jwt`` (Ed25519/JWS signature over this pack tree,
+# verified by ``stargraph.bosun.signing.verify_pack`` against the committed
+# dev key in ``../keys/``). Rule bodies live in ``rules.clp``.
+
+id: soc-policy
+version: "1.0"
+flavor: governance
+
+api_version: "1"
+stargraph_facts_version: "1.0"
+
+rules_file: rules.clp
+
+# The four governance rules (see rules.clp + ../soc-triage.md):
+#   1. prod asset + auto_remediate disposition -> interrupt (HITL)
+#   2. exec-owned asset + high severity        -> escalate (Tier 3)
+#   3. risk_confidence < 0.6                    -> second_opinion
+#   4. every firing emits a bosun.provenance fact (audit trail)
+rules:
+  - soc-policy-prod-autoremediate-interrupt
+  - soc-policy-exec-high-escalate
+  - soc-policy-low-confidence-second-opinion

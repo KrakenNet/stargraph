@@ -22,8 +22,8 @@
 #                             │                                     (interrupt, HITL)
 #                             │                                       └─► write_artifact
 #                             └─[else]──────────────────────────────► write_artifact
-#                                   └─► audit (passthrough — Ed25519 JSONL sink
-#                                         via serve --audit-log) └─► halt
+#                                   └─► audit (AuditChain — seals provenance
+#                                         into a hash-chained JSONL record) └─► halt
 #
 # Node kinds: custom `module:Class` (ingest, retrieval) + stargraph builtins
 # (`ml`, `dspy`, `interrupt`, `write_artifact`, `passthrough`, `echo`).
@@ -69,27 +69,46 @@ nodes:
   - id: soc_policy
     kind: passthrough
 
-  # HITL gate — the `interrupt` HITL primitive is the `interrupt` ACTION on
-  # the r-analyst-gate rule below (the InterruptNode short-kind would need its
-  # own `prompt` config; sdw's analyst_review uses this passthrough+action
-  # shape so the prompt lives with the routing rule). Pause/resume via
+  # HITL gate — the bypass-Fathom InterruptNode (stargraph.nodes.interrupt) raises
+  # the pause signal on dispatch, so the analyst gate halts the run to
+  # awaiting-input even when serve runs Fathom-less (deps['fathom']=None). The
+  # prompt + requested capability live in the node config; resume via
   # POST /v1/runs/{id}/respond gated on `runs:respond`.
   - id: analyst_gate
-    kind: passthrough
-
-  - id: write_artifact
-    kind: write_artifact
+    kind: interrupt
     config:
-      content_field: reason
-      name: soc-case-note
-      content_type: text/markdown
-      output_field: case_note_ref
+      prompt: "Approve disposition {disposition} for alert {alert_id} (risk={risk}, asset={asset_id}/{asset_tier})?"
+      requested_capability: "runs:respond"
+      interrupt_payload:
+        requested_capability: "runs:respond"
+      # Finite wait bound (15 min) so the loop takes its hot-resume path: the
+      # execute() arm blocks on ``_respond_event`` while awaiting-input instead
+      # of exiting cold. ``POST /v1/runs/{id}/respond`` sets that event, waking
+      # the *same* live loop, which then advances past the gate to
+      # write_artifact → audit → halt (the cold-restart resume path re-runs the
+      # graph from node 0 and is not wired for serve — see spec .progress.md
+      # 5.3). on_timeout=halt keeps an unanswered gate terminal, not hung.
+      timeout: "PT900S"
+      on_timeout: "halt"
 
-  # Audit sink marker — the Ed25519-chained JSONL audit log is emitted by
-  # `stargraph serve --audit-log` (FR audit chain); this node is the terminal
-  # dispatch point before halt so the provenance trail closes deterministically.
+  # Demo-local case-note writer (graph.nodes:SocWriteArtifact). NOT the builtin
+  # ``write_artifact`` kind: that node's WriteArtifactContext protocol needs
+  # ``step`` / ``artifact_store`` / ``is_replay`` attributes the serve-path
+  # GraphRun does not carry (the scheduler hard-codes GraphRun(...) with no
+  # artifact-store wiring), so the builtin raises AttributeError the instant a
+  # resumed HITL run reaches it. The custom node needs only ``run_id`` and
+  # completes the resumed run's tail end-to-end (spec .progress.md 5.3 fix).
+  - id: write_artifact
+    kind: "graph.nodes:SocWriteArtifact"
+
+  # Audit sink — seals the run's append-only provenance trail into a
+  # hash-chained JSONL audit record (.audit/<run_id>.jsonl) so the chain is
+  # tamper-evident offline. Custom node (not the silent passthrough EchoNode)
+  # so the audit step records the evidence chain. The full Ed25519/JWS
+  # serve-side sink (stargraph.audit.jsonl.ChainedJSONLAuditSink) is a documented
+  # stargraph-lib gap — the serve run path never drains the bus into it.
   - id: audit
-    kind: passthrough
+    kind: "graph.nodes:AuditChain"
 
   - id: halt
     kind: echo
