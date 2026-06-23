@@ -76,15 +76,12 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
       # All extras + dev group so pyright can resolve every optional
       # import (pyarrow / sklearn / onnxruntime / etc.) under the
       # configured ``[tool.pyright] strict`` scope.
-      - run: uv sync --all-extras --group dev
+      - uses: ./.github/actions/uv-setup
+        with:
+          sync-args: "--all-extras --group dev"
       - run: uv run ruff check src/ tests/
       - run: uv run ruff format --check src/ tests/
       - run: uv run pyright
@@ -118,16 +115,14 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
       # ``--all-extras`` so optional deps (pyarrow under ``stores``,
       # sklearn/joblib under ``ml``, sentence-transformers under
       # ``skills-rag``) are available for any test module that
       # imports them at collect time.
-      - run: uv sync --all-extras --group dev
+      - uses: ./.github/actions/uv-setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          sync-args: "--all-extras --group dev"
       # ``-n auto`` (pytest-xdist) parallelizes across the runner's cores: the
       # smith-family suite is CPU-bound (sklearn->ONNX gate builds, Fathom
       # engines) and ran the serial job past its 25-min budget. ``loadscope``
@@ -183,12 +178,7 @@ jobs:
       STARGRAPH_TEST_PGBOUNCER_DSN: postgres://stargraph:stargraph@localhost:6432/stargraph
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --group dev
+      - uses: ./.github/actions/uv-setup
       # The `engine` marker is reserved for the engine subsystem suite once
       # those tests are ported; until then the filter resolves to zero tests
       # and pytest exits 5 ("no tests collected"). Treat exit 5 as success
@@ -235,12 +225,9 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/uv-setup
         with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --group dev --extra stores --extra skills-rag --extra ml
+          sync-args: "--group dev --extra stores --extra skills-rag --extra ml"
       - run: uv run pytest tests/ -m "knowledge" --cov=stargraph -q
 
   cypher-subset:
@@ -255,12 +242,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/uv-setup
         with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --group dev --extra stores
+          sync-args: "--group dev --extra stores"
       - run: uv run pytest -q tests/integration/test_cypher_subset.py --runslow --no-cov
 
   schemas:
@@ -268,12 +252,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --group dev
+      - uses: ./.github/actions/uv-setup
       - run: uv run python scripts/build_draft7.py
       - run: git diff --exit-code src/stargraph/schemas/ir-v1-draft7.json
 
@@ -298,12 +277,9 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/uv-setup
         with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --all-extras --all-groups
+          sync-args: "--all-extras --all-groups"
       - run: uv run pytest -q -m "serve" --tb=short
       # Strict mode comes from ``[tool.pyright] strict = ["src/stargraph", "tests"]``
       # in pyproject.toml. The CLI ``--strict`` flag was removed in pyright;
