@@ -256,19 +256,14 @@ def _seed_sar_tiles() -> None:
         print("      rasterio not installed — skipping sar_tiles seeding")
         return
 
-    scenes = sorted(
-        p for p in imagery_dir.iterdir()
-        if p.is_dir() and (p / "VH_dB.tif").exists()
-    )
+    scenes = sorted(p for p in imagery_dir.iterdir() if p.is_dir() and (p / "VH_dB.tif").exists())
     with psycopg.connect(os.environ["POSTGRES_DSN"]) as conn, conn.cursor() as cur:
         for scene_dir in scenes:
             scene_id = scene_dir.name
             vh_path = scene_dir / "VH_dB.tif"
 
             with rasterio.open(vh_path) as src:
-                west, south, east, north = transform_bounds(
-                    src.crs, "EPSG:4326", *src.bounds
-                )
+                west, south, east, north = transform_bounds(src.crs, "EPSG:4326", *src.bounds)
 
             bounds_wkt = (
                 f"POLYGON(({west} {south}, {east} {south}, "

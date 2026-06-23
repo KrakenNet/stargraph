@@ -69,7 +69,7 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(msg)
 
 
-__version__ = "0.4.0"
+__version__ = "0.4.0"  # x-release-please-version
 
 __all__ = [
     "DocStore",

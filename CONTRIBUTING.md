@@ -2,6 +2,13 @@
 
 Thanks for contributing! Stargraph is licensed under Apache-2.0 and accepts contributions under the Developer Certificate of Origin (DCO) — no CLA required.
 
+## Finding something to work on
+
+- Issues labelled [`good first issue`](https://github.com/KrakenNet/stargraph/labels/good%20first%20issue) are scoped for newcomers and need no deep codebase knowledge.
+- Issues labelled [`help wanted`](https://github.com/KrakenNet/stargraph/labels/help%20wanted) are ones maintainers would welcome a contributor on.
+- Please **avoid** issues labelled `needs-decision` or `needs-design` — the approach isn't settled yet, so a PR is likely to be reworked or rejected.
+- Comment on an issue to say you're picking it up before you start, so we don't duplicate effort.
+
 ## Sign-off (DCO)
 
 Every commit must be signed off:

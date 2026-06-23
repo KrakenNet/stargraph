@@ -2,6 +2,16 @@
 
 **Stateful agent-graph framework with deterministic governance.**
 
+[![PyPI](https://img.shields.io/pypi/v/stargraph.svg)](https://pypi.org/project/stargraph/)
+[![Downloads](https://img.shields.io/pypi/dm/stargraph.svg)](https://pypi.org/project/stargraph/)
+[![CI](https://github.com/KrakenNet/stargraph/actions/workflows/ci.yml/badge.svg)](https://github.com/KrakenNet/stargraph/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/KrakenNet/stargraph/branch/main/graph/badge.svg)](https://codecov.io/gh/KrakenNet/stargraph)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/E6Cf8WFDf)
+
+> **Part of the [Kraken](https://github.com/KrakenNet) stack:** [Fathom](https://github.com/KrakenNet/fathom) (reasoning engine) · [Nautilus](https://github.com/KrakenNet/nautilus) (policy data broker) · [**Stargraph**](https://github.com/KrakenNet/stargraph) (agent-graph framework).
+
 Stargraph composes LLMs, classical ML models, tools, and deterministic logic into
 auditable, replayable graphs. Transitions between nodes are decided by
 [Fathom](https://github.com/KrakenNet/fathom) (a CLIPS rules engine) over
@@ -203,6 +213,12 @@ make docs-serve         # local docs site
 Contributions: see [CONTRIBUTING.md](./CONTRIBUTING.md) and
 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md). Security disclosures:
 [SECURITY.md](./SECURITY.md).
+
+## Star History
+
+<a href="https://star-history.com/#KrakenNet/stargraph&Date">
+  <img src="https://api.star-history.com/svg?repos=KrakenNet/stargraph&type=Date" alt="Star History Chart" width="600">
+</a>
 
 ## License
 

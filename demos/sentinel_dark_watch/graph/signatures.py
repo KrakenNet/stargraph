@@ -79,8 +79,12 @@ try:
         processing_seconds: float = dspy.InputField(desc="Average processing time in seconds")
         model_map50: float = dspy.InputField(desc="Current model mAP@50 score")
         dark_vessel_rate: float = dspy.InputField(desc="Rate of dark (unmatched) vessels")
-        weaknesses: str = dspy.OutputField(desc="Comma-separated list of specific pipeline weaknesses")
-        opportunities: str = dspy.OutputField(desc="Comma-separated list of actionable improvement opportunities")
+        weaknesses: str = dspy.OutputField(
+            desc="Comma-separated list of specific pipeline weaknesses"
+        )
+        opportunities: str = dspy.OutputField(
+            desc="Comma-separated list of actionable improvement opportunities"
+        )
 
     class ResearchAlternativesSignature(dspy.Signature):
         """Propose specific, implementable improvements for a maritime SAR vessel detection system."""
@@ -118,6 +122,7 @@ try:
                    "average processing time", "false positive trend"
         """
         import psycopg
+
         from demos.sentinel_dark_watch.db import get_pg_dsn
 
         try:
@@ -228,7 +233,9 @@ try:
             context: JSON context for the query, e.g. '{"tile_id": "05bc615a", "limit": 10}'
         """
         import json as _json
+
         import psycopg
+
         from demos.sentinel_dark_watch.db import get_pg_dsn
 
         try:
@@ -255,7 +262,9 @@ try:
                     " FROM model_metrics ORDER BY trained_at DESC LIMIT 5"
                 )
             else:
-                cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+                cur.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
+                )
 
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

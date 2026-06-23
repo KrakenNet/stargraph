@@ -20,7 +20,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 import yaml
 
 GRAPH_DIR = Path(__file__).resolve().parent.parent
@@ -130,22 +129,16 @@ def test_all_three_trigger_kinds_referenced() -> None:
     ir = _load(MAIN_IR)
     triggers = ir["triggers"]
     for kind in ("manual", "cron", "webhook"):
-        assert kind in triggers and triggers[kind], f"missing trigger kind: {kind}"
+        assert triggers.get(kind), f"missing trigger kind: {kind}"
 
 
 def test_triggers_yaml_resolves_referenced_ids() -> None:
     ir = _load(MAIN_IR)
     cfg = _load(TRIGGERS_YAML)
     referenced = {
-        ref["id"]
-        for kind in ("manual", "cron", "webhook")
-        for ref in ir["triggers"][kind]
+        ref["id"] for kind in ("manual", "cron", "webhook") for ref in ir["triggers"][kind]
     }
-    declared = {
-        spec["id"]
-        for kind in ("manual", "cron", "webhook")
-        for spec in cfg.get(kind, [])
-    }
+    declared = {spec["id"] for kind in ("manual", "cron", "webhook") for spec in cfg.get(kind, [])}
     assert referenced <= declared, f"un-declared trigger ids: {referenced - declared}"
 
 
@@ -171,10 +164,7 @@ def test_six_governance_packs_mounted() -> None:
 def test_hitl_gate_is_durable() -> None:
     ir = _load(MAIN_IR)
     interrupt_actions = [
-        action
-        for r in ir["rules"]
-        for action in r.get("then", [])
-        if action["kind"] == "interrupt"
+        action for r in ir["rules"] for action in r.get("then", []) if action["kind"] == "interrupt"
     ]
     assert len(interrupt_actions) >= 1
     for a in interrupt_actions:

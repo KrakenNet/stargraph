@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 def _pg_dsn() -> str:
     from demos.sentinel_dark_watch.db import get_pg_dsn
+
     return get_pg_dsn()
 
 
@@ -39,6 +40,7 @@ class ObserveMetricsNode(NodeBase):
     async def execute(self, state: BaseModel, ctx: ExecutionContext) -> dict[str, Any]:
         try:
             import asyncpg
+
             conn = await asyncpg.connect(_pg_dsn())
         except Exception as exc:
             logger.warning("ObserveMetricsNode: DB unavailable: %s", exc)
@@ -122,8 +124,10 @@ class AnalyzeWeaknessesNode(NodeBase):
                 EVOLUTION_TOOLS,
                 WeaknessAnalysisSignature,
             )
+
             if DSPY_AVAILABLE:
                 import dspy
+
                 react = dspy.ReAct(WeaknessAnalysisSignature, tools=EVOLUTION_TOOLS, max_iters=3)
                 try:
                     result = await asyncio.wait_for(
@@ -146,9 +150,12 @@ class AnalyzeWeaknessesNode(NodeBase):
                         o = o.strip()
                         if o and o not in opportunities:
                             opportunities.append(o)
-                    logger.info("ReAct analysis added %d weaknesses, %d opportunities",
-                                len(weaknesses), len(opportunities))
-                except asyncio.TimeoutError:
+                    logger.info(
+                        "ReAct analysis added %d weaknesses, %d opportunities",
+                        len(weaknesses),
+                        len(opportunities),
+                    )
+                except TimeoutError:
                     logger.warning("ReAct analysis timed out — using rule-based only")
         except Exception as exc:
             logger.info("LLM analysis skipped: %s", exc)
@@ -210,9 +217,13 @@ class ResearchAlternativesNode(NodeBase):
                 EVOLUTION_TOOLS,
                 ResearchAlternativesSignature,
             )
+
             if DSPY_AVAILABLE and s.identified_weaknesses:
                 import dspy
-                react = dspy.ReAct(ResearchAlternativesSignature, tools=EVOLUTION_TOOLS, max_iters=3)
+
+                react = dspy.ReAct(
+                    ResearchAlternativesSignature, tools=EVOLUTION_TOOLS, max_iters=3
+                )
                 try:
                     result = await asyncio.wait_for(
                         asyncio.to_thread(
@@ -228,8 +239,10 @@ class ResearchAlternativesNode(NodeBase):
                         if line and "|" in line:
                             alternatives.append(line)
                     logger.info("ReAct research added %d alternatives", len(alternatives))
-                except asyncio.TimeoutError:
-                    logger.warning("ReAct research timed out after 180s — using static alternatives only")
+                except TimeoutError:
+                    logger.warning(
+                        "ReAct research timed out after 180s — using static alternatives only"
+                    )
         except Exception as exc:
             logger.info("LLM research skipped: %s", exc)
 
@@ -353,8 +366,10 @@ class EvaluateProposalNode(NodeBase):
                 EVOLUTION_TOOLS,
                 ProposalEvaluationSignature,
             )
+
             if DSPY_AVAILABLE:
                 import dspy
+
                 react = dspy.ReAct(ProposalEvaluationSignature, tools=EVOLUTION_TOOLS, max_iters=3)
                 try:
                     result = await asyncio.wait_for(
@@ -374,12 +389,13 @@ class EvaluateProposalNode(NodeBase):
                     )
                     passed = result.proceed.strip().upper().startswith("YES")
                     logger.info("ReAct evaluation: %s — %s", result.proceed, result.reasoning)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning("ReAct evaluation timed out — using heuristic")
         except Exception as exc:
             logger.info("LLM evaluation skipped: %s", exc)
 
         from demos.sentinel_dark_watch.graph.state import ProposalStatus
+
         proposal.status = ProposalStatus.EVALUATED
 
         return {
@@ -406,12 +422,12 @@ class RunExperimentNode(NodeBase):
         experiment_detail: dict[str, Any] = {}
 
         if proposal.category.value in ("threshold", "hyperparameter"):
-            baseline_score, experiment_score, experiment_detail = (
-                await self._run_tile_experiment(proposal)
+            baseline_score, experiment_score, experiment_detail = await self._run_tile_experiment(
+                proposal
             )
         elif proposal.category.value in ("model_architecture", "preprocessing"):
-            baseline_score, experiment_score, experiment_detail = (
-                await self._estimate_via_llm(s, proposal)
+            baseline_score, experiment_score, experiment_detail = await self._estimate_via_llm(
+                s, proposal
             )
 
         delta = 0.0
@@ -426,7 +442,10 @@ class RunExperimentNode(NodeBase):
 
         logger.info(
             "Experiment for '%s': baseline=%.2f experiment=%.2f delta=%.1f%% detail=%s",
-            proposal.title, baseline_score, experiment_score, delta,
+            proposal.title,
+            baseline_score,
+            experiment_score,
+            delta,
             {k: v for k, v in experiment_detail.items() if k != "conf_histogram"},
         )
 
@@ -438,7 +457,8 @@ class RunExperimentNode(NodeBase):
         }
 
     async def _run_tile_experiment(
-        self, proposal: Any,
+        self,
+        proposal: Any,
     ) -> tuple[float, float, dict[str, Any]]:
         """Re-run YOLO inference on a sample tile with baseline vs proposed params."""
         from demos.sentinel_dark_watch.graph.nodes import (
@@ -472,8 +492,8 @@ class RunExperimentNode(NodeBase):
         experiment_conf = self._extract_proposed_conf(proposal, baseline_conf)
 
         try:
-            from ultralytics import YOLO
             import numpy as np
+            from ultralytics import YOLO
 
             img, _affine = await asyncio.to_thread(_load_dual_band, sample_scene)
             patches = _tile_image(img, _PATCH_SIZE, _OVERLAP_FRAC)
@@ -512,7 +532,10 @@ class RunExperimentNode(NodeBase):
             }
             logger.info(
                 "Tile experiment: baseline=%d dets (conf=%.3f), experiment=%d dets (conf=%.3f)",
-                b_count, b_avg_conf, e_count, e_avg_conf,
+                b_count,
+                b_avg_conf,
+                e_count,
+                e_avg_conf,
             )
             return baseline_composite, experiment_composite, detail
 
@@ -525,6 +548,7 @@ class RunExperimentNode(NodeBase):
         """Pick the scene most likely to contain ships (based on past detections)."""
         try:
             import asyncpg
+
             conn = await asyncpg.connect(_pg_dsn())
             try:
                 rows = await conn.fetch(
@@ -535,7 +559,11 @@ class RunExperimentNode(NodeBase):
                     best_tile = rows[0]["tile_id"]
                     for s in scenes:
                         if s.name == best_tile or best_tile.startswith(s.name[:8]):
-                            logger.info("Experiment: using scene %s (%d prior detections)", s.name, rows[0]["n"])
+                            logger.info(
+                                "Experiment: using scene %s (%d prior detections)",
+                                s.name,
+                                rows[0]["n"],
+                            )
                             return s
             finally:
                 await conn.close()
@@ -545,7 +573,9 @@ class RunExperimentNode(NodeBase):
 
     @staticmethod
     async def _count_detections(
-        model: Any, patches: list[Any], conf: float,
+        model: Any,
+        patches: list[Any],
+        conf: float,
     ) -> list[float]:
         """Run inference on patches at given conf, return list of confidence scores."""
         confs: list[float] = []
@@ -564,7 +594,8 @@ class RunExperimentNode(NodeBase):
         text = f"{title} {desc}"
 
         import re
-        match = re.search(r'(?:threshold|conf)[^\d]*(\d+\.?\d*)', text)
+
+        match = re.search(r"(?:threshold|conf)[^\d]*(\d+\.?\d*)", text)
         if match:
             val = float(match.group(1))
             if val > 1.0:
@@ -579,7 +610,9 @@ class RunExperimentNode(NodeBase):
         return baseline * 0.8
 
     async def _estimate_via_llm(
-        self, s: Any, proposal: Any,
+        self,
+        s: Any,
+        proposal: Any,
     ) -> tuple[float, float, dict[str, Any]]:
         """LLM-estimated delta for proposals that can't be tested live."""
         try:
@@ -588,8 +621,10 @@ class RunExperimentNode(NodeBase):
                 EVOLUTION_TOOLS,
                 ProposalEvaluationSignature,
             )
+
             if DSPY_AVAILABLE:
                 import dspy
+
                 react = dspy.ReAct(ProposalEvaluationSignature, tools=EVOLUTION_TOOLS, max_iters=3)
                 result = await asyncio.wait_for(
                     asyncio.to_thread(
@@ -607,10 +642,14 @@ class RunExperimentNode(NodeBase):
                 )
                 proceed = result.proceed.strip().upper().startswith("YES")
                 estimated_delta = 15.0 if proceed else -5.0
-                return 100.0, 100.0 + estimated_delta, {
-                    "method": "llm_estimate",
-                    "reasoning": result.reasoning[:200],
-                }
+                return (
+                    100.0,
+                    100.0 + estimated_delta,
+                    {
+                        "method": "llm_estimate",
+                        "reasoning": result.reasoning[:200],
+                    },
+                )
         except Exception as exc:
             logger.info("LLM estimation skipped: %s", exc)
         return 100.0, 100.0, {"method": "llm_estimate", "error": "unavailable"}
@@ -649,12 +688,14 @@ class GovernanceGateNode(NodeBase):
                     f'(sdw.proposal (proposal_id "{proposal.proposal_id}") '
                     f'(category "{proposal.category.value}") '
                     f'(risk "{proposal.risk.value}") '
-                    f'(delta_pct {float(delta)}) '
+                    f"(delta_pct {float(delta)}) "
                     f'(run_id "{s.run_id}"))'
                 )
                 logger.info(
                     "Asserted sdw.proposal: id=%s risk=%s delta=%.1f%%",
-                    proposal.proposal_id, proposal.risk.value, delta,
+                    proposal.proposal_id,
+                    proposal.risk.value,
+                    delta,
                 )
             except Exception as exc:
                 logger.warning("Fathom assert failed (%s), falling back to Python", exc)
@@ -678,7 +719,7 @@ class GovernanceGateNode(NodeBase):
                 human_required = True
             else:
                 decision = "pending_human"
-                reason = f"High-risk structural change — requires human approval"
+                reason = "High-risk structural change — requires human approval"
                 human_required = True
         else:
             auto_approved = delta > 0 and proposal.risk.value in ("low", "medium")
@@ -740,15 +781,19 @@ class ApplyChangeNode(NodeBase):
 
         try:
             import asyncpg
+
             conn = await asyncpg.connect(_pg_dsn())
             try:
                 await conn.execute(
                     "INSERT INTO evolution_log (proposal_id, title, category, risk,"
                     " decision, delta_pct, applied_at)"
                     " VALUES ($1, $2, $3, $4, $5, $6, $7)",
-                    proposal.proposal_id, proposal.title,
-                    proposal.category.value, proposal.risk.value,
-                    s.governance_decision, proposal.delta_pct,
+                    proposal.proposal_id,
+                    proposal.title,
+                    proposal.category.value,
+                    proposal.risk.value,
+                    s.governance_decision,
+                    proposal.delta_pct,
                     datetime.now(UTC),
                 )
             except Exception:
@@ -777,6 +822,7 @@ class CurateTrainingDataNode(NodeBase):
 
         try:
             import asyncpg
+
             conn = await asyncpg.connect(_pg_dsn())
             try:
                 # Count corrections not yet used for training
@@ -816,12 +862,16 @@ class TrainModelNode(NodeBase):
         s = state  # type: ignore[attr-defined]
 
         if s.curated_samples_count < 10:
-            logger.info("Insufficient curated samples (%d < 10) — skipping training", s.curated_samples_count)
+            logger.info(
+                "Insufficient curated samples (%d < 10) — skipping training",
+                s.curated_samples_count,
+            )
             return {"phase": "train"}
 
         logger.info(
             "Would train new model with %d curated samples at %s",
-            s.curated_samples_count, s.training_data_path,
+            s.curated_samples_count,
+            s.training_data_path,
         )
 
         # Real training would happen here via subprocess to train_detector.py

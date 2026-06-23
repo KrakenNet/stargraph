@@ -1,0 +1,80 @@
+name: Bug Report
+description: Report a bug in stargraph
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Minimal code or steps to reproduce the issue.
+
+        A minimal reproduction is required — if we can't reproduce it, we usually can't fix it.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened. Include tracebacks if applicable.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Stargraph Version
+      description: "Output of: python -c \"import stargraph; print(stargraph.__version__)\""
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: "Output of: python --version"
+      placeholder: "3.13.0"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "Ubuntu 24.04 / macOS 15 / Windows 11"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Core graph/state
+        - Engine/checkpointer (Postgres/SQLite)
+        - Knowledge/Stores (LanceDB/Kuzu/RAG)
+        - Serve (stargraph-serve/FastAPI)
+        - Bosun rules
+        - Fathom integration
+        - Nautilus integration
+        - CLI
+        - Docs
+        - Other
+    validations:
+      required: true

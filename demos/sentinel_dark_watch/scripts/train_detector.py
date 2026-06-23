@@ -65,8 +65,14 @@ async def _register(db_path: Path, onnx_path: Path, content_hash: str, version: 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
 
-    log.info("Training %s on %s — %d epochs, batch=%d, device=%s",
-             args.model, args.data, args.epochs, args.batch, args.device)
+    log.info(
+        "Training %s on %s — %d epochs, batch=%d, device=%s",
+        args.model,
+        args.data,
+        args.epochs,
+        args.batch,
+        args.device,
+    )
 
     model = YOLO(args.model)
     results = model.train(

@@ -272,37 +272,51 @@ class YOLOInferenceNode(NodeBase):
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         try:
-            import numpy as np
-
             tile = state.current_tile  # type: ignore[attr-defined]
 
             file_path = tile.file_path
             if not file_path:
-                return {"raw_detections": [], "pipeline_phase": "detection",
-                        "last_error": "YOLOInferenceNode: no file_path"}
+                return {
+                    "raw_detections": [],
+                    "pipeline_phase": "detection",
+                    "last_error": "YOLOInferenceNode: no file_path",
+                }
 
-            scene_dir = Path(file_path)  # noqa: ASYNC240
+            scene_dir = Path(file_path)
             if scene_dir.is_file():
                 scene_dir = scene_dir.parent
             if not scene_dir.exists() or not (scene_dir / "VH_dB.tif").exists():
                 logger.warning("Scene dir missing VH_dB.tif: %s", scene_dir)
-                return {"raw_detections": [], "pipeline_phase": "detection",
-                        "last_error": f"YOLOInferenceNode: no VH_dB.tif in {scene_dir}"}
+                return {
+                    "raw_detections": [],
+                    "pipeline_phase": "detection",
+                    "last_error": f"YOLOInferenceNode: no VH_dB.tif in {scene_dir}",
+                }
 
             img, affine = await asyncio.to_thread(_load_dual_band, scene_dir)
 
             patches = _tile_image(img, _PATCH_SIZE, _OVERLAP_FRAC)
-            logger.info("Scene %s: %dx%d → %d patches", tile.tile_id, img.shape[1], img.shape[0], len(patches))
+            logger.info(
+                "Scene %s: %dx%d → %d patches",
+                tile.tile_id,
+                img.shape[1],
+                img.shape[0],
+                len(patches),
+            )
 
             model_path = os.environ.get("SDW_MODEL_PATH", "")
             if not model_path:
                 data_dir = Path(__file__).resolve().parent.parent / "data" / "models"
                 model_path = str(data_dir / "yolo11n-obb.pt")
             if not Path(model_path).exists():
-                return {"raw_detections": [], "pipeline_phase": "detection",
-                        "last_error": f"YOLOInferenceNode: model not found at {model_path}"}
+                return {
+                    "raw_detections": [],
+                    "pipeline_phase": "detection",
+                    "last_error": f"YOLOInferenceNode: model not found at {model_path}",
+                }
 
             from ultralytics import YOLO
+
             model = await asyncio.to_thread(YOLO, model_path)
             logger.info("Loaded YOLO model: %s", model_path)
 
@@ -311,7 +325,10 @@ class YOLOInferenceNode(NodeBase):
 
             for patch, r_off, c_off in patches:
                 results = await asyncio.to_thread(
-                    model.predict, patch, conf=conf_threshold, verbose=False,
+                    model.predict,
+                    patch,
+                    conf=conf_threshold,
+                    verbose=False,
                 )
                 if not results or not results[0].obb:
                     continue
@@ -329,35 +346,46 @@ class YOLOInferenceNode(NodeBase):
                     cos_a, sin_a = math.cos(float(angle)), math.sin(float(angle))
                     half_w, half_h = float(w) / 2, float(h) / 2
                     geo_corners: list[list[float]] = []
-                    for dx, dy in [(-half_w, -half_h), (half_w, -half_h),
-                                   (half_w, half_h), (-half_w, half_h)]:
+                    for dx, dy in [
+                        (-half_w, -half_h),
+                        (half_w, -half_h),
+                        (half_w, half_h),
+                        (-half_w, half_h),
+                    ]:
                         rx = cos_a * dx - sin_a * dy
                         ry = sin_a * dx + cos_a * dy
                         gx, gy = _pixel_to_geo(img_x + rx, img_y + ry, affine)
                         geo_corners.append([gx, gy])
 
-                    all_detections.append({
-                        "detection_id": str(uuid.uuid4()),
-                        "geo_lat": geo_lat,
-                        "geo_lon": geo_lon,
-                        "confidence": conf,
-                        "obb_corners": geo_corners,
-                        "vessel_length_m": float(max(w, h)) * abs(affine.a),
-                        "tile_id": tile.tile_id,
-                        "class_id": cls_id,
-                        "class_name": model.names.get(cls_id, "unknown"),
-                    })
+                    all_detections.append(
+                        {
+                            "detection_id": str(uuid.uuid4()),
+                            "geo_lat": geo_lat,
+                            "geo_lon": geo_lon,
+                            "confidence": conf,
+                            "obb_corners": geo_corners,
+                            "vessel_length_m": float(max(w, h)) * abs(affine.a),
+                            "tile_id": tile.tile_id,
+                            "class_id": cls_id,
+                            "class_name": model.names.get(cls_id, "unknown"),
+                        }
+                    )
 
             from demos.sentinel_dark_watch.graph.state import Detection
 
             detections = [Detection(**d) for d in all_detections]
-            logger.info("YOLOInferenceNode: %d detections from %d patches", len(detections), len(patches))
+            logger.info(
+                "YOLOInferenceNode: %d detections from %d patches", len(detections), len(patches)
+            )
 
             return {"raw_detections": detections, "pipeline_phase": "detection"}
         except Exception as exc:
             logger.exception("YOLOInferenceNode failed: %s", exc)
-            return {"raw_detections": [], "pipeline_phase": "detection",
-                    "last_error": f"YOLOInferenceNode: {exc}"}
+            return {
+                "raw_detections": [],
+                "pipeline_phase": "detection",
+                "last_error": f"YOLOInferenceNode: {exc}",
+            }
 
 
 # ---------------------------------------------------------------------------
@@ -664,13 +692,16 @@ class AISCorrelationNode(NodeBase):
             broker_used = False
             try:
                 from stargraph.serve.contextvars import current_broker
+
                 broker = current_broker()
                 response = await broker.arequest(
                     agent_id="sdw-pipeline",
                     intent="ais-correlation",
                     context={
-                        "min_lat": min_lat, "max_lat": max_lat,
-                        "min_lon": min_lon, "max_lon": max_lon,
+                        "min_lat": min_lat,
+                        "max_lat": max_lat,
+                        "min_lon": min_lon,
+                        "max_lon": max_lon,
                         "acq_ts": acq_ts,
                         "time_window_min": time_window_min,
                     },
@@ -678,15 +709,19 @@ class AISCorrelationNode(NodeBase):
                 ais_rows = response.data.get("ais_buffer", [])
                 rows = ais_rows
                 broker_used = True
-                logger.info("AIS via Nautilus broker: %d rows from %s",
-                            len(rows), response.sources_queried)
+                logger.info(
+                    "AIS via Nautilus broker: %d rows from %s", len(rows), response.sources_queried
+                )
             except Exception as broker_exc:
-                logger.info("Nautilus broker unavailable (%s), falling back to direct PostGIS",
-                            type(broker_exc).__name__)
+                logger.info(
+                    "Nautilus broker unavailable (%s), falling back to direct PostGIS",
+                    type(broker_exc).__name__,
+                )
 
             if not broker_used:
                 try:
                     import asyncpg
+
                     conn = await asyncpg.connect(get_pg_dsn())
                 except Exception:
                     logger.warning("PostGIS unavailable — marking all as dark vessels")
@@ -707,7 +742,12 @@ class AISCorrelationNode(NodeBase):
                             "   AND lon BETWEEN $3 AND $4"
                             "   AND recorded_at BETWEEN $5::timestamptz - ($6 || ' minutes')::interval"
                             "                          AND $5::timestamptz + ($6 || ' minutes')::interval",
-                            min_lat, max_lat, min_lon, max_lon, acq_ts, str(time_window_min),
+                            min_lat,
+                            max_lat,
+                            min_lon,
+                            max_lon,
+                            acq_ts,
+                            str(time_window_min),
                         )
                     else:
                         rows = await conn.fetch(
@@ -716,7 +756,10 @@ class AISCorrelationNode(NodeBase):
                             "  FROM ais_positions"
                             " WHERE lat BETWEEN $1 AND $2"
                             "   AND lon BETWEEN $3 AND $4",
-                            min_lat, max_lat, min_lon, max_lon,
+                            min_lat,
+                            max_lat,
+                            min_lon,
+                            max_lon,
                         )
                 except Exception:
                     logger.warning("AIS query failed — marking all as dark vessels")
