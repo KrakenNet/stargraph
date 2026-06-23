@@ -152,6 +152,7 @@ async def _run(brief: str, work_dir: Path, keep_required: bool, do_verify: bool)
         # NOTE: synthesize emits user-surface YAML; stargraph simulate consumes IR
         # YAML. This currently fails until Plan 2 ships an IR translation.
         from stargraph.skills.shipwright.nodes.verify import VerifySmoke
+
         state = state.model_copy(update=await VerifySmoke(work_dir=work_dir).execute(state, ctx))
         smoke = next(r for r in reversed(state.verifier_results) if r.kind == "smoke")
         print(f"  passed={smoke.passed}  duration_ms={smoke.duration_ms}")
@@ -208,10 +209,11 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\ninterrupted", file=sys.stderr)
         return 130
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         print(f"\nERROR: {type(e).__name__}: {e}", file=sys.stderr)
         if os.environ.get("SHIPWRIGHT_DEBUG"):
             import traceback
+
             traceback.print_exc()
         return 1
     if args.json_state:

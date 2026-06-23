@@ -49,7 +49,7 @@ class BranchResponse(NodeBase):
 
     async def execute(
         self,
-        state: "BaseModel",
+        state: BaseModel,
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         response = getattr(state, "response", None)
@@ -73,7 +73,7 @@ class LookupHistoryCaller(NodeBase):
 
     async def execute(
         self,
-        state: "BaseModel",
+        state: BaseModel,
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
         from demos.everything_demo.graph.tools import lookup_history

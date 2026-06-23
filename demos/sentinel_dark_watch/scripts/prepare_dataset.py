@@ -64,8 +64,7 @@ def _synthesise_obb(
     ]
     cos_a, sin_a = math.cos(angle_rad), math.sin(angle_rad)
     return [
-        (dx * cos_a - dy * sin_a + cx_px, dx * sin_a + dy * cos_a + cy_px)
-        for dx, dy in corners
+        (dx * cos_a - dy * sin_a + cx_px, dx * sin_a + dy * cos_a + cy_px) for dx, dy in corners
     ]
 
 
@@ -106,11 +105,13 @@ def _load_scene_labels(csv_path: Path, scene_id: str) -> list[dict]:
             if is_vessel in ("false", "0", "no"):
                 continue
             try:
-                labels.append({
-                    "row": float(row["detect_scene_row"]),
-                    "col": float(row["detect_scene_column"]),
-                    "length_m": float(row.get("vessel_length_m") or DEFAULT_VESSEL_LENGTH_M),
-                })
+                labels.append(
+                    {
+                        "row": float(row["detect_scene_row"]),
+                        "col": float(row["detect_scene_column"]),
+                        "length_m": float(row.get("vessel_length_m") or DEFAULT_VESSEL_LENGTH_M),
+                    }
+                )
             except (KeyError, ValueError) as exc:
                 logger.debug("Skipping malformed label: %s", exc)
     return labels
@@ -150,6 +151,7 @@ def _normalise_to_uint8(arr: np.ndarray) -> np.ndarray:
 
 def _save_patch(vh: np.ndarray, vv: np.ndarray, out_path: Path, patch_size: int) -> None:
     """Save VH+VV as a 3-channel PNG (VH, VV, VH-VV ratio)."""
+
     def pad(arr: np.ndarray) -> np.ndarray:
         if arr.shape[0] < patch_size or arr.shape[1] < patch_size:
             padded = np.full((patch_size, patch_size), np.nan, dtype=np.float32)
@@ -159,11 +161,14 @@ def _save_patch(vh: np.ndarray, vv: np.ndarray, out_path: Path, patch_size: int)
 
     vh, vv = pad(vh), pad(vv)
     ratio = vh - vv  # dB difference
-    stack = np.stack([
-        _normalise_to_uint8(vh),
-        _normalise_to_uint8(vv),
-        _normalise_to_uint8(ratio),
-    ], axis=-1)
+    stack = np.stack(
+        [
+            _normalise_to_uint8(vh),
+            _normalise_to_uint8(vv),
+            _normalise_to_uint8(ratio),
+        ],
+        axis=-1,
+    )
     Image.fromarray(stack, mode="RGB").save(out_path)
 
 
@@ -246,7 +251,8 @@ def prepare_dataset(
 
     logger.info(
         "Done: %d patches (%d with labels, %.1f%%)",
-        total_patches, total_labelled,
+        total_patches,
+        total_labelled,
         100.0 * total_labelled / total_patches if total_patches else 0,
     )
     return _write_data_yaml(output_dir, tiles_dir)
@@ -266,19 +272,31 @@ def _write_data_yaml(output_dir: Path, tiles_dir: Path) -> Path:
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Tile xView3 scenes → YOLO OBB format.")
-    parser.add_argument("--imagery-dir", type=Path, required=True,
-                        help="Directory containing xView3 scene subdirectories.")
-    parser.add_argument("--train-csv", type=Path, required=True,
-                        help="Path to xView3 train.csv labels.")
-    parser.add_argument("--val-csv", type=Path, required=True,
-                        help="Path to xView3 validation.csv labels.")
-    parser.add_argument("--output-dir", type=Path, default=Path("data/prepared"),
-                        help="Root output directory (default: data/prepared).")
+    parser.add_argument(
+        "--imagery-dir",
+        type=Path,
+        required=True,
+        help="Directory containing xView3 scene subdirectories.",
+    )
+    parser.add_argument(
+        "--train-csv", type=Path, required=True, help="Path to xView3 train.csv labels."
+    )
+    parser.add_argument(
+        "--val-csv", type=Path, required=True, help="Path to xView3 validation.csv labels."
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("data/prepared"),
+        help="Root output directory (default: data/prepared).",
+    )
     parser.add_argument("--patch-size", type=int, default=DEFAULT_PATCH_SIZE)
     parser.add_argument("--overlap", type=float, default=DEFAULT_OVERLAP)
     args = parser.parse_args(argv)
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
     prepare_dataset(
         imagery_dir=args.imagery_dir,
         train_csv=args.train_csv,

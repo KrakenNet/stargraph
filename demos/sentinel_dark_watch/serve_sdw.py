@@ -367,7 +367,10 @@ def main(argv: list[str] | None = None) -> int:
                 f"http://localhost:{args.port}/v1/runs",
                 json={
                     "graph_id": "graph:sdw-pipeline",
-                    "state": {"tile_queue": tile_ids, "run_id": f"scan-{int(__import__('time').time())}"},
+                    "state": {
+                        "tile_queue": tile_ids,
+                        "run_id": f"scan-{int(__import__('time').time())}",
+                    },
                 },
             )
             return resp.json()

@@ -51,7 +51,16 @@ def _detect_phases(raw_yaml: str) -> list[dict[str, Any]]:
         if stripped == "nodes:":
             in_nodes = True
             continue
-        if in_nodes and not stripped.startswith("#") and not stripped.startswith("-") and not stripped.startswith(" ") and stripped and not stripped.startswith("kind") and not stripped.startswith("spec") and not stripped.startswith("config"):
+        if (
+            in_nodes
+            and not stripped.startswith("#")
+            and not stripped.startswith("-")
+            and not stripped.startswith(" ")
+            and stripped
+            and not stripped.startswith("kind")
+            and not stripped.startswith("spec")
+            and not stripped.startswith("config")
+        ):
             if not stripped.startswith("id:"):
                 in_nodes = False
                 continue
@@ -116,63 +125,75 @@ def _topology_for(doc: IRDocument, raw_yaml: str, graph_hash: str) -> dict[str, 
         src_match = _NODE_ID_RE.search(rule.when or "")
         source = rule.node_id or (src_match.group(1) if src_match else None)
         if source:
-            rules_by_source.setdefault(source, []).append({
-                "id": rule.id,
-                "when": rule.when or "",
-                "actions": [a.model_dump(mode="json") for a in (rule.then or [])],
-            })
+            rules_by_source.setdefault(source, []).append(
+                {
+                    "id": rule.id,
+                    "when": rule.when or "",
+                    "actions": [a.model_dump(mode="json") for a in (rule.then or [])],
+                }
+            )
         for action in rule.then or []:
             kind = getattr(action, "kind", None)
             if kind in ("goto", "retry"):
                 target = getattr(action, "target", None)
                 if source and target:
-                    edges_json.append({
-                        "source": source,
-                        "target": target,
-                        "via_rule": rule.id,
-                        "kind": kind,
-                        "when": rule.when or "",
-                    })
+                    edges_json.append(
+                        {
+                            "source": source,
+                            "target": target,
+                            "via_rule": rule.id,
+                            "kind": kind,
+                            "when": rule.when or "",
+                        }
+                    )
             elif kind == "parallel":
                 for tgt in getattr(action, "targets", []) or []:
                     if source:
-                        edges_json.append({
-                            "source": source,
-                            "target": tgt,
-                            "via_rule": rule.id,
-                            "kind": "parallel",
-                            "when": rule.when or "",
-                        })
+                        edges_json.append(
+                            {
+                                "source": source,
+                                "target": tgt,
+                                "via_rule": rule.id,
+                                "kind": "parallel",
+                                "when": rule.when or "",
+                            }
+                        )
                 join_node = getattr(action, "join", "")
                 if join_node and source:
                     for tgt in getattr(action, "targets", []) or []:
-                        edges_json.append({
-                            "source": tgt,
-                            "target": join_node,
-                            "via_rule": rule.id,
-                            "kind": "parallel_join",
-                            "when": rule.when or "",
-                        })
+                        edges_json.append(
+                            {
+                                "source": tgt,
+                                "target": join_node,
+                                "via_rule": rule.id,
+                                "kind": "parallel_join",
+                                "when": rule.when or "",
+                            }
+                        )
             elif kind == "halt":
                 if source:
-                    edges_json.append({
-                        "source": source,
-                        "target": "__halt__",
-                        "via_rule": rule.id,
-                        "kind": "halt",
-                        "when": rule.when or "",
-                        "reason": getattr(action, "reason", "") or "",
-                    })
+                    edges_json.append(
+                        {
+                            "source": source,
+                            "target": "__halt__",
+                            "via_rule": rule.id,
+                            "kind": "halt",
+                            "when": rule.when or "",
+                            "reason": getattr(action, "reason", "") or "",
+                        }
+                    )
             elif kind == "interrupt":
                 if source:
-                    edges_json.append({
-                        "source": source,
-                        "target": "__interrupt__",
-                        "via_rule": rule.id,
-                        "kind": "interrupt",
-                        "when": rule.when or "",
-                        "prompt": getattr(action, "prompt", "") or "",
-                    })
+                    edges_json.append(
+                        {
+                            "source": source,
+                            "target": "__interrupt__",
+                            "via_rule": rule.id,
+                            "kind": "interrupt",
+                            "when": rule.when or "",
+                            "prompt": getattr(action, "prompt", "") or "",
+                        }
+                    )
 
     for n in nodes_json:
         n["rules"] = rules_by_source.get(n["id"], [])
@@ -199,8 +220,7 @@ def _topology_for(doc: IRDocument, raw_yaml: str, graph_hash: str) -> dict[str, 
         "skills": [{"id": s.id, "version": s.version} for s in doc.skills],
         "phases": phases,
         "parallel": [
-            {"targets": p.targets, "join": p.join, "strategy": p.strategy}
-            for p in doc.parallel
+            {"targets": p.targets, "join": p.join, "strategy": p.strategy} for p in doc.parallel
         ],
     }
 
@@ -291,11 +311,12 @@ def main(argv: list[str] | None = None) -> int:
         return JSONResponse(topo)
 
     if args.upstream:
-        import httpx
         import asyncio
+
+        import httpx
+        import websockets
         from fastapi import WebSocket, WebSocketDisconnect
         from starlette.websockets import WebSocketState
-        import websockets
 
         upstream = args.upstream.rstrip("/")
         ws_upstream = upstream.replace("http://", "ws://").replace("https://", "wss://")
@@ -354,6 +375,7 @@ def main(argv: list[str] | None = None) -> int:
             ws_url = f"{ws_upstream}/v1/runs/{run_id}/stream"
             try:
                 async with websockets.connect(ws_url, max_size=None) as upstream_ws:
+
                     async def downstream_to_upstream() -> None:
                         try:
                             while True:
@@ -379,7 +401,7 @@ def main(argv: list[str] | None = None) -> int:
                         upstream_to_downstream(),
                         return_exceptions=True,
                     )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 try:
                     await websocket.send_json({"error": str(exc)})
                 except Exception:

@@ -272,9 +272,7 @@ def test_respond_resumes_run_to_completion_with_valid_audit_chain(
 
         # The audit chain JSONL exists and re-verifies (CHAIN_VALID).
         assert audit_path.is_file(), "AuditChain did not write the JSONL record"
-        lines = [
-            json.loads(line) for line in audit_path.read_text().splitlines() if line.strip()
-        ]
+        lines = [json.loads(line) for line in audit_path.read_text().splitlines() if line.strip()]
         # The full pre-audit provenance trail is sealed, ending at write_artifact.
         assert [line["event"]["node"] for line in lines] == [
             "ingest",
@@ -384,10 +382,18 @@ async def test_audit_chain_valid_and_tamper_evident(tmp_path: Any) -> None:
         state = RunState(
             run_id=run_id,
             provenance=[
-                ProvenanceEvent(node="ingest", kind="ingest", summary="ingested case_8821",
-                                detail={"alert_id": "case_8821"}),
-                ProvenanceEvent(node="retrieval", kind="retrieval",
-                                summary="fused 4 prior(s)", detail={"prior_count": 4}),
+                ProvenanceEvent(
+                    node="ingest",
+                    kind="ingest",
+                    summary="ingested case_8821",
+                    detail={"alert_id": "case_8821"},
+                ),
+                ProvenanceEvent(
+                    node="retrieval",
+                    kind="retrieval",
+                    summary="fused 4 prior(s)",
+                    detail={"prior_count": 4},
+                ),
             ],
         )
 
