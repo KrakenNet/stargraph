@@ -74,7 +74,11 @@ jobs:
       # ``skills-rag``) are available for any test module that
       # imports them at collect time.
       - run: uv sync --all-extras --group dev
-      - run: uv run pytest -m "not slow" --cov=stargraph --cov-report=xml -q
+      # ``-n auto`` (pytest-xdist) parallelizes across the runner's cores: the
+      # smith-family suite is CPU-bound (sklearn->ONNX gate builds, Fathom
+      # engines) and ran the serial job past its 25-min budget. ``loadscope``
+      # groups tests by module so module-scoped fixtures aren't rebuilt per test.
+      - run: uv run pytest -m "not slow" -n auto --dist loadscope --cov=stargraph --cov-report=xml -q
       - if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         uses: codecov/codecov-action@v4
         with:

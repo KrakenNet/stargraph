@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Packsmith IR — a Stargraph graph that builds Bosun rule packs from a brief.
+#
+# A leaf smith: it emits a governance pack — a rules.clp (CLIPS deftemplates + defrules)
+# plus the assembled pack.yaml + manifest.yaml descriptors and its test. Same linear
+# pipeline (routes on the static IR edge; no rule engine, so it runs under plain
+# `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + CLIPS-pack/signing-contract RAG)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the contract tier LOADS the rules into a Fathom engine, FIRES them on
+#                  the fixture, matches the action, then signs + verifies the pack tree)
+#         -> record  (success: log (brief -> rules.clp) trainset pair + land the
+#                     pack bundle under output_dir/<pack_name>/;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/packsmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a governance pack that escalates alerts whose risk score exceeds 7" \
+#     -i model_id=laguna-xs -i output_dir=./generated_packs
+ir_version: "1.0.0"
+id: "graph:packsmith"
+state_class: "stargraph.skills.packsmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.packsmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.packsmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.packsmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.packsmith.nodes.record:RecordBuild"
+rules: []

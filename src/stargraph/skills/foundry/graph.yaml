@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# The foundry orchestrator graph: plan -> execute -> assemble -> verify.
+# Linear (rules: []) so it runs under plain `stargraph run`. The nodes resolve by
+# installed module path; the State carries the request in and the verdict out.
+ir_version: "1.0.0"
+id: "graph:foundry"
+state_class: "stargraph.skills.foundry.state:State"
+nodes:
+  - id: plan
+    kind: "stargraph.skills.foundry.nodes.plan:Plan"
+  - id: execute
+    kind: "stargraph.skills.foundry.nodes.execute:Execute"
+  - id: assemble
+    kind: "stargraph.skills.foundry.nodes.assemble:Assemble"
+  - id: verify
+    kind: "stargraph.skills.foundry.nodes.verify:Verify"
+rules: []

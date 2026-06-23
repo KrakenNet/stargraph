@@ -62,6 +62,11 @@ ml = [
     "skops>=0.10",
     "joblib",
 ]
+# nodesmith TUI (the trainset curator). The CLI + gate work without it; only
+# `nodesmith tui` needs textual.
+nodesmith = [
+    "textual>=0.80",
+]
 # Note on `ryugraph>=25.9.2,<26`: RyuGraph is the community fork of Kuzu
 # (predictable-labs/ryugraph) after the Kuzu GitHub repo was archived
 # 2025-10-10 following Apple's acquisition of Kuzu Inc. RyuGraph keeps
@@ -107,6 +112,7 @@ Issues = "https://github.com/KrakenNet/stargraph/issues"
 
 [project.scripts]
 stargraph = "stargraph.cli:main"
+nodesmith = "stargraph.skills.nodesmith.cli:main"
 
 # Public extension groups — plugins register here
 [project.entry-points."stargraph"]
@@ -159,6 +165,8 @@ dev = [
     "time-machine>=3.2.0",
     "pytest-benchmark>=5.2.3",
     "skl2onnx>=1.17",
+    "textual>=0.80",
+    "pytest-xdist>=3.8.0",
 ]
 docs = [
     "mkdocs-material>=9.5",

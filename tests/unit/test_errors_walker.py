@@ -60,6 +60,10 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         "IncompatibleModelHashError",
         "MLNodeError",
         "SimulationError",
+        # foundry assembler — raised by stargraph.skills.foundry.assemble when no
+        # runnable graph spine landed. StargraphRuntimeError-rooted so a single
+        # ``except StargraphRuntimeError`` catches it alongside engine runtime failures.
+        "AssemblyError",
         # Stargraph-knowledge store-error hierarchy (design §4.5).
         "StoreError",
         "IncompatibleEmbeddingHashError",

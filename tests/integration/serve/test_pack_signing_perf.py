@@ -46,7 +46,11 @@ if TYPE_CHECKING:
     from pytest_benchmark.fixture import BenchmarkFixture
 
 
-pytestmark = [pytest.mark.serve, pytest.mark.integration]
+# ``slow`` keeps this wall-clock benchmark out of the parallel ``test`` lane
+# (``-m "not slow" -n auto``): pytest-benchmark is unreliable under xdist and a
+# <50 ms budget flakes under multi-worker CPU contention. The ``serve-test`` job
+# (``-m "serve"``, serial) is the accurate measurement surface for NFR-5.
+pytestmark = [pytest.mark.serve, pytest.mark.integration, pytest.mark.slow]
 
 
 _PERF_BUDGET_SECONDS = 0.050  # NFR-5: <50 ms per pack on cold load

@@ -1,0 +1,10 @@
+id: stargraph.skills.nodesmith
+version: "0.1.0"
+kind: workflow
+description: |
+  Nodesmith — a Stargraph graph that builds Stargraph nodes from a brief.
+  Generate (DSPy) → verify (static / contract / tests) → bounded repair loop.
+  A node is recorded only after it imports, constructs, runs execute() on its
+  declared fixture, and passes its test. Gate-passing builds log (spec → node)
+  training pairs; failures log reflexion lessons.
+state_schema: stargraph.skills.nodesmith.state:State

@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Toolsmith IR — a Stargraph graph that builds Stargraph tools from a brief.
+#
+# Linear pipeline (routes on the static IR edge; no rule engine required, so it
+# runs under plain `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons + RAG grounding relevant to the brief)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the verify gate is the "always works" contract)
+#         -> record  (success: log (spec -> tool) trainset pair + land files;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable):
+#   stargraph run src/stargraph/skills/toolsmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a tool that summarizes an IPv4 CIDR block" \
+#     -i model_id=laguna-xs -i output_dir=./generated_tools
+ir_version: "1.0.0"
+id: "graph:toolsmith"
+state_class: "stargraph.skills.toolsmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.toolsmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.toolsmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.toolsmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.toolsmith.nodes.record:RecordBuild"
+rules: []

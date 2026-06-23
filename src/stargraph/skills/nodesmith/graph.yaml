@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Nodesmith IR — a Stargraph graph that builds Stargraph nodes from a brief.
+#
+# Linear pipeline (routes on the static IR edge; no rule engine required, so it
+# runs under plain `stargraph run`):
+#
+#   triage   (reject empty briefs)
+#     -> recall   (load reflexion lessons relevant to the brief)
+#       -> build  (bounded generate -> gate{static,contract,tests} -> repair loop;
+#                  the verify gate is the "always works" contract)
+#         -> record  (success: log (spec -> node) trainset pair + land files;
+#                     failure: log a summary lesson) -> halt
+#
+# Run (model is selectable -- try laguna-xs / gemma3 / gpt-oss and keep the best):
+#   stargraph run src/stargraph/skills/nodesmith/graph.yaml \
+#     --lm-url "$LLM_OLLAMA_URL" --lm-model laguna-xs \
+#     -i brief="a node that reads `severity_raw` (float) and writes `severity_band` (str: low/med/high)" \
+#     -i model_id=laguna-xs -i output_dir=./generated_nodes
+ir_version: "1.0.0"
+id: "graph:nodesmith"
+state_class: "stargraph.skills.nodesmith.state:State"
+nodes:
+  - id: triage
+    kind: "stargraph.skills.nodesmith.nodes.triage:TriageGate"
+  - id: recall
+    kind: "stargraph.skills.nodesmith.nodes.recall:Recall"
+  - id: build
+    kind: "stargraph.skills.nodesmith.nodes.build:Build"
+  - id: record
+    kind: "stargraph.skills.nodesmith.nodes.record:RecordBuild"
+rules: []
