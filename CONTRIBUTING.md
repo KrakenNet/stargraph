@@ -36,6 +36,12 @@ Prerequisites: Python 3.13+, [uv](https://docs.astral.sh/uv/).
     uv run pyright
     uv run pytest
 
+For a large or cross-cutting change, run the full local CI mirror — every gate plus the complete suite including the slow, container-backed tests (needs a running Docker daemon for the Postgres/Neo4j testcontainers):
+
+    make ci
+
+This is the robust superset of the PR checks. On a pull request, the heavy infra jobs (`engine-test`, `knowledge-test`, `cypher-subset`, `serve-test`) run **only** when their subsystem — or a shared/core path — changed; every job always runs on push to `main`. So `make ci` is how you cover the gates your PR skipped before they surface post-merge.
+
 `pyright` resolves the optional subsystems (ml, stores, skills-rag, …), so type-check against an environment that has the extras installed:
 
     uv sync --group dev --all-extras

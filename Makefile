@@ -1,4 +1,4 @@
-.PHONY: init install lint typecheck test test-all test-engine test-engine-postgres test-knowledge test-serve lint-serve regen-openapi docs-build docs-serve docs-clean release publish version-bump
+.PHONY: init install lint typecheck test test-all test-engine test-engine-postgres test-knowledge test-serve lint-serve ci regen-openapi docs-build docs-serve docs-clean release publish version-bump
 
 init: install
 	uv run pre-commit install
@@ -39,6 +39,23 @@ test-knowledge:
 
 test-serve:
 	uv run pytest -q -m serve --tb=short
+
+# Full local CI mirror — the robust superset the PR workflow no longer runs in
+# full. GitHub path-filters the heavy infra jobs (Postgres/pgbouncer, Neo4j
+# testcontainer, all-extras serve surface) to only the PRs that touch them; run
+# this before pushing a large or cross-cutting change to exercise every gate
+# locally. Runs all gates + the complete suite including slow/container-backed
+# tests (``--runslow`` spins testcontainers, so a running Docker daemon and the
+# full extra set are required — hence the all-extras sync first).
+ci:
+	uv sync --all-extras --group dev
+	uv run ruff check src/ tests/
+	uv run ruff format --check src/ tests/
+	uv run pyright
+	uv run python scripts/build_draft7.py && git diff --exit-code src/stargraph/schemas/ir-v1-draft7.json
+	uv run python scripts/regen_openapi.py && git diff --exit-code docs/reference/openapi.json
+	uv run pytest --runslow
+	@echo "local ci: all gates green"
 
 lint-serve:
 	uv run ruff check \
