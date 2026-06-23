@@ -1,0 +1,27 @@
+# Bot that auto-applies ruff fixes + formatting to PRs (incl. fork PRs) via the
+# autofix.ci GitHub App, instead of failing the build on style. Install the
+# autofix.ci app on the KrakenNet org once for this to push commits back.
+# NOTE: replace 0.15.12 with the ruff version pinned in this repo's
+# .pre-commit-config.yaml (strip the leading "v"), e.g. 0.11.9.
+name: autofix.ci
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: ruff fix + format
+        run: |
+          uvx ruff@0.15.12 check --fix-only .
+          uvx ruff@0.15.12 format .
+      - uses: autofix-ci/action@v1.3.2

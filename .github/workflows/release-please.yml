@@ -1,0 +1,41 @@
+name: release-please
+
+# Maintains a rolling release PR (version bump from conventional
+# commits). Merging that PR creates the vX.Y.Z tag + GitHub release,
+# which triggers pypi-publish.yml and docs-deploy.yml.
+#
+# Requires the RELEASE_PLEASE_TOKEN secret: a fine-grained PAT with
+# contents:write + pull-requests:write on this repo. The default
+# GITHUB_TOKEN cannot be used — PRs and tags it creates do not trigger
+# other workflows (CI would never run on the release PR, and the tag
+# push would never trigger pypi-publish).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for token
+        id: token
+        env:
+          TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "RELEASE_PLEASE_TOKEN not set; skipping release-please."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run release-please
+        if: steps.token.outputs.skip != 'true'
+        uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

@@ -258,8 +258,9 @@ jobs:
       - run: uv run python scripts/lineage_audit.py --help
 
   dco:
-    # Only run on PRs; reject if any commit lacks Signed-off-by
-    if: github.event_name == 'pull_request'
+    # Only run on PRs; reject if any commit lacks Signed-off-by.
+    # Skip release-please PRs — its bot commits are not signed off.
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

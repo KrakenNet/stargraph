@@ -1,4 +1,7 @@
-.PHONY: install lint typecheck test test-all test-engine test-engine-postgres test-knowledge test-serve lint-serve regen-openapi docs-build docs-serve docs-clean release publish version-bump
+.PHONY: init install lint typecheck test test-all test-engine test-engine-postgres test-knowledge test-serve lint-serve regen-openapi docs-build docs-serve docs-clean release publish version-bump
+
+init: install
+	uv run pre-commit install
 
 install:
 	uv sync --group dev --group docs

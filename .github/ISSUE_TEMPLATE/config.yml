@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discord
+    url: https://discord.gg/E6Cf8WFDf
+    about: Chat with the community and ask questions.
+  - name: Documentation
+    url: https://stargraph.krakn.ai
+    about: Check the docs before opening an issue
+  - name: Discussions
+    url: https://github.com/KrakenNet/stargraph/discussions
+    about: Ask questions and discuss ideas
