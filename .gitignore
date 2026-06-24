@@ -4,6 +4,7 @@
 !.gitignore
 !.gitkeep
 !.pre-commit-config.yaml
+!.release-please-manifest.json
 !.python-version
 !.env.example
 
