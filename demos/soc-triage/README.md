@@ -71,7 +71,7 @@ Run it directly from the stargraph checkout (uses the stargraph venv via
 `--no-project`):
 
 ```bash
-cd /home/sean/leagues/stargraph
+cd /path/to/stargraph
 uv run --no-project python demos/soc-triage/serve_soc.py --host 127.0.0.1 --port 9020
 ```
 
@@ -122,10 +122,11 @@ Requires `curl` + `jq`.
 
 ## ⚠️ Development signing key — DEMO ONLY
 
-`bosun-packs/keys/dev_signing_key.pem` is a **committed Ed25519 private signing
-key** (key id `dev-soc-1cdb9c59`). This is a deliberate, resolved design
-decision: **reproducibility over secrecy** — anyone who checks out this repo can
-re-sign and re-verify the policy packs deterministically.
+`bosun-packs/keys/dev_signing_key.pem` is a dev-only Ed25519 private signing key
+(key id `dev-soc-1cdb9c59`). It is **not shipped** (gitignored); only the
+public-key sidecar (`<key_id>.pub.pem`) and the detached `manifest.jwt` are
+committed, so `verify_pack` works out of the box. To re-sign the packs, generate
+your own key (see `bosun-packs/README.md`).
 
 > **NEVER use this key, or this pattern, in production.** In production, Bosun
 > packs are signed with a key held in a KMS/HSM and only the public-key sidecar
