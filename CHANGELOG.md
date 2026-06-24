@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/KrakenNet/stargraph/compare/v0.5.1...v0.5.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ci:** run knowledge + serve gates with their declared extras ([#111](https://github.com/KrakenNet/stargraph/issues/111)) ([dabc9b5](https://github.com/KrakenNet/stargraph/commit/dabc9b56d3420ab19346bd57e9d457b2f45ad10d))
+
 ## [0.5.1](https://github.com/KrakenNet/stargraph/compare/v0.5.0...v0.5.1) (2026-06-24)
 
 
