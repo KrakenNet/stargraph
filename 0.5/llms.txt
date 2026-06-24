@@ -1,0 +1,37 @@
+# Stargraph
+
+> Stateful agent-graph framework with deterministic governance: rules route transitions, not the LLM. Compose LLMs, ML models, tools, and retrieval into auditable, replayable graphs. A governed alternative to LangGraph / CrewAI. Built on Fathom.
+
+Stargraph runs agent workflows as graphs whose node transitions are decided by Fathom (a CLIPS rules engine) over provenance-typed facts — not by an LLM playing router. Every run is replayable and every decision is auditable. Built for regulated, air-gapped, and cleared workloads.
+
+## Documentation
+- [Home](https://krakennet.github.io/stargraph/latest/): What Stargraph is and why rules route transitions.
+- [Getting Started](https://krakennet.github.io/stargraph/latest/getting-started/): Install and run your first graph.
+- [Architecture map](https://krakennet.github.io/stargraph/latest/architecture-map/): How the pieces fit together.
+
+## Tutorials
+- [First graph](https://krakennet.github.io/stargraph/latest/tutorials/first-graph/)
+- [Add a Fathom rule pack](https://krakennet.github.io/stargraph/latest/tutorials/fathom-rules/)
+- [Agent with retrieval](https://krakennet.github.io/stargraph/latest/tutorials/agent-with-retrieval/)
+- [Serve and replay](https://krakennet.github.io/stargraph/latest/tutorials/serve-and-replay/)
+
+## Concepts
+- [IR & schema](https://krakennet.github.io/stargraph/latest/concepts/ir/): The graph intermediate representation.
+- [Plugin model](https://krakennet.github.io/stargraph/latest/concepts/plugins/): Tools, stores, and triggers as plugins.
+- [Provenance & replay](https://krakennet.github.io/stargraph/latest/concepts/provenance/): Why every run is reproducible.
+
+## How-to
+- [Build a graph](https://krakennet.github.io/stargraph/latest/how-to/build-graph/)
+- [Write a tool plugin](https://krakennet.github.io/stargraph/latest/how-to/write-tool-plugin/)
+- [Add a trigger](https://krakennet.github.io/stargraph/latest/how-to/add-trigger/)
+- [Air-gap deployment (operator playbook)](https://krakennet.github.io/stargraph/latest/guides/air-gap-deployment/)
+
+## Reference
+- [CLI](https://krakennet.github.io/stargraph/latest/reference/cli/)
+- [IR JSON Schema](https://krakennet.github.io/stargraph/latest/reference/ir-schema/)
+- [Plugin manifest](https://krakennet.github.io/stargraph/latest/reference/plugin-manifest/)
+
+## Links
+- [PyPI: stargraph](https://pypi.org/project/stargraph/)
+- [Source](https://github.com/KrakenNet/stargraph)
+- [Fathom — the reasoning engine Stargraph is built on](https://github.com/KrakenNet/fathom)

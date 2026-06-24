@@ -1,0 +1,3105 @@
+{
+  "components": {
+    "schemas": {
+      "ArtifactRef": {
+        "additionalProperties": false,
+        "description": "Content-addressable artifact handle returned by :meth:`ArtifactStore.put`.\n\n``artifact_id`` is BLAKE3(content)[:32] (SHA-256 fallback in FIPS)\nso identical content always yields identical ids; ``content_hash``\ncarries the full digest for integrity checks (design §10.1, NFR-21).",
+        "properties": {
+          "artifact_id": {
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "content_hash",
+          "name",
+          "content_type",
+          "run_id",
+          "step",
+          "created_at"
+        ],
+        "title": "ArtifactRef",
+        "type": "object"
+      },
+      "BrokerResponse": {
+        "$defs": {
+          "ErrorRecord": {
+            "description": "Per-source adapter/broker failure record (design §4.6).\n\n``trace_id`` correlates back to the request id so operators can\ncross-reference the JSONL audit entry.",
+            "properties": {
+              "error_type": {
+                "title": "Error Type",
+                "type": "string"
+              },
+              "message": {
+                "title": "Message",
+                "type": "string"
+              },
+              "source_id": {
+                "title": "Source Id",
+                "type": "string"
+              },
+              "trace_id": {
+                "title": "Trace Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_id",
+              "error_type",
+              "message",
+              "trace_id"
+            ],
+            "title": "ErrorRecord",
+            "type": "object"
+          },
+          "ScopeConstraint": {
+            "description": "Per-source WHERE-clause fragment produced by the router (design §4.4).\n\nThe ``operator`` allowlist is pinned via ``typing.Literal`` so pyright\ncatches drift between the Pydantic model and the adapter-runtime\nvalidator in :mod:`nautilus.adapters.base` (design §6.1, UQ-6).",
+            "properties": {
+              "expires_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Expires At"
+              },
+              "field": {
+                "title": "Field",
+                "type": "string"
+              },
+              "operator": {
+                "enum": [
+                  "=",
+                  "!=",
+                  "IN",
+                  "NOT IN",
+                  "<",
+                  ">",
+                  "<=",
+                  ">=",
+                  "LIKE",
+                  "BETWEEN",
+                  "IS NULL"
+                ],
+                "title": "Operator",
+                "type": "string"
+              },
+              "source_id": {
+                "title": "Source Id",
+                "type": "string"
+              },
+              "valid_from": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid From"
+              },
+              "value": {
+                "title": "Value"
+              }
+            },
+            "required": [
+              "source_id",
+              "field",
+              "operator",
+              "value"
+            ],
+            "title": "ScopeConstraint",
+            "type": "object"
+          }
+        },
+        "description": "Public result of :meth:`Broker.arequest` (design §4.8).\n\nAggregates per-source successes, denials, skips, and errors plus the\noptional attestation JWT. ``data`` maps each successful ``source_id``\nto the list of returned rows.",
+        "properties": {
+          "attestation_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attestation Token"
+          },
+          "cap_breached": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cap Breached"
+          },
+          "data": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "fact_set_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fact Set Hash"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "scope_restrictions": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/$defs/ScopeConstraint"
+              },
+              "type": "array"
+            },
+            "title": "Scope Restrictions",
+            "type": "object"
+          },
+          "source_session_signatures": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Session Signatures"
+          },
+          "sources_denied": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources Denied",
+            "type": "array"
+          },
+          "sources_errored": {
+            "items": {
+              "$ref": "#/$defs/ErrorRecord"
+            },
+            "title": "Sources Errored",
+            "type": "array"
+          },
+          "sources_queried": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources Queried",
+            "type": "array"
+          },
+          "sources_skipped": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "request_id",
+          "data",
+          "sources_queried",
+          "sources_denied",
+          "sources_skipped",
+          "sources_errored",
+          "scope_restrictions",
+          "attestation_token",
+          "duration_ms"
+        ],
+        "title": "BrokerResponse",
+        "type": "object"
+      },
+      "CounterfactualMutation": {
+        "additionalProperties": false,
+        "description": "Typed builder for the six FR-27/FR-56 cf-fork mutation fields (design §3.8.2, §4.5).\n\nAll fields default to ``None`` so the empty mutation is a valid no-op\nbuilder (useful for \"what does this run look like under cf-replay\nsemantics, with no semantic change\" probes -- the derived hash still\ndiffers from the original by virtue of the domain-separation tag).\n\nAttributes:\n    state_overrides: Plain ``dict[str, Any]`` -- merged into the\n        checkpoint state at the cf step, replacing matching keys.\n        Mixed value types are intentional (the runtime state schema\n        is not known here; type-checking happens downstream when the\n        mutated state is fed into the next node).\n    facts_assert: Optional list of CLIPS-style fact records to\n        ``assert`` at the cf step (rule-engine substrate, FR-27).\n    facts_retract: Optional list of CLIPS-style fact records to\n        ``retract`` at the cf step.\n    rule_pack_version: Optional rule-pack semver string -- pins the\n        mutated run to a different rule-pack snapshot than the\n        original (design §3.8.4 step 3).\n    node_output_overrides: Plain ``dict[str, Any]`` keyed by\n        ``node_id`` -- the value at the cf-step replaces the\n        recorded output for that node (design §3.8.4 step 6).\n    respond_payloads: Optional ``dict[int, dict[str, Any]]`` --\n        maps ``step_n`` (the run-step at which the original live\n        run emitted a :class:`~stargraph.runtime.events.WaitingForInputEvent`)\n        to a respond payload dict. The override replaces the\n        cassette-recorded analyst response for that step; the\n        cf-replay engine asserts a fresh ``stargraph.evidence`` fact\n        with ``origin=\"user\"`` + ``source=\"cf:<actor>\"`` (FR-56,\n        design §4.5, locked Decision #2). The ``<actor>`` is taken\n        from the cf submitter's authenticated\n        :class:`~stargraph.serve.auth.AuthContext` at cf-request time;\n        see :func:`apply_respond_override` for the resolver helper.\n        The payload shape mirrors the live ``POST /runs/{id}/respond``\n        body (raw JSON dict, locked Decision #2).",
+        "properties": {
+          "facts_assert": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facts Assert"
+          },
+          "facts_retract": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facts Retract"
+          },
+          "node_output_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Output Overrides"
+          },
+          "respond_payloads": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respond Payloads"
+          },
+          "rule_pack_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Pack Version"
+          },
+          "state_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Overrides"
+          }
+        },
+        "title": "CounterfactualMutation",
+        "type": "object"
+      },
+      "Event": {
+        "$defs": {
+          "ArtifactWrittenEvent": {
+            "additionalProperties": false,
+            "description": "Artifact persisted via :class:`WriteArtifactNode` (design §4.3, FR-93, AC-15.4).\n\n``artifact_ref`` carries the ``ArtifactRef`` payload (BLAKE3\ncontent-addressed; type lives in :mod:`stargraph.artifacts.base` once\nlanded). ``provenance`` is the originating run/step/actor lineage\nbundle and MUST carry the ProvenanceBundle tuple\n``(origin, source, run_id, step, confidence, timestamp)`` so the\nJSONL lineage audit (FR-55, AC-11.2) treats system-emitted facts\nwith the same chain-of-custody contract as user-asserted facts.\nBoth fields use ``dict[str, Any]`` until the artifacts module lands;\nsubsequent tasks may promote them to typed models.",
+            "properties": {
+              "artifact_ref": {
+                "additionalProperties": true,
+                "title": "Artifact Ref",
+                "type": "object"
+              },
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "provenance": {
+                "additionalProperties": true,
+                "title": "Provenance",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "artifact_written",
+                "default": "artifact_written",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "artifact_ref",
+              "provenance"
+            ],
+            "title": "ArtifactWrittenEvent",
+            "type": "object"
+          },
+          "BosunAuditEvent": {
+            "additionalProperties": false,
+            "description": "`stargraph.bosun.audit` pack fact promoted to typed event (design §4.3, FR-38).\n\nEmitted by :class:`stargraph.fathom.FathomAdapter` when a CLIPS rule\nasserts a ``bosun.audit`` fact. Flows through the single\n:class:`JSONLAuditSink` (Resolved Decision #5) -- no parallel sink.\n\n``provenance`` carries the ProvenanceBundle-shaped tuple\n``(origin, source, run_id, step, confidence, timestamp)`` so the\nJSONL audit lineage (FR-55, AC-11.2) treats every audited fact --\nuser-asserted or system-emitted -- with the same chain-of-custody\ncontract. For system-emitted audit events the canonical shape is\n``origin=\"system\"``, ``source=<emitter-module>``, ``confidence=1.0``,\n``timestamp=<wall-clock UTC>``. The dict shape (rather than typed\nsub-model) mirrors :class:`ArtifactWrittenEvent` until the unified\n``Provenance`` model in :mod:`stargraph.runtime.tool_exec` is promoted\nto a public symbol.",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "fact": {
+                "additionalProperties": true,
+                "title": "Fact",
+                "type": "object"
+              },
+              "pack_id": {
+                "title": "Pack Id",
+                "type": "string"
+              },
+              "pack_version": {
+                "title": "Pack Version",
+                "type": "string"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "provenance": {
+                "additionalProperties": true,
+                "title": "Provenance",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "bosun_audit",
+                "default": "bosun_audit",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "pack_id",
+              "pack_version",
+              "fact",
+              "provenance"
+            ],
+            "title": "BosunAuditEvent",
+            "type": "object"
+          },
+          "BranchCancelledEvent": {
+            "additionalProperties": false,
+            "description": "Parallel/Join branch cancelled (race/quorum loser, timeout, etc.) (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "reason": {
+                "title": "Reason",
+                "type": "string"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "branch_cancelled",
+                "default": "branch_cancelled",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "reason"
+            ],
+            "title": "BranchCancelledEvent",
+            "type": "object"
+          },
+          "BranchCompletedEvent": {
+            "additionalProperties": false,
+            "description": "Parallel/Join branch finished successfully (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "result": {
+                "additionalProperties": true,
+                "title": "Result",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "branch_completed",
+                "default": "branch_completed",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "result"
+            ],
+            "title": "BranchCompletedEvent",
+            "type": "object"
+          },
+          "BranchStartedEvent": {
+            "additionalProperties": false,
+            "description": "Parallel/Join branch fork (FR-14).\n\nBranch events always carry a non-None ``branch_id`` at runtime\n(callers MUST populate it); the base type stays ``str | None`` to\nkeep the override variance pyright-clean.",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "strategy": {
+                "title": "Strategy",
+                "type": "string"
+              },
+              "target": {
+                "title": "Target",
+                "type": "string"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "branch_started",
+                "default": "branch_started",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "target",
+              "strategy"
+            ],
+            "title": "BranchStartedEvent",
+            "type": "object"
+          },
+          "CheckpointEvent": {
+            "additionalProperties": false,
+            "description": "Checkpoint persisted (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "checkpoint_id": {
+                "title": "Checkpoint Id",
+                "type": "string"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "checkpoint",
+                "default": "checkpoint",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "checkpoint_id"
+            ],
+            "title": "CheckpointEvent",
+            "type": "object"
+          },
+          "ErrorEvent": {
+            "additionalProperties": false,
+            "description": "Recoverable or fatal error during execution (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "message": {
+                "title": "Message",
+                "type": "string"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "recoverable": {
+                "title": "Recoverable",
+                "type": "boolean"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "scope": {
+                "enum": [
+                  "node",
+                  "rule",
+                  "tool",
+                  "runtime",
+                  "checkpoint"
+                ],
+                "title": "Scope",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "error",
+                "default": "error",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "scope",
+              "message",
+              "recoverable"
+            ],
+            "title": "ErrorEvent",
+            "type": "object"
+          },
+          "InterruptTimeoutEvent": {
+            "additionalProperties": false,
+            "description": "HITL interrupt timed out before `respond` (design §4.3, FR-87).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "on_timeout": {
+                "title": "On Timeout",
+                "type": "string"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "interrupt_timeout",
+                "default": "interrupt_timeout",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "on_timeout"
+            ],
+            "title": "InterruptTimeoutEvent",
+            "type": "object"
+          },
+          "ResultEvent": {
+            "additionalProperties": false,
+            "description": "Terminal run summary (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "final_state": {
+                "additionalProperties": true,
+                "title": "Final State",
+                "type": "object"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "run_duration_ms": {
+                "title": "Run Duration Ms",
+                "type": "integer"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "done",
+                  "failed",
+                  "paused"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "result",
+                "default": "result",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "status",
+              "final_state",
+              "run_duration_ms"
+            ],
+            "title": "ResultEvent",
+            "type": "object"
+          },
+          "RunCancelledEvent": {
+            "additionalProperties": false,
+            "description": "Run cancelled cooperatively (design §4.3, FR-83).",
+            "properties": {
+              "actor": {
+                "title": "Actor",
+                "type": "string"
+              },
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "reason": {
+                "enum": [
+                  "user",
+                  "timeout",
+                  "shutdown"
+                ],
+                "title": "Reason",
+                "type": "string"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "run_cancelled",
+                "default": "run_cancelled",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "actor",
+              "reason"
+            ],
+            "title": "RunCancelledEvent",
+            "type": "object"
+          },
+          "RunPausedEvent": {
+            "additionalProperties": false,
+            "description": "Run paused via cooperative pause boundary (design §4.3, FR-79).",
+            "properties": {
+              "actor": {
+                "title": "Actor",
+                "type": "string"
+              },
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "run_paused",
+                "default": "run_paused",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "actor"
+            ],
+            "title": "RunPausedEvent",
+            "type": "object"
+          },
+          "TokenEvent": {
+            "additionalProperties": false,
+            "description": "LLM token emission (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "index": {
+                "title": "Index",
+                "type": "integer"
+              },
+              "model": {
+                "title": "Model",
+                "type": "string"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "token": {
+                "title": "Token",
+                "type": "string"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "token",
+                "default": "token",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "model",
+              "token",
+              "index"
+            ],
+            "title": "TokenEvent",
+            "type": "object"
+          },
+          "ToolCallEvent": {
+            "additionalProperties": false,
+            "description": "Tool invocation request (FR-14).",
+            "properties": {
+              "args": {
+                "additionalProperties": true,
+                "title": "Args",
+                "type": "object"
+              },
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "call_id": {
+                "title": "Call Id",
+                "type": "string"
+              },
+              "namespace": {
+                "title": "Namespace",
+                "type": "string"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "tool_name": {
+                "title": "Tool Name",
+                "type": "string"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "tool_call",
+                "default": "tool_call",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "tool_name",
+              "namespace",
+              "args",
+              "call_id"
+            ],
+            "title": "ToolCallEvent",
+            "type": "object"
+          },
+          "ToolResultEvent": {
+            "additionalProperties": false,
+            "description": "Tool invocation result (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "call_id": {
+                "title": "Call Id",
+                "type": "string"
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Error"
+              },
+              "ok": {
+                "title": "Ok",
+                "type": "boolean"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "result": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Result"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "tool_result",
+                "default": "tool_result",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "call_id",
+              "ok"
+            ],
+            "title": "ToolResultEvent",
+            "type": "object"
+          },
+          "TransitionEvent": {
+            "additionalProperties": false,
+            "description": "Rule fired -> node transition (FR-14).",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "from_node": {
+                "title": "From Node",
+                "type": "string"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "reason": {
+                "title": "Reason",
+                "type": "string"
+              },
+              "rule_id": {
+                "title": "Rule Id",
+                "type": "string"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "to_node": {
+                "title": "To Node",
+                "type": "string"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "transition",
+                "default": "transition",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "from_node",
+              "to_node",
+              "rule_id",
+              "reason"
+            ],
+            "title": "TransitionEvent",
+            "type": "object"
+          },
+          "WaitingForInputEvent": {
+            "additionalProperties": false,
+            "description": "HITL pause -- engine awaiting `respond` (design §4.3, FR-87, AC-14.3).\n\n``interrupt_payload`` is the IR-supplied free-form payload (analyst\ncontext); ``requested_capability`` is the optional capability the\nresponder must hold to satisfy the gate.",
+            "properties": {
+              "branch_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Branch Id"
+              },
+              "interrupt_payload": {
+                "additionalProperties": true,
+                "title": "Interrupt Payload",
+                "type": "object"
+              },
+              "payload": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              },
+              "prompt": {
+                "title": "Prompt",
+                "type": "string"
+              },
+              "requested_capability": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Requested Capability"
+              },
+              "run_id": {
+                "title": "Run Id",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": "integer"
+              },
+              "ts": {
+                "format": "date-time",
+                "title": "Ts",
+                "type": "string"
+              },
+              "type": {
+                "const": "waiting_for_input",
+                "default": "waiting_for_input",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "step",
+              "ts",
+              "prompt",
+              "interrupt_payload"
+            ],
+            "title": "WaitingForInputEvent",
+            "type": "object"
+          }
+        },
+        "discriminator": {
+          "mapping": {
+            "artifact_written": "#/$defs/ArtifactWrittenEvent",
+            "bosun_audit": "#/$defs/BosunAuditEvent",
+            "branch_cancelled": "#/$defs/BranchCancelledEvent",
+            "branch_completed": "#/$defs/BranchCompletedEvent",
+            "branch_started": "#/$defs/BranchStartedEvent",
+            "checkpoint": "#/$defs/CheckpointEvent",
+            "error": "#/$defs/ErrorEvent",
+            "interrupt_timeout": "#/$defs/InterruptTimeoutEvent",
+            "result": "#/$defs/ResultEvent",
+            "run_cancelled": "#/$defs/RunCancelledEvent",
+            "run_paused": "#/$defs/RunPausedEvent",
+            "token": "#/$defs/TokenEvent",
+            "tool_call": "#/$defs/ToolCallEvent",
+            "tool_result": "#/$defs/ToolResultEvent",
+            "transition": "#/$defs/TransitionEvent",
+            "waiting_for_input": "#/$defs/WaitingForInputEvent"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/TokenEvent"
+          },
+          {
+            "$ref": "#/$defs/ToolCallEvent"
+          },
+          {
+            "$ref": "#/$defs/ToolResultEvent"
+          },
+          {
+            "$ref": "#/$defs/TransitionEvent"
+          },
+          {
+            "$ref": "#/$defs/CheckpointEvent"
+          },
+          {
+            "$ref": "#/$defs/ErrorEvent"
+          },
+          {
+            "$ref": "#/$defs/ResultEvent"
+          },
+          {
+            "$ref": "#/$defs/BranchStartedEvent"
+          },
+          {
+            "$ref": "#/$defs/BranchCompletedEvent"
+          },
+          {
+            "$ref": "#/$defs/BranchCancelledEvent"
+          },
+          {
+            "$ref": "#/$defs/RunPausedEvent"
+          },
+          {
+            "$ref": "#/$defs/RunCancelledEvent"
+          },
+          {
+            "$ref": "#/$defs/WaitingForInputEvent"
+          },
+          {
+            "$ref": "#/$defs/InterruptTimeoutEvent"
+          },
+          {
+            "$ref": "#/$defs/ArtifactWrittenEvent"
+          },
+          {
+            "$ref": "#/$defs/BosunAuditEvent"
+          }
+        ]
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IRDocument": {
+        "$defs": {
+          "AssertAction": {
+            "additionalProperties": false,
+            "description": "Assert ``fact`` with ``slots`` (JSON-encoded slot dict in POC).",
+            "properties": {
+              "fact": {
+                "title": "Fact",
+                "type": "string"
+              },
+              "kind": {
+                "const": "assert",
+                "default": "assert",
+                "title": "Kind",
+                "type": "string"
+              },
+              "slots": {
+                "default": "",
+                "title": "Slots",
+                "type": "string"
+              }
+            },
+            "required": [
+              "fact"
+            ],
+            "title": "AssertAction",
+            "type": "object"
+          },
+          "CheckpointBlock": {
+            "additionalProperties": false,
+            "description": "Checkpoint policy declaration (design §3.1.2 step 7).\n\nTop-level IR field that declares the checkpoint cadence and\nbacking store. The CLI / serve lifespan reads this block and\nconstructs the :class:`stargraph.checkpoint.Checkpointer`. When\nomitted, the run loop uses CLI defaults\n(``./.stargraph/run.sqlite``, ``every: node-exit``).\n\nAttributes:\n    every: Cadence — currently only ``\"node-exit\"`` is supported;\n        ``\"never\"`` and ``\"step-N\"`` are reserved for future\n        phases.\n    store: DSN-style store binding. ``\"sqlite:./path.sqlite\"``\n        (file) or ``\"postgres:dsn\"`` (Phase 3+).",
+            "properties": {
+              "every": {
+                "default": "node-exit",
+                "enum": [
+                  "node-exit",
+                  "never"
+                ],
+                "title": "Every",
+                "type": "string"
+              },
+              "store": {
+                "default": "sqlite:./.stargraph/run.sqlite",
+                "title": "Store",
+                "type": "string"
+              }
+            },
+            "title": "CheckpointBlock",
+            "type": "object"
+          },
+          "GotoAction": {
+            "additionalProperties": false,
+            "description": "Transition to ``target`` rule/state.",
+            "properties": {
+              "kind": {
+                "const": "goto",
+                "default": "goto",
+                "title": "Kind",
+                "type": "string"
+              },
+              "target": {
+                "title": "Target",
+                "type": "string"
+              }
+            },
+            "required": [
+              "target"
+            ],
+            "title": "GotoAction",
+            "type": "object"
+          },
+          "HaltAction": {
+            "additionalProperties": false,
+            "description": "Stop execution; ``reason`` is an operator-facing message.",
+            "properties": {
+              "kind": {
+                "const": "halt",
+                "default": "halt",
+                "title": "Kind",
+                "type": "string"
+              },
+              "reason": {
+                "default": "",
+                "title": "Reason",
+                "type": "string"
+              }
+            },
+            "title": "HaltAction",
+            "type": "object"
+          },
+          "InterruptAction": {
+            "additionalProperties": false,
+            "description": "Pause the run and request input (HITL primitive, FR-81, AC-14.1).\n\nSurfaces a human-in-the-loop checkpoint: the engine emits a\n``WaitingForInputEvent`` carrying ``prompt`` + ``interrupt_payload``,\npersists a checkpoint, and exits cleanly. Resume happens via\n``POST /runs/{id}/respond`` (or ``GraphRun.respond()``) gated on\n``requested_capability``. ``timeout`` bounds the wait; ``on_timeout``\nselects ``\"halt\"`` (terminal) or ``\"goto:<node_id>\"`` (resume target).\n\nPer design §17 Decision #1, dispatch happens on\n``Action.kind == \"interrupt\"`` BEFORE ``translate_actions`` -- this\nvariant is a control-flow primitive, not a routing decision.",
+            "properties": {
+              "interrupt_payload": {
+                "additionalProperties": true,
+                "title": "Interrupt Payload",
+                "type": "object"
+              },
+              "kind": {
+                "const": "interrupt",
+                "default": "interrupt",
+                "title": "Kind",
+                "type": "string"
+              },
+              "on_timeout": {
+                "anyOf": [
+                  {
+                    "const": "halt",
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "default": "halt",
+                "title": "On Timeout"
+              },
+              "prompt": {
+                "title": "Prompt",
+                "type": "string"
+              },
+              "requested_capability": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Requested Capability"
+              },
+              "timeout": {
+                "anyOf": [
+                  {
+                    "format": "duration",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Timeout"
+              }
+            },
+            "required": [
+              "prompt"
+            ],
+            "title": "InterruptAction",
+            "type": "object"
+          },
+          "MigrateBlock": {
+            "additionalProperties": false,
+            "description": "Migration descriptor for graph-hash mismatch on resume (POC: from/to ids).",
+            "properties": {
+              "from_hash": {
+                "title": "From Hash",
+                "type": "string"
+              },
+              "to_hash": {
+                "title": "To Hash",
+                "type": "string"
+              }
+            },
+            "required": [
+              "from_hash",
+              "to_hash"
+            ],
+            "title": "MigrateBlock",
+            "type": "object"
+          },
+          "NodeSpec": {
+            "additionalProperties": false,
+            "description": "Graph node descriptor.\n\nAttributes:\n    id: Node identifier, unique within the IR.\n    kind: Either a short kind registered in\n        :data:`stargraph.cli.run._NODE_FACTORIES`\n        (``echo``/``halt``/``passthrough``/``tool``/``broker``/\n        ``write_artifact``/``interrupt``/``ml``/``subgraph``/``dspy``)\n        or a ``module.path:ClassName`` reference imported via\n        :mod:`importlib`.\n    spec: Optional subgraph file path (relative to the IR YAML)\n        for ``kind: subgraph`` nodes. Resolved by\n        :class:`stargraph.nodes.subgraph.SubGraphNode` at construction.\n        ``None`` for non-subgraph nodes.\n    config: Optional per-node config dict. Forwarded as kwargs into\n        the node factory by\n        :func:`stargraph.cli.run._build_node_registry` so concrete node\n        classes (``BrokerNode``/``MLNode``/``WriteArtifactNode``)\n        can read their own config without sub-classing per call site.",
+            "properties": {
+              "config": {
+                "additionalProperties": true,
+                "title": "Config",
+                "type": "object"
+              },
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "spec": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Spec"
+              }
+            },
+            "required": [
+              "id",
+              "kind"
+            ],
+            "title": "NodeSpec",
+            "type": "object"
+          },
+          "PackMount": {
+            "additionalProperties": false,
+            "description": "Bosun rule pack mount entry (POC: id + optional version + version-compat).\n\n``requires`` (added in task 2.22 for FR-39) carries a\n:class:`PackRequires` block declaring the stargraph-facts and plugin\napi_versions the pack was authored against. ``None`` keeps full\nbackwards compatibility -- existing two-field mounts (``id`` +\n``version``) round-trip and structural-hash byte-identically.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "requires": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PackRequires"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Version"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "title": "PackMount",
+            "type": "object"
+          },
+          "PackRequires": {
+            "additionalProperties": false,
+            "description": "Pack version-compat requirements (FR-39, design §3.2, §7.4).\n\nOptional sub-record on :class:`PackMount` declaring the stargraph-facts\nschema version + plugin api_version a Bosun rule pack was authored\nagainst. Both fields default to ``None`` (no requirement); when set,\n:func:`stargraph.ir._versioning.check_pack_compat` enforces them at\npack-load time, raising :class:`stargraph.errors.PackCompatError` on\nmismatch (load-fail, never silent runtime drift).",
+            "properties": {
+              "api_version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Api Version"
+              },
+              "stargraph_facts_version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Stargraph Facts Version"
+              }
+            },
+            "title": "PackRequires",
+            "type": "object"
+          },
+          "ParallelAction": {
+            "additionalProperties": false,
+            "description": "Fan out to ``targets`` and join under ``strategy`` (all/any/race/quorum).",
+            "properties": {
+              "join": {
+                "default": "",
+                "title": "Join",
+                "type": "string"
+              },
+              "kind": {
+                "const": "parallel",
+                "default": "parallel",
+                "title": "Kind",
+                "type": "string"
+              },
+              "strategy": {
+                "default": "all",
+                "title": "Strategy",
+                "type": "string"
+              },
+              "targets": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Targets",
+                "type": "array"
+              }
+            },
+            "required": [
+              "targets"
+            ],
+            "title": "ParallelAction",
+            "type": "object"
+          },
+          "ParallelBlock": {
+            "additionalProperties": false,
+            "description": "Top-level parallel/join declaration (POC: targets + join + strategy).",
+            "properties": {
+              "join": {
+                "default": "",
+                "title": "Join",
+                "type": "string"
+              },
+              "strategy": {
+                "default": "all",
+                "title": "Strategy",
+                "type": "string"
+              },
+              "targets": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Targets",
+                "type": "array"
+              }
+            },
+            "required": [
+              "targets"
+            ],
+            "title": "ParallelBlock",
+            "type": "object"
+          },
+          "RetractAction": {
+            "additionalProperties": false,
+            "description": "Retract facts matching ``pattern``.",
+            "properties": {
+              "kind": {
+                "const": "retract",
+                "default": "retract",
+                "title": "Kind",
+                "type": "string"
+              },
+              "pattern": {
+                "title": "Pattern",
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "title": "RetractAction",
+            "type": "object"
+          },
+          "RetryAction": {
+            "additionalProperties": false,
+            "description": "Re-attempt ``target`` after ``backoff_ms`` milliseconds.",
+            "properties": {
+              "backoff_ms": {
+                "default": 0,
+                "title": "Backoff Ms",
+                "type": "integer"
+              },
+              "kind": {
+                "const": "retry",
+                "default": "retry",
+                "title": "Kind",
+                "type": "string"
+              },
+              "target": {
+                "title": "Target",
+                "type": "string"
+              }
+            },
+            "required": [
+              "target"
+            ],
+            "title": "RetryAction",
+            "type": "object"
+          },
+          "RuleSpec": {
+            "additionalProperties": false,
+            "description": "Single rule (POC: id + ``when`` pattern + ``then`` action list).\n\n``then`` is a list of :data:`Action` -- the discriminated union; the\nFR-11 \"no nesting\" constraint is enforced by the type itself (variants\ncannot themselves contain :data:`Action` fields).\n\nAttributes:\n    id: Rule identifier, unique within the IR.\n    when: CLIPS-style ``when`` pattern (free text; engine parses).\n    then: Discriminated-union list of routing/control actions.\n    node_id: Owning node id. Introduced in IR ``1.1.0`` for UI /\n        topology consumers (so a rule's source node is explicit\n        rather than inferred from a naming convention). Optional for\n        backward compatibility -- documents declaring\n        ``ir_version: \"1.0.0\"`` may omit it; loaders MAY fill it via\n        the ``rule_id`` prefix heuristic so downstream tools\n        (``stargraph inspect``, StarGraph topology endpoint) can assume\n        non-null. New graphs at ``1.1.0`` SHOULD declare ``node_id``\n        explicitly.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "node_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Node Id"
+              },
+              "then": {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "assert": "#/$defs/AssertAction",
+                      "goto": "#/$defs/GotoAction",
+                      "halt": "#/$defs/HaltAction",
+                      "interrupt": "#/$defs/InterruptAction",
+                      "parallel": "#/$defs/ParallelAction",
+                      "retract": "#/$defs/RetractAction",
+                      "retry": "#/$defs/RetryAction"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/GotoAction"
+                    },
+                    {
+                      "$ref": "#/$defs/HaltAction"
+                    },
+                    {
+                      "$ref": "#/$defs/ParallelAction"
+                    },
+                    {
+                      "$ref": "#/$defs/RetryAction"
+                    },
+                    {
+                      "$ref": "#/$defs/AssertAction"
+                    },
+                    {
+                      "$ref": "#/$defs/RetractAction"
+                    },
+                    {
+                      "$ref": "#/$defs/InterruptAction"
+                    }
+                  ]
+                },
+                "title": "Then",
+                "type": "array"
+              },
+              "when": {
+                "default": "",
+                "title": "When",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "title": "RuleSpec",
+            "type": "object"
+          },
+          "SkillRef": {
+            "additionalProperties": false,
+            "description": "Reference to a skill by namespaced id.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Version"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "title": "SkillRef",
+            "type": "object"
+          },
+          "StoreRef": {
+            "additionalProperties": false,
+            "description": "Lightweight reference to a store binding (POC: name + provider id).\n\n:class:`StoreSpec` is the canonical IR record for store registration\n(FR-19/FR-20, design §3.16); ``StoreRef`` remains the trimmed shape used\ninside :class:`IRDocument` graphs. The :meth:`to_capabilities` helper\nyields the same ``[db.{name}:read, db.{name}:write]`` capability list\nderived by ``StoreSpec`` so policy checks can resolve from either form.",
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "provider": {
+                "title": "Provider",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "provider"
+            ],
+            "title": "StoreRef",
+            "type": "object"
+          },
+          "ToolRef": {
+            "additionalProperties": false,
+            "description": "Reference to a tool by namespaced id (POC: bare string id + optional version).",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Version"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "title": "ToolRef",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Top-level IR document (POC skeleton).\n\nRequired fields: ``ir_version``, ``id``, ``nodes``. All other top-level\nsections are optional with sensible empty defaults so a minimal document\n(``IRDocument(ir_version=\"1.0.0\", id=\"run:test\", nodes=[])``) constructs\nwithout further plumbing. Stable-ID validation lands in task 1.28; for\nnow ``id`` is a free-form ``str``.",
+        "properties": {
+          "checkpoints": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CheckpointBlock"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "governance": {
+            "items": {
+              "$ref": "#/$defs/PackMount"
+            },
+            "title": "Governance",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ir_version": {
+            "title": "Ir Version",
+            "type": "string"
+          },
+          "migrate": {
+            "items": {
+              "$ref": "#/$defs/MigrateBlock"
+            },
+            "title": "Migrate",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/$defs/NodeSpec"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "parallel": {
+            "items": {
+              "$ref": "#/$defs/ParallelBlock"
+            },
+            "title": "Parallel",
+            "type": "array"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/$defs/RuleSpec"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/$defs/SkillRef"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "state_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State Class"
+          },
+          "state_schema": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "State Schema",
+            "type": "object"
+          },
+          "stores": {
+            "items": {
+              "$ref": "#/$defs/StoreRef"
+            },
+            "title": "Stores",
+            "type": "array"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/$defs/ToolRef"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ir_version",
+          "id",
+          "nodes"
+        ],
+        "title": "IRDocument",
+        "type": "object"
+      },
+      "RunSummary": {
+        "description": "Lightweight run-level row returned by ``Checkpointer.list_runs``.",
+        "properties": {
+          "error_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Cause"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Class"
+          },
+          "graph_hash": {
+            "title": "Graph Hash",
+            "type": "string"
+          },
+          "last_step_at": {
+            "format": "date-time",
+            "title": "Last Step At",
+            "type": "string"
+          },
+          "parent_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Run Id"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "done",
+              "failed",
+              "paused",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "graph_hash",
+          "started_at",
+          "last_step_at",
+          "status",
+          "parent_run_id"
+        ],
+        "title": "RunSummary",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "_CounterfactualRequest": {
+        "description": "Body for ``POST /v1/runs/{run_id}/counterfactual`` (design §5.1, §5.5).\n\n``mutation`` is the structured :class:`CounterfactualMutation`\nbuilder (state_overrides / facts_assert / facts_retract /\nrule_pack_version / node_output_overrides). ``step`` pins the\ncf-fork point on the parent run (FR-27 design §3.8.4 step 1).\n``reason`` is a free-form audit string captured into the cf-emit\naudit envelope (design §5.1 audit column).",
+        "properties": {
+          "mutation": {
+            "$ref": "#/components/schemas/CounterfactualMutation"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step",
+          "mutation"
+        ],
+        "title": "_CounterfactualRequest",
+        "type": "object"
+      },
+      "_GraphSummary": {
+        "description": "One row of the ``GET /v1/graphs`` response (design §5.1).\n\nPOC: the in-memory ``app.state.deps[\"graphs\"]`` dict is a\n``dict[str, Graph]`` keyed by ``graph_id``; this row exposes\n``graph_id`` + ``graph_hash`` since those are the two fields every\ncaller (CLI inspect, Bosun pack manifest, audit replay) reads.\nPhase 3 polish will widen this to the full design §3.5 graph\nmetadata once the registry-backed lookup lands.",
+        "properties": {
+          "graph_hash": {
+            "title": "Graph Hash",
+            "type": "string"
+          },
+          "graph_id": {
+            "title": "Graph Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "graph_id",
+          "graph_hash"
+        ],
+        "title": "_GraphSummary",
+        "type": "object"
+      },
+      "_RespondRequest": {
+        "description": "Body for ``POST /v1/runs/{run_id}/respond``.",
+        "properties": {
+          "response": {
+            "additionalProperties": true,
+            "title": "Response",
+            "type": "object"
+          }
+        },
+        "required": [
+          "response"
+        ],
+        "title": "_RespondRequest",
+        "type": "object"
+      },
+      "_ResumeRequest": {
+        "description": "Body for ``POST /v1/runs/{run_id}/resume`` (design §5.1).\n\n``from_step`` is optional: when ``None`` the engine resumes from the\nlatest persisted checkpoint (the common case); when set it pins the\nresume to a specific step (FR-19 replay determinism).",
+        "properties": {
+          "from_step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Step"
+          }
+        },
+        "title": "_ResumeRequest",
+        "type": "object"
+      },
+      "_RunSummaryItem": {
+        "description": "One row of the ``GET /v1/runs`` paginated response (design §5.1).\n\nMirrors the ``runs_history`` row shape from\n:class:`stargraph.serve.history.RunRecord` but exposed as the\ncanonical ``RunSummary`` API surface (design §5.1 ``GET /v1/runs``\nreturns ``Page[RunSummary]``). Distinct from\n:class:`stargraph.checkpoint.protocol.RunSummary` (which is the\n``Checkpointer.list_runs`` row with a narrower status Literal); the\nhistory-backed view here carries the wider lifecycle states\n(``pending``, ``cancelled``, ``error``) plus ``trigger_source`` /\n``duration_ms`` columns the Checkpointer summary lacks. Phase 3\nmay unify the two once the checkpointer's status Literal widens.",
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "error_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Cause"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Class"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "graph_hash": {
+            "title": "Graph Hash",
+            "type": "string"
+          },
+          "parent_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Run Id"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "trigger_source": {
+            "title": "Trigger Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "graph_hash",
+          "trigger_source",
+          "started_at"
+        ],
+        "title": "_RunSummaryItem",
+        "type": "object"
+      },
+      "_RunsPage": {
+        "description": "Response body for ``GET /v1/runs`` (design §5.1 ``Page[RunSummary]``).\n\nSimple offset+limit pagination per design §6.5 (\"max ``limit=100``\")\n-- the canonical cursor-based API is deferred to Phase 3 (the\n``cursor=`` query param in design §6.5). The ``total`` field is a\n``SELECT COUNT(*)`` with the same filter; fine for POC scale, may\nswitch to an estimate-or-omit pattern in Phase 3 for very large\nhistory tables.",
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/_RunSummaryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "_RunsPage",
+        "type": "object"
+      },
+      "_StartRunRequest": {
+        "description": "Body for ``POST /v1/runs``.\n\n``params`` is an open dict for the POC -- production wiring pins\nthis to the IR's parameter schema once the registry lands (Phase 2\ntask 2.17). ``idempotency_key`` is forwarded to the Scheduler but\nignored in the POC path (Scheduler has no Checkpointer-backed\npending state yet -- task 2.13).",
+        "properties": {
+          "graph_id": {
+            "title": "Graph Id",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "graph_id"
+        ],
+        "title": "_StartRunRequest",
+        "type": "object"
+      },
+      "_StartRunResponse": {
+        "description": "Response body for ``POST /v1/runs``.",
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status"
+        ],
+        "title": "_StartRunResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Stargraph serve API (POC slice -- design §5.1 minimal subset). 5 routes: POST /v1/runs, GET /v1/runs/{run_id}, POST /v1/runs/{run_id}/cancel, POST /v1/runs/{run_id}/pause, POST /v1/runs/{run_id}/respond. Remaining endpoints land in Phase 2 (tasks 2.15, 2.17) and the WS route in task 1.26.",
+    "title": "stargraph",
+    "version": "0.4.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/artifacts/{artifact_id}": {
+      "get": {
+        "description": "Fetch raw artifact bytes (design §5.1, §10.4).\n\nReturns ``application/octet-stream`` by default; when the\nartifact store can resolve the sidecar metadata (POC: walks\n``store.list(...)`` for a matching ``artifact_id`` to recover\nthe persisted ``content_type``) the response Content-Type\nechoes the sidecar value. Missing artifact -> 404.",
+        "operationId": "get_artifact_v1_artifacts__artifact_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Artifact"
+      }
+    },
+    "/v1/graphs": {
+      "get": {
+        "description": "List registered graphs (design §5.1).\n\nPOC: reads ``deps[\"graphs\"]`` -- a ``dict[str, Graph]`` keyed\nby ``graph_id`` populated by the lifespan factory at startup.\nPhase 3 polish wires the real graph registry (the\n:mod:`stargraph.registry`-backed graph table) once the registry\nProtocol's graph subspace lands.",
+        "operationId": "list_graphs_v1_graphs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/_GraphSummary"
+                  },
+                  "title": "Response List Graphs V1 Graphs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Graphs"
+      }
+    },
+    "/v1/registry/{kind}": {
+      "get": {
+        "description": "List plugin-discovered registry entries for ``kind``.\n\n``kind`` is one of ``tools``, ``skills``, ``stores``. Backend:\n``deps[\"registry\"]`` -- the :mod:`stargraph.registry` instance the\nlifespan factory populates from the pluggy-loaded plugin\nmanifests. Returns the spec records as JSON dicts. Unknown\n``kind`` -> 404.\n\nPOC: when ``deps[\"registry\"]`` is absent (ad-hoc\n``create_app(profile, deps={})`` calls without lifespan\nwiring) the route returns an empty list rather than 503 --\nconsistent with the permissive POC default elsewhere in this\nmodule. Cleared deployments may flip this to 503 in Phase 3.",
+        "operationId": "list_registry_v1_registry__kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Registry V1 Registry  Kind  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Registry"
+      }
+    },
+    "/v1/runs": {
+      "get": {
+        "description": "Return a paginated list of run-history rows (design §5.1).\n\nBacked by :meth:`stargraph.serve.history.RunHistory.list` --\n``app.state.deps[\"run_history\"]`` is the canonical reference\nwired by the lifespan factory (CLI ``stargraph serve`` boot path).\nWhen ``run_history`` is missing from the deps container the\nroute returns an empty page rather than 500ing -- a permissive\nPOC default that lets ad-hoc test ``create_app(profile,\ndeps={})`` calls hit the route without lifespan wiring. The\ncleared profile may want to flip this to a stricter \"503\nService Unavailable\" once the Phase 3 lifespan wiring is the\nonly supported path.\n\nFilter clauses compose with ``AND``; ``trigger_source`` is\nvalidated by the underlying SQL CHECK constraint -- an unknown\nvalue just yields zero rows. ``status`` is free-form (the\n``runs_history.status`` column is unconstrained TEXT to support\nthe wider state lattice). Page total is computed via a\n``SELECT COUNT(*)`` with the same filter (POC scale; design\n§6.5 cursor pagination lands in Phase 3).",
+        "operationId": "list_runs_v1_runs_get",
+        "parameters": [
+          {
+            "description": "Filter by run status (e.g. ``pending``, ``running``, ``done``, ``failed``, ``cancelled``, ``paused``).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by run status (e.g. ``pending``, ``running``, ``done``, ``failed``, ``cancelled``, ``paused``).",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on ``started_at`` (ISO-8601).",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inclusive lower bound on ``started_at`` (ISO-8601).",
+              "title": "Since"
+            }
+          },
+          {
+            "description": "Exclusive upper bound on ``started_at`` (ISO-8601).",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exclusive upper bound on ``started_at`` (ISO-8601).",
+              "title": "Until"
+            }
+          },
+          {
+            "description": "Filter by trigger source (``manual``, ``cron``, ``webhook``).",
+            "in": "query",
+            "name": "trigger_source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by trigger source (``manual``, ``cron``, ``webhook``).",
+              "title": "Trigger Source"
+            }
+          },
+          {
+            "description": "Page size; capped at 1000. Design §6.5 caps the default at 100; values above that are accepted but subject to scan cost.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Page size; capped at 1000. Design §6.5 caps the default at 100; values above that are accepted but subject to scan cost.",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Offset into the filtered result set. Phase 3 may switch to keyset / cursor pagination for stability under retention sweeps.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Offset into the filtered result set. Phase 3 may switch to keyset / cursor pagination for stability under retention sweeps.",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/_RunsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs"
+      },
+      "post": {
+        "description": "Enqueue a new run; return ``202 Accepted`` with the run handle.\n\n``handle.run_id`` is the Scheduler-derived canonical id from\n``(graph_id, idempotency_key)``; callers poll ``GET\n/v1/runs/{run_id}`` for terminal state.",
+        "operationId": "start_run_v1_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_StartRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/_StartRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Run"
+      }
+    },
+    "/v1/runs/{run_id}": {
+      "get": {
+        "description": "Return the :class:`RunSummary` for ``run_id`` or 404.\n\nPOC: reads the in-memory ``run_id -> GraphRun`` registry on\n``app.state.deps[\"runs\"]``. Phase 2 task 2.30 reads from the\nCheckpointer instead. Returns the live handle's snapshot\nsynthesized into the :class:`RunSummary` shape (status mapped\nper the same lattice fold used in\n:mod:`stargraph.serve.lifecycle`).",
+        "operationId": "get_run_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Run V1 Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run"
+      }
+    },
+    "/v1/runs/{run_id}/artifacts": {
+      "get": {
+        "description": "List artifacts emitted by ``run_id`` (design §5.1, §10.4).\n\nBacked by :meth:`ArtifactStore.list` on\n``deps[\"artifact_store\"]``. A run that wrote no artifacts\nreturns ``[]`` (per :class:`FilesystemArtifactStore.list`\ncontract). Missing artifact store -> 503.",
+        "operationId": "list_run_artifacts_v1_runs__run_id__artifacts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Run Artifacts V1 Runs  Run Id  Artifacts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Run Artifacts"
+      }
+    },
+    "/v1/runs/{run_id}/cancel": {
+      "post": {
+        "description": "Cooperatively cancel a live run; return updated :class:`RunSummary`.\n\nRoutes through :func:`stargraph.serve.lifecycle.cancel_run` for\nthe engine-side capability check + audit emission + bus-side\n:class:`RunCancelledEvent`. Missing run -> 404. Engine-side\n:class:`StargraphRuntimeError` (e.g. cancel-from-terminal-state)\nbubbles up as 400 by FastAPI default; production wiring\n(Phase 2) maps these to a canonical error envelope.",
+        "operationId": "cancel_run_route_v1_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cancel Run Route V1 Runs  Run Id  Cancel Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Run Route"
+      }
+    },
+    "/v1/runs/{run_id}/counterfactual": {
+      "post": {
+        "description": "Fork a counterfactual child run from ``run_id`` at ``body.step``.\n\nDrives :meth:`GraphRun.counterfactual` (design §5.5, FR-27):\nloads the parent checkpoint at ``step``, mints a fresh\n``cf-<uuid>`` child run id bound to the cf-derived\n``graph_hash`` (JCS domain-separation), applies the\n``mutation`` overlay, and returns the child run handle.\n\nRate-limit (design §5.5, locked Decision #6, FR-16, NFR-9):\nper-actor anyio token bucket from\n``deps[\"counterfactual_rate_limiter\"]`` (lazily seeded by\n:func:`create_app`). Default 10/min/actor; over-limit -> 429\nwith ``Retry-After`` header. Bucket state in-memory only --\nprocess restart resets the per-actor count (brief burst window\ndocumented in :mod:`stargraph.serve.ratelimit`).",
+        "operationId": "counterfactual_route_v1_runs__run_id__counterfactual_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_CounterfactualRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Counterfactual Route V1 Runs  Run Id  Counterfactual Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Counterfactual Route"
+      }
+    },
+    "/v1/runs/{run_id}/pause": {
+      "post": {
+        "description": "Cooperatively pause a running run; return updated :class:`RunSummary`.",
+        "operationId": "pause_run_route_v1_runs__run_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pause Run Route V1 Runs  Run Id  Pause Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pause Run Route"
+      }
+    },
+    "/v1/runs/{run_id}/respond": {
+      "post": {
+        "description": "Deliver a HITL response to an ``awaiting-input`` run.\n\nRoutes through :func:`stargraph.serve.respond.handle_respond` for\nthe engine-side capability check + state-precondition check +\naudit emission. Missing run -> 404; non-``awaiting-input``\nstate -> 409 Conflict (per design §9.4 step 2).",
+        "operationId": "respond_route_v1_runs__run_id__respond_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_RespondRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Respond Route V1 Runs  Run Id  Respond Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Respond Route"
+      }
+    },
+    "/v1/runs/{run_id}/resume": {
+      "post": {
+        "description": "Resume a paused run via :meth:`GraphRun.resume` (design §5.1).\n\nPOC: returns ``202 Accepted`` with ``status=\"pending\"`` once\n:meth:`GraphRun.resume` materializes a fresh :class:`GraphRun`\nbound to the same ``run_id`` (FR-19, FR-20). The caller polls\n``GET /v1/runs/{run_id}`` for terminal state. The freshly\nmaterialized handle is registered into ``deps[\"runs\"]`` so\nsubsequent lifecycle calls (cancel/pause/respond) find it.\n\nPhase 2 task 2.30 wires this into the Scheduler's enqueue path\nso resumed runs honor the per-``graph_hash`` concurrency\nlimiter; the POC drives ``GraphRun.resume`` directly off the\nCheckpointer in ``deps[\"checkpointer\"]`` since the live run\nregistry rehydration step is Phase 2 work.",
+        "operationId": "resume_run_route_v1_runs__run_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_ResumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/_StartRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Run Route"
+      }
+    }
+  }
+}
