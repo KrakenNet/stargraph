@@ -17,6 +17,11 @@ auditable, replayable graphs. Transitions between nodes are decided by
 [Fathom](https://github.com/KrakenNet/fathom) (a CLIPS rules engine) over
 provenance-typed facts — not by an LLM playing router.
 
+**Coming from [LangGraph](https://github.com/langchain-ai/langgraph), CrewAI, or AutoGen?**
+Stargraph is the governed, auditable alternative: node transitions are decided by
+versioned rules instead of the model, every run is replayable, and provenance is
+typed end-to-end — built for compliance, regulated, and air-gapped deployments.
+
 > **Status:** v0.3.0 — Alpha. Public API is unstable until v1.0.
 > Built for environments where auditability, determinism, and provenance matter
 > more than ecosystem size (DoD, regulated, air-gapped, cleared workloads).
