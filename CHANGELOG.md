@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.1](https://github.com/KrakenNet/stargraph/compare/v0.5.0...v0.5.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ci:** install stores extra in cypher-subset gate ([#110](https://github.com/KrakenNet/stargraph/issues/110)) ([4ca2af4](https://github.com/KrakenNet/stargraph/commit/4ca2af4323737735701634b8569a3b3f34d26949))
+* **ci:** repair invalid Dependabot cooldown (semver-*-days unsupported for non-semver ecosystems) ([#103](https://github.com/KrakenNet/stargraph/issues/103)) ([291e108](https://github.com/KrakenNet/stargraph/commit/291e10877e172c120ad9e913adae5b1e77199b35))
+* **serve:** regenerate stale openapi.json + auto-bump it on release ([#109](https://github.com/KrakenNet/stargraph/issues/109)) ([4a68808](https://github.com/KrakenNet/stargraph/commit/4a6880803152040046acbfa98b5ed66039f66752))
+* use `cooldown.default-days` only — valid for every ecosystem. Validated against Dependabot's own config check on this PR before merge. ([291e108](https://github.com/KrakenNet/stargraph/commit/291e10877e172c120ad9e913adae5b1e77199b35))
+
 ## [0.5.0](https://github.com/KrakenNet/stargraph/compare/v0.4.0...v0.5.0) (2026-06-24)
 
 
