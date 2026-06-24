@@ -11,6 +11,11 @@
         {
           "type": "generic",
           "path": "src/stargraph/__init__.py"
+        },
+        {
+          "type": "json",
+          "path": "docs/reference/openapi.json",
+          "jsonpath": "$.info.version"
         }
       ]
     }
