@@ -1,0 +1,43 @@
+name: "uv-setup"
+description: >-
+  Install uv and run `uv sync` against a delta-friendly cache. Unlike
+  setup-uv's built-in cache (exact uv.lock-hash key, pruned), this restores the
+  newest prior uv cache via restore-keys, so a dependency change re-downloads
+  only the changed packages instead of all ~260. Assumes the repo is already
+  checked out.
+inputs:
+  sync-args:
+    description: "Arguments appended to `uv sync` (e.g. '--all-extras --group dev')."
+    required: false
+    default: "--group dev"
+  python-version:
+    description: "Python version for setup-uv."
+    required: false
+    default: "3.13"
+runs:
+  using: "composite"
+  steps:
+    # enable-cache is intentionally OFF here: setup-uv's cache keys on the exact
+    # uv.lock hash with no restore-keys fallback (and prunes built wheels), which
+    # is exactly the "re-download everything on any lock change" behaviour we are
+    # replacing with the actions/cache step below.
+    - uses: astral-sh/setup-uv@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+        # MUST stay false: when setup-uv's cache is on (its v6 default) it points
+        # UV_CACHE_DIR at its own temp dir, so uv would write there instead of
+        # ~/.cache/uv and the actions/cache step below would manage an empty dir.
+        enable-cache: false
+    - name: Restore uv download cache (delta-friendly)
+      uses: actions/cache@v4
+      with:
+        # uv's default cache dir on Linux runners.
+        path: ~/.cache/uv
+        # Exact match on an unchanged lock; restore-keys falls back to the most
+        # recent uv-linux-py313-* cache otherwise, so `uv sync` fetches only the
+        # delta after a dependency bump rather than the full package set.
+        key: uv-linux-py313-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          uv-linux-py313-
+    - shell: bash
+      run: uv sync ${{ inputs.sync-args }}

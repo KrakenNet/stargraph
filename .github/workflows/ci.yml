@@ -10,6 +10,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Detect which subsystems a PR touches so the heavy, infra-backed jobs below
+  # (Postgres/pgbouncer, Neo4j testcontainer, all-extras serve surface) run only
+  # when their domain — or a shared/core path — actually changed. On push to main
+  # every gate runs regardless (see each job's ``if:``), so main stays fully
+  # covered; PRs get a smaller, faster, less infra-flaky check set. The always-on
+  # ``lint`` + ``test`` jobs (the only required checks) are never filtered.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      engine: ${{ steps.filter.outputs.engine }}
+      knowledge: ${{ steps.filter.outputs.knowledge }}
+      cypher: ${{ steps.filter.outputs.cypher }}
+      serve: ${{ steps.filter.outputs.serve }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core: &core
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/ci.yml'
+              - 'src/stargraph/errors/**'
+              - 'src/stargraph/ir/**'
+              - 'src/stargraph/runtime/**'
+              - 'src/stargraph/nodes/base.py'
+              - 'tests/conftest.py'
+            engine:
+              - *core
+              - 'src/stargraph/checkpoint/**'
+              - 'src/stargraph/stores/**'
+            knowledge:
+              - *core
+              - 'src/stargraph/stores/**'
+              - 'src/stargraph/fathom/**'
+            cypher:
+              - *core
+              - 'src/stargraph/stores/**'
+              - 'tests/integration/test_cypher_subset.py'
+            serve:
+              - *core
+              - 'src/stargraph/serve/**'
+              - 'src/stargraph/bosun/**'
+              - 'src/stargraph/nodes/nautilus/**'
+              - 'src/stargraph/nodes/interrupt/**'
+              - 'src/stargraph/nodes/artifacts/**'
+              - 'src/stargraph/tools/nautilus/**'
+              - 'src/stargraph/artifacts/**'
+              - 'src/stargraph/triggers/**'
+              - 'src/stargraph/__init__.py'
+              - 'docs/reference/openapi.json'
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -30,7 +84,9 @@ jobs:
       # All extras + dev group so pyright can resolve every optional
       # import (pyarrow / sklearn / onnxruntime / etc.) under the
       # configured ``[tool.pyright] strict`` scope.
-      - run: uv sync --all-extras --group dev
+      - uses: ./.github/actions/uv-setup
+        with:
+          sync-args: "--all-extras --group dev"
       - run: uv run ruff check src/ tests/
       - run: uv run ruff format --check src/ tests/
       - run: uv run pyright
@@ -73,7 +129,10 @@ jobs:
       # sklearn/joblib under ``ml``, sentence-transformers under
       # ``skills-rag``) are available for any test module that
       # imports them at collect time.
-      - run: uv sync --all-extras --group dev
+      - uses: ./.github/actions/uv-setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          sync-args: "--all-extras --group dev"
       # ``-n auto`` (pytest-xdist) parallelizes across the runner's cores: the
       # smith-family suite is CPU-bound (sklearn->ONNX gate builds, Fathom
       # engines) and ran the serial job past its 25-min budget. ``loadscope``
@@ -90,6 +149,8 @@ jobs:
     # pgbouncer service stack for FR-18 integration tests (asyncpg through
     # pgbouncer transaction pooling). Single Linux/py3.13 job is enough for
     # the service-bound subset; cross-platform coverage stays in `test`.
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.engine == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -154,6 +215,8 @@ jobs:
     # (LanceDB + Kuzu run on local filesystem; postgres is here for parity
     # with engine-test in case knowledge skills exercise a shared Postgres
     # backend).
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.knowledge == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -179,10 +242,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --group dev --extra stores --extra skills-rag --extra ml
+          sync-args: "--group dev --extra stores --extra skills-rag --extra ml"
       - run: uv run pytest tests/ -m "knowledge" --cov=stargraph -q
 
   cypher-subset:
@@ -191,16 +251,15 @@ jobs:
     # Neo4j 5 testcontainer, asserting byte-identical row sets. Any
     # divergence -- syntax or semantics -- aborts the gate (loud-fail).
     # ``--runslow`` is required because the testcontainer spin-up is slow.
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.cypher == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --group dev --extra stores
+          sync-args: "--group dev --extra stores"
       - run: uv run pytest -q tests/integration/test_cypher_subset.py --runslow --no-cov
 
   schemas:
@@ -228,6 +287,8 @@ jobs:
     # `test` matrix above. `uv sync --all-extras --all-groups` is required
     # because `stargraph.stores._common` pulls in `pyarrow` (extras) and the
     # serve test surface needs the full dev/docs groups.
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.serve == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -238,10 +299,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.13"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - run: uv sync --all-extras --all-groups
+          sync-args: "--all-extras --all-groups"
       - run: uv run pytest -q -m "serve" --tb=short
       # Strict mode comes from ``[tool.pyright] strict = ["src/stargraph", "tests"]``
       # in pyproject.toml. The CLI ``--strict`` flag was removed in pyright;
