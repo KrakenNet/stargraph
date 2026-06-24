@@ -240,7 +240,11 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      # Must use the local composite, not raw setup-uv: setup-uv has no
+      # `sync-args` input (it's silently ignored), so the extras never install.
+      # The composite runs `uv sync ${sync-args}`, so the knowledge suite
+      # actually gets stores/skills-rag/ml instead of skipping import-guarded.
+      - uses: ./.github/actions/uv-setup
         with:
           sync-args: "--group dev --extra stores --extra skills-rag --extra ml"
       - run: uv run pytest tests/ -m "knowledge" --cov=stargraph -q
@@ -298,7 +302,9 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      # Composite (not raw setup-uv) so `sync-args` actually runs `uv sync`;
+      # otherwise --all-extras is ignored and stores._common/pyarrow is absent.
+      - uses: ./.github/actions/uv-setup
         with:
           sync-args: "--all-extras --all-groups"
       - run: uv run pytest -q -m "serve" --tb=short
