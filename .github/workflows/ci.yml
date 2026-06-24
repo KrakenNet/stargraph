@@ -139,7 +139,7 @@ jobs:
       # groups tests by module so module-scoped fixtures aren't rebuilt per test.
       - run: uv run pytest -m "not slow" -n auto --dist loadscope --cov=stargraph --cov-report=xml -q
       - if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
           fail_ci_if_error: false
