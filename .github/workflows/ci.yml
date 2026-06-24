@@ -258,9 +258,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
-        with:
-          sync-args: "--group dev --extra stores"
-      - run: uv run pytest -q tests/integration/test_cypher_subset.py --runslow --no-cov
+      # setup-uv has no `sync-args` input — it was silently ignored, so the
+      # `stores` extra (ryugraph) never installed and this gate hard-failed on
+      # `import ryugraph`. Pass extras to `uv run` directly instead.
+      - run: uv run --group dev --extra stores pytest -q tests/integration/test_cypher_subset.py --runslow --no-cov
 
   schemas:
     runs-on: ubuntu-latest
