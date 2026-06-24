@@ -9,8 +9,6 @@ updates:
     open-pull-requests-limit: 10
     cooldown:
       default-days: 3
-      semver-minor-days: 5
-      semver-major-days: 7
     groups:
       python-minor-patch:
         applies-to: version-updates
@@ -27,8 +25,6 @@ updates:
       - "ci"
     cooldown:
       default-days: 3
-      semver-minor-days: 5
-      semver-major-days: 7
     groups:
       actions-minor-patch:
         applies-to: version-updates
