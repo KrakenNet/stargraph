@@ -5,13 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name = "stargraph"
 version = "0.4.0"
-description = "Stateful agent-graph framework with deterministic governance via Fathom"
+description = "Stateful agent-graph framework with deterministic governance: rules route transitions, not the LLM. Auditable, replayable — built on Fathom."
 readme = "README.md"
 requires-python = ">=3.13"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Kraken Networks", email = "info@krakennetworks.com" }]
-keywords = ["agents", "graph", "ir", "fathom", "governance", "ai", "policy"]
+keywords = ["ai-agents", "agent-framework", "agent-orchestration", "langgraph", "llm", "graph", "state-machine", "workflow", "deterministic", "governance", "audit", "replayable", "provenance", "fathom", "clips", "rules-engine", "mcp", "dspy", "policy", "ir"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -19,6 +19,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Information Technology",
+    "Framework :: FastAPI",
     "Typing :: Typed",
 ]
 dependencies = [
@@ -104,9 +107,9 @@ skills-rag = [
 ]
 
 [project.urls]
-Homepage = "https://stargraph.krakn.ai"
+Homepage = "https://krakennet.github.io/stargraph"
 Repository = "https://github.com/KrakenNet/stargraph"
-Documentation = "https://stargraph.krakn.ai"
+Documentation = "https://krakennet.github.io/stargraph"
 Changelog = "https://github.com/KrakenNet/stargraph/blob/main/CHANGELOG.md"
 Issues = "https://github.com/KrakenNet/stargraph/issues"
 
