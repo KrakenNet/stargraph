@@ -75,7 +75,12 @@ jobs:
       # default timeout downloading + extracting wheels.
       UV_TORCH_BACKEND: cpu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
       # All extras + dev group so pyright can resolve every optional
       # import (pyarrow / sklearn / onnxruntime / etc.) under the
       # configured ``[tool.pyright] strict`` scope.
@@ -114,7 +119,12 @@ jobs:
       # `--all-extras` install surface and dramatically faster to fetch.
       UV_TORCH_BACKEND: cpu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
       # ``--all-extras`` so optional deps (pyarrow under ``stores``,
       # sklearn/joblib under ``ml``, sentence-transformers under
       # ``skills-rag``) are available for any test module that
@@ -177,8 +187,13 @@ jobs:
       STARGRAPH_TEST_PG_DSN: postgres://stargraph:stargraph@localhost:5432/stargraph
       STARGRAPH_TEST_PGBOUNCER_DSN: postgres://stargraph:stargraph@localhost:6432/stargraph
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/uv-setup
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv sync --group dev
       # The `engine` marker is reserved for the engine subsystem suite once
       # those tests are ported; until then the filter resolves to zero tests
       # and pytest exits 5 ("no tests collected"). Treat exit 5 as success
@@ -224,8 +239,8 @@ jobs:
       # that sentence-transformers (skills-rag extra) transitively requires.
       UV_TORCH_BACKEND: cpu
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/uv-setup
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
         with:
           sync-args: "--group dev --extra stores --extra skills-rag --extra ml"
       - run: uv run pytest tests/ -m "knowledge" --cov=stargraph -q
@@ -241,8 +256,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/uv-setup
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
         with:
           sync-args: "--group dev --extra stores"
       - run: uv run pytest -q tests/integration/test_cypher_subset.py --runslow --no-cov
@@ -251,8 +266,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/uv-setup
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv sync --group dev
       - run: uv run python scripts/build_draft7.py
       - run: git diff --exit-code src/stargraph/schemas/ir-v1-draft7.json
 
@@ -276,8 +296,8 @@ jobs:
       # that sentence-transformers (skills-rag extra) transitively requires.
       UV_TORCH_BACKEND: cpu
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/uv-setup
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
         with:
           sync-args: "--all-extras --all-groups"
       - run: uv run pytest -q -m "serve" --tb=short
@@ -305,7 +325,7 @@ jobs:
     if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: tim-actions/get-pr-commits@v1.3.1
@@ -322,7 +342,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v6

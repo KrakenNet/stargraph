@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
@@ -24,4 +24,4 @@ jobs:
         run: |
           uvx ruff@0.15.12 check --fix-only .
           uvx ruff@0.15.12 format .
-      - uses: autofix-ci/action@v1.3.2
+      - uses: autofix-ci/action@v1.3.4
