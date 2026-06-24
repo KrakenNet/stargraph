@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stargraph"
-version = "0.5.1"
+version = "0.5.2"
 description = "Stateful agent-graph framework with deterministic governance: rules route transitions, not the LLM. Auditable, replayable — built on Fathom."
 readme = "README.md"
 requires-python = ">=3.13"
