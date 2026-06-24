@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.5.0](https://github.com/KrakenNet/stargraph/compare/v0.4.0...v0.5.0) (2026-06-24)
+
+
+### Features
+
+* make the repo AI-development-friendly (DOX docs, examples, errors, context dump) ([8d3a61e](https://github.com/KrakenNet/stargraph/commit/8d3a61e3f2e7a08b968c886906faf04ea15fa58e))
+* **nodesmith:** self-improving graph that builds Stargraph nodes ([680f9ef](https://github.com/KrakenNet/stargraph/commit/680f9ef5d16bad191ccc9db47bdc711df87b109e))
+* **nodesmith:** trainset curator — seeds, CLI, Textual TUI, edit-to-gold, doctor ([0f3a4e5](https://github.com/KrakenNet/stargraph/commit/0f3a4e5c3931f20b07b81de8545874963b1f06b7))
+* **nodesmith:** TUI is the full console — Generate / Curate / Doctor / Stats ([f1e223a](https://github.com/KrakenNet/stargraph/commit/f1e223a95faa1d4017301adba9c9b9ed328d183f))
+* **skills:** five reference skill bundles + a plugin example ([66f5ece](https://github.com/KrakenNet/stargraph/commit/66f5ece3983413f8c11ab5fd5f677cc4682f6a40))
+* **skills:** five reference skill bundles + a plugin example ([0db9898](https://github.com/KrakenNet/stargraph/commit/0db9898c7ef5fc747179ab0b99c1ff8c1b7d4cd4))
+* **smith:** generalize nodesmith into the full smith family ([8fb75f6](https://github.com/KrakenNet/stargraph/commit/8fb75f61424a1ebb7e45ad7d38913531f4566657))
+* **smith:** generalize nodesmith into the full smith family ([21b723e](https://github.com/KrakenNet/stargraph/commit/21b723e3149f64a227942fd58062ade06c92a7a7))
+* **soc-triage:** port demo from pre-rename branch to stargraph main ([296e498](https://github.com/KrakenNet/stargraph/commit/296e49864af8bf150e9f8a73b4552a0d4f4323d4))
+
+
+### Bug Fixes
+
+* **meta:** repair dead docs/site URLs, enrich keywords/classifiers, add llms.txt + LangGraph positioning ([#99](https://github.com/KrakenNet/stargraph/issues/99)) ([e7fd403](https://github.com/KrakenNet/stargraph/commit/e7fd403dcc269322bd2b1dfe993c5fb891559b60))
+* **release:** commit missing .release-please-manifest.json (was gitignored) ([#100](https://github.com/KrakenNet/stargraph/issues/100)) ([a7d3db3](https://github.com/KrakenNet/stargraph/commit/a7d3db3aebf65404c9f5565759bd38c348597175))
+* **runtime:** resolve four run-lifecycle bugs ([#65](https://github.com/KrakenNet/stargraph/issues/65), [#67](https://github.com/KrakenNet/stargraph/issues/67), [#68](https://github.com/KrakenNet/stargraph/issues/68), [#81](https://github.com/KrakenNet/stargraph/issues/81)) ([9483619](https://github.com/KrakenNet/stargraph/commit/9483619c3ea6f4e8fa5b79c9879fdfac7d36a25d))
+* **runtime:** resolve four run-lifecycle bugs ([#65](https://github.com/KrakenNet/stargraph/issues/65), [#67](https://github.com/KrakenNet/stargraph/issues/67), [#68](https://github.com/KrakenNet/stargraph/issues/68), [#81](https://github.com/KrakenNet/stargraph/issues/81)) ([2e97f4f](https://github.com/KrakenNet/stargraph/commit/2e97f4f7316871dc15e37ebca24e910a80c78b4c))
+* **serve:** resolve botched main-merge in api.py/scheduler.py (PR [#84](https://github.com/KrakenNet/stargraph/issues/84) CI) ([d705f8a](https://github.com/KrakenNet/stargraph/commit/d705f8acb0d9e4256fad46b8623ec73dda96c3ed))
+
+
+### Documentation
+
+* flesh out Getting Started; bump stale __version__ to 0.4.0 ([05cf2e7](https://github.com/KrakenNet/stargraph/commit/05cf2e7b6a0d75ba6c8ba65172dc8077628695c3))
+* flesh out Getting Started; bump stale __version__ to 0.4.0 ([114fad3](https://github.com/KrakenNet/stargraph/commit/114fad36515ef8f8f828b6f33c3123dc0561e942))
+
 ## [Unreleased]
 
 ### Changed (BREAKING — harbor renamed to stargraph)
