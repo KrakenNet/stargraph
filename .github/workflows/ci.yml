@@ -14,12 +14,15 @@ jobs:
   # (Postgres/pgbouncer, Neo4j testcontainer, all-extras serve surface) run only
   # when their domain — or a shared/core path — actually changed. On push to main
   # every gate runs regardless (see each job's ``if:``), so main stays fully
-  # covered; PRs get a smaller, faster, less infra-flaky check set. The always-on
-  # ``lint`` + ``test`` jobs (the only required checks) are never filtered.
+  # covered; PRs get a smaller, faster, less infra-flaky check set. The required
+  # ``lint`` + ``test`` jobs run on every PR that touches code; a docs-only PR
+  # (``code`` filter false) skips them — a skipped required check counts as a
+  # pass, so docs PRs stay mergeable without burning the full toolchain.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
+      code: ${{ steps.filter.outputs.code }}
       engine: ${{ steps.filter.outputs.engine }}
       knowledge: ${{ steps.filter.outputs.knowledge }}
       cypher: ${{ steps.filter.outputs.cypher }}
@@ -30,6 +33,17 @@ jobs:
         id: filter
         with:
           filters: |
+            # True when the PR changes anything that isn't pure documentation.
+            # Negation-only failure mode is safe: if dorny ever ignored the
+            # ``!`` patterns, ``**`` matches everything → ``code`` stays true →
+            # lint/test run anyway (today's behavior). They only skip when every
+            # changed file is docs/markdown.
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!mkdocs.yml'
+              - '!LICENSE'
             core: &core
               - 'pyproject.toml'
               - 'uv.lock'
@@ -65,6 +79,8 @@ jobs:
               - 'docs/reference/openapi.json'
 
   lint:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -104,6 +120,8 @@ jobs:
     # on PR branches alike), so it has never produced a signal that
     # ubuntu didn't. Linux is the canonical platform; restore the slot if
     # macos-specific coverage is ever needed.
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -326,22 +344,10 @@ jobs:
       - run: git diff --exit-code docs/reference/openapi.json
       - run: uv run python scripts/lineage_audit.py --help
 
-  dco:
-    # Only run on PRs; reject if any commit lacks Signed-off-by.
-    # Skip release-please PRs — its bot commits are not signed off.
-    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: tim-actions/get-pr-commits@v1.3.1
-        id: pr-commits
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: tim-actions/dco@v1.1.0
-        with:
-          commits: ${{ steps.pr-commits.outputs.commits }}
+  # DCO sign-off is enforced by the dcoapp GitHub App (config in .github/dco.yml),
+  # not an in-repo job. The app exempts org members and lets contributors fix a
+  # missing sign-off with a remediation commit instead of a history rewrite —
+  # see CONTRIBUTING.md.
 
   changelog-check:
     # Enforce CHANGELOG.md entry when IR/schema files change (NFR-2).

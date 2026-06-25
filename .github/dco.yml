@@ -1,0 +1,19 @@
+# Config for the dcoapp GitHub App (https://github.com/apps/dco), which replaces
+# the old in-repo tim-actions/dco job. The app posts a single "DCO" status check
+# and, on failure, comments the exact remediation command on the PR.
+#
+# Why these settings make sign-off easier for contributors:
+#   require.members: false        -> commits by KrakenNet org members don't need
+#                                    a sign-off line (maintainers stop tripping it).
+#   allowRemediationCommits.*     -> a missing sign-off is fixed by pushing ONE
+#                                    extra commit (the app gives you the command),
+#                                    instead of rewriting history with a rebase.
+#     individual: true            -> the original author can self-remediate.
+#     thirdParty: true            -> a maintainer can sign off on someone else's
+#                                    behalf — including an unsigned bot commit
+#                                    (e.g. autofix.ci) that used to deadlock DCO.
+require:
+  members: false
+allowRemediationCommits:
+  individual: true
+  thirdParty: true
