@@ -5,7 +5,7 @@
 If you discover a security vulnerability in Stargraph, please report it privately.
 Do **not** open a public GitHub issue for security-sensitive reports.
 
-- **Email**: security@krakennetworks.com
+- **Email**: support@krakennetworks.com
 - **Subject line**: `[SECURITY] <short description>`
 
 Please include:
