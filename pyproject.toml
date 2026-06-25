@@ -84,7 +84,7 @@ stores = [
 ]
 sdw = [
     "ultralytics>=8.3",  # 8.3+ includes YOLO11 model architecture despite 8.x version numbering
-    "torch>=2.0",
+    "torch>=2.1",
     "torchvision>=0.15",
     "rasterio>=1.3",
     "geopandas>=0.14",
