@@ -196,6 +196,11 @@ name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
+[tool.uv]
+# Transitive security floor: litellm reaches Dependabot-patched 1.84.0
+# (pulled in via dspy). Remove once dspy's pin moves past it.
+constraint-dependencies = ["litellm>=1.84.0"]
+
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu" }]
 torchvision = [{ index = "pytorch-cpu" }]
