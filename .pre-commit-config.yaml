@@ -13,7 +13,8 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
-        args: [--skip, "uv.lock,docs/reference/*"]
+        # `thirdParty` is a required dcoapp config key (.github/dco.yml), not a typo.
+        args: [--skip, "uv.lock,docs/reference/*", -L, thirdparty]
   - repo: local
     hooks:
       # ruff lint + format run via `uv run` so the version always tracks

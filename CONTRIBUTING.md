@@ -15,9 +15,9 @@ Every commit must be signed off:
 
     git commit -s -m "Add feature X"
 
-This appends `Signed-off-by: Your Name <you@example.com>` to the commit message, certifying you can legally contribute the code (full text: https://developercertificate.org/). The CI rejects PRs with unsigned commits. To fix existing commits:
+This appends `Signed-off-by: Your Name <you@example.com>` to the commit message, certifying you can legally contribute the code (full text: https://developercertificate.org/). The `DCO` check rejects PRs with unsigned commits.
 
-    git rebase --signoff origin/main
+**Forgot to sign off?** You don't need to rewrite history. When the `DCO` check fails it comments the exact one-line command to push a *remediation commit* that signs off your earlier commits — just run it and push. (If you'd rather rewrite history, `git rebase --signoff origin/main` also works.)
 
 ## Development Setup
 
