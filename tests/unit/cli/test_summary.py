@@ -8,6 +8,7 @@ from stargraph.cli._summary import (
     _is_default,
 )  # pyright: ignore[reportPrivateUsage]
 
+
 @pytest.mark.unit
 @pytest.mark.parametrize(
     ("milliseconds", "expected"),
