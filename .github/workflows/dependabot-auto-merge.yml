@@ -1,9 +1,15 @@
 name: dependabot-auto-merge
 
 # Auto-approve + auto-merge Dependabot patch & minor updates once the required CI
-# checks pass. Major bumps are left for a human. This uses pull_request_target so
-# the workflow token can approve/merge, but it never checks out or runs PR code —
-# it only calls the gh API — which is the GitHub-documented safe pattern.
+# checks pass. Major bumps are left for a human.
+#
+# Grouped Dependabot PRs report update-type=null, but every group in
+# .github/dependabot.yml is restricted to "minor"/"patch", so a grouped PR can
+# never contain a major. The gate is therefore "not a major" — which auto-merges
+# grouped (null) and explicit patch/minor PRs while leaving explicit majors open.
+#
+# Uses pull_request_target so the workflow token can approve/merge. It never checks
+# out or runs PR code — it only calls the gh API — the GitHub-documented safe pattern.
 on: pull_request_target
 
 permissions:
@@ -17,10 +23,10 @@ jobs:
     steps:
       - name: Fetch Dependabot metadata
         id: meta
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
 
-      - name: Approve and enable auto-merge (patch & minor only)
-        if: ${{ steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor' }}
+      - name: Approve and enable auto-merge (skip majors)
+        if: ${{ steps.meta.outputs.update-type != 'version-update:semver-major' }}
         run: |
           gh pr review --approve "$PR_URL"
           gh pr merge --auto --squash "$PR_URL"
