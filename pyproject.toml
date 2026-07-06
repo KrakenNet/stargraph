@@ -107,9 +107,9 @@ skills-rag = [
 ]
 
 [project.urls]
-Homepage = "https://krakennet.github.io/stargraph"
+Homepage = "https://krakn.ai"
 Repository = "https://github.com/KrakenNet/stargraph"
-Documentation = "https://krakennet.github.io/stargraph"
+Documentation = "https://stargraph.krakn.ai"
 Changelog = "https://github.com/KrakenNet/stargraph/blob/main/CHANGELOG.md"
 Issues = "https://github.com/KrakenNet/stargraph/issues"
 
