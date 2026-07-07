@@ -92,7 +92,7 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.13"
           enable-cache: true
@@ -138,7 +138,7 @@ jobs:
       UV_TORCH_BACKEND: cpu
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
@@ -206,7 +206,7 @@ jobs:
       STARGRAPH_TEST_PGBOUNCER_DSN: postgres://stargraph:stargraph@localhost:6432/stargraph
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.13"
           enable-cache: true
@@ -279,7 +279,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.2.0
       # setup-uv has no `sync-args` input — it was silently ignored, so the
       # `stores` extra (ryugraph) never installed and this gate hard-failed on
       # `import ryugraph`. Pass extras to `uv run` directly instead.
@@ -290,7 +290,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.13"
           enable-cache: true
@@ -358,7 +358,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.13"
           enable-cache: true
