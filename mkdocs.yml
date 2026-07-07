@@ -1,6 +1,6 @@
 site_name: Stargraph
 site_description: Stateful agent-graph framework with deterministic governance
-site_url: https://krakennet.github.io/stargraph
+site_url: https://stargraph.krakn.ai
 repo_url: https://github.com/KrakenNet/stargraph
 repo_name: KrakenNet/stargraph
 
