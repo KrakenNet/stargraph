@@ -36,3 +36,10 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
 
 `make lint && make typecheck && make test`; run the marker matching your subtree
 (`-m serve`, `-m integration`, etc.) before declaring done.
+
+## Child DOX Index
+
+- [`ovarp/AGENTS.md`](ovarp/AGENTS.md) — attest governance ticks as OVARP
+  offline-verifiable receipts (ADR-0012); emit sink, reproducer, shared harness.
+- [`skills/AGENTS.md`](skills/AGENTS.md) — code-authoring skills (graphs, nodes,
+  packs, tools, stores, triggers, adapters, ML).

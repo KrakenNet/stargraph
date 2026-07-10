@@ -16,6 +16,7 @@ from stargraph.cli import (
     context,
     counterfactual,
     inspect,
+    ovarp_reproduce,
     replay,
     respond,
     run,
@@ -43,6 +44,7 @@ app.command("respond")(respond.cmd)
 app.command("serve")(serve.cmd)
 app.command("verify-audit")(verify_audit.cmd)
 app.command("context")(context.cmd)
+app.command("ovarp-reproduce")(ovarp_reproduce.cmd)
 
 
 def main() -> None:

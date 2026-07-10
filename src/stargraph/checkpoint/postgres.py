@@ -293,7 +293,17 @@ class PostgresCheckpointer:
             )
 
     async def read_latest(self, run_id: str) -> Checkpoint | None:
-        """Return the highest-step checkpoint for ``run_id`` or ``None``."""
+        """Return the most-recently-written checkpoint for ``run_id`` or ``None``.
+
+        Ordered by ``ts`` (write timestamp, TIMESTAMPTZ — chronological), NOT by
+        ``step_idx``. ``step_idx`` resets to 0 each ``loop.execute`` process, so a
+        resume that runs fewer steps than the original leaves the original's
+        higher ``step_idx`` rows in place while its own lower-index rows upsert
+        over the originals; ordering by ``step_idx`` would then return a stale
+        pre-resume checkpoint (a silent correctness bug). The ``(run_id, ts)``
+        index backs this ordering; ``step_idx DESC`` only breaks same-instant
+        ties within a single process (where step_idx is monotonic).
+        """
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -304,7 +314,7 @@ class PostgresCheckpointer:
                        parent_run_id
                 FROM stargraph.checkpoints
                 WHERE run_id = $1
-                ORDER BY step_idx DESC
+                ORDER BY ts DESC, step_idx DESC
                 LIMIT 1
                 """,
                 run_id,

@@ -118,6 +118,51 @@ def test_urandom_returns_recorded_bytes() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Case 4b -- stargraph.replay.now_dt() (tz-aware datetime, JSON-safe recording)
+# ---------------------------------------------------------------------------
+
+
+def test_now_dt_returns_recorded_datetime_during_replay() -> None:
+    """In replay mode, ``now_dt()`` returns the recorded tz-aware datetime (parsed ISO)."""
+    from datetime import UTC, datetime
+
+    determinism = _load_determinism()
+    recorded = datetime(2026, 7, 9, 12, 0, 0, tzinfo=UTC)
+
+    scope = determinism.DeterminismScope(replay=True, recording={"now_dt": [recorded.isoformat()]})
+    with scope:
+        observed = determinism.now_dt()
+
+    assert observed == recorded
+    assert observed.tzinfo is not None
+
+
+def test_now_dt_recording_is_json_serializable_and_round_trips() -> None:
+    """Record mode stores ISO strings so the recording can ride inside a replay bundle.
+
+    The engine persists a tick's determinism recording into the OVARP replay bundle;
+    that requires the recording to be JSON-serializable. ``now_dt`` records the ISO
+    string (not a ``datetime`` object) and replays it back to an equal datetime.
+    """
+    import json
+
+    determinism = _load_determinism()
+
+    rec: dict[str, list[object]] = {}
+    with determinism.DeterminismScope(replay=False, recording=rec):
+        first = determinism.now_dt()
+        second = determinism.now_dt()
+
+    # The recording is plain JSON (ISO strings) — persistable into a bundle.
+    dumped = json.dumps(rec)
+    replayed_rec = json.loads(dumped)
+
+    with determinism.DeterminismScope(replay=True, recording=replayed_rec):
+        assert determinism.now_dt() == first
+        assert determinism.now_dt() == second
+
+
+# ---------------------------------------------------------------------------
 # Case 5 -- ``set`` field rejected at compile time in state_schema
 # ---------------------------------------------------------------------------
 

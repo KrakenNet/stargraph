@@ -296,6 +296,7 @@ class GraphRun:
         fathom: Any = None,
         fact_store: Any = None,
         audit_sink: Any = None,
+        receipt_sink: Any = None,
     ) -> None:
         self.run_id = run_id
         self.graph = graph
@@ -309,6 +310,11 @@ class GraphRun:
         # Scaffold stub -- task T01 (consumed by T13/T02). Optional, default None.
         self.fact_store = fact_store
         self.audit_sink = audit_sink
+        # Optional OVARP receipt sink (ADR-0012). ``None`` (default) skips
+        # attestation; when set, ``stargraph.runtime.dispatch.dispatch_node``
+        # calls ``receipt_sink.record(...)`` once per committed tick so each
+        # routing decision can be emitted as an offline-verifiable receipt.
+        self.receipt_sink = receipt_sink
         # Per-node cassette wiring (design §10.3). ``node_cassette`` is
         # ``None`` until a caller wires one; ``node_id`` is stamped by
         # :func:`stargraph.runtime.dispatch.dispatch_node` for the duration
@@ -679,6 +685,7 @@ class GraphRun:
         :class:`stargraph.checkpoint.protocol.Checkpoint` Pydantic model (INV-2).
         """
         from stargraph.checkpoint.protocol import Checkpoint as _Ckpt
+        from stargraph.replay.cassettes import args_hash
 
         state_dict: dict[str, Any] = (
             self.initial_state.model_dump(mode="json") if self.initial_state is not None else {}
@@ -696,7 +703,9 @@ class GraphRun:
             next_action=None,
             timestamp=datetime.now(UTC),
             parent_run_id=self.parent_run_id,
-            side_effects_hash="",
+            # On-demand snapshot, not a tick: no side effects → canonical empty-effects hash
+            # (consistent with the per-tick `args_hash(outputs)` in dispatch step 7).
+            side_effects_hash=args_hash({}),
         )
 
     @classmethod

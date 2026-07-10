@@ -119,6 +119,11 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         # this same class anyway, so we accept it on its own as a known
         # boundary exception (FR-24 carve-out for HTTP-framework integration).
         "HTTPException",
+        # typer's CLI-exit signal, raised by stargraph.cli.ovarp_reproduce to
+        # set the process exit code (0 reproduced / 2 failed) that ``ovarp
+        # verify --replay`` reads. Same framework-boundary carve-out as
+        # HTTPException — control-flow exit, not an engine error class.
+        "Exit",
         # Stdlib — type/contract violations (caller bug, not a Stargraph failure).
         "TypeError",
         "ValueError",

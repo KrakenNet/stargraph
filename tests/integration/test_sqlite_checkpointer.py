@@ -37,7 +37,7 @@ import multiprocessing
 import re
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -202,6 +202,48 @@ async def test_write_then_read_latest_round_trip(db_path: Path) -> None:
     fetched = await cp.read_latest("run-rt")
     assert fetched is not None
     assert fetched == original
+
+
+async def test_read_latest_returns_last_write_after_step_reset(db_path: Path) -> None:
+    """Regression: ``read_latest`` must follow write recency, not ``step_idx``.
+
+    ``loop.execute`` resets ``step_idx`` to 0 at the start of every process, so a
+    resume process that runs FEWER steps than the original leaves the original's
+    higher-``step_idx`` rows intact while its own low-index rows REPLACE the
+    originals. Selecting by ``MAX(step_idx)`` would return a stale pre-resume
+    checkpoint (a silent correctness bug); ``read_latest`` must return the
+    genuinely latest write — the resume process's last checkpoint.
+    """
+    sqlite_checkpointer_cls = _import_sqlite_checkpointer()
+    cp: Any = sqlite_checkpointer_cls(db_path)
+    await cp.bootstrap()
+
+    def _ckpt(step: int, who: str, ts: datetime) -> Checkpoint:
+        return Checkpoint(
+            run_id="run-resume", step=step, branch_id=None, parent_step_idx=None,
+            graph_hash="sha256:g", runtime_hash="sha256:r",
+            state={"who": who, "step": step}, clips_facts=[],
+            last_node=f"{who}{step}", next_action=None, timestamp=ts,
+            parent_run_id=None, side_effects_hash="",
+        )
+
+    base = datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC)
+    # Process A (original run): four steps 0..3.
+    for s in range(4):
+        await cp.write(_ckpt(s, "A", base + timedelta(seconds=s)))
+    # Process B (cold-restart resume, only two steps): step_idx resets to 0, so
+    # 0 and 1 REPLACE A's rows while A's steps 2 and 3 survive.
+    for s in range(2):
+        await cp.write(_ckpt(s, "B", base + timedelta(seconds=10 + s)))
+
+    latest = await cp.read_latest("run-resume")
+    assert latest is not None
+    # The genuinely-latest write is process B's step 1 — NOT process A's step 3,
+    # which an ``ORDER BY step_idx DESC`` would wrongly resurrect.
+    assert latest.state["who"] == "B", (
+        f"read_latest returned a stale pre-resume checkpoint {latest.state!r}"
+    )
+    assert latest.step == 1
 
 
 @pytest.mark.skipif(

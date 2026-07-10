@@ -227,6 +227,7 @@ class _FakeRun:
     parent_run_id: str | None = None
     fathom: Any = None
     fact_store: Any = None
+    receipt_sink: Any = None
     node_id: str = ""
     graph: Any = field(default_factory=_FakeGraph)
     checkpointer: Any = field(default_factory=_FakeCheckpointer)
