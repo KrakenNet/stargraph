@@ -105,6 +105,14 @@ skills-rag = [
     # deps, not transitives pulled by sentence-transformers).
     "torch>=2.1",
 ]
+# torch/SB3 -> ONNX publish path (stargraph.ml.export). torch is NOT an
+# MLNode runtime and never a core dep; it enters via export only (W4).
+onnx-export = [
+    "torch>=2.5",  # 2.5 adds the torch.onnx.export(dynamo=) keyword we rely on
+    "onnx>=1.16",
+    "onnxscript>=0.2",  # torch>=2.9 dynamo ONNX exporter requires it
+    "stable-baselines3>=2.0",
+]
 
 [project.urls]
 Homepage = "https://krakennet.github.io/stargraph"

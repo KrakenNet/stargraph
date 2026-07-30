@@ -29,6 +29,18 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   `cli/run.py` (`_NODE_FACTORIES`) if it should be `kind:`-addressable from YAML.
 - Adding a tool: `@tool` decorator + register via the `stargraph.tools`
   entry-point in `pyproject.toml`.
+- Optional-dep seams (`ml/export.py`, `stores/rerankers.py`): import the
+  optional package lazily inside the function, raise `MLNodeError` /
+  `StargraphRuntimeError` with a `hint=` naming the extra. `ml/export.py`
+  funnels torch/sb3 through `importlib.import_module` + explicit `Any` so
+  pyright strict stays green with or without the extra installed.
+- torch is never a core dep or an MLNode runtime; torch/SB3 models publish
+  into the registry as ONNX via `stargraph.ml.export` (`onnx-export` extra).
+- Ops surface: `GET /health` is deliberately ungated (K8s probes carry no
+  credentials); `GET /metrics` requires `metrics:read` and hand-rolls Prometheus
+  text exposition (`serve/_api_helpers._scan_audit_metrics`) — do not add a
+  prometheus client dep. `stargraph model rollback` / `pack pin|revert` live in
+  `cli/model.py` / `cli/pack.py` and audit via `BosunAuditEvent`.
 - Big files to be careful in: `serve/api.py`, `serve/scheduler.py`,
   `graph/loop.py`, `graph/run.py`, `serve/auth.py`.
 

@@ -14,6 +14,9 @@ provenance, and replayability are the point. Public API is unstable until v1.0.
 
 - Source: `src/stargraph/` (Python, packaged). See `tests/`, `docs/`, `examples/`,
   `demos/`, `design-docs/`.
+- Deployment artifacts: root `Dockerfile` + `compose.yaml` + `deploy/helm/stargraph/`.
+  Single serve process per state volume is the supported topology (audit chain =
+  one fsync'd writer); the Helm chart hard-pins `replicas: 1` — keep it that way.
 - This root doc owns repo-wide rules + the recipe index. Child docs own their
   subtree (see Child DOX Index).
 
@@ -77,7 +80,10 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Add a trigger | `docs/how-to/add-trigger.md` | `stargraph.triggers` entry-point |
 | Write Fathom rules | `docs/tutorials/fathom-rules.md`, `design-docs/stargraph-facts.md` | `RuleSpec` / `.clp` pack |
 | Add an MCP server | `docs/how-to/add-mcp-server.md` | `stargraph.mcp_adapters` entry-point |
+| Publish a torch/SB3 model as ONNX | `docs/reference/nodes/ml.md` | `stargraph.ml.export` (`onnx-export` extra) |
 | Serve / replay | `docs/serve/`, `docs/tutorials/serve-and-replay.md` | `stargraph serve`, `stargraph replay` |
+| Deploy in a container / K8s | `docs/guides/containers.md` | root `Dockerfile` + `compose.yaml` + `deploy/helm/stargraph/` (single-replica only) |
+| Monitor / roll back a deployment | `docs/serve/api.md` (Ops), `docs/reference/cli.md` | `GET /health`, `GET /metrics`; `stargraph model rollback`, `stargraph pack pin\|revert` |
 
 There are also builder subagents for some of these (`harbor:node-builder`,
 `harbor:graph-builder`, `nautilus:source-builder`, the forge pipeline).
