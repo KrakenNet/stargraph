@@ -1095,6 +1095,9 @@ def create_app(
         the probe — consistent with this module's permissive POC
         default for missing deps.
         """
+        import logging
+
+        log = logging.getLogger("stargraph.serve.api")
         components: dict[str, dict[str, str]] = {}
 
         run_history: RunHistory | None = app.state.deps.get("run_history")
@@ -1107,8 +1110,9 @@ def create_app(
             try:
                 await run_history.count()
                 components["store"] = {"status": "ok", "detail": "runs_history queryable"}
-            except Exception as exc:
-                components["store"] = {"status": "error", "detail": str(exc)}
+            except Exception:
+                log.exception("health: run_history probe failed")
+                components["store"] = {"status": "error", "detail": "probe failed"}
 
         if app.state.deps.get("artifact_store") is None:
             components["artifact_store"] = {
@@ -1126,8 +1130,9 @@ def create_app(
 
             fathom.Engine()
             components["fathom"] = {"status": "ok", "detail": "CLIPS engine constructible"}
-        except Exception as exc:
-            components["fathom"] = {"status": "error", "detail": str(exc)}
+        except Exception:
+            log.exception("health: fathom engine probe failed")
+            components["fathom"] = {"status": "error", "detail": "probe failed"}
 
         if app.state.deps.get("registry") is None:
             components["registry"] = {

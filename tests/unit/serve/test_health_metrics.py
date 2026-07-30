@@ -124,6 +124,9 @@ async def test_health_store_probe_failure_is_503(tmp_path: Path) -> None:
     body = resp.json()
     assert body["status"] == "unhealthy"
     assert body["components"]["store"]["status"] == "error"
+    # /health is deliberately unauthenticated, so a failing probe must report
+    # up/down and nothing else -- no exception text, no paths, no versions.
+    assert body["components"]["store"]["detail"] == "probe failed"
 
 
 async def test_metrics_exposition(tmp_path: Path) -> None:
