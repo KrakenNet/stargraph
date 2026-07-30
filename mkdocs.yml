@@ -70,6 +70,7 @@ nav:
       - Add an MCP server: how-to/add-mcp-server.md
       - Add a Nautilus source: how-to/add-nautilus-source.md
       - Air-gap deployment (operator playbook): guides/air-gap-deployment.md
+      - Containers (Docker & Helm): guides/containers.md
   - Security:
       - STRIDE threat model: security/threat-model.md
       - Sign-off rubric: security/sign-off.md

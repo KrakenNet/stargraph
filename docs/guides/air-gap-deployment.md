@@ -309,8 +309,9 @@ TZ=UTC HF_HUB_OFFLINE=1 HF_HOME=/srv/stargraph/models \
 ```
 
 The first request (`curl --cert client.pem --cacert server-ca.pem
-https://stargraph.local:443/v1/health`) should return `{"status":"ok"}`
-with no outbound network observable on `tcpdump -i any not port 443`.
+https://stargraph.local:443/health`) should return `"status": "ok"` with
+per-component probe results, and no outbound network observable on
+`tcpdump -i any not port 443`.
 
 ## 8. Failure modes + diagnostics
 

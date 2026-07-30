@@ -57,6 +57,13 @@ the OpenAPI link or render via Swagger UI / Redoc.
 |---|---|
 | `WS /v1/runs/{run_id}/stream` | Server-pushed event stream (audit + node lifecycle + result). `Last-Event-Id: <event_id>,<offset>,<seq>` resumes after reconnect. See [WebSocket stream](ws.md). |
 
+### Ops
+
+| Method | Path | Capability | Notes |
+|---|---|---|---|
+| `GET` | `/health` | — (ungated: probes carry no credentials) | Per-component readiness: store (real run-history query), fathom (CLIPS engine construction), artifact store, plugin registry. `200` when healthy, `503` when any probe errors; `unconfigured` components don't fail the probe. |
+| `GET` | `/metrics` | `metrics:read` | Prometheus text exposition (hand-rolled, no client dep): `stargraph_runs_total{status=...}`, `stargraph_run_duration_milliseconds` summary, `stargraph_audit_chain_height`, `stargraph_rule_transitions_total`. Audit-log metrics appear only when a JSONL log is wired. |
+
 ## Capability matrix
 
 | Capability | Routes |
@@ -69,6 +76,7 @@ the OpenAPI link or render via Swagger UI / Redoc.
 | `runs:respond` | `POST /v1/runs/{id}/respond` |
 | `counterfactual:run` | `POST /v1/runs/{id}/counterfactual` |
 | `artifacts:read` | `GET /v1/runs/{id}/artifacts`, `GET /v1/artifacts/{id}` |
+| `metrics:read` | `GET /metrics` (permissive under oss-default; default-deny under cleared) |
 
 Profiles map roles to capability sets — see [Profiles](profiles.md). The
 gate emits a `capability_denied` audit event before returning 403, including

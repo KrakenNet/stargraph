@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v2
+name: stargraph
+description: >-
+  Stargraph serve as a single-replica StatefulSet. Single-replica is the
+  supported topology: the audit chain and replay determinism depend on the
+  single-process invariant (see chart README).
+type: application
+version: 0.1.0
+appVersion: "0.5.2"

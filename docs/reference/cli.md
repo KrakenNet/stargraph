@@ -20,6 +20,8 @@ stargraph = "stargraph.cli:main"
 | `respond`        | Deliver a HITL response to an awaiting-input run.      |
 | `simulate`       | Offline rule-firing trace against synthetic fixtures.  |
 | `counterfactual` | Compute a cf-derived `graph_hash` from a YAML mutation.|
+| `model rollback` | Repoint a model-registry alias to the previous version.|
+| `pack pin` / `pack revert` | Pin / un-pin a rule-pack version on a graph's governance mount.|
 
 The helper modules `_inputs.py`, `_progress.py`, `_prompts.py`, and
 `_summary.py` factor the interactive surface used by `stargraph run`
@@ -327,3 +329,54 @@ derived_graph_hash=...
 ```
 
 See also: [Counterfactual](../engine/counterfactual.md).
+
+## `stargraph model rollback`
+
+Repoint a model-registry alias (default `production`) to the version
+registered immediately before the alias's current target, and append a
+`model_rollback` audit event. A pure metadata operation over the
+existing `model_aliases` table — no model files are read or verified,
+so a rollback succeeds even when the current version's file is broken.
+Refuses (exit 1) when the alias is missing or already points at the
+earliest registered version.
+
+**Usage**
+
+```text
+stargraph model rollback NAME --registry PATH [--alias NAME] [--audit-log PATH]
+```
+
+| Flag               | Type       | Default                     | Description                                        |
+| ------------------ | ---------- | --------------------------- | -------------------------------------------------- |
+| `NAME`             | str (arg)  | _req._                      | Model id whose alias to roll back.                 |
+| `--registry PATH`  | path       | _req._                      | ModelRegistry SQLite DB path.                      |
+| `--alias NAME`     | str        | `production`                | Alias to repoint.                                  |
+| `--audit-log PATH` | path       | `<registry>.audit.jsonl`    | JSONL audit log for the rollback event.            |
+
+## `stargraph pack pin` / `stargraph pack revert`
+
+Rule packs have no runtime version store: a graph references packs via
+its IR `governance:` mounts, whose optional `version` field is the only
+durable pin. These commands are metadata edits over that graph YAML —
+`pin` sets an explicit version on the mount; `revert` removes the pin,
+restoring unpinned (plugin-registry) resolution. Both refuse when the
+pack id is not mounted; `revert` also refuses when the mount is not
+pinned. The mutated document is re-validated as IR before writing, and
+a `pack_pinned` / `pack_unpinned` audit event is appended.
+
+**Usage**
+
+```text
+stargraph pack pin PACK VERSION --graph GRAPH.yaml [--audit-log PATH]
+stargraph pack revert PACK --graph GRAPH.yaml [--audit-log PATH]
+```
+
+| Flag               | Type      | Default                  | Description                                    |
+| ------------------ | --------- | ------------------------ | ---------------------------------------------- |
+| `PACK`             | str (arg) | _req._                   | Pack id (e.g. `sdw.routing`).                  |
+| `VERSION`          | str (arg) | _req._ (pin only)        | Version to pin the mount to.                   |
+| `--graph PATH`     | path      | _req._                   | Graph IR YAML holding the governance mount.    |
+| `--audit-log PATH` | path      | `<graph>.audit.jsonl`    | JSONL audit log for the pin/revert event.      |
+
+Note: the YAML is rewritten via `yaml.safe_dump`; the leading comment
+header is preserved, but inline comments below it are not.

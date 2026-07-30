@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# Single-service compose file: `stargraph serve` with embedded stores
+# (SQLite checkpointer + JSONL audit log) on a named volume.
+#
+#   docker compose up --build
+#   curl http://127.0.0.1:8000/health
+services:
+  stargraph:
+    build: .
+    image: stargraph:latest
+    ports:
+      - "8000:8000"
+    environment:
+      TZ: UTC
+    volumes:
+      - stargraph-state:/data
+
+volumes:
+  stargraph-state:
