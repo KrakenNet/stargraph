@@ -188,11 +188,15 @@ shipped capability StarGraph lacks).
 - **CrewAI:** a built-in **`train`** workflow lets you run a crew through
   iterations with human feedback so it refines prompts and behavior over time,
   plus a **`test`** command for evaluating crew performance.
-- **StarGraph:** **no training loop and no built-in eval harness.** Improvement is
-  manual — edit nodes, rules, and prompts, then replay. (StarGraph's replay is a
-  real strength, but it is a debugging tool, not a feedback-driven training loop.)
+- **StarGraph:** **no prompt-refinement loop for LLM crews.** For RL/ML policies
+  the `rl` extra ships a training tool (`rl:train_ppo`, stable-baselines3 PPO)
+  and an eval harness (`stargraph.rl.gauntlet`: 3-way splits,
+  Pareto-vs-baseline, CSCV-PBO admission gate with a reference eval graph) —
+  but that gates *models against datasets*; crew/prompt improvement is still
+  manual — edit nodes, rules, and prompts, then replay.
 
-**Gap:** a feedback-driven training loop and a crew-evaluation command.
+**Gap:** a feedback-driven prompt-training loop and a crew-evaluation command
+(StarGraph's train/eval machinery targets RL policies, not LLM crews).
 
 ### 13. Developer experience and time-to-first-agent
 

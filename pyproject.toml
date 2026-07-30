@@ -113,6 +113,20 @@ onnx-export = [
     "onnxscript>=0.2",  # torch>=2.9 dynamo ONNX exporter requires it
     "stable-baselines3>=2.0",
 ]
+# RL toolkit (stargraph.rl, W7): GymEnvNode, PolicyNode, the SB3 PPO trainer
+# tool, the admission gauntlet's heavy consumers, and the reference MPC
+# planner. The gauntlet library itself (splits/PBO/metrics/admission) is pure
+# Python and needs none of these. torch is declared directly so the
+# pytorch-cpu source pin applies (uv <0.9 only honors the source map for
+# direct deps).
+rl = [
+    "gymnasium>=1.0",
+    "stable-baselines3>=2.0",
+    "torch>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "onnxruntime>=1.18",
+]
 
 [project.urls]
 Homepage = "https://krakennet.github.io/stargraph"
@@ -151,6 +165,14 @@ servicenow_create_change_request = "stargraph.tools.servicenow.create_change_req
 servicenow_cmdb_query_software = "stargraph.tools.servicenow.cmdb_query_software:cmdb_query_software"
 servicenow_cmdb_traverse_runs_on = "stargraph.tools.servicenow.cmdb_traverse_runs_on:cmdb_traverse_runs_on"
 servicenow_cmdb_resolve_hosts = "stargraph.tools.servicenow.cmdb_resolve_hosts:cmdb_resolve_hosts"
+rl_train_ppo = "stargraph.rl.trainer:train_ppo"
+
+# Planner plugins (design W7): each entry is a zero-arg-constructible class
+# satisfying the stargraph.rl.planners.Planner protocol. ``mpc-ca-burn`` is the
+# built-in reference implementation (convex-MPC-style burn-option planner over
+# the ARLO collision-avoidance geometry).
+[project.entry-points."stargraph.planners"]
+mpc-ca-burn = "stargraph.rl.planners.mpc:CaBurnMpcPlanner"
 
 # Built-in reranker plug-ins discoverable through stargraph.stores._rerank_loader.
 # RRFReranker is the always-available default; cross-encoder requires the

@@ -4234,6 +4234,15 @@ onnx-export = [
     { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "platform_machine != 's390x' and sys_platform == 'darwin'" },
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "platform_machine == 's390x' or sys_platform != 'darwin'" },
 ]
+rl = [
+    { name = "gymnasium" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "scipy" },
+    { name = "stable-baselines3" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "platform_machine != 's390x' and sys_platform == 'darwin'" },
+    { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "platform_machine == 's390x' or sys_platform != 'darwin'" },
+]
 sdw = [
     { name = "asyncpg" },
     { name = "folium" },
@@ -4310,6 +4319,7 @@ requires-dist = [
     { name = "folium", marker = "extra == 'sdw'", specifier = ">=0.15" },
     { name = "geopandas", marker = "extra == 'sdw'", specifier = ">=0.14" },
     { name = "graphglot", specifier = ">=0.11.0" },
+    { name = "gymnasium", marker = "extra == 'rl'", specifier = ">=1.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "huggingface-hub", marker = "extra == 'skills-rag'", specifier = ">=0.25" },
     { name = "jinja2", specifier = ">=3.1.6" },
@@ -4319,8 +4329,10 @@ requires-dist = [
     { name = "lancedb", marker = "extra == 'stores'", specifier = ">=0.30.2,<0.40" },
     { name = "mcp", specifier = ">=1.0" },
     { name = "nautilus-rkm", specifier = ">=0.1.5" },
+    { name = "numpy", marker = "extra == 'rl'", specifier = ">=1.26" },
     { name = "onnx", marker = "extra == 'onnx-export'", specifier = ">=1.16" },
     { name = "onnxruntime", marker = "extra == 'ml'", specifier = ">=1.18" },
+    { name = "onnxruntime", marker = "extra == 'rl'", specifier = ">=1.18" },
     { name = "onnxscript", marker = "extra == 'onnx-export'", specifier = ">=0.2" },
     { name = "orjson", specifier = ">=3.10" },
     { name = "pillow", marker = "extra == 'sdw'", specifier = ">=10.0" },
@@ -4337,15 +4349,18 @@ requires-dist = [
     { name = "rfc8785", specifier = ">=0.1.4,<0.2" },
     { name = "ryugraph", marker = "extra == 'stores'", specifier = ">=25.9.2,<26" },
     { name = "scikit-learn", marker = "extra == 'ml'" },
+    { name = "scipy", marker = "extra == 'rl'", specifier = ">=1.11" },
     { name = "sentence-transformers", marker = "extra == 'skills-rag'", specifier = ">=5.0,<6" },
     { name = "shapely", marker = "extra == 'sdw'", specifier = ">=2.0" },
     { name = "skops", marker = "extra == 'ml'", specifier = ">=0.10" },
     { name = "stable-baselines3", marker = "extra == 'onnx-export'", specifier = ">=2.0" },
+    { name = "stable-baselines3", marker = "extra == 'rl'", specifier = ">=2.0" },
     { name = "streamlit", marker = "extra == 'sdw'", specifier = ">=1.30" },
     { name = "streamlit-folium", marker = "extra == 'sdw'", specifier = ">=0.20" },
     { name = "structlog", specifier = ">=24.1" },
     { name = "textual", marker = "extra == 'nodesmith'", specifier = ">=0.80" },
     { name = "torch", marker = "extra == 'onnx-export'", specifier = ">=2.5", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "torch", marker = "extra == 'rl'", specifier = ">=2.0", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "extra == 'sdw'", specifier = ">=2.0", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "extra == 'skills-rag'", specifier = ">=2.1", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torchvision", marker = "extra == 'sdw'", specifier = ">=0.15", index = "https://download.pytorch.org/whl/cpu" },
@@ -4356,7 +4371,7 @@ requires-dist = [
     { name = "websockets", marker = "extra == 'sdw'", specifier = ">=12.0" },
     { name = "xgboost", marker = "extra == 'ml'", specifier = ">=2.1" },
 ]
-provides-extras = ["ml", "nodesmith", "stores", "sdw", "skills-rag", "onnx-export"]
+provides-extras = ["ml", "nodesmith", "stores", "sdw", "skills-rag", "onnx-export", "rl"]
 
 [package.metadata.requires-dev]
 dev = [

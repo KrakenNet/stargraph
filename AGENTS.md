@@ -81,6 +81,7 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Write Fathom rules | `docs/tutorials/fathom-rules.md`, `design-docs/stargraph-facts.md` | `RuleSpec` / `.clp` pack |
 | Add an MCP server | `docs/how-to/add-mcp-server.md` | `stargraph.mcp_adapters` entry-point |
 | Publish a torch/SB3 model as ONNX | `docs/reference/nodes/ml.md` | `stargraph.ml.export` (`onnx-export` extra) |
+| Train / gate / plan with RL policies | `docs/reference/rl.md` | `stargraph.rl` (`rl` extra): `rl:train_ppo`, gauntlet eval graph, `stargraph.planners` entry-point |
 | Serve / replay | `docs/serve/`, `docs/tutorials/serve-and-replay.md` | `stargraph serve`, `stargraph replay` |
 | Deploy in a container / K8s | `docs/guides/containers.md` | root `Dockerfile` + `compose.yaml` + `deploy/helm/stargraph/` (single-replica only) |
 | Monitor / roll back a deployment | `docs/serve/api.md` (Ops), `docs/reference/cli.md` | `GET /health`, `GET /metrics`; `stargraph model rollback`, `stargraph pack pin\|revert` |

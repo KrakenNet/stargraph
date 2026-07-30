@@ -17,6 +17,11 @@ Verify the engine. Layout mirrors intent: `unit/` (fast, isolated), `integration
 - `asyncio_mode = "auto"` — async tests need no decorator beyond their marker.
 - Reuse fixtures in `tests/fixtures/` (e.g. `sample-graph.yaml`,
   `sample-graph-phase5.yaml`) rather than hand-rolling IR.
+- RL gauntlet / eval-graph tests use the deterministic doubles in
+  `fixtures/rl_doubles.py` (no numpy, no RNG; injected by dotted reference per
+  `EvalState`'s contract). The ARLO acceptance repro
+  (`integration/rl/test_arlo_admission_repro.py`) is `slow` (needs `--runslow`)
+  and self-skips without the rl-extra deps + an ARLO checkout (`ARLO_DIR`).
 - Coverage is on by default (`--cov`); don't pass `-p no:cov`.
 
 ## Work Guidance

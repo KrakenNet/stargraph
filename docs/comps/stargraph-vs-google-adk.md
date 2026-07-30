@@ -47,9 +47,9 @@ This is a candid, gap-focused comparison: it exists to enumerate what Google's A
 ### 5. Built-in evaluation framework
 
 - **ADK:** Ships an evaluation framework — `AgentEvaluator.evaluate()` and an `adk eval` CLI — to validate both final responses and the step-by-step execution path against test cases, integrated into the dev UI's evaluations tab.
-- **StarGraph:** No built-in eval framework. It has deterministic replay and simulation (which help testing), but no first-class harness for scoring agent quality against datasets.
+- **StarGraph:** Ships a policy/model admission harness under the `rl` extra — `stargraph.rl.gauntlet` (deterministic 3-way splits, Pareto-vs-baseline, CSCV-PBO overfitting gate) plus a reference wall→train→gate→shield eval graph routed by Fathom rules. It scores *models/policies against datasets*, not LLM conversation quality; there is no ADK-style harness for grading agent responses and step-by-step trajectories against test cases.
 
-**Gap:** StarGraph has no built-in evaluation/scoring framework for agent outputs and trajectories.
+**Gap:** StarGraph has no evaluation/scoring framework for LLM agent outputs and trajectories (its eval harness targets policy/model admission).
 
 ### 6. Developer web UI, visual builder, and live tracing
 

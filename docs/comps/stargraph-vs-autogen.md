@@ -75,9 +75,9 @@ This is a candid, gap-focused comparison: it enumerates what Microsoft AutoGen d
 ### 9. A built-in benchmarking / eval harness
 
 - **AutoGen:** AutoGen Bench is a shipped tool for measuring and comparing agent performance across tasks and environments, giving teams a repeatable way to evaluate changes.
-- **StarGraph:** No published benchmark suite and no built-in eval framework. (It also publishes no performance numbers, and is heavier by construction — CLIPS in the loop plus a checkpoint per transition.)
+- **StarGraph:** No published benchmark suite for agent performance. It does ship an eval harness for *policies/models* — `stargraph.rl.gauntlet` (3-way splits, Pareto-vs-baseline, CSCV-PBO) with a reference rule-routed eval graph — but nothing AutoGen-Bench-shaped for comparing agents across tasks, and it publishes no performance numbers (heavier by construction — CLIPS in the loop plus a checkpoint per transition).
 
-**Gap:** StarGraph has no built-in eval/benchmark harness and no published performance benchmarks.
+**Gap:** StarGraph has no agent benchmarking suite and no published performance benchmarks (its eval harness targets policy/model admission).
 
 ### 10. Broad model-provider and tool ecosystem
 

@@ -59,6 +59,10 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         "IncompatibleSklearnVersion",
         "IncompatibleModelHashError",
         "MLNodeError",
+        # RL toolkit (stargraph.rl, W7) — StargraphRuntimeError subclass in
+        # _hierarchy.py covering the rl-extra gate, env/planner resolution,
+        # and step/plan contract violations.
+        "RLNodeError",
         "SimulationError",
         # foundry assembler — raised by stargraph.skills.foundry.assemble when no
         # runnable graph spine landed. StargraphRuntimeError-rooted so a single

@@ -29,11 +29,19 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   `cli/run.py` (`_NODE_FACTORIES`) if it should be `kind:`-addressable from YAML.
 - Adding a tool: `@tool` decorator + register via the `stargraph.tools`
   entry-point in `pyproject.toml`.
-- Optional-dep seams (`ml/export.py`, `stores/rerankers.py`): import the
+- Optional-dep seams (`ml/export.py`, `stores/rerankers.py`, `rl/`): import the
   optional package lazily inside the function, raise `MLNodeError` /
-  `StargraphRuntimeError` with a `hint=` naming the extra. `ml/export.py`
-  funnels torch/sb3 through `importlib.import_module` + explicit `Any` so
-  pyright strict stays green with or without the extra installed.
+  `RLNodeError` / `StargraphRuntimeError` with a `hint=` naming the extra.
+  `ml/export.py` funnels torch/sb3 through `importlib.import_module` + explicit
+  `Any` so pyright strict stays green with or without the extra installed.
+- `rl/` (the `rl` extra): `GymEnvNode` / `PolicyNode` / `rl:train_ppo` need the
+  extra; the gauntlet library + reference eval graph
+  (`rl/gauntlet/eval-graph.yaml`, stations read dotted refs from `EvalState`)
+  run on the base install. Gauntlet math is the ARLO port — keep it IDENTICAL
+  (it backs a cited admission result; acceptance test
+  `tests/integration/rl/test_arlo_admission_repro.py` pins the numbers).
+  Planners register under the `stargraph.planners` entry-point group
+  (`Planner` protocol, `PlannerNode`). Docs: `docs/reference/rl.md`.
 - torch is never a core dep or an MLNode runtime; torch/SB3 models publish
   into the registry as ONNX via `stargraph.ml.export` (`onnx-export` extra).
 - Ops surface: `GET /health` is deliberately ungated (K8s probes carry no

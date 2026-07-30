@@ -116,6 +116,7 @@ nav:
       - CLI: reference/cli.md
       - Tools: reference/tools.md
       - Skills: reference/skills.md
+      - RL toolkit: reference/rl.md
       - Release signing: reference/signing.md
       - v1 limits: reference/v1-limits.md
       - Nodes:

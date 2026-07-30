@@ -156,6 +156,18 @@ class MLNodeError(StargraphRuntimeError):
     """
 
 
+class RLNodeError(StargraphRuntimeError):
+    """Raised by the :mod:`stargraph.rl` toolkit for RL-runtime contract violations.
+
+    Covers the ``rl`` optional-dependency gate (gymnasium /
+    stable-baselines3 / scipy absent -- ``hint`` names the extra), a
+    gymnasium env id that is not registered, a planner entry-point that
+    does not resolve, and step/plan contract violations (e.g. stepping a
+    finished episode). Callers populate ``context`` with ``env_id`` /
+    ``planner`` / ``model_id`` as relevant.
+    """
+
+
 class SimulationError(StargraphRuntimeError):
     """Raised by :meth:`stargraph.graph.Graph.simulate` for fixture-input violations.
 
