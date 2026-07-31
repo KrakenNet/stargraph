@@ -61,5 +61,6 @@ repos:
         language: system
         pass_filenames: false
         # openapi info.version is sourced from stargraph.__version__, so a
-        # version bump in __init__.py drifts the spec too -- guard both.
-        files: '^src/stargraph/(serve/|__init__\.py$)'
+        # version bump in __init__.py drifts the spec too. The spec also
+        # embeds IR models (RuleSpec et al.), so ir/ edits drift it as well.
+        files: '^src/stargraph/(serve/|ir/|__init__\.py$)'
