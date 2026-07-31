@@ -32,6 +32,13 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   `module:Class` kinds bind config uniformly (`config_model` attr → validated
   config kwarg, else `**config`, else zero-arg). `kind: dspy` builds a real
   LM-backed `DSPyNode` from config (`stub: true` is the only stub route).
+- Prebuilt LLM kinds (`nodes/prebuilt.py`): `reason`/`summarize`/`classify`/
+  `extract`/`judge`/`plan` — signature-preset DSPy nodes with deterministic
+  post-processors that whitelist outputs and emit the standard routing fields
+  (`verdict`, `confidence`/`score` as float-as-str). The LLM never routes;
+  Fathom rules match the mirrored facts. New presets follow the same shape:
+  config model (extra=forbid) → synthesized `kind: dspy` config → `PrebuiltNode`
+  wrapper with a pure, unit-tested post function.
 - Adding a built-in tool: `@tool` decorator + append its `module:attr` ref to
   `_BUILTIN_TOOL_REFS` in `tools/builtin.py` (in-process seeding; the core dist
   has NO `stargraph.tools` entry-points — that pipeline is for external plugin

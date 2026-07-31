@@ -236,6 +236,18 @@ def _build_tool(spec: NodeSpec) -> NodeBase:
     return ToolCallNode(config=cfg)
 
 
+def _build_prebuilt(spec: NodeSpec) -> NodeBase:
+    """Signature-preset DSPy kinds (reason/summarize/classify/extract/judge/plan).
+
+    Lazy import: the prebuilt module reaches ``dspy_node_from_config``
+    (and therefore ``import dspy``) only when one of these kinds is
+    actually built.
+    """
+    from stargraph.nodes.prebuilt import build_prebuilt
+
+    return build_prebuilt(spec)
+
+
 _NODE_FACTORIES: dict[str, NodeBuilder] = {
     "echo": _build_echo,
     "halt": _build_echo,  # halt is a marker terminal
@@ -247,6 +259,14 @@ _NODE_FACTORIES: dict[str, NodeBuilder] = {
     "ml": _build_ml,
     "subgraph": _build_subgraph,
     "tool": _build_tool,
+    # Prebuilt signature-preset DSPy nodes (P3a). Emit standardized
+    # fields (verdict/confidence/score/...); Fathom routes on the facts.
+    "reason": _build_prebuilt,
+    "summarize": _build_prebuilt,
+    "classify": _build_prebuilt,
+    "extract": _build_prebuilt,
+    "judge": _build_prebuilt,
+    "plan": _build_prebuilt,
 }
 
 
