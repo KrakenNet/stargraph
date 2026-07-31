@@ -83,6 +83,17 @@ def _install_filter() -> None:
         target.addFilter(_LoudFallbackFilter())
 
 
+def install_loud_fallback_filter() -> None:
+    """Public seam for nodes that drive DSPy modules without :func:`bind`.
+
+    Async-path nodes (``kind: react`` awaits ``module.acall`` so its
+    registry tools can run through ``execute_tool``) cannot use the sync
+    :class:`DSPyNode` wrapper ``bind()`` returns, but still need the FR-6
+    force-loud guarantee. Same idempotent install as ``bind()``.
+    """
+    _install_filter()
+
+
 def bind(module: Any, *, signature_map: Any) -> DSPyNode:
     """Bind a DSPy module as a stargraph :class:`DSPyNode` with force-loud config.
 
@@ -125,4 +136,5 @@ __all__ = [
     "SignatureMap",
     "_LoudFallbackFilter",
     "bind",
+    "install_loud_fallback_filter",
 ]

@@ -39,6 +39,13 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   Fathom rules match the mirrored facts. New presets follow the same shape:
   config model (extra=forbid) → synthesized `kind: dspy` config → `PrebuiltNode`
   wrapper with a pure, unit-tested post function.
+- Composition prebuilts: `kind: react` (`nodes/react.py`) runs `dspy.ReAct`
+  over an allowlist of registry tools, every call bridged through
+  `execute_tool` (capability gate + provenance facts); async via
+  `module.acall`, force-loud via `adapters.dspy.install_loud_fallback_filter`.
+  `kind: code` (`nodes/code.py`) generates a script with CoT then runs it via
+  `std.python_exec@1` through the same pipeline; emits
+  `code`/`run_result`/`verdict`.
 - Adding a built-in tool: `@tool` decorator + append its `module:attr` ref to
   `_BUILTIN_TOOL_REFS` in `tools/builtin.py` (in-process seeding; the core dist
   has NO `stargraph.tools` entry-points — that pipeline is for external plugin

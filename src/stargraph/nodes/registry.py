@@ -248,6 +248,18 @@ def _build_prebuilt(spec: NodeSpec) -> NodeBase:
     return build_prebuilt(spec)
 
 
+def _build_react(spec: NodeSpec) -> NodeBase:
+    from stargraph.nodes.react import react_node_from_config
+
+    return react_node_from_config(spec)
+
+
+def _build_code(spec: NodeSpec) -> NodeBase:
+    from stargraph.nodes.code import code_node_from_config
+
+    return code_node_from_config(spec)
+
+
 _NODE_FACTORIES: dict[str, NodeBuilder] = {
     "echo": _build_echo,
     "halt": _build_echo,  # halt is a marker terminal
@@ -267,6 +279,11 @@ _NODE_FACTORIES: dict[str, NodeBuilder] = {
     "extract": _build_prebuilt,
     "judge": _build_prebuilt,
     "plan": _build_prebuilt,
+    # Composition prebuilts: react drives registry tools through the
+    # execute_tool pipeline; code generates Python then runs it via
+    # std.python_exec (capability-gated).
+    "react": _build_react,
+    "code": _build_code,
 }
 
 
