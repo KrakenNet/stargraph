@@ -32,8 +32,19 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   `module:Class` kinds bind config uniformly (`config_model` attr → validated
   config kwarg, else `**config`, else zero-arg). `kind: dspy` builds a real
   LM-backed `DSPyNode` from config (`stub: true` is the only stub route).
-- Adding a tool: `@tool` decorator + register via the `stargraph.tools`
-  entry-point in `pyproject.toml`.
+- Adding a built-in tool: `@tool` decorator + append its `module:attr` ref to
+  `_BUILTIN_TOOL_REFS` in `tools/builtin.py` (in-process seeding; the core dist
+  has NO `stargraph.tools` entry-points — that pipeline is for external plugin
+  dists only). Tools behind an optional extra go in `_EXTRA_TOOL_REFS` (import
+  gates registration) or, like the `std` pack, lazy-import the heavy dep inside
+  the tool body with a `pip install stargraph[<extra>]` hint (always registers).
+- `tools/std/` (the batteries pack, namespace `std`, 12 tools): honest
+  `side_effects` (network read → `read`, caller-chosen mutation → `external`);
+  code/shell execution capability-gated (`tools:std:exec` / `tools:std:shell`,
+  default-deny); filesystem/sqlite paths jailed via `tools/std/_jail.py`
+  (`STARGRAPH_TOOLS_FS_ROOT`, default cwd); network tools build clients through
+  `tools/std/_http.py::build_client` (the tests' mock seam). Heavy deps
+  (`ddgs`, `readability-lxml`, `duckdb`) = the `tools` extra.
 - Optional-dep seams (`ml/export.py`, `stores/rerankers.py`, `rl/`): import the
   optional package lazily inside the function, raise `MLNodeError` /
   `RLNodeError` / `StargraphRuntimeError` with a `hint=` naming the extra.

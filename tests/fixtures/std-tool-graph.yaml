@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# kind: tool e2e fixture — paired with tests/fixtures/std_tool_state.py.
+# A single ToolCallNode drives std.calculator@1 through the full
+# execute_tool pipeline from a plain `stargraph run`: the CLI seeds the
+# builtin registry, the node projects state.expression into the tool's
+# args, and the sanitized output dict merges back as state.tool_result.
+ir_version: "1.0.0"
+id: "graph:std-tool-fixture"
+state_class: "tests.fixtures.std_tool_state:CalcState"
+nodes:
+  - id: calc
+    kind: tool
+    config:
+      tool: "std.calculator@1"
+      inputs:
+        expression: expression
+      out: tool_result
+rules:
+  - id: r-calc-halt
+    when: "?n <- (node-id (id calc))"
+    then:
+      - kind: halt
+        reason: "calculation complete"

@@ -28,6 +28,32 @@ def test_seed_builtin_tools_registers_in_tree_tools() -> None:
 
 
 @pytest.mark.unit
+def test_seed_builtin_tools_includes_full_std_pack() -> None:
+    """The std pack always registers -- extras gate calls, not registration."""
+    reg = seed_builtin_tools(ToolRegistry())
+    std_names = {t.spec.name for t in reg.list_tools(namespace="std")}
+    assert std_names == {
+        "calculator",
+        "file_read",
+        "file_write",
+        "file_list",
+        "sql_query",
+        "http_request",
+        "fetch_page",
+        "web_search",
+        "wikipedia",
+        "arxiv",
+        "python_exec",
+        "shell",
+    }
+    # The dual-use pair is capability-gated; the rest of the pack is not.
+    by_name = {t.spec.name: t.spec for t in reg.list_tools(namespace="std")}
+    assert by_name["python_exec"].permissions == ["tools:std:exec"]
+    assert by_name["shell"].permissions == ["tools:std:shell"]
+    assert by_name["calculator"].permissions == []
+
+
+@pytest.mark.unit
 def test_seed_builtin_tools_conflicts_are_loud() -> None:
     """Seeding the same registry twice duplicates ids -> PluginLoadError."""
     reg = seed_builtin_tools(ToolRegistry())

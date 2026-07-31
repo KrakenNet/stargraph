@@ -75,6 +75,7 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Understand the layout | `docs/architecture-map.md` | — |
 | Run / try a graph | `examples/README.md` | `stargraph run examples/hello.yaml` |
 | Build a graph | `docs/how-to/build-graph.md` | author IR YAML or Python `Graph` |
+| Use a built-in tool from YAML | `docs/reference/tools.md` | `kind: tool` + `config: {tool: std.<name>@1, ...}` — the `std` pack seeds automatically; heavy deps = `stargraph[tools]` |
 | Write a tool plugin | `docs/how-to/write-tool-plugin.md` | `@tool` + entry-point in `pyproject.toml` |
 | Add a store provider | `docs/how-to/add-store-provider.md` | implement the Store Protocol |
 | Add a trigger | `docs/how-to/add-trigger.md` | `stargraph.triggers` entry-point |

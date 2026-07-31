@@ -42,6 +42,21 @@ _BUILTIN_TOOL_REFS: tuple[str, ...] = (
     "stargraph.tools.servicenow.upload_attachment:upload_attachment",
     "stargraph.tools.servicenow.table_crud:table_query",
     "stargraph.tools.servicenow.table_crud:table_create",
+    # std pack (P1a): always registers -- optional heavy deps (ddgs,
+    # readability-lxml, duckdb; the ``stargraph[tools]`` extra) are imported
+    # lazily inside the tool body and fail with a pip hint at call time.
+    "stargraph.tools.std.calculator:calculator",
+    "stargraph.tools.std.fs:file_read",
+    "stargraph.tools.std.fs:file_write",
+    "stargraph.tools.std.fs:file_list",
+    "stargraph.tools.std.sql_query:sql_query",
+    "stargraph.tools.std.http_request:http_request",
+    "stargraph.tools.std.fetch_page:fetch_page",
+    "stargraph.tools.std.web_search:web_search",
+    "stargraph.tools.std.wikipedia:wikipedia",
+    "stargraph.tools.std.arxiv:arxiv_search",
+    "stargraph.tools.std.python_exec:python_exec",
+    "stargraph.tools.std.shell:shell",
 )
 
 #: ``module:attr`` -> extra name, for tools gated behind optional extras.

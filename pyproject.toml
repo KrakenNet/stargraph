@@ -58,6 +58,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Heavy deps for the batteries-included std tool pack (stargraph.tools.std).
+# The pack itself rides on hard deps only; this extra unlocks std.web_search
+# (ddgs), std.fetch_page HTML extraction (readability-lxml), and
+# std.sql_query's duckdb engine. Missing-extra calls fail with a pip hint.
+tools = [
+    "ddgs>=9",
+    "readability-lxml>=0.8.1",
+    "duckdb>=1.0",
+]
 ml = [
     "scikit-learn",
     "xgboost>=2.1",
@@ -196,6 +205,11 @@ dev = [
     "skl2onnx>=1.17",
     "textual>=0.80",
     "pytest-xdist>=3.8.0",
+    # std tool pack offline parse tests (fetch_page extraction, sql_query
+    # duckdb engine). ddgs is deliberately absent: its offline tests fake the
+    # client, and live search tests are env-gated.
+    "readability-lxml>=0.8.1",
+    "duckdb>=1.0",
 ]
 docs = [
     "mkdocs-material>=9.5",
