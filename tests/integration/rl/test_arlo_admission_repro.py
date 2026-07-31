@@ -58,12 +58,6 @@ pytest.importorskip("gymnasium")
 pytest.importorskip("torch")
 pytest.importorskip("stable_baselines3")
 
-for _mount in (_ARLO_DIR, Path(os.environ.get("STARCULT_DIR", _ARLO_DIR.parent / "starcult"))):
-    if _mount.is_dir() and str(_mount) not in sys.path:
-        sys.path.insert(0, str(_mount))
-pytest.importorskip("arlo.config", reason=f"no importable arlo package under {_ARLO_DIR}")
-pytest.importorskip("starcult", reason="no importable starcult sibling (set STARCULT_DIR)")
-
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
@@ -72,6 +66,32 @@ pytestmark = [
         reason=f"ARLO assets missing under {_ARLO_DIR} (set ARLO_DIR)",
     ),
 ]
+
+
+@pytest.fixture(autouse=True)
+def _arlo_on_path() -> Any:  # pyright: ignore[reportUnusedFunction]
+    """Mount the ARLO + starcult checkouts at test-run time, never import time.
+
+    A module-level ``sys.path.insert`` poisoned the whole suite: pytest imports
+    this module during collection even when every test skips, and the ARLO
+    checkout contains a ``datasets/`` data directory that then shadows the
+    HuggingFace ``datasets`` package as an empty namespace module — breaking
+    LanceDB's optional-converter registration in unrelated retrieval tests.
+    Mount inside the fixture (so only ``--runslow`` runs pay), and unmount on
+    teardown so the shadow cannot outlive these tests.
+    """
+    added: list[str] = []
+    for mount in (_ARLO_DIR, Path(os.environ.get("STARCULT_DIR", _ARLO_DIR.parent / "starcult"))):
+        if mount.is_dir() and str(mount) not in sys.path:
+            sys.path.insert(0, str(mount))
+            added.append(str(mount))
+    try:
+        pytest.importorskip("arlo.config", reason=f"no importable arlo package under {_ARLO_DIR}")
+        pytest.importorskip("starcult", reason="no importable starcult sibling (set STARCULT_DIR)")
+        yield
+    finally:
+        for path in added:
+            sys.path.remove(path)
 
 
 def load_events(dataset_path: Path) -> list[Any]:
