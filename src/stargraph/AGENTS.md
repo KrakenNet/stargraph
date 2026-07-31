@@ -68,6 +68,17 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   (interrupt is a run pause, not a routing decision). Tests:
   `tests/integration/test_bundles.py` builds every bundle and drives the
   evaluator-optimizer loop end-to-end.
+- Authoring compiler (`authoring.py`, P4): `is_authoring_format` (mapping, no
+  `ir_version`, has `nodes`) → `compile_authoring` lowers `id/state/nodes/routes`
+  YAML to a strict `IRDocument` — state synthesized via `create_model` into a
+  deterministic `_sg_authored_<id>` module (`route: true` → `Mirror`), bare tool
+  ids get `@1`, routes become when-sugar `RuleSpec`s (`{verdict-value: target}`
+  branches require a routed `verdict` field; `done` → halt). All shape errors are
+  loud `IRValidationError`s (`authoring: ...` + fix hint). `stargraph run`
+  compiles transparently; `cli/author.py` adds `stargraph compile [--show-clips]`
+  (prints lowered IR + `authoring_clips` rule lines) and `stargraph new`
+  (research-bot template or bundle copy). Same file also holds the older
+  `DurableGraph` façade (separate surface, untouched by the compiler).
 - Adding a built-in tool: `@tool` decorator + append its `module:attr` ref to
   `_BUILTIN_TOOL_REFS` in `tools/builtin.py` (in-process seeding; the core dist
   has NO `stargraph.tools` entry-points — that pipeline is for external plugin

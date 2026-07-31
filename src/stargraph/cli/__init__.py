@@ -13,6 +13,7 @@ from __future__ import annotations
 import typer
 
 from stargraph.cli import (
+    author,
     context,
     counterfactual,
     inspect,
@@ -47,6 +48,8 @@ app.command("respond")(respond.cmd)
 app.command("serve")(serve.cmd)
 app.command("verify-audit")(verify_audit.cmd)
 app.command("context")(context.cmd)
+app.command("compile")(author.compile_cmd)
+app.command("new")(author.new_cmd)
 app.command("ovarp-reproduce")(ovarp_reproduce.cmd)
 app.add_typer(model.model_app, name="model")
 app.add_typer(pack.pack_app, name="pack")

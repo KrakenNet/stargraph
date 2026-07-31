@@ -74,7 +74,8 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Ground on this install's exact contracts | — | `stargraph context dump` (JSON: API, node kinds, IR schema, errors, fact namespaces, examples) |
 | Understand the layout | `docs/architecture-map.md` | — |
 | Run / try a graph | `examples/README.md` | `stargraph run examples/hello.yaml` |
-| Build a graph | `docs/how-to/build-graph.md` | author IR YAML or Python `Graph` |
+| Build a graph the easy way | `src/stargraph/AGENTS.md` (authoring compiler) | short authoring YAML (`id/state/nodes/routes`, no `ir_version`) — `stargraph run` compiles it transparently; `stargraph new research-bot` scaffolds; `stargraph compile --show-clips` shows the lowered IR + rules |
+| Build a graph (full IR) | `docs/how-to/build-graph.md` | author IR YAML or Python `Graph` |
 | Use a built-in tool from YAML | `docs/reference/tools.md` | `kind: tool` + `config: {tool: std.<name>@1, ...}` — the `std` pack seeds automatically; heavy deps = `stargraph[tools]`. SaaS packs (`slack`/`github`/`s3`/`email`/`postgres`) also seed: capability-gated, writes dry-run until `STARGRAPH_<NS>_LIVE=1`; boto3/psycopg = `stargraph[tools-saas]` |
 | Write a tool plugin | `docs/how-to/write-tool-plugin.md` | `@tool` + entry-point in `pyproject.toml` |
 | Drop in a markdown skill | `docs/how-to/write-markdown-skill.md` | `./skills/<name>/SKILL.md` (Claude Code format loads unmodified); `stargraph skills compile\|list` |
@@ -84,7 +85,7 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Add an MCP server | `docs/how-to/add-mcp-server.md` | `stargraph.mcp_adapters` entry-point |
 | Publish a torch/SB3 model as ONNX | `docs/reference/nodes/ml.md` | `stargraph.ml.export` (`onnx-export` extra) |
 | Train / gate / plan with RL policies | `docs/reference/rl.md` | `stargraph.rl` (`rl` extra): `rl:train_ppo`, gauntlet eval graph, `stargraph.planners` entry-point |
-| Start from a prebuilt agent pattern | `src/stargraph/AGENTS.md` (bundles) | `stargraph.bundles.bundle_path(<name>)` — coding-agent, deep-research, evaluator-optimizer, hitl-approval, orchestrator-workers, rag-qa, triage-router |
+| Start from a prebuilt agent pattern | `src/stargraph/AGENTS.md` (bundles) | `stargraph new <bundle>` (copies `graph.yaml` + `SKILL.md`) — coding-agent, deep-research, evaluator-optimizer, hitl-approval, orchestrator-workers, rag-qa, triage-router |
 | Serve / replay | `docs/serve/`, `docs/tutorials/serve-and-replay.md` | `stargraph serve`, `stargraph replay` |
 | Deploy in a container / K8s | `docs/guides/containers.md` | root `Dockerfile` + `compose.yaml` + `deploy/helm/stargraph/` (single-replica only) |
 | Monitor / roll back a deployment | `docs/serve/api.md` (Ops), `docs/reference/cli.md` | `GET /health`, `GET /metrics`; `stargraph model rollback`, `stargraph pack pin\|revert` |

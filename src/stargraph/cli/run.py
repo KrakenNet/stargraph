@@ -45,6 +45,7 @@ from stargraph.audit.jsonl import (
     JSONLAuditSink,
     is_chained_log,
 )
+from stargraph.authoring import compile_authoring, is_authoring_format
 from stargraph.checkpoint.sqlite import SQLiteCheckpointer
 from stargraph.cli._inputs import parse_inputs, parse_inputs_for_model
 from stargraph.cli._progress import ProgressPrinter
@@ -289,7 +290,12 @@ def cmd(
     _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
 
     ir_dict = yaml.safe_load(graph.read_text(encoding="utf-8"))
-    ir = IRDocument.model_validate(ir_dict)
+    if is_authoring_format(ir_dict):
+        # Authoring-format YAML (no ir_version): compile transparently.
+        # ``stargraph compile <graph>`` prints the lowered IR for debugging.
+        ir = compile_authoring(ir_dict, default_id=graph.stem)
+    else:
+        ir = IRDocument.model_validate(ir_dict)
 
     # Builtin-seeded ToolRegistry on the Graph: the ``kind: tool``
     # ToolCallNode resolves its tool id here at execute time.
