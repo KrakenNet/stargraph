@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+# research-bot: web research with a completeness judge and a feedback loop,
+# written in the authoring format (no ir_version -- `stargraph run` compiles
+# it; see the lowered IR with `stargraph compile examples/research-bot.yaml`).
+# Live run: stargraph run examples/research-bot.yaml \
+#             --lm-url <url> --lm-model <model> --inputs question="..."
+id: research-bot
+state:
+  question: str
+  brief: str
+  answer: str
+  rationale: str
+  score: str
+  tool_trace: list
+  verdict: {type: str, route: true}
+nodes:
+  brief:
+    kind: template
+    template: "{question}\n\nJudge-identified gaps (empty on first pass):\n{rationale}"
+    out: brief
+  research: {kind: react, input: brief, tools: [std.web_search, std.fetch_page]}
+  judge:
+    kind: judge
+    input: answer
+    rubric: "Fully answers the question with specific, sourced facts."
+routes:
+  judge: {fail: brief, pass: done}

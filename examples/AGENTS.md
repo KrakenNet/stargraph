@@ -15,6 +15,11 @@ the engine work. Onboarding surface; `docs/getting-started.md` points here.
 - **Self-contained:** inline `state_schema:` (primitives), `echo`/`halt` nodes, no
   external models/stores/keys — unless the example deliberately demonstrates more
   and ships everything it needs.
+- **LM examples** (e.g. `research-bot.yaml`): list the filename in
+  `_LM_EXAMPLES` in the golden test and add a dedicated test that drives it
+  through `stargraph run` under a scripted `DummyLM` (`dspy.context` around
+  `CliRunner.invoke`) — CI stays green with no keys, and the live run needs
+  only `--lm-url`/`--lm-model`. The stub lives in the test, never the YAML.
 - SPDX header (`# SPDX-License-Identifier: Apache-2.0`) at the top of each file.
 - No stubs or fake data. If it can't run green, it doesn't go here — point to
   `demos/` for heavier, fully-wired graphs instead.
