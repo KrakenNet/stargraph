@@ -131,17 +131,26 @@ class DSPyNode(NodeBase):
     def _project_outputs(self, result: Any) -> dict[str, Any]:
         """Map DSPy module outputs back to stargraph state-field names.
 
-        DSPy ``Prediction`` objects expose attributes per signature
-        output; ``dict``-shaped results are passed through. Anything
-        else is wrapped under ``"output"`` so the merge contract still
-        receives a dict (FR-11).
+        DSPy ``Prediction``/``Example`` objects expose exactly the signature
+        outputs via ``.items()`` -- reading ``__dict__`` instead would leak
+        internals (``_store``, ``_completions``, ``_lm_usage``) into run
+        state. ``dict``-shaped results are taken as-is. Anything else is
+        wrapped under ``"output"`` so the merge contract still receives a
+        dict (FR-11). With a ``dict`` signature map, output keys are then
+        renamed DSPy-name -> stargraph state-field (the inverse of the
+        input projection).
         """
         if isinstance(result, dict):
-            return cast("dict[str, Any]", result).copy()
-        as_dict = getattr(result, "__dict__", None)
-        if isinstance(as_dict, dict) and as_dict:
-            return cast("dict[str, Any]", as_dict).copy()
-        return {"output": result}
+            out = cast("dict[str, Any]", result).copy()
+        elif callable(getattr(result, "items", None)):
+            out = dict(result.items())
+        else:
+            return {"output": result}
+        sig_map = self._signature_map
+        if isinstance(sig_map, dict):
+            reverse = {v: k for k, v in cast("dict[str, str]", sig_map).items()}
+            out = {reverse.get(k, k): v for k, v in out.items()}
+        return out
 
     def _iter_input_keys(self) -> list[str]:
         """List stargraph state-field keys to project as inputs.
