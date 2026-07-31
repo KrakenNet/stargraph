@@ -45,7 +45,11 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   `module.acall`, force-loud via `adapters.dspy.install_loud_fallback_filter`.
   `kind: code` (`nodes/code.py`) generates a script with CoT then runs it via
   `std.python_exec@1` through the same pipeline; emits
-  `code`/`run_result`/`verdict`.
+  `code`/`run_result`/`verdict`. `kind: rag` (`nodes/rag.py`) binds stores in
+  config (`sqlite_doc` = deterministic lexical scan-and-rank, `lancedb` = FTS
+  behind the `stores` extra), RRF-fuses, answers with CoT over
+  `question, context -> answer`; emits `answer`/`citations`, zero hits
+  short-circuits to `answer=""` (the LM never answers from nothing).
 - `kind: subgraph` (`nodes/subgraph.py`) has two modes: sequential (rule-less
   child IR, each child once in order) and rule-routed (child IR rules compile
   via `build_ir_routing` into a child-owned Fathom engine; internal

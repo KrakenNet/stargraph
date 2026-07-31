@@ -296,6 +296,12 @@ def _build_code(spec: NodeSpec) -> NodeBase:
     return code_node_from_config(spec)
 
 
+def _build_rag(spec: NodeSpec) -> NodeBase:
+    from stargraph.nodes.rag import rag_node_from_config
+
+    return rag_node_from_config(spec)
+
+
 _NODE_FACTORIES: dict[str, NodeBuilder] = {
     "echo": _build_echo,
     "halt": _build_echo,  # halt is a marker terminal
@@ -320,6 +326,9 @@ _NODE_FACTORIES: dict[str, NodeBuilder] = {
     # std.python_exec (capability-gated).
     "react": _build_react,
     "code": _build_code,
+    # rag retrieves from config-bound stores (sqlite_doc lexical scan /
+    # lancedb FTS), RRF-fuses, then answers with citations via CoT.
+    "rag": _build_rag,
 }
 
 
