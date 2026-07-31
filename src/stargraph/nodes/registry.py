@@ -213,16 +213,27 @@ def _build_subgraph(spec: NodeSpec) -> NodeBase:
     return SubGraphNode(subgraph_id=spec.id, children=children)
 
 
-def _build_tool(_spec: NodeSpec) -> NodeBase:
+def _build_tool(spec: NodeSpec) -> NodeBase:
     """``tool`` short-kind builder.
 
-    No first-class ToolCallNode in Stargraph core today — IRs that declare
-    ``kind: tool`` typically intend a node that invokes a registered
-    ``@tool``. The :class:`EchoNode` placeholder lets such IRs validate
-    and walk; production graphs override via ``module.path:ClassName``
-    pointing at a ``NodeBase`` that wraps the desired ``@tool`` call.
+    A non-empty config builds :class:`~stargraph.nodes.tool_call.ToolCallNode`
+    -- the first-class :func:`~stargraph.runtime.tool_exec.execute_tool` call
+    site (capability gate, replay routing, provenance facts, sanitization).
+    An empty config keeps the legacy :class:`EchoNode` placeholder so
+    historic IRs (skills fixtures, enrichment demo) still validate and
+    walk; those get real wiring as the built-in tool pack lands.
     """
-    return EchoNode()
+    if not spec.config:
+        return EchoNode()
+    from pydantic import ValidationError as PydanticValidationError
+
+    from stargraph.nodes.tool_call import ToolCallNode, ToolCallNodeConfig
+
+    try:
+        cfg = ToolCallNodeConfig.model_validate(spec.config)
+    except PydanticValidationError as e:
+        raise IRValidationError(f"tool node {spec.id!r}: invalid config: {e}") from e
+    return ToolCallNode(config=cfg)
 
 
 _NODE_FACTORIES: dict[str, NodeBuilder] = {
