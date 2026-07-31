@@ -45,11 +45,13 @@ def test_seed_builtin_tools_includes_full_std_pack() -> None:
         "arxiv",
         "python_exec",
         "shell",
+        "graph_invoke",
     }
-    # The dual-use pair is capability-gated; the rest of the pack is not.
+    # The dual-use tools are capability-gated; the rest of the pack is not.
     by_name = {t.spec.name: t.spec for t in reg.list_tools(namespace="std")}
     assert by_name["python_exec"].permissions == ["tools:std:exec"]
     assert by_name["shell"].permissions == ["tools:std:shell"]
+    assert by_name["graph_invoke"].permissions == ["tools:std:graph_invoke"]
     assert by_name["calculator"].permissions == []
 
 

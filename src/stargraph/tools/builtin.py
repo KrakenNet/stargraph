@@ -57,6 +57,7 @@ _BUILTIN_TOOL_REFS: tuple[str, ...] = (
     "stargraph.tools.std.arxiv:arxiv_search",
     "stargraph.tools.std.python_exec:python_exec",
     "stargraph.tools.std.shell:shell",
+    "stargraph.tools.std.graph_invoke:graph_invoke",
     # SaaS pack (P1b): every tool is capability-gated (reads included) and
     # every write is dry-run by default behind STARGRAPH_<NS>_LIVE. Heavy
     # deps (boto3, psycopg; the ``stargraph[tools-saas]`` extra) are imported
