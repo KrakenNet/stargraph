@@ -220,11 +220,19 @@ async def test_read_latest_returns_last_write_after_step_reset(db_path: Path) ->
 
     def _ckpt(step: int, who: str, ts: datetime) -> Checkpoint:
         return Checkpoint(
-            run_id="run-resume", step=step, branch_id=None, parent_step_idx=None,
-            graph_hash="sha256:g", runtime_hash="sha256:r",
-            state={"who": who, "step": step}, clips_facts=[],
-            last_node=f"{who}{step}", next_action=None, timestamp=ts,
-            parent_run_id=None, side_effects_hash="",
+            run_id="run-resume",
+            step=step,
+            branch_id=None,
+            parent_step_idx=None,
+            graph_hash="sha256:g",
+            runtime_hash="sha256:r",
+            state={"who": who, "step": step},
+            clips_facts=[],
+            last_node=f"{who}{step}",
+            next_action=None,
+            timestamp=ts,
+            parent_run_id=None,
+            side_effects_hash="",
         )
 
     base = datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC)
