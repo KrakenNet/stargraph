@@ -14,9 +14,8 @@
 #     stargraph run examples/pipeline.yaml --inspect
 #
 # For rule-routing on state values (confidence thresholds, branch on a
-# field), and for LLM / ML / retrieval nodes, see the full graphs under
-# demos/ (e.g. demos/soc-triage) — those exercise the parts the CLI's
-# linear driver does not.
+# Mirror-annotated field), and for LLM / ML / retrieval nodes, see the
+# full graphs under demos/ (e.g. demos/soc-triage).
 ir_version: "1.0.0"
 id: "run:pipeline"
 nodes:

@@ -3,9 +3,13 @@
 
 Loads an IR YAML, builds an :class:`stargraph.ir.IRDocument`, constructs an
 :class:`stargraph.graph.Graph`, and drives a fresh :class:`stargraph.graph.GraphRun`
-through :func:`stargraph.graph.loop.execute` to completion. A SQLite checkpointer
-is wired (default: ``./.stargraph/run.sqlite``); a JSONL audit sink is wired only
-when ``--log-file`` is supplied.
+through :func:`stargraph.graph.loop.execute` to completion. The IR's routing
+rules are compiled into a live Fathom adapter via
+:func:`stargraph.fathom.build_ir_routing`, so goto/halt rules (including
+cyclic routes on mirrored state facts) fire at runtime; when no rule is
+live-routable the run keeps the linear next-node fallback. A SQLite
+checkpointer is wired (default: ``./.stargraph/run.sqlite``); a JSONL audit
+sink is wired only when ``--log-file`` is supplied.
 
 Phase 3 ``--inspect`` mode (design §3.10 table -- ``run`` row, FR-8/9):
 when ``--inspect`` is supplied, ``cmd`` skips checkpointer + audit-sink
@@ -49,6 +53,7 @@ from stargraph.cli._inputs import parse_inputs, parse_inputs_for_model
 from stargraph.cli._progress import ProgressPrinter
 from stargraph.cli._prompts import HITLHandler
 from stargraph.cli._summary import SummaryRenderer
+from stargraph.fathom import build_ir_routing
 from stargraph.graph import Graph, GraphRun
 from stargraph.ir import IRDocument
 from stargraph.ir._ids import new_run_id
@@ -593,6 +598,7 @@ def cmd(
         initial_state=initial_state,
         node_registry=node_registry,
         checkpointer=checkpointer,
+        fathom=build_ir_routing(ir, g.state_schema),
     )
 
     console = Console()

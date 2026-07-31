@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Cyclic rule-routing fixture — paired with tests/fixtures/cyclic_nodes.py.
+# `work` loops on itself via the mirrored (phase_verdict (value "refine"))
+# fact until round 2, then routes to `finish`, which halts. Exercises the
+# stargraph.fathom.build_ir_routing wiring in the CLI run driver; a linear
+# driver would execute `work` exactly once.
+ir_version: "1.0.0"
+id: "graph:cyclic-fixture"
+state_class: "tests.fixtures.cyclic_nodes:RouteState"
+nodes:
+  - id: work
+    kind: "tests.fixtures.cyclic_nodes:WorkNode"
+  - id: finish
+    kind: "tests.fixtures.cyclic_nodes:FinishNode"
+rules:
+  - id: r-work-refine
+    when: '?n <- (node-id (id work)) (phase_verdict (value "refine"))'
+    then:
+      - kind: goto
+        target: work
+  - id: r-work-sufficient
+    when: '?n <- (node-id (id work)) (phase_verdict (value "sufficient"))'
+    then:
+      - kind: goto
+        target: finish
+  - id: r-finish-halt
+    when: "?n <- (node-id (id finish))"
+    then:
+      - kind: halt
+        reason: "cyclic fixture complete"
