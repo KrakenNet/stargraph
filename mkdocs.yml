@@ -58,6 +58,7 @@ nav:
       - Serve and replay: tutorials/serve-and-replay.md
   - How-to Guides:
       - Overview: how-to/index.md
+      - Author a graph in simple YAML: how-to/authoring-format.md
       - Write a tool plugin: how-to/write-tool-plugin.md
       - Build a skill: how-to/build-skill.md
       - Write a markdown skill (SKILL.md): how-to/write-markdown-skill.md
@@ -124,6 +125,7 @@ nav:
           - Overview: reference/nodes/index.md
           - NodeBase: reference/nodes/base.md
           - DSPyNode: reference/nodes/dspy.md
+          - Prebuilt nodes: reference/nodes/prebuilt.md
           - MLNode: reference/nodes/ml.md
           - MemoryWriteNode: reference/nodes/memory.md
           - RetrievalNode: reference/nodes/retrieval.md

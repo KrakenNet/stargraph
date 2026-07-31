@@ -14,6 +14,8 @@ stargraph = "stargraph.cli:main"
 | Subcommand       | Purpose                                                |
 | ---------------- | ------------------------------------------------------ |
 | `run`            | Compile and execute an IR graph end-to-end.            |
+| `compile`        | Lower an authoring-format YAML to strict IR and print it. |
+| `new`            | Scaffold a graph from a template or shipped bundle.    |
 | `serve`          | Boot the FastAPI app under uvicorn.                    |
 | `inspect`        | Read-only run inspector (timeline / state / facts).    |
 | `replay`         | Counterfactual fork from a checkpoint + diff.          |
@@ -50,8 +52,11 @@ executing any node (`--inspect`).
 stargraph run [OPTIONS] GRAPH
 ```
 
-`GRAPH` is a path to an IR YAML file. The file is parsed via
-`yaml.safe_load`, validated against [`IRDocument`](ir-schema.md#irdocument),
+`GRAPH` is a path to an IR YAML file — or an
+[authoring-format](../how-to/authoring-format.md) file (no `ir_version`
+key), which is compiled to IR transparently before the run. The file is
+parsed via `yaml.safe_load`, validated against
+[`IRDocument`](ir-schema.md#irdocument),
 and executed against a SQLite checkpointer
 (default: `./.stargraph/run.sqlite`). The single-node loop drives to a
 terminal `done` / `failed` status; exit code is `0` on `done`, non-zero
@@ -91,6 +96,42 @@ stargraph run graphs/triage.yaml --lm-url http://localhost:11434 --lm-model gpt-
 
 See also: [Concepts: IR](../concepts/ir.md),
 [Replay](../engine/replay.md), [Counterfactual](../engine/counterfactual.md).
+
+---
+
+## `stargraph compile`
+
+Lower an [authoring-format](../how-to/authoring-format.md) YAML to the
+strict IR and print it (learning/debug surface). An input that already
+declares `ir_version` is validated as IR and echoed back.
+
+```text
+stargraph compile [OPTIONS] GRAPH
+```
+
+| Flag | Description |
+| --- | --- |
+| `--show-clips` | Also print each generated rule as `rule-id: <CLIPS LHS> => goto X / halt`. |
+
+Shape errors exit `1` with an `authoring:`-prefixed message naming the
+offending key and the fix.
+
+---
+
+## `stargraph new`
+
+Scaffold a starting point; never overwrites an existing target.
+
+```text
+stargraph new TEMPLATE [--dest PATH]
+```
+
+- `stargraph new research-bot` writes `research-bot.yaml` — the authored
+  react + judge feedback loop.
+- `stargraph new <bundle>` copies a shipped bundle's `graph.yaml` +
+  `SKILL.md` into `./<bundle>/`. Bundles: `coding-agent`, `deep-research`,
+  `evaluator-optimizer`, `hitl-approval`, `orchestrator-workers`,
+  `rag-qa`, `triage-router`.
 
 ---
 

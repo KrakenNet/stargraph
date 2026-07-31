@@ -1,9 +1,19 @@
 # `SubGraphNode`
 
-Executes a child sequence of [`NodeBase`](base.md) instances inside the parent
+Executes a child graph of [`NodeBase`](base.md) instances inside the parent
 run's execution context (FR-7, design §3.9.4). A sub-graph is **not** a new IR
-construct — it is a node whose body runs a child sequence sharing the parent's
+construct — it is a node whose body runs a child graph sharing the parent's
 event bus, `run_id`, and checkpointer.
+
+Two modes, chosen by the child IR:
+
+- **Sequential** (child has no live-routable rules): the children run once,
+  in order — the original FR-7 shape.
+- **Rule-routed** (child has rules): the child rules compile via
+  `stargraph.fathom.build_ir_routing` into a **child-owned Fathom engine**
+  (isolated CLIPS memory — child facts never leak into the parent's engine),
+  and the node drives an internal goto/halt loop. This is what lets a shipped
+  bundle (judge loop, triage router) run as one node of a parent graph.
 
 ## Constructor
 
@@ -43,12 +53,38 @@ Per child, a `TransitionEvent` is published on the parent's bus with:
 The real `stargraph.graph.run.GraphRun` satisfies this surface; tests pass
 duck-typed contexts.
 
+## Rule-routed mode
+
+Each tick: execute the current child → mirror the child state into the
+child's CLIPS engine → evaluate → translate the decision. `Goto` jumps,
+`Halt` projects outputs and returns, no action continues to the next
+declared child (or returns at the end). The loop is bounded by
+`config.max_steps` (default 50) and exhausting it is a loud error, never a
+silent truncation. One `TransitionEvent` per tick carries the decision
+`reason`. `interrupt` and `parallel` inside a routed child fail loudly (v1).
+
+### I/O projection — `SubGraphNodeConfig`
+
+Config is only valid in rule-routed mode (projection without routing is
+dead wiring, rejected at graph load):
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `inputs` | `dict[str, str]` | `{}` | entry: `{child_field: parent_field}` |
+| `outputs` | `dict[str, str]` | `{}` | exit: `{parent_field: child_field}` |
+| `max_steps` | `int` (1–10 000) | 50 | internal tick bound |
+
+Unmapped fields project by shared name in both directions; child-only
+fields never leak into the parent; a mapped-but-missing field is a loud
+error.
+
 ## State contract
 
-- **Reads** — whatever each child reads.
-- **Writes** — cumulative dict of child outputs (last-write-wins on key
-  collisions). The parent loop applies the result with a single
-  `state.model_copy(update=outputs)`.
+- **Reads** — whatever each child reads (plus the `inputs` projection).
+- **Writes** — sequential mode: cumulative dict of child outputs
+  (last-write-wins on key collisions); routed mode: the `outputs`
+  projection (or shared-name fields) of the final child state. The parent
+  loop applies the result with a single `state.model_copy(update=outputs)`.
 
 ## Side effects + replay
 
@@ -74,6 +110,20 @@ nodes:
 
 See `tests/fixtures/training-subgraph.yaml` for the design §3.9.4 reference
 recipe (training-as-subgraph).
+
+Rule-routed with projection (`spec` is the child IR path, resolved relative
+to the parent IR's directory):
+
+```yaml
+nodes:
+  - id: refine
+    kind: subgraph
+    spec: bundles/evaluator_optimizer/graph.yaml   # child IR with rules
+    config:
+      inputs: {task: request}      # child.task <- parent.request
+      outputs: {result: answer}    # parent.result <- child.answer
+      max_steps: 20
+```
 
 ## Errors
 
