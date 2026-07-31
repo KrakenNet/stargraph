@@ -25,8 +25,13 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
 ## Work Guidance
 
 - Where things live + key symbols per package: `docs/architecture-map.md`.
-- Adding a node kind: subclass `NodeBase`, wire it into the CLI factory table in
-  `cli/run.py` (`_NODE_FACTORIES`) if it should be `kind:`-addressable from YAML.
+- Adding a node kind: subclass `NodeBase`, wire it into the kind table in
+  `nodes/registry.py` (`_NODE_FACTORIES`, or `register_node_kind()` /
+  the `register_nodes` plugin hookspec) if it should be `kind:`-addressable
+  from YAML. Builders take the full `NodeSpec` so `config` drives constructors;
+  `module:Class` kinds bind config uniformly (`config_model` attr → validated
+  config kwarg, else `**config`, else zero-arg). `kind: dspy` builds a real
+  LM-backed `DSPyNode` from config (`stub: true` is the only stub route).
 - Adding a tool: `@tool` decorator + register via the `stargraph.tools`
   entry-point in `pyproject.toml`.
 - Optional-dep seams (`ml/export.py`, `stores/rerankers.py`, `rl/`): import the

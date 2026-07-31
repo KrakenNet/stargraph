@@ -65,7 +65,9 @@ def build_graph() -> Any:
     Loads ``graph/stargraph.yaml`` into an :class:`IRDocument`, injects the
     absolute ``file://`` URI of the sha256-pinned ONNX model into the
     ``risk_score`` node config (the committed IR keeps ``file_uri: null`` so it
-    validates portably), and returns the constructed
+    validates portably) plus the explicit ``stub: true`` flag into
+    ``triage_decide`` (tests run offline with no LM, exactly the no-LM boot
+    path of ``serve_soc.py``), and returns the constructed
     :class:`~stargraph.graph.definition.Graph`.
     """
     import yaml
@@ -78,6 +80,8 @@ def build_graph() -> Any:
     for node in ir.nodes:
         if node.id == "risk_score":
             node.config["file_uri"] = model_uri
+        if node.id == "triage_decide":
+            node.config["stub"] = True
     return Graph(ir=ir)
 
 

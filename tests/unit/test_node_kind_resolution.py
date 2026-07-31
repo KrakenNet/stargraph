@@ -123,6 +123,24 @@ def test_module_class_empty_config_constructs_zero_arg() -> None:
 
 
 @pytest.mark.unit
+def test_dspy_bare_kind_requires_signature_or_stub() -> None:
+    """``kind: dspy`` with no config fails fast (before any dspy import)."""
+    with pytest.raises(IRValidationError, match=r"requires config\.signature"):
+        _build_node_registry([NodeSpec(id="d", kind="dspy")])
+
+
+@pytest.mark.unit
+def test_dspy_stub_flag_builds_stub_node() -> None:
+    """``config: {stub: true}`` is the only route to the offline stub."""
+    from stargraph.nodes.registry import (
+        _StubDSPyNode,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    registry = _build_node_registry([NodeSpec(id="d", kind="dspy", config={"stub": True})])
+    assert isinstance(registry["d"], _StubDSPyNode)
+
+
+@pytest.mark.unit
 def test_register_node_kind_extends_short_kind_table() -> None:
     """A registered custom kind resolves like a built-in; duplicates fail loud."""
     kind = "test_custom_kind_p03"

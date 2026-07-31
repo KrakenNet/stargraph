@@ -40,18 +40,31 @@ See [`SideEffects`](../ir-schema.md) and [Engine: replay](../../engine/replay.md
 
 ```yaml
 ir_version: "1.0.0"
-id: "run:sample-graph-phase4"
+id: "run:triage"
 nodes:
-  - id: node_b
+  - id: triage
     kind: dspy
+    config:
+      signature: "user_query -> answer"     # inline DSPy signature (required)
+      module: cot                           # predict (default) | cot
+      instructions: "Answer concisely."     # optional signature instructions
+      # signature_map: {state_field: sig_field}  # default: identity over inputs
+      # model: openai/gpt-4o-mini           # optional per-node LM override
+      # api_base: http://localhost:41001    # optional, with model
+      # api_key_env: MY_LM_KEY              # key read from env, never the IR
 state_schema:
-  message: str
+  user_query: str
   answer: str
 ```
 
-The `kind: dspy` factory at `stargraph.cli.run._NODE_FACTORIES` is the POC default
-that binds an inert stub module; production wiring binds via
-`stargraph.adapters.dspy.bind(...)` during lifespan startup.
+The `kind: dspy` factory (`stargraph.nodes.registry`) builds a real `DSPyNode`
+from `config` via `stargraph.nodes.dspy.dspy_node_from_config`, which binds
+through `stargraph.adapters.dspy.bind(...)` (force-loud adapter). An LM must be
+configured — the global one (`stargraph run --lm-url/--lm-model`, or
+`dspy.configure(lm=...)`) or a per-node `config.model` override — otherwise the
+graph **build** fails loudly instead of failing mid-run. `config: {stub: true}`
+is the only route to the deterministic offline stub (cassette fixtures, demos
+booting without an LM).
 
 ## Errors
 

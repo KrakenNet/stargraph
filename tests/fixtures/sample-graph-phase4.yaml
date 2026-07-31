@@ -46,6 +46,8 @@ nodes:
     kind: echo
   - id: node_b
     kind: dspy
+    config:
+      stub: true
   - id: node_c
     kind: echo
   - id: node_d

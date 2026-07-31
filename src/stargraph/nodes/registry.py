@@ -52,14 +52,16 @@ __all__ = [
 
 
 class _StubDSPyNode(NodeBase):
-    """Stub DSPy node (VE2-Phase4 wiring).
+    """Stub DSPy node -- built ONLY via an explicit ``config: {stub: true}``.
 
     The Phase-4 sample graph (``tests/fixtures/sample-graph-phase4.yaml``)
-    declares ``node_b`` with ``kind: dspy`` to exercise the FR-14 tool-call
-    audit contract end-to-end without standing up a live LLM. The paired
-    cassette records zero HTTP interactions, so this node returns a fixed
-    answer projection and emits ``tool_call`` / ``tool_result`` events on
-    the run bus around the synthetic invocation.
+    declares ``node_b`` with ``kind: dspy`` + ``stub: true`` to exercise the
+    FR-14 tool-call audit contract end-to-end without standing up a live
+    LLM. The paired cassette records zero HTTP interactions, so this node
+    returns a fixed answer projection and emits ``tool_call`` /
+    ``tool_result`` events on the run bus around the synthetic invocation.
+    A ``kind: dspy`` node without the flag builds a real LM-backed
+    :class:`~stargraph.nodes.dspy.DSPyNode` (or fails the build loudly).
     """
 
     async def execute(
@@ -121,8 +123,26 @@ def _build_passthrough(_spec: NodeSpec) -> NodeBase:
     return EchoNode()
 
 
-def _build_dspy(_spec: NodeSpec) -> NodeBase:
-    return _StubDSPyNode()
+def _build_dspy(spec: NodeSpec) -> NodeBase:
+    """``dspy`` short-kind builder -- real LM-backed node by default.
+
+    ``config: {stub: true}`` short-circuits to :class:`_StubDSPyNode`
+    (offline test fixtures, cassette runs) without importing DSPy. The
+    signature-presence check lives here too so a bare ``kind: dspy``
+    fails fast without the (slow) ``import dspy``; full config
+    validation is :func:`stargraph.nodes.dspy.dspy_node_from_config`.
+    """
+    if spec.config.get("stub"):
+        return _StubDSPyNode()
+    if not spec.config.get("signature"):
+        raise IRValidationError(
+            f"dspy node {spec.id!r} requires config.signature "
+            "(e.g. 'question -> answer'); set config.stub: true for the "
+            "offline test stub"
+        )
+    from stargraph.nodes.dspy import dspy_node_from_config
+
+    return dspy_node_from_config(spec)
 
 
 def _build_broker(spec: NodeSpec) -> NodeBase:

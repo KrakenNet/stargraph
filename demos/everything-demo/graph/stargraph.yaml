@@ -64,6 +64,8 @@ nodes:
     kind: "demos.everything_demo.graph.nodes:StartSentinel"
   - id: extract_intent
     kind: dspy
+    config:
+      stub: true   # demo runs offline; no LM wiring in this demo's driver
   - id: search_kb
     kind: retrieval
   - id: risk_score
@@ -94,6 +96,8 @@ nodes:
     kind: tool                  # routes through stargraph.adapters.mcp when configured
   - id: summarize_resolution
     kind: dspy
+    config:
+      stub: true   # demo runs offline; no LM wiring in this demo's driver
   - id: persist_report
     kind: write_artifact
   - id: complete
