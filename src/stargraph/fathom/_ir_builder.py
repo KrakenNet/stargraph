@@ -42,6 +42,7 @@ import yaml
 
 from stargraph.ir._mirror import mirrored_fields
 from stargraph.ir._models import GotoAction, HaltAction
+from stargraph.ir._when import compile_when
 
 from ._adapter import FathomAdapter
 
@@ -92,7 +93,9 @@ def _defrule(rule: RuleSpec) -> str | None:
                 action.kind,
             )
             return None
-    return f"(defrule {rule.id} {rule.when} => {' '.join(rhs)})"
+    # ``when`` mapping sugar compiles to the canonical node-id/mirror-value
+    # patterns; raw strings pass through verbatim (validated at IR load).
+    return f"(defrule {rule.id} {compile_when(rule.when)} => {' '.join(rhs)})"
 
 
 def _clips_name(template: str) -> str:

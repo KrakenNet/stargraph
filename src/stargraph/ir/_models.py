@@ -276,7 +276,13 @@ class RuleSpec(IRBase):
 
     Attributes:
         id: Rule identifier, unique within the IR.
-        when: CLIPS-style ``when`` pattern (free text; engine parses).
+        when: Either a raw CLIPS-style pattern string (free text; engine
+            parses) or the mapping sugar ``{node: <node-id>,
+            <mirror-field>: <value>, ...}`` compiled to CLIPS by
+            :func:`stargraph.ir._when.compile_when` -- the reserved
+            ``node`` key becomes the ``(node-id (id ...))`` pattern,
+            every other key an equality test against that mirrored
+            field's ``value`` slot. Conditions AND together.
         then: Discriminated-union list of routing/control actions.
         node_id: Owning node id. Introduced in IR ``1.1.0`` for UI /
             topology consumers (so a rule's source node is explicit
@@ -290,7 +296,7 @@ class RuleSpec(IRBase):
     """
 
     id: str
-    when: str = ""
+    when: str | dict[str, Any] = ""
     then: list[Action] = Field(default_factory=list[Action])
     node_id: str | None = None
 

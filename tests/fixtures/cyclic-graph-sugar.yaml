@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# when-sugar twin of cyclic-graph.yaml — identical topology and routing,
+# but every rule uses the mapping sugar instead of raw CLIPS. The CLI
+# routing test runs both fixtures and must observe identical behavior
+# (`work` twice, then `finish` halts): the proof the sugar compiles to
+# the same live CLIPS patterns the raw form spells out by hand.
+ir_version: "1.0.0"
+id: "graph:cyclic-sugar-fixture"
+state_class: "tests.fixtures.cyclic_nodes:RouteState"
+nodes:
+  - id: work
+    kind: "tests.fixtures.cyclic_nodes:WorkNode"
+  - id: finish
+    kind: "tests.fixtures.cyclic_nodes:FinishNode"
+rules:
+  - id: r-work-refine
+    when: {node: work, phase_verdict: refine}
+    then:
+      - kind: goto
+        target: work
+  - id: r-work-sufficient
+    when: {node: work, phase_verdict: sufficient}
+    then:
+      - kind: goto
+        target: finish
+  - id: r-finish-halt
+    when: {node: finish}
+    then:
+      - kind: halt
+        reason: "cyclic fixture complete"

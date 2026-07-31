@@ -17,16 +17,20 @@ from typer.testing import CliRunner
 
 from stargraph.cli import app
 
-CYCLIC_GRAPH = Path(__file__).resolve().parents[2] / "fixtures" / "cyclic-graph.yaml"
+_FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 
 
 @pytest.mark.integration
-def test_cyclic_rules_fire_live(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "fixture",
+    ["cyclic-graph.yaml", "cyclic-graph-sugar.yaml"],  # raw CLIPS vs when-sugar twin
+)
+def test_cyclic_rules_fire_live(tmp_path: Path, fixture: str) -> None:
     result = CliRunner().invoke(
         app,
         [
             "run",
-            str(CYCLIC_GRAPH),
+            str(_FIXTURES / fixture),
             "--checkpoint",
             str(tmp_path / "ck.sqlite"),
         ],

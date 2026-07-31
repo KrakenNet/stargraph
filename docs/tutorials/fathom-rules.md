@@ -133,12 +133,12 @@ governance:
       api_version: "1"
 rules:
   - id: r-halt-review
-    when: "?n <- (node-id (id node_review))"
+    when: {node: node_review}
     then:
       - kind: halt
         reason: "high-risk path — halt for review"
   - id: r-halt-ship
-    when: "?n <- (node-id (id node_ship))"
+    when: {node: node_ship}
     then:
       - kind: halt
         reason: "low-risk path — shipped"
@@ -147,6 +147,29 @@ rules:
 The `requires:` block pins the pack to a `stargraph_facts_version` /
 `api_version` pair; mismatches fail loud at pack-load time per
 `stargraph.ir._versioning.check_pack_compat`.
+
+!!! tip "The `when:` mapping shortcut"
+    Inline IR rules accept `when` as a mapping instead of raw CLIPS.
+    The reserved `node` key compiles to the `(node-id (id ...))`
+    pattern every node-scoped rule starts with; every other key is a
+    `Mirror`-annotated state field compared (as a string) against its
+    mirrored value. Conditions AND together:
+
+    ```yaml
+    - id: r-work-refine
+      when: {node: work, phase_verdict: refine}
+      then:
+        - kind: goto
+          target: work
+    ```
+
+    compiles to
+    `(node-id (id work)) (phase_verdict (value "refine"))`. A string
+    `when` is still passed to the engine verbatim — use it for
+    anything the shortcut can't say (bindings, tests, `or`/`not`,
+    runtime facts like `stargraph-tool-result`). Malformed mappings
+    and `node` keys that name no node in the document fail at IR
+    validation, not mid-run.
 
 ## Step 6 — Run the high-risk branch
 

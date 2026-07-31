@@ -392,16 +392,24 @@
     },
     "RuleSpec": {
       "additionalProperties": false,
-      "description": "Single rule (POC: id + ``when`` pattern + ``then`` action list).\n\n``then`` is a list of :data:`Action` -- the discriminated union; the\nFR-11 \"no nesting\" constraint is enforced by the type itself (variants\ncannot themselves contain :data:`Action` fields).\n\nAttributes:\n    id: Rule identifier, unique within the IR.\n    when: CLIPS-style ``when`` pattern (free text; engine parses).\n    then: Discriminated-union list of routing/control actions.\n    node_id: Owning node id. Introduced in IR ``1.1.0`` for UI /\n        topology consumers (so a rule's source node is explicit\n        rather than inferred from a naming convention). Optional for\n        backward compatibility -- documents declaring\n        ``ir_version: \"1.0.0\"`` may omit it; loaders MAY fill it via\n        the ``rule_id`` prefix heuristic so downstream tools\n        (``stargraph inspect``, StarGraph topology endpoint) can assume\n        non-null. New graphs at ``1.1.0`` SHOULD declare ``node_id``\n        explicitly.",
+      "description": "Single rule (POC: id + ``when`` pattern + ``then`` action list).\n\n``then`` is a list of :data:`Action` -- the discriminated union; the\nFR-11 \"no nesting\" constraint is enforced by the type itself (variants\ncannot themselves contain :data:`Action` fields).\n\nAttributes:\n    id: Rule identifier, unique within the IR.\n    when: Either a raw CLIPS-style pattern string (free text; engine\n        parses) or the mapping sugar ``{node: <node-id>,\n        <mirror-field>: <value>, ...}`` compiled to CLIPS by\n        :func:`stargraph.ir._when.compile_when` -- the reserved\n        ``node`` key becomes the ``(node-id (id ...))`` pattern,\n        every other key an equality test against that mirrored\n        field's ``value`` slot. Conditions AND together.\n    then: Discriminated-union list of routing/control actions.\n    node_id: Owning node id. Introduced in IR ``1.1.0`` for UI /\n        topology consumers (so a rule's source node is explicit\n        rather than inferred from a naming convention). Optional for\n        backward compatibility -- documents declaring\n        ``ir_version: \"1.0.0\"`` may omit it; loaders MAY fill it via\n        the ``rule_id`` prefix heuristic so downstream tools\n        (``stargraph inspect``, StarGraph topology endpoint) can assume\n        non-null. New graphs at ``1.1.0`` SHOULD declare ``node_id``\n        explicitly.",
       "properties": {
         "id": {
           "title": "Id",
           "type": "string"
         },
         "when": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
           "default": "",
-          "title": "When",
-          "type": "string"
+          "title": "When"
         },
         "then": {
           "items": {

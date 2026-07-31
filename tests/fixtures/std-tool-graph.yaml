@@ -18,7 +18,7 @@ nodes:
       out: tool_result
 rules:
   - id: r-calc-halt
-    when: "?n <- (node-id (id calc))"
+    when: {node: calc}   # when-sugar; compiles to (node-id (id calc))
     then:
       - kind: halt
         reason: "calculation complete"

@@ -79,7 +79,7 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Write a tool plugin | `docs/how-to/write-tool-plugin.md` | `@tool` + entry-point in `pyproject.toml` |
 | Add a store provider | `docs/how-to/add-store-provider.md` | implement the Store Protocol |
 | Add a trigger | `docs/how-to/add-trigger.md` | `stargraph.triggers` entry-point |
-| Write Fathom rules | `docs/tutorials/fathom-rules.md`, `design-docs/stargraph-facts.md` | `RuleSpec` / `.clp` pack |
+| Write Fathom rules | `docs/tutorials/fathom-rules.md`, `design-docs/stargraph-facts.md` | `RuleSpec` / `.clp` pack; inline `when:` takes the mapping sugar `{node: <id>, <mirror-field>: <value>}` (compiled by `ir/_when.py`) or raw CLIPS |
 | Add an MCP server | `docs/how-to/add-mcp-server.md` | `stargraph.mcp_adapters` entry-point |
 | Publish a torch/SB3 model as ONNX | `docs/reference/nodes/ml.md` | `stargraph.ml.export` (`onnx-export` extra) |
 | Train / gate / plan with RL policies | `docs/reference/rl.md` | `stargraph.rl` (`rl` extra): `rl:train_ppo`, gauntlet eval graph, `stargraph.planners` entry-point |

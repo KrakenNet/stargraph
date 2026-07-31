@@ -21,6 +21,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from ._when import when_node_ref
+
 if TYPE_CHECKING:
     from ._models import IRDocument
 
@@ -46,7 +48,11 @@ def backfill_rule_node_ids(doc: IRDocument) -> IRDocument:
     for rule in doc.rules:
         if rule.node_id is not None:
             continue
-        m = NODE_ID_PATTERN.search(rule.when)
-        if m and m.group(1) in node_ids:
-            rule.node_id = m.group(1)
+        if isinstance(rule.when, str):
+            m = NODE_ID_PATTERN.search(rule.when)
+            candidate = m.group(1) if m else None
+        else:  # mapping sugar declares ownership directly
+            candidate = when_node_ref(rule.when)
+        if candidate is not None and candidate in node_ids:
+            rule.node_id = candidate
     return doc

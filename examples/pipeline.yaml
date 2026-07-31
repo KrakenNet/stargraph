@@ -34,12 +34,12 @@ rules:
       - kind: goto
         target: node_b
   - id: r-b-to-c
-    when: "?n <- (node-id (id node_b))"
+    when: {node: node_b}
     then:
       - kind: goto
         target: node_c
   - id: r-halt
-    when: "?n <- (node-id (id node_c))"
+    when: {node: node_c}
     then:
       - kind: halt
         reason: "pipeline example reached node_c"
