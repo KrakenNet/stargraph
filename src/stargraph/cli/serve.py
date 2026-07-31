@@ -269,13 +269,19 @@ def cmd(
     # Local import: cli cycle.
     from stargraph.cli.run import _build_node_registry  # pyright: ignore[reportPrivateUsage]
 
+    # One shared, builtin-seeded ToolRegistry: attached to every Graph (the
+    # ToolCallNode resolution seam) and surfaced through deps["registry"].
+    from stargraph.tools.builtin import seed_builtin_tools
+
+    tool_registry = seed_builtin_tools(ToolRegistry())
+
     graphs: dict[str, Graph] = {}
     node_registries: dict[str, dict[str, Any]] = {}
     for path in graph_paths or []:
         import yaml as _yaml  # local import: yaml is an indirect dep
 
         ir_doc = IRDocument.model_validate(_yaml.safe_load(path.read_text()))
-        graph = Graph(ir=ir_doc)
+        graph = Graph(ir=ir_doc, registry=tool_registry)
         graphs[ir_doc.id] = graph
         node_registries[ir_doc.id] = _build_node_registry(
             ir_doc.nodes,
@@ -297,7 +303,7 @@ def cmd(
         "graphs": graphs,
         "node_registry": node_registries,
         "registry": {
-            "tools": ToolRegistry(),
+            "tools": tool_registry,
             "stores": StoreRegistry(),
         },
     }

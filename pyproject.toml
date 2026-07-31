@@ -157,15 +157,11 @@ manual = "stargraph.triggers.manual:ManualTrigger"
 cron = "stargraph.triggers.cron:CronTrigger"
 webhook = "stargraph.triggers.webhook:WebhookTrigger"
 
-# Built-in Nautilus tool plugin (design §8.2, FR-45). Registry-discoverable
-# `@tool`-decorated coroutine that calls the lifespan-singleton Broker.
-[project.entry-points."stargraph.tools"]
-broker_request = "stargraph.tools.nautilus.broker_request:broker_request"
-servicenow_create_change_request = "stargraph.tools.servicenow.create_change_request:create_change_request"
-servicenow_cmdb_query_software = "stargraph.tools.servicenow.cmdb_query_software:cmdb_query_software"
-servicenow_cmdb_traverse_runs_on = "stargraph.tools.servicenow.cmdb_traverse_runs_on:cmdb_traverse_runs_on"
-servicenow_cmdb_resolve_hosts = "stargraph.tools.servicenow.cmdb_resolve_hosts:cmdb_resolve_hosts"
-rl_train_ppo = "stargraph.rl.trainer:train_ppo"
+# NOTE: Stargraph declares NO ``stargraph.tools`` entries for itself. In-tree
+# built-in tools (nautilus, servicenow, rl) are seeded in-process via
+# ``stargraph.tools.builtin.seed_builtin_tools`` — the entry-point pipeline is
+# for external plugin distributions only (each must ship a ``stargraph_plugin``
+# manifest factory), and the loader skips the core dist during discovery.
 
 # Planner plugins (design W7): each entry is a zero-arg-constructible class
 # satisfying the stargraph.rl.planners.Planner protocol. ``mpc-ca-burn`` is the

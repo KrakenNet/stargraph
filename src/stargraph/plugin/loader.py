@@ -60,6 +60,10 @@ GROUPS: tuple[str, ...] = (
 
 _TRACE_ENV: str = "STARGRAPH_TRACE_PLUGINS"
 
+#: The core distribution, skipped during discovery: its in-tree tools are
+#: seeded in-process, not routed through the external-plugin pipeline.
+_CORE_DIST: str = "stargraph"
+
 _logger = get_logger("stargraph.plugin")
 
 
@@ -86,6 +90,15 @@ def build_plugin_manager() -> pluggy.PluginManager:
     by_dist: dict[str, list[tuple[str, EntryPoint]]] = {}
     for group in GROUPS:
         for ep in entry_points(group=group):
+            if ep.dist is not None and ep.dist.name == _CORE_DIST:
+                # Stargraph's own in-tree contributions (builtin tools,
+                # triggers) are seeded in-process (see
+                # stargraph.tools.builtin.seed_builtin_tools), never through
+                # the plugin pipeline -- the core dist ships no
+                # stargraph_plugin manifest, and requiring one of ourselves
+                # would hard-fail every real install at Stage 1.
+                _trace("plugin.discovery.skip_core", group=group, name=ep.name)
+                continue
             if ep.dist is None:
                 # Detached entry points (no owning dist metadata) cannot
                 # be tied back to a manifest factory.

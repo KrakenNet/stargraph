@@ -68,7 +68,6 @@ print(stargraph_plugin())"` prints a populated `PluginManifest`.
 # src/my_tool_plugin/_plugin.py (continued)
 from decimal import Decimal
 
-from stargraph.ir import ToolSpec
 from stargraph.tools import ReplayPolicy, SideEffects, tool
 
 
@@ -84,10 +83,28 @@ def echo(message: str) -> dict[str, str]:
     return {"echoed": message}
 
 
-def register_tool() -> list[ToolSpec]:
-    """`stargraph.tools` entry-point factory — yields ToolSpec records."""
-    return [echo.spec]
+@hookimpl
+def register_tools() -> list[object]:
+    """`register_tools` hookimpl — return the decorated *callables*.
+
+    Each callable carries `.spec: ToolSpec`; Stargraph merges them into
+    the run's ToolRegistry via `install_plugin_tools`. Returning bare
+    `ToolSpec` records is a loud `PluginLoadError` (a spec cannot be
+    invoked).
+    """
+    return [echo]
 ```
+
+Add the marker import at the top of `_plugin.py`:
+
+```python
+from stargraph.plugin import hookimpl
+```
+
+The hookimpl **must** be decorated with Stargraph's `hookimpl` marker and the
+module (not the function) is what the entry point points at — pluggy scans
+the registered module for marked functions; an unmarked function or a
+function-valued entry point registers nothing, silently.
 
 The `@tool` decorator (see [`stargraph.tools.decorator`][decorator]):
 
@@ -115,13 +132,17 @@ dependencies = ["stargraph>=0.2"]
 stargraph_plugin = "my_tool_plugin._plugin:stargraph_plugin"
 
 [project.entry-points."stargraph.tools"]
-echo = "my_tool_plugin._plugin:register_tool"
+plugin = "my_tool_plugin._plugin"
 ```
 
-The `stargraph` group binds the manifest factory; the `stargraph.tools` group
-binds the tool factory. Both are required — Stargraph refuses to register a
-plugin distribution that contributes a `stargraph.tools` entry but no
-`stargraph_plugin` factory (`PluginLoadError`).
+The `stargraph` group binds the manifest factory; the `stargraph.tools` entry
+points at the **module** containing the `@hookimpl`-marked `register_tools`.
+Both are required — Stargraph refuses to register a plugin distribution that
+contributes a `stargraph.tools` entry but no `stargraph_plugin` factory
+(`PluginLoadError`). (Stargraph's own built-in tools do not go through this
+pipeline — they are seeded in-process by
+`stargraph.tools.builtin.seed_builtin_tools`, and the loader skips the core
+`stargraph` distribution during discovery.)
 
 ### 5. Test the tool
 

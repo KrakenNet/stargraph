@@ -291,7 +291,12 @@ def cmd(
     ir_dict = yaml.safe_load(graph.read_text(encoding="utf-8"))
     ir = IRDocument.model_validate(ir_dict)
 
-    g = Graph(ir)
+    # Builtin-seeded ToolRegistry on the Graph: the ``kind: tool``
+    # ToolCallNode resolves its tool id here at execute time.
+    from stargraph.registry.tools import ToolRegistry
+    from stargraph.tools.builtin import seed_builtin_tools
+
+    g = Graph(ir, registry=seed_builtin_tools(ToolRegistry()))
 
     if inspect:
         # ``simulate`` requires one fixture per IR node; synthesize empty

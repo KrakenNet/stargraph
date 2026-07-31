@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any
 from stargraph.plugin._markers import hookspec
 
 if TYPE_CHECKING:
-    from stargraph.ir._models import SkillSpec, ToolSpec
+    from stargraph.ir._models import SkillSpec
     from stargraph.plugin.types import (
         BosunAction,
         MCPAdapterSpec,
@@ -48,8 +48,16 @@ def stargraph_shutdown(pm: PluginManager) -> None:
 
 
 @hookspec
-def register_tools() -> list[ToolSpec]:
-    """Collect-all: each plugin returns the tools it provides."""
+def register_tools() -> list[Any]:
+    """Collect-all: each plugin returns the tools it provides.
+
+    Return the ``@tool``-decorated *callables* themselves (each carries
+    ``.spec: ToolSpec``), not bare :class:`ToolSpec` records -- a spec
+    cannot be invoked. Merged into the run's
+    :class:`~stargraph.registry.tools.ToolRegistry` by
+    :func:`stargraph.registry.tools.install_plugin_tools`, which
+    loud-fails on non-callable entries and id conflicts.
+    """
     return []
 
 
