@@ -271,9 +271,17 @@ def cmd(
 
     # One shared, builtin-seeded ToolRegistry: attached to every Graph (the
     # ToolCallNode resolution seam) and surfaced through deps["registry"].
+    from stargraph.skills.markdown import seed_markdown_skills
     from stargraph.tools.builtin import seed_builtin_tools
 
     tool_registry = seed_builtin_tools(ToolRegistry())
+    # Markdown (SKILL.md) skills from the discovery roots -- non-strict so
+    # one broken drop-in file cannot take down the server.
+    for compiled_skill in seed_markdown_skills(tool_registry):
+        typer.echo(
+            f"  loaded skill: {compiled_skill.spec.namespace}/{compiled_skill.spec.name}"
+            f"@{compiled_skill.spec.version}  (path={compiled_skill.path})"
+        )
 
     graphs: dict[str, Graph] = {}
     node_registries: dict[str, dict[str, Any]] = {}

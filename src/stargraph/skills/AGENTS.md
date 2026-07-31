@@ -17,7 +17,8 @@ entry-point groups. The two mirror Claude Code's skill-vs-plugin split.
 
 - **Framework surface** (owned here, do not fork per-bundle): `base.py`
   (`Skill`, `SkillKind`, `Example`), `react.py` (`ReactSkill` tool-loop
-  primitive), `salience.py` (scorer), `refs/` (single-file reference skills
+  primitive), `markdown.py` (SKILL.md loader — Claude-compatible superset),
+  `salience.py` (scorer), `refs/` (single-file reference skills
   `rag`/`autoresearch`/`wiki`).
 - **Bundles** (each a self-contained subtree): `nodesmith` (own AGENTS.md),
   `shipwright`, and the reference bundles below. The runtime they generate
@@ -44,6 +45,14 @@ entry-point groups. The two mirror Claude Code's skill-vs-plugin split.
 - **In-tree skills are not entry-point-registered.** The `stargraph.skills`
   group is empty by design (external dists populate it); in-tree bundles run by
   path/import and serve as references.
+- **Markdown skills bypass the plugin pipeline.** `markdown.py` compiles
+  `SKILL.md` (Claude Code format loads unmodified; superset keys optional) and
+  `seed_markdown_skills` registers straight onto the `ToolRegistry` — discovery
+  roots `$STARGRAPH_SKILLS_DIR` → `./skills/` → `~/.stargraph/skills/`;
+  duplicate `namespace/name` = `PluginLoadError`; invalid file = warn+skip
+  (strict only in `stargraph skills compile`). Vendored Claude Code fixtures in
+  `tests/fixtures/claude-skills/` must stay byte-for-byte unmodified — they pin
+  the compat contract. Doc: `docs/how-to/write-markdown-skill.md`.
 - **No cheats.** The deterministic logic is real and tested; only the model/DB
   seam is stubbed. No `NotImplementedError`, hardcoded outputs, or skipped tests.
 

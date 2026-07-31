@@ -60,6 +60,7 @@ nav:
       - Overview: how-to/index.md
       - Write a tool plugin: how-to/write-tool-plugin.md
       - Build a skill: how-to/build-skill.md
+      - Write a markdown skill (SKILL.md): how-to/write-markdown-skill.md
       - Build a graph: how-to/build-graph.md
       - Build an agent: how-to/build-agent.md
       - Author a Bosun pack: how-to/bosun-pack.md

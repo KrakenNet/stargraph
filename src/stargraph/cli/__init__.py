@@ -24,6 +24,7 @@ from stargraph.cli import (
     run,
     serve,
     simulate,
+    skills,
     verify_audit,
 )
 
@@ -49,6 +50,7 @@ app.command("context")(context.cmd)
 app.command("ovarp-reproduce")(ovarp_reproduce.cmd)
 app.add_typer(model.model_app, name="model")
 app.add_typer(pack.pack_app, name="pack")
+app.add_typer(skills.skills_app, name="skills")
 
 
 def main() -> None:

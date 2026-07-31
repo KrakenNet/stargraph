@@ -77,6 +77,7 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Build a graph | `docs/how-to/build-graph.md` | author IR YAML or Python `Graph` |
 | Use a built-in tool from YAML | `docs/reference/tools.md` | `kind: tool` + `config: {tool: std.<name>@1, ...}` — the `std` pack seeds automatically; heavy deps = `stargraph[tools]`. SaaS packs (`slack`/`github`/`s3`/`email`/`postgres`) also seed: capability-gated, writes dry-run until `STARGRAPH_<NS>_LIVE=1`; boto3/psycopg = `stargraph[tools-saas]` |
 | Write a tool plugin | `docs/how-to/write-tool-plugin.md` | `@tool` + entry-point in `pyproject.toml` |
+| Drop in a markdown skill | `docs/how-to/write-markdown-skill.md` | `./skills/<name>/SKILL.md` (Claude Code format loads unmodified); `stargraph skills compile\|list` |
 | Add a store provider | `docs/how-to/add-store-provider.md` | implement the Store Protocol |
 | Add a trigger | `docs/how-to/add-trigger.md` | `stargraph.triggers` entry-point |
 | Write Fathom rules | `docs/tutorials/fathom-rules.md`, `design-docs/stargraph-facts.md` | `RuleSpec` / `.clp` pack; inline `when:` takes the mapping sugar `{node: <id>, <mirror-field>: <value>}` (compiled by `ir/_when.py`) or raw CLIPS |
