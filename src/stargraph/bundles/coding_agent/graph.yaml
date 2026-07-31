@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# coding-agent bundle: plan -> brief -> code -> review, with a
+# reviewer-feedback fix-loop. The brief template re-injects the judge's
+# rationale so every retry sees why the last attempt failed; rules route
+# on the judge's mirrored verdict. The code node runs generated Python
+# through std.python_exec@1 (capability tools:std:exec, default-deny).
+ir_version: "1.0.0"
+id: "graph:bundle-coding-agent"
+state_class: "stargraph.bundles.coding_agent:CodingState"
+nodes:
+  - id: plan
+    kind: plan
+    config:
+      input: task
+  - id: brief
+    kind: template
+    config:
+      template: "{task}\n\nPlan:\n{tasks}\n\nReviewer feedback from the previous attempt (empty on the first attempt):\n{rationale}"
+      out: brief
+  - id: code
+    kind: code
+    config:
+      input: brief
+  - id: review-brief
+    kind: template
+    config:
+      template: "Task:\n{task}\n\nGenerated code:\n{code}\n\nExecution result:\n{run_result}"
+      out: review_input
+  - id: review
+    kind: judge
+    config:
+      input: review_input
+      rubric: "The code ran successfully (exit code 0, not timed out), solves the stated task, and prints its result to stdout."
+rules:
+  - id: r-review-fail-refine
+    when: {node: review, verdict: fail}
+    then:
+      - kind: goto
+        target: brief
+  - id: r-review-pass-halt
+    when: {node: review, verdict: pass}
+    then:
+      - kind: halt
+        reason: "code approved by reviewer"

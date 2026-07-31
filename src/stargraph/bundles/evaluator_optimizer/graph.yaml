@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# evaluator-optimizer bundle: draft -> judge -> refine loop (T11). The
+# brief template re-injects the judge's rationale so each refinement
+# addresses the actual objection; rules route on the mirrored verdict.
+ir_version: "1.0.0"
+id: "graph:bundle-evaluator-optimizer"
+state_class: "stargraph.bundles.evaluator_optimizer:RefineState"
+nodes:
+  - id: brief
+    kind: template
+    config:
+      template: "{task}\n\nJudge feedback on the previous draft (empty on the first attempt):\n{rationale}"
+      out: brief
+  - id: draft
+    kind: reason
+    config:
+      input: brief
+  - id: evaluate
+    kind: judge
+    config:
+      input: answer
+      rubric: "The draft fully accomplishes the stated task: it is correct, complete, clearly written, and leaves no requirement unaddressed."
+rules:
+  - id: r-evaluate-fail-refine
+    when: {node: evaluate, verdict: fail}
+    then:
+      - kind: goto
+        target: brief
+  - id: r-evaluate-pass-halt
+    when: {node: evaluate, verdict: pass}
+    then:
+      - kind: halt
+        reason: "draft accepted by evaluator"

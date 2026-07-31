@@ -84,6 +84,7 @@ Land on the right path in one hop. Each row: intent → doc → command/scaffold
 | Add an MCP server | `docs/how-to/add-mcp-server.md` | `stargraph.mcp_adapters` entry-point |
 | Publish a torch/SB3 model as ONNX | `docs/reference/nodes/ml.md` | `stargraph.ml.export` (`onnx-export` extra) |
 | Train / gate / plan with RL policies | `docs/reference/rl.md` | `stargraph.rl` (`rl` extra): `rl:train_ppo`, gauntlet eval graph, `stargraph.planners` entry-point |
+| Start from a prebuilt agent pattern | `src/stargraph/AGENTS.md` (bundles) | `stargraph.bundles.bundle_path(<name>)` — coding-agent, deep-research, evaluator-optimizer, hitl-approval, orchestrator-workers, rag-qa, triage-router |
 | Serve / replay | `docs/serve/`, `docs/tutorials/serve-and-replay.md` | `stargraph serve`, `stargraph replay` |
 | Deploy in a container / K8s | `docs/guides/containers.md` | root `Dockerfile` + `compose.yaml` + `deploy/helm/stargraph/` (single-replica only) |
 | Monitor / roll back a deployment | `docs/serve/api.md` (Ops), `docs/reference/cli.md` | `GET /health`, `GET /metrics`; `stargraph model rollback`, `stargraph pack pin\|revert` |

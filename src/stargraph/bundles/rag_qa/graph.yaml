@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# rag-qa bundle: retrieve -> answer -> groundedness judge (T6). The rag
+# node retrieves from the bound store (edit the path below to your
+# corpus), answers with citations, and the judge checks the answer is
+# grounded in what was actually cited; rejections loop with feedback.
+ir_version: "1.0.0"
+id: "graph:bundle-rag-qa"
+state_class: "stargraph.bundles.rag_qa:RagQAState"
+nodes:
+  - id: brief
+    kind: template
+    config:
+      template: "{question}\n\nThe previous answer was rejected by the groundedness check (empty on the first attempt):\n{rationale}"
+      out: brief
+  - id: qa
+    kind: rag
+    config:
+      query: brief
+      stores:
+        - provider: sqlite_doc
+          path: "./kb.db"
+  - id: review-brief
+    kind: template
+    config:
+      template: "Question:\n{question}\n\nAnswer:\n{answer}\n\nCited documents:\n{citations}"
+      out: review_input
+  - id: check
+    kind: judge
+    config:
+      input: review_input
+      rubric: "The answer addresses the question and every factual claim is grounded in the cited documents; an empty answer or a claim beyond the citations fails."
+rules:
+  - id: r-check-fail-retry
+    when: {node: check, verdict: fail}
+    then:
+      - kind: goto
+        target: brief
+  - id: r-check-pass-halt
+    when: {node: check, verdict: pass}
+    then:
+      - kind: halt
+        reason: "answer grounded in citations"

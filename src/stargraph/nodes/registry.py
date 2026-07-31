@@ -302,6 +302,12 @@ def _build_rag(spec: NodeSpec) -> NodeBase:
     return rag_node_from_config(spec)
 
 
+def _build_template(spec: NodeSpec) -> NodeBase:
+    from stargraph.nodes.template import template_node_from_config
+
+    return template_node_from_config(spec)
+
+
 _NODE_FACTORIES: dict[str, NodeBuilder] = {
     "echo": _build_echo,
     "halt": _build_echo,  # halt is a marker terminal
@@ -329,6 +335,9 @@ _NODE_FACTORIES: dict[str, NodeBuilder] = {
     # rag retrieves from config-bound stores (sqlite_doc lexical scan /
     # lancedb FTS), RRF-fuses, then answers with citations via CoT.
     "rag": _build_rag,
+    # template renders a str.format template over state fields into one
+    # output field -- pure/deterministic; feedback re-injection in loops.
+    "template": _build_template,
 }
 
 

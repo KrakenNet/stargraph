@@ -57,6 +57,17 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   boundary only by projection (`SubGraphNodeConfig.inputs`/`outputs` maps,
   else shared field names); `interrupt`/`parallel` inside a subgraph fail
   loudly (v1). Child events keep parent `run_id`, `branch_id = subgraph id`.
+- `kind: template` (`nodes/template.py`): pure `str.format` render of state
+  fields into one output field — the feedback re-injection primitive for
+  rule-routed loops (judge `rationale` → next attempt's brief). Bare field
+  placeholders only; missing fields fail loudly at run time.
+- `bundles/` — seven shipped subgraph bundles (`SKILL.md` + `graph.yaml` +
+  state module per dir; `bundle_path(name)` resolves). Loop bundles share one
+  shape: template brief re-injects judge feedback, `when` mapping-sugar rules
+  route on the mirrored `verdict`. `hitl-approval` is sequential by design
+  (interrupt is a run pause, not a routing decision). Tests:
+  `tests/integration/test_bundles.py` builds every bundle and drives the
+  evaluator-optimizer loop end-to-end.
 - Adding a built-in tool: `@tool` decorator + append its `module:attr` ref to
   `_BUILTIN_TOOL_REFS` in `tools/builtin.py` (in-process seeding; the core dist
   has NO `stargraph.tools` entry-points — that pipeline is for external plugin

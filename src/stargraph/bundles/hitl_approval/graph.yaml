@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# hitl-approval bundle: propose -> interrupt -> apply (T9). The reason
+# node drafts a plan, the interrupt node pauses the run for a human
+# decision (surfaced via serve's WS / respond endpoint), and the apply
+# step records the approved plan. Sequential by design: interrupt is a
+# run-level pause, not a routing decision, so this bundle runs
+# standalone (not as a rule-routed subgraph child).
+ir_version: "1.0.0"
+id: "graph:bundle-hitl-approval"
+state_class: "stargraph.bundles.hitl_approval:ApprovalState"
+nodes:
+  - id: propose
+    kind: reason
+    config:
+      input: request
+      instructions: "Propose a concrete plan of action for the request. Be explicit about what will change, what could go wrong, and how to roll back."
+  - id: approve
+    kind: interrupt
+    config:
+      prompt: "Approve the proposed plan?"
+  - id: apply
+    kind: template
+    config:
+      template: "APPROVED:\n{answer}"
+      out: approved_plan
