@@ -21,10 +21,31 @@ package only produces receipt inputs and reproduces ticks.
 - **`producer_output` is wall-clock-free.** It is a pure projection of the
   committed `Checkpoint` (outcome/node/step/state/side_effects_hash); no
   `timestamp`, no floats (JCS-safe). Its `sha256(JCS(...))` is `result.digest`.
-- **Two independent evaluators (ADR-0010).** The routing predicate is encoded
-  twice: Fathom YAML (`GOV_ROUTING_PACK`, in-stack) and the OVARP v0 pack
-  (`OVARP_PACK`, offline re-eval). They must converge on the same outcome string
-  (`goto:<node>`); verify step 4 VOIDs on divergence. Keep them in lockstep.
+- **Two independent evaluators (ADR-0010).** The decision is encoded twice; verify
+  step 4 VOIDs on divergence. Two modes:
+  - *routing* (`example.py` merge-gate): Fathom YAML (`GOV_ROUTING_PACK`, in-stack)
+    + a hand-authored OVARP v0 pack (`OVARP_PACK`, offline); outcome `goto:<node>`.
+  - *governance* (`clearance_gate.py`): **one** Fathom pack, evaluated in-stack by
+    CLIPS (`Engine.evaluate().decision`, surfaced as `adapter.last_evaluation`) and
+    offline by OVARP's IR — the SAME pack auto-lowered via `ovarp lower-fathom` (no
+    hand-authored offline pack); outcome the bare action (`allow`/`deny`).
+    Independence is CLIPS-engine vs IR-evaluator on identical rules. The decision is
+    read via `harness.governance_decision(run)` (from the adapter's `last_evaluation`)
+    on **both** emit and reproduce — one derivation, or the `result.digest` match
+    drifts. That is per-adapter mutable state, so governance attestation assumes
+    **single-tick** dispatch; a parallel governance graph would need the decision
+    carried on the `Checkpoint`.
+- **A governance pack must be pure + Mirror-shaped to auto-lower.** `ovarp
+  lower-fathom` refuses any rule with a `then.assert` (RHS forward-chaining is out of
+  the profile), so a pack that asserts `stargraph_action` for routing CANNOT also
+  lower — a governance attestation uses `then: {action, reason}` only. Templates are
+  Mirror-shaped (one per mirrored field, `value` slot + provenance) because the
+  Mirror boundary crosses one fact per field; rules join across the `value` slots.
+  `harness.materialize_pack_dir` (lowering) and `_build_fathom_adapter` (in-stack)
+  share `_mirror_template_defs`, so the lowered IR and the CLIPS templates never drift.
+  `materialize_pack_dir` writes the pack under `dest/pack_name`, so it validates
+  `pack_name` is a single path segment first (no `/`, `..`, or absolute root) — a
+  public entry point mirroring the `load_bundle_from_store` content-address guard.
 - **Fathom wiring is public-only.** Register `stargraph_action` + mirror
   deftemplates through `engine.load_templates` (YAML). Do **not** use
   `register_stargraph_action_template` here — it builds the CLIPS side only and
@@ -43,10 +64,12 @@ package only produces receipt inputs and reproduces ticks.
 
 ## Work Guidance
 
-- Attest a new graph: supply an `AttestationSpec` (see
-  `example.merge_gate_attestation_spec`) and wire `OvarpReceiptSink` as the run's
-  `receipt_sink`. The `dispatch_node` seam (runtime/dispatch.py, step 7b) calls
-  `record(...)` per committed tick.
+- Attest a new graph: supply an `AttestationSpec` and wire `OvarpReceiptSink` as the
+  run's `receipt_sink`; the `dispatch_node` seam (runtime/dispatch.py, step 7b) calls
+  `record(...)` per committed tick. Two modes: routing (set `ovarp_pack`; see
+  `example.merge_gate_attestation_spec`) or governance (leave `ovarp_pack=None`, set
+  `pack_name`; the sink auto-lowers `fathom_pack` — see
+  `clearance_gate.clearance_gate_attestation_spec`).
 - The reproducer command is `stargraph ovarp-reproduce --store <dir>` (stdin/stdout
   JSON harness protocol); it must write **only** the result JSON to stdout.
 - Changing the bundle shape means changing both the sink (writer) and
@@ -54,6 +77,7 @@ package only produces receipt inputs and reproduces ticks.
 
 ## Verification
 
-`uv run pytest tests/integration/test_ovarp_receipt_e2e.py` — needs the `ovarp`
-binary (`$OVARP_BIN` or `../ovarp/target/release/ovarp`); skips if absent. Also
-`uv run ruff check` + `uv run pyright` on this package (strict).
+`uv run pytest tests/integration/test_ovarp_receipt_e2e.py` (routing) and
+`tests/integration/test_ovarp_clearance_gate_e2e.py` (governance auto-lower) — both
+need the `ovarp` binary (`$OVARP_BIN` or `../ovarp/target/release/ovarp`); skip if
+absent. Also `uv run ruff check` + `uv run pyright` on this package (strict).

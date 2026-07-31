@@ -15,9 +15,12 @@ OVARP producer-runtime ``replayable`` receipt. Per tick it:
    facts (verify step 4).
 
 The offline re-evaluation pack, the facts projection, the authority envelope, and
-the signing seeds are all supplied by the caller as an :class:`AttestationSpec`
-(see :func:`stargraph.ovarp.example.merge_gate_attestation_spec`) — the sink owns
-the *mechanism*, not the governance specifics.
+the signing seeds are all supplied by the caller as an :class:`AttestationSpec` —
+the sink owns the *mechanism*, not the governance specifics. Two modes (see
+:class:`AttestationSpec`): a **routing** attestation carries a hand-authored offline
+pack (``example.merge_gate_attestation_spec``); a **governance** attestation
+auto-lowers the graph's Fathom pack via ``ovarp lower-fathom`` and binds the in-stack
+Fathom decision (``clearance_gate.clearance_gate_attestation_spec``).
 
 OVARP is invoked as a subprocess: StarGraph gains no build-time dependency on the
 verifier, and the sink is opt-in (a run without ``receipt_sink`` never touches it).
@@ -29,12 +32,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from stargraph.errors import StargraphRuntimeError
-from stargraph.ovarp.harness import producer_output_from_checkpoint
+from stargraph.ovarp.harness import (
+    factvector_from_state,
+    governance_decision,
+    materialize_pack_dir,
+    producer_output_from_checkpoint,
+)
 
 if TYPE_CHECKING:
     from stargraph.checkpoint.protocol import Checkpoint
@@ -47,10 +56,20 @@ __all__ = ["AttestationSpec", "OvarpReceiptSink"]
 class AttestationSpec:
     """The per-integration inputs OVARP needs that the runtime cannot itself derive.
 
-    Everything here is stable for a given attested graph: the offline policy
-    re-implementation (``ovarp_pack`` + ``facts_fields``), the authority envelope,
-    the pinned RATS reference values, and the signing seeds. The sink combines it
-    with the per-tick ``pre_state``/node/step to build a receipt.
+    Everything here is stable for a given attested graph: the offline policy pack,
+    the authority envelope, the pinned RATS reference values, and the signing seeds.
+    The sink combines it with the per-tick ``pre_state``/node/step to build a receipt.
+
+    Two modes, discriminated by ``ovarp_pack``:
+
+    * **routing** (``ovarp_pack`` set) — the offline evaluator is a hand-authored
+      OVARP v0 pack (``ovarp_pack`` + ``facts_fields``); the attested outcome is the
+      routing decision (``goto:<node>``). See ``example.merge_gate_attestation_spec``.
+    * **governance** (``ovarp_pack is None``) — the offline evaluator is auto-derived
+      by lowering ``fathom_pack`` (``ovarp lower-fathom``); facts are the FactVector
+      projected from the Mirror state; the attested outcome is the in-stack Fathom
+      decision (``allow``/``deny``/…). No hand-authored offline pack. See
+      ``clearance_gate.clearance_gate_attestation_spec``.
     """
 
     runtime: str
@@ -58,18 +77,16 @@ class AttestationSpec:
     ir_dict: dict[str, Any]
     """Graph IR (its ``state_class`` resolves the Mirror state model)."""
     fathom_pack: str
-    """Fathom routing pack YAML text — the in-stack evaluator, carried in the bundle."""
+    """Fathom pack YAML text — the in-stack evaluator, carried in the bundle. Routing
+    rules (routing mode) or governance ``action`` rules (governance mode; also the
+    ``lower-fathom`` source)."""
     policy_id: str
     """Receipt ``policy.id`` (names the governance rule)."""
-    ovarp_pack: dict[str, Any]
-    """OVARP v0 policy pack: the OFFLINE re-implementation of the routing predicate."""
     authority: dict[str, Any]
     """Receipt ``authority`` grant envelope."""
     verb: str
     resource: str
     context: dict[str, Any]
-    facts_fields: tuple[str, ...]
-    """State keys projected from ``pre_state`` into the OVARP ``facts`` vector."""
     seeds: dict[str, str]
     """Pinned 32-byte hex signing seeds (``agent``/``attester``/``beacon``)."""
     nonce: str
@@ -80,6 +97,15 @@ class AttestationSpec:
     """Pinned RATS model reference value (``sha256:...``)."""
     decoding_digest: str
     """Pinned RATS decoding reference value (``sha256:...``)."""
+    ovarp_pack: dict[str, Any] | None = None
+    """Routing mode: the OFFLINE OVARP v0 pack. ``None`` selects governance mode
+    (the offline pack is auto-lowered from ``fathom_pack``)."""
+    facts_fields: tuple[str, ...] = ()
+    """Routing mode only: state keys projected from ``pre_state`` into the OVARP
+    ``facts`` object. Ignored in governance mode (facts are the Mirror FactVector)."""
+    pack_name: str = ""
+    """Governance mode only: stable lowered-pack id (the materialized pack-dir leaf),
+    so the auto-lowered IR is byte-stable across emits (reproducible receipt)."""
     round: int = 1
     """Beacon round bound by the replayable seed."""
 
@@ -107,6 +133,10 @@ class OvarpReceiptSink:
         self.out_dir.mkdir(parents=True, exist_ok=True)
         #: Receipt paths written so far, in emission order (inspection / tests).
         self.receipts: list[Path] = []
+        #: Memoized auto-lowered governance pack. The lowered IR is a pure function of
+        #: the (frozen) spec, so it is computed once on the first governance tick and
+        #: reused — no per-tick tempdir / file writes / ``lower-fathom`` subprocess.
+        self._lowered_pack: dict[str, Any] | None = None
 
     async def record(
         self,
@@ -124,18 +154,23 @@ class OvarpReceiptSink:
         node_id = checkpoint.last_node
         step = checkpoint.step
         pre_state_dict: dict[str, Any] = pre_state.model_dump(mode="json")
-        producer_output = producer_output_from_checkpoint(checkpoint)
 
-        missing = [k for k in spec.facts_fields if k not in pre_state_dict]
-        if missing:
-            raise StargraphRuntimeError(
-                f"ovarp sink: state is missing fact field(s) {missing} for node {node_id!r}"
-            )
-        facts = {k: pre_state_dict[k] for k in spec.facts_fields}
+        if spec.ovarp_pack is None:
+            pack, facts, producer_output = await self._governance_receipt_inputs(run, checkpoint)
+        else:
+            missing = [k for k in spec.facts_fields if k not in pre_state_dict]
+            if missing:
+                raise StargraphRuntimeError(
+                    f"ovarp sink: state is missing fact field(s) {missing} for node {node_id!r}"
+                )
+            pack = spec.ovarp_pack
+            facts = {k: pre_state_dict[k] for k in spec.facts_fields}
+            producer_output = producer_output_from_checkpoint(checkpoint)
 
         bundle = {
             "ovarp_replay_bundle": "v1",
             "runtime": spec.runtime,
+            "governance": spec.ovarp_pack is None,
             "producer": {
                 "graph": spec.ir_dict,
                 "pre_state": pre_state_dict,
@@ -165,7 +200,7 @@ class OvarpReceiptSink:
             "issued_at": spec.issued_at,
             "grade": "replayable",
             "policy_id": spec.policy_id,
-            "pack": spec.ovarp_pack,
+            "pack": pack,
             "facts": facts,
             "round": spec.round,
             "nonce": spec.nonce,
@@ -184,6 +219,47 @@ class OvarpReceiptSink:
         )
         self.receipts.append(receipt_path)
         return receipt_path
+
+    async def _governance_receipt_inputs(
+        self, run: GraphRun, checkpoint: Checkpoint
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """Build (pack, facts, producer_output) for a governance-mode tick.
+
+        The offline pack is auto-lowered from the Fathom governance pack (no
+        hand-authoring); the facts are the Mirror FactVector CLIPS asserted; the
+        outcome is the in-stack Fathom decision. OVARP re-derives that decision offline
+        (verify step 4) from the lowered pack + FactVector, so a lied decision VOIDs.
+        """
+        spec = self.spec
+        if not spec.pack_name:
+            raise StargraphRuntimeError(
+                "ovarp sink: governance AttestationSpec requires a pack_name "
+                "(the stable lowered-pack id)"
+            )
+        decision = governance_decision(run)
+        facts = factvector_from_state(run, checkpoint.state)
+        pack = await self._lower_pack(run.graph.state_schema, spec.fathom_pack, spec.pack_name)
+        producer_output = producer_output_from_checkpoint(checkpoint, outcome=decision)
+        return pack, facts, producer_output
+
+    async def _lower_pack(
+        self, state_cls: type[Any], rules_text: str, pack_name: str
+    ) -> dict[str, Any]:
+        """Auto-derive (and memoize) the offline OVARP pack by lowering the Fathom pack.
+
+        Materializes a ``lower-fathom`` pack dir (Mirror templates + module + rules)
+        and shells ``ovarp lower-fathom`` **once** — the lowered IR is invariant for
+        this sink's (frozen) spec, so it is cached on :attr:`_lowered_pack` and reused
+        by every later tick. The lowered IR is the receipt's offline evaluator — no
+        hand-authored pack. Fail-closed: ``lower-fathom`` exits non-zero for any
+        out-of-profile rule, surfacing as a StargraphRuntimeError.
+        """
+        if self._lowered_pack is None:
+            with tempfile.TemporaryDirectory() as td:
+                pack_dir = materialize_pack_dir(state_cls, rules_text, Path(td), pack_name)
+                out = await self._ovarp("lower-fathom", str(pack_dir))
+            self._lowered_pack = cast("dict[str, Any]", json.loads(out))
+        return self._lowered_pack
 
     async def _ovarp(self, *args: str) -> str:
         """Run ``ovarp <args>`` offline-friendly; return stdout, raise on non-zero exit."""

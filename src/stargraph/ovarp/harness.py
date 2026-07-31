@@ -58,7 +58,10 @@ __all__ = [
     "FATHOM_ROUTER_MODEL_DIGEST",
     "CapturingCheckpointer",
     "build_attestable_run",
+    "factvector_from_state",
+    "governance_decision",
     "load_bundle_from_store",
+    "materialize_pack_dir",
     "producer_output_from_checkpoint",
     "reproduce_from_bundle",
 ]
@@ -172,24 +175,37 @@ def _build_node(spec: NodeSpec) -> NodeBase:
     )
 
 
+def _mirror_template_defs(state_cls: type[BaseModel]) -> list[dict[str, Any]]:
+    """One Mirror-shaped deftemplate def per distinct mirror template name of ``state_cls``.
+
+    Each carries the ``_MIRROR_SLOTS`` shape (six provenance slots + ``value``). Fields
+    that share a template name collapse to one def. The single source of the mirror
+    deftemplate shape for *both* the in-stack adapter (:func:`_build_fathom_adapter`)
+    and the lowering pack dir (:func:`materialize_pack_dir`) — so the offline lowered
+    IR and the in-stack CLIPS templates can never drift.
+    """
+    defs: dict[str, dict[str, Any]] = {}
+    for rm in mirrored_fields(state_cls).values():
+        defs.setdefault(rm.template, {"name": rm.template, "slots": _MIRROR_SLOTS})
+    return list(defs.values())
+
+
 def _build_fathom_adapter(state_cls: type[BaseModel], pack_text: str, tmp: Path) -> FathomAdapter:
     """Stand up a :class:`FathomAdapter` that routes on the state's mirrored facts.
 
     Registers, via Fathom's public ``load_templates``, the ``stargraph_action``
     routing-output template plus one mirror deftemplate per
     ``Annotated[T, Mirror(...)]`` field of ``state_cls``, then the pack's declared
-    module (focused) and the routing rules.
+    module (focused) and the routing (or governance) rules.
     """
     engine = Engine(default_decision="deny")
     adapter = FathomAdapter(engine)
 
-    # ``stargraph_action`` first, then one deftemplate per distinct mirror
-    # template name (fields may share one).
-    template_defs: dict[str, dict[str, Any]] = {"stargraph_action": _STARGRAPH_ACTION_TEMPLATE}
-    for rm in mirrored_fields(state_cls).values():
-        template_defs.setdefault(rm.template, {"name": rm.template, "slots": _MIRROR_SLOTS})
+    # ``stargraph_action`` first (routing packs assert it; governance packs ignore
+    # it), then one deftemplate per distinct mirror template name.
+    template_defs = [_STARGRAPH_ACTION_TEMPLATE, *_mirror_template_defs(state_cls)]
     tfile = tmp / "templates.yaml"
-    tfile.write_text(yaml.safe_dump({"templates": list(template_defs.values())}), encoding="utf-8")
+    tfile.write_text(yaml.safe_dump({"templates": template_defs}), encoding="utf-8")
     engine.load_templates(str(tfile))
 
     module_name = cast("str", cast("dict[str, Any]", yaml.safe_load(pack_text))["module"])
@@ -246,6 +262,88 @@ def build_attestable_run(
     return run, list(ir.nodes)
 
 
+def factvector_from_state(run: GraphRun, state: dict[str, Any]) -> dict[str, Any]:
+    """Project a committed state dict into the OVARP FactVector the lowered pack evaluates.
+
+    Derives the vector from the *same* projection CLIPS used in-stack —
+    :meth:`FathomAdapter.mirror_state` — by rehydrating the state model and mapping
+    each ``AssertSpec`` to ``{"template": …, "data": <slots>}``. Reusing that one
+    projection is load-bearing: the offline vector OVARP re-evaluates (verify step 4)
+    must be the same fact set the engine asserted, and sharing ``mirror_state`` means
+    the two cannot drift should the mapping ever grow past the ``str(value)`` POC.
+    Pass the tick's **post-node** state (``checkpoint.state``) — that is what was mirrored.
+    """
+    model = run.graph.state_schema.model_validate(state)
+    specs = run.fathom.mirror_state(model, {})
+    return {"facts": [{"template": s.template, "data": dict(s.slots)} for s in specs]}
+
+
+def governance_decision(run: GraphRun) -> str:
+    """The Fathom governance decision the tick produced in-stack (``allow``/``deny``/…).
+
+    Read from the adapter's ``last_evaluation`` (captured during dispatch's Fathom
+    step). Shared by the emit sink and the reproducer so the attested outcome is
+    derived one way on both sides of the replay contract — a divergence would break
+    the ``result.digest`` match. Fail-closed if the tick produced no decision.
+
+    ``last_evaluation`` is per-adapter mutable state, so a governance attestation
+    assumes **single-tick** dispatch (the sink reads it in the same tick it was set).
+    A parallel-dispatch governance graph would need the decision carried on the
+    :class:`Checkpoint` instead.
+    """
+    fathom = run.fathom
+    ev = fathom.last_evaluation if fathom is not None else None
+    decision = ev.decision if ev is not None else None
+    if decision is None:
+        raise StargraphRuntimeError("ovarp: governance tick produced no Fathom decision")
+    return cast("str", decision)
+
+
+def materialize_pack_dir(
+    state_cls: type[BaseModel], rules_text: str, dest: Path, pack_name: str
+) -> Path:
+    """Write a ``lower-fathom``-ready Fathom pack dir under ``dest/pack_name``.
+
+    Lays out the ``templates/`` ``modules/`` ``rules/`` directory layout
+    ``ovarp lower-fathom`` consumes. Templates are the Mirror-shaped deftemplates
+    synthesized from ``state_cls`` (the *same* :func:`_mirror_template_defs` the
+    in-stack adapter registers — no drift) and deliberately **exclude**
+    ``stargraph_action`` (its slot ``default``s are outside the lowering profile,
+    and a governance pack never asserts it). The module is the rules' declared
+    ``module`` (focused). The pack dir leaf is ``pack_name`` so the lowered IR
+    ``id`` equals ``pack_name`` and is stable across emits (reproducible receipt).
+
+    ``pack_name`` becomes a path component under ``dest``, so it is validated as a
+    single path segment first — a value with ``/``, ``..``, or an absolute root
+    would escape ``dest`` (``pathlib`` drops the base on an absolute join), driving
+    ``mkdir``/``write_text`` outside the caller's temp dir. Today ``pack_name`` is
+    operator config, but this is a public entry point; the guard mirrors the
+    content-address check in :func:`load_bundle_from_store`.
+    """
+    if Path(pack_name).parts != (pack_name,) or pack_name in ("", ".", ".."):
+        raise StargraphRuntimeError(
+            f"ovarp lower-fathom: pack_name {pack_name!r} is not a single path segment"
+        )
+    pack_dir = dest / pack_name
+    for sub in ("templates", "modules", "rules"):
+        (pack_dir / sub).mkdir(parents=True)
+    (pack_dir / "templates" / "access.yaml").write_text(
+        yaml.safe_dump({"templates": _mirror_template_defs(state_cls)}), encoding="utf-8"
+    )
+    module_name = cast("str", cast("dict[str, Any]", yaml.safe_load(rules_text))["module"])
+    (pack_dir / "modules" / "governance.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "modules": [{"name": module_name, "description": "OVARP governance pack"}],
+                "focus_order": [module_name],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (pack_dir / "rules" / "access.yaml").write_text(rules_text, encoding="utf-8")
+    return pack_dir
+
+
 def _outcome_from_next_action(next_action: dict[str, Any] | None) -> str:
     """Encode a checkpoint's ``next_action`` as the routing outcome string.
 
@@ -262,16 +360,25 @@ def _outcome_from_next_action(next_action: dict[str, Any] | None) -> str:
     return str(kind) if kind is not None else "continue"
 
 
-def producer_output_from_checkpoint(checkpoint: Checkpoint) -> dict[str, Any]:
+def producer_output_from_checkpoint(
+    checkpoint: Checkpoint, *, outcome: str | None = None
+) -> dict[str, Any]:
     """Project the authoritative :class:`Checkpoint` into the attested output body.
 
     Shared by the sink (emit) and the reproducer so both derive an identical
     ``producer_output`` from one source. Deliberately excludes the checkpoint's
     wall-clock ``timestamp`` — the attested decision must not depend on it — so
     the projection is a pure, reproducible function of the tick's facts.
+
+    ``outcome`` overrides the outcome string. Routing attestations leave it
+    ``None`` (the outcome is derived from ``checkpoint.next_action``); a governance
+    attestation passes the Fathom decision (``allow``/``deny``/…), which the
+    ``next_action`` does not carry.
     """
     return {
-        "outcome": _outcome_from_next_action(checkpoint.next_action),
+        "outcome": outcome
+        if outcome is not None
+        else _outcome_from_next_action(checkpoint.next_action),
         "node": checkpoint.last_node,
         "step": checkpoint.step,
         "state": checkpoint.state,
@@ -311,6 +418,12 @@ async def reproduce_from_bundle(store_dir: str, bundle_digest: str) -> dict[str,
     await dispatch_node(run, nodes, node, run.initial_state, int(producer["step"]))
     if cp_sink.last is None:
         raise StargraphRuntimeError("ovarp reproduce: tick wrote no checkpoint")
+    if bundle.get("governance"):
+        # Governance tick: the attested outcome is the in-stack Fathom decision (not a
+        # routing target). Re-derive it via the shared helper — the same one the emit
+        # sink used — so producer_output is byte-identical and OVARP's result.digest
+        # match holds (verify step 6).
+        return producer_output_from_checkpoint(cp_sink.last, outcome=governance_decision(run))
     return producer_output_from_checkpoint(cp_sink.last)
 
 
