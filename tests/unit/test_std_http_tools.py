@@ -16,7 +16,7 @@ import httpx
 import pytest
 
 from stargraph.errors import StargraphRuntimeError
-from stargraph.tools.std import _http
+from stargraph.tools import _http
 from stargraph.tools.std.arxiv import arxiv_search
 from stargraph.tools.std.fetch_page import fetch_page
 from stargraph.tools.std.http_request import http_request

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared httpx client factory for the ``std`` network tools.
+"""Shared httpx client factory for the built-in network tool packs.
 
-Every network tool builds its client through :func:`build_client` (called
+Every network tool (std, slack, github, ...) builds its client through :func:`build_client` (called
 via the module, ``_http.build_client(...)``) so tests can monkeypatch a
 single seam with an ``httpx.MockTransport``-backed client.
 """

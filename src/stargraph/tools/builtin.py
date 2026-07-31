@@ -57,6 +57,22 @@ _BUILTIN_TOOL_REFS: tuple[str, ...] = (
     "stargraph.tools.std.arxiv:arxiv_search",
     "stargraph.tools.std.python_exec:python_exec",
     "stargraph.tools.std.shell:shell",
+    # SaaS pack (P1b): every tool is capability-gated (reads included) and
+    # every write is dry-run by default behind STARGRAPH_<NS>_LIVE. Heavy
+    # deps (boto3, psycopg; the ``stargraph[tools-saas]`` extra) are imported
+    # lazily inside the tool body and fail with a pip hint at call time.
+    "stargraph.tools.slack.post_message:post_message",
+    "stargraph.tools.slack.read_messages:read_messages",
+    "stargraph.tools.github.read_file:read_file",
+    "stargraph.tools.github.list_issues:list_issues",
+    "stargraph.tools.github.create_issue:create_issue",
+    "stargraph.tools.s3.get_object:get_object",
+    "stargraph.tools.s3.list_objects:list_objects",
+    "stargraph.tools.s3.put_object:put_object",
+    "stargraph.tools.email.send:send_email",
+    "stargraph.tools.email.fetch:fetch_email",
+    "stargraph.tools.postgres.query:pg_query",
+    "stargraph.tools.postgres.execute:pg_execute",
 )
 
 #: ``module:attr`` -> extra name, for tools gated behind optional extras.

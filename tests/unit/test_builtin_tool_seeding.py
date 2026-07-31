@@ -54,6 +54,32 @@ def test_seed_builtin_tools_includes_full_std_pack() -> None:
 
 
 @pytest.mark.unit
+def test_seed_builtin_tools_includes_saas_packs_all_gated() -> None:
+    """SaaS pack: every tool registers and every tool carries a capability."""
+    reg = seed_builtin_tools(ToolRegistry())
+    expected = {
+        "slack": {"post_message": "tools:slack:write", "read_messages": "tools:slack:read"},
+        "github": {
+            "read_file": "tools:github:read",
+            "list_issues": "tools:github:read",
+            "create_issue": "tools:github:write",
+        },
+        "s3": {
+            "get_object": "tools:s3:read",
+            "list_objects": "tools:s3:read",
+            "put_object": "tools:s3:write",
+        },
+        "email": {"send": "tools:email:write", "fetch": "tools:email:read"},
+        "postgres": {"query": "tools:postgres:read", "execute": "tools:postgres:write"},
+    }
+    for namespace, tools in expected.items():
+        by_name = {t.spec.name: t.spec for t in reg.list_tools(namespace=namespace)}
+        assert set(by_name) == set(tools), namespace
+        for name, capability in tools.items():
+            assert by_name[name].permissions == [capability], f"{namespace}.{name}"
+
+
+@pytest.mark.unit
 def test_seed_builtin_tools_conflicts_are_loud() -> None:
     """Seeding the same registry twice duplicates ids -> PluginLoadError."""
     reg = seed_builtin_tools(ToolRegistry())

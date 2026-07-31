@@ -43,8 +43,17 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   code/shell execution capability-gated (`tools:std:exec` / `tools:std:shell`,
   default-deny); filesystem/sqlite paths jailed via `tools/std/_jail.py`
   (`STARGRAPH_TOOLS_FS_ROOT`, default cwd); network tools build clients through
-  `tools/std/_http.py::build_client` (the tests' mock seam). Heavy deps
-  (`ddgs`, `readability-lxml`, `duckdb`) = the `tools` extra.
+  `tools/_http.py::build_client` (the tests' mock seam, shared with the SaaS
+  packs). Heavy deps (`ddgs`, `readability-lxml`, `duckdb`) = the `tools` extra.
+- SaaS packs (`tools/{slack,github,s3,email,postgres}/`, 12 tools): EVERY tool
+  is capability-gated (`tools:<ns>:read|write` — reads touch private data);
+  every write is dry-run by default behind `STARGRAPH_<NS>_LIVE` and takes a
+  caller-supplied `dedupe_key` (`tools/_saas.py` holds the shared guards;
+  ServiceNow is the pattern's origin). Mock seams: slack/github →
+  `tools/_http.py`; s3 → `s3/_client.py`; postgres → `postgres/_conn.py`
+  (DSN from `STARGRAPH_POSTGRES_DSN` only, never a tool arg); email fakes
+  stdlib `smtplib`/`imaplib`. Heavy deps (`boto3`, `psycopg`) = the
+  `tools-saas` extra (lazy-imported; pip hint at call time).
 - Optional-dep seams (`ml/export.py`, `stores/rerankers.py`, `rl/`): import the
   optional package lazily inside the function, raise `MLNodeError` /
   `RLNodeError` / `StargraphRuntimeError` with a `hint=` naming the extra.

@@ -17,9 +17,9 @@ from typing import Any
 import httpx
 
 from stargraph.errors import StargraphRuntimeError
+from stargraph.tools import _http
 from stargraph.tools.decorator import tool
 from stargraph.tools.spec import SideEffects
-from stargraph.tools.std import _http
 
 __all__ = ["fetch_page", "strip_tags"]
 

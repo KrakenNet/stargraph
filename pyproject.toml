@@ -67,6 +67,14 @@ tools = [
     "readability-lxml>=0.8.1",
     "duckdb>=1.0",
 ]
+# Heavy deps for the SaaS tool packs (stargraph.tools.{s3,postgres}).
+# slack/github/email ride on hard deps (httpx / stdlib); this extra unlocks
+# s3.* (boto3) and postgres.* (psycopg). Missing-extra calls fail with a
+# pip hint.
+tools-saas = [
+    "boto3>=1.34",
+    "psycopg[binary]>=3.1",
+]
 ml = [
     "scikit-learn",
     "xgboost>=2.1",
