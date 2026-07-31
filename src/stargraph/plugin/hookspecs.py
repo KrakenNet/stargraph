@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from stargraph.plugin.types import (
         BosunAction,
         MCPAdapterSpec,
+        NodeKindSpec,
         PackSpec,
         PluginManager,
         Route,
@@ -60,6 +61,17 @@ def before_tool_call(call: ToolCall) -> None:
 @hookspec
 def after_tool_call(call: ToolCall, result: ToolResult) -> None:
     """Observation hook fired immediately after a tool invocation."""
+
+
+@hookspec
+def register_nodes() -> list[NodeKindSpec]:
+    """Collect-all: each plugin returns the node kinds it provides.
+
+    Merged into the graph-build short-kind table by
+    :func:`stargraph.nodes.registry.install_plugin_node_kinds`; kind
+    collisions fail loud with ``PluginLoadError``.
+    """
+    return []
 
 
 @hookspec

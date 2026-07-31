@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for ``stargraph.cli.run._build_subgraph`` (S4)."""
+"""Tests for the ``subgraph`` short-kind builder (S4, stargraph.nodes.registry)."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import pytest
-import typer
 import yaml
 
 from stargraph.cli.run import (
     _build_node_registry,  # pyright: ignore[reportPrivateUsage]
     _build_subgraph,  # pyright: ignore[reportPrivateUsage]
 )
+from stargraph.errors import IRValidationError
 from stargraph.ir._models import NodeSpec
 from stargraph.nodes.base import EchoNode
 from stargraph.nodes.subgraph import SubGraphNode
@@ -70,13 +70,13 @@ def test_subgraph_absolute_path(tmp_path: Path) -> None:
 
 def test_subgraph_missing_file_raises(tmp_path: Path) -> None:
     parent = NodeSpec(id="missing", kind="subgraph", spec="does_not_exist.yaml")
-    with pytest.raises(typer.BadParameter, match="child IR not found"):
+    with pytest.raises(IRValidationError, match="child IR not found"):
         _build_node_registry([parent], ir_dir=tmp_path)
 
 
 def test_subgraph_relative_no_ir_dir_raises() -> None:
     parent = NodeSpec(id="x", kind="subgraph", spec="rel.yaml")
-    with pytest.raises(typer.BadParameter, match="no parent IR directory"):
+    with pytest.raises(IRValidationError, match="no parent IR directory"):
         _build_node_registry([parent], ir_dir=None)
 
 

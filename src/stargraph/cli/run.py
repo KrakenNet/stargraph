@@ -30,11 +30,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import contextvars
-import importlib
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any
 
 import anyio
 import typer
@@ -53,251 +50,29 @@ from stargraph.cli._inputs import parse_inputs, parse_inputs_for_model
 from stargraph.cli._progress import ProgressPrinter
 from stargraph.cli._prompts import HITLHandler
 from stargraph.cli._summary import SummaryRenderer
+from stargraph.errors import StargraphError
 from stargraph.fathom import build_ir_routing
 from stargraph.graph import Graph, GraphRun
 from stargraph.ir import IRDocument
 from stargraph.ir._ids import new_run_id
-from stargraph.nodes.base import EchoNode, ExecutionContext, NodeBase
-from stargraph.runtime.events import ToolCallEvent, ToolResultEvent
+
+# Node-kind resolution moved to stargraph.nodes.registry (the CLI is one
+# consumer among several). Private aliases retained: demo servers, serve,
+# and the smith gate import them from this module.
+from stargraph.nodes.registry import (
+    _build_subgraph as _build_subgraph,  # pyright: ignore[reportPrivateUsage]
+)
+from stargraph.nodes.registry import (
+    build_node_registry,
+    node_kinds,
+)
 
 if TYPE_CHECKING:
-    from pydantic import BaseModel
-
     from stargraph.checkpoint.protocol import RunSummary
-    from stargraph.ir._models import NodeSpec
 
 __all__ = ["cmd", "node_kinds"]
 
-
-class _StubDSPyNode(NodeBase):
-    """CLI-local stub DSPy node (VE2-Phase4 wiring).
-
-    The Phase-4 sample graph (``tests/fixtures/sample-graph-phase4.yaml``)
-    declares ``node_b`` with ``kind: dspy`` to exercise the FR-14 tool-call
-    audit contract end-to-end without standing up a live LLM. The paired
-    cassette records zero HTTP interactions, so this node returns a fixed
-    answer projection and emits ``tool_call`` / ``tool_result`` events on
-    the run bus around the synthetic invocation.
-
-    Wiring DSPy modules via ``stargraph.adapters.dspy.bind`` is the production
-    path (see :class:`stargraph.nodes.dspy.DSPyNode`); this stub is the CLI's
-    no-config default for ``kind: dspy`` IRs whose modules are bound at
-    runtime by callers who skip the bind step (POC ergonomics).
-    """
-
-    async def execute(
-        self,
-        state: BaseModel,
-        ctx: ExecutionContext,
-    ) -> dict[str, Any]:
-        # ``ExecutionContext`` is a :class:`Protocol`; the live driver
-        # passes the concrete :class:`GraphRun`, which carries the bus +
-        # fathom handle FR-14 events need. Cast through ``Any`` so this
-        # surface stays typed against the protocol while still reaching
-        # the structural fields the runtime supplies.
-        run: Any = ctx
-        call_id = f"{run.run_id}-stub-dspy"
-        await run.bus.send(
-            ToolCallEvent(
-                run_id=run.run_id,
-                step=0,
-                ts=datetime.now(UTC),
-                tool_name="dspy.stub",
-                namespace="stargraph.tests",
-                args={"message": getattr(state, "message", "")},
-                call_id=call_id,
-            ),
-            fathom=run.fathom,
-        )
-        outputs = {"answer": "stub-answer"}
-        await run.bus.send(
-            ToolResultEvent(
-                run_id=run.run_id,
-                step=0,
-                ts=datetime.now(UTC),
-                call_id=call_id,
-                ok=True,
-                result=outputs,
-            ),
-            fathom=run.fathom,
-        )
-        return outputs
-
-
-# Short-kind builders. Each takes a NodeSpec and returns a constructed
-# NodeBase instance, allowing per-node config (NodeSpec.config) to drive
-# constructor kwargs without sub-classing per call site. ``module:ClassName``
-# refs go through :func:`_resolve_class_kind` instead.
-_NodeBuilder = Any  # Callable[[NodeSpec], NodeBase] — typed loosely to avoid TC import cycles.
-
-
-def _build_echo(_spec: NodeSpec) -> NodeBase:
-    return EchoNode()
-
-
-def _build_passthrough(_spec: NodeSpec) -> NodeBase:
-    """``passthrough`` — no-op node mirroring :class:`EchoNode`'s contract.
-
-    Distinct kind name preserved so IRs can document intent (dispatch
-    helper vs sentinel) without forcing a separate class.
-    """
-    return EchoNode()
-
-
-def _build_dspy(_spec: NodeSpec) -> NodeBase:
-    return _StubDSPyNode()
-
-
-def _build_broker(spec: NodeSpec) -> NodeBase:
-    from stargraph.nodes.nautilus.broker_node import BrokerNode, BrokerNodeConfig
-
-    return BrokerNode(config=BrokerNodeConfig.model_validate(spec.config))
-
-
-def _build_write_artifact(spec: NodeSpec) -> NodeBase:
-    from stargraph.nodes.artifacts.write_artifact_node import (
-        WriteArtifactNode,
-        WriteArtifactNodeConfig,
-    )
-
-    return WriteArtifactNode(config=WriteArtifactNodeConfig.model_validate(spec.config))
-
-
-def _build_interrupt(spec: NodeSpec) -> NodeBase:
-    from stargraph.nodes.interrupt.interrupt_node import InterruptNode, InterruptNodeConfig
-
-    return InterruptNode(config=InterruptNodeConfig.model_validate(spec.config))
-
-
-def _build_ml(spec: NodeSpec) -> NodeBase:
-    from stargraph.nodes.ml import MLNode
-
-    return MLNode(**spec.config)
-
-
-def _build_subgraph(spec: NodeSpec) -> NodeBase:
-    """``subgraph`` short-kind builder.
-
-    Reads ``NodeSpec.spec`` as the path to the child IR YAML (relative
-    paths resolve against the parent IR's directory, captured in the
-    :data:`_IR_DIR_VAR` :class:`ContextVar` by :func:`_build_node_registry`).
-    The child IR is loaded, every child :class:`NodeSpec` is built via
-    the same :func:`_resolve_node_factory` machinery (so nested
-    sub-graphs work), and the resulting :class:`NodeBase` list is
-    wrapped in a :class:`SubGraphNode` keyed on the parent
-    ``NodeSpec.id``.
-
-    Empty / missing ``spec`` falls back to :class:`EchoNode` so legacy
-    IRs (no sub-IR yet) still validate and walk.
-    """
-    if not spec.spec:
-        return EchoNode()
-    ir_dir = _IR_DIR_VAR.get()
-    sub_path = Path(spec.spec)
-    if not sub_path.is_absolute():
-        if ir_dir is None:
-            raise typer.BadParameter(
-                f"subgraph node {spec.id!r} has relative spec={spec.spec!r} "
-                f"but no parent IR directory was set"
-            )
-        sub_path = (ir_dir / sub_path).resolve()
-    if not sub_path.is_file():
-        raise typer.BadParameter(f"subgraph node {spec.id!r}: child IR not found at {sub_path}")
-
-    sub_ir_dict = yaml.safe_load(sub_path.read_text(encoding="utf-8"))
-    sub_ir = IRDocument.model_validate(sub_ir_dict)
-    # Recurse via _build_node_registry so nested sub-graphs preserve
-    # the parent-IR-dir context via the ContextVar.
-    sub_registry = _build_node_registry(sub_ir.nodes, ir_dir=sub_path.parent)
-    children = [sub_registry[n.id] for n in sub_ir.nodes]
-
-    from stargraph.nodes.subgraph import SubGraphNode
-
-    return SubGraphNode(subgraph_id=spec.id, children=children)
-
-
-def _build_tool(_spec: NodeSpec) -> NodeBase:
-    """``tool`` short-kind builder.
-
-    No first-class ToolCallNode in Stargraph core today — IRs that declare
-    ``kind: tool`` typically intend a node that invokes a registered
-    ``@tool``. The :class:`EchoNode` placeholder lets such IRs validate
-    and walk; production graphs override via ``module.path:ClassName``
-    pointing at a ``NodeBase`` that wraps the desired ``@tool`` call.
-    """
-    return EchoNode()
-
-
-_NODE_FACTORIES: dict[str, _NodeBuilder] = {
-    "echo": _build_echo,
-    "halt": _build_echo,  # halt is a marker terminal
-    "passthrough": _build_passthrough,
-    "dspy": _build_dspy,
-    "broker": _build_broker,
-    "write_artifact": _build_write_artifact,
-    "interrupt": _build_interrupt,
-    "ml": _build_ml,
-    "subgraph": _build_subgraph,
-    "tool": _build_tool,
-}
-
-
-def node_kinds() -> list[str]:
-    """Sorted list of built-in node ``kind:`` values the CLI run driver builds.
-
-    Custom nodes are addressable via ``module.path:ClassName`` in addition to
-    these. Used by ``stargraph context dump`` to advertise the node surface.
-    """
-    return sorted(_NODE_FACTORIES)
-
-
-def _resolve_class_kind(kind: str) -> type[NodeBase]:
-    """Resolve a ``module.path:ClassName`` ref to its :class:`NodeBase` subclass."""
-    module_path, _, class_name = kind.partition(":")
-    try:
-        module = importlib.import_module(module_path)
-    except ImportError as e:
-        raise typer.BadParameter(
-            f"cannot import module {module_path!r} for node kind {kind!r}: {e}"
-        ) from e
-    cls: Any = getattr(module, class_name, None)
-    if cls is None:
-        raise typer.BadParameter(
-            f"class {class_name!r} not found in {module_path!r} (kind={kind!r})"
-        )
-    if not isinstance(cls, type) or not issubclass(cls, NodeBase):
-        cls_type_name: str = type(cast("object", cls)).__name__
-        raise typer.BadParameter(f"{kind!r} is not a NodeBase subclass (got {cls_type_name})")
-    return cls
-
-
-def _resolve_node_factory(kind: str) -> _NodeBuilder:
-    """Map ``NodeSpec.kind`` to a NodeSpec→NodeBase builder.
-
-    Short kinds (``echo``/``halt``/``passthrough``/``dspy``/``broker``/
-    ``write_artifact``/``interrupt``/``ml``/``subgraph``/``tool``) come
-    from the static :data:`_NODE_FACTORIES` table. Any kind containing
-    ``:`` is treated as ``module.path:ClassName`` and imported via
-    :mod:`importlib`; the resolved class is wrapped in a builder that
-    instantiates it zero-arg.
-    """
-    if kind in _NODE_FACTORIES:
-        return _NODE_FACTORIES[kind]
-    if ":" not in kind:
-        raise typer.BadParameter(
-            f"unknown node kind {kind!r}; "
-            f"expected one of {sorted(_NODE_FACTORIES)} or 'module.path:ClassName'"
-        )
-    cls = _resolve_class_kind(kind)
-
-    # ``module:ClassName`` refs are zero-arg by contract; NodeSpec.config
-    # is ignored for them. Custom plugin classes that want config should
-    # register themselves via the short-kind table (Phase 3 follow-up:
-    # ``stargraph.nodes`` entry-point group lands a uniform path).
-    def _build_class(_spec: NodeSpec) -> NodeBase:
-        return cls()
-
-    return _build_class
+_build_node_registry = build_node_registry
 
 
 def _configure_lm(
@@ -326,43 +101,6 @@ def _configure_lm(
             timeout=lm_timeout,
         )
     )
-
-
-#: Parent-IR directory captured during :func:`_build_node_registry` so the
-#: ``subgraph`` short-kind builder can resolve relative ``NodeSpec.spec``
-#: paths without changing every builder signature. Reset to its prior
-#: value on each registry build so nested sub-graphs see their own parent
-#: dir.
-_IR_DIR_VAR: contextvars.ContextVar[Path | None] = contextvars.ContextVar(
-    "_stargraph_ir_dir", default=None
-)
-
-
-def _build_node_registry(
-    nodes: list[NodeSpec],
-    *,
-    ir_dir: Path | None = None,
-) -> dict[str, NodeBase]:
-    """Map ``node_id -> NodeBase`` for every node in ``nodes``.
-
-    Each ``NodeSpec.kind`` is resolved via :func:`_resolve_node_factory`
-    and the resulting builder is invoked with the full :class:`NodeSpec`
-    so :attr:`NodeSpec.config` flows into per-node constructors
-    (broker/ml/write_artifact/interrupt configs).
-
-    ``ir_dir`` is the directory of the IR being built, captured in
-    :data:`_IR_DIR_VAR` so :func:`_build_subgraph` can resolve relative
-    sub-IR ``NodeSpec.spec`` paths against it.
-    """
-    token = _IR_DIR_VAR.set(ir_dir)
-    try:
-        registry: dict[str, NodeBase] = {}
-        for node in nodes:
-            builder = _resolve_node_factory(node.kind)
-            registry[node.id] = builder(node)
-        return registry
-    finally:
-        _IR_DIR_VAR.reset(token)
 
 
 def _build_audit_sink(log_file: Path) -> AuditSink:
@@ -591,7 +329,12 @@ def cmd(
     else:
         initial_values = parse_inputs(inputs or [], ir.state_schema)
     initial_state = g.state_schema(**initial_values)
-    node_registry = _build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())
+    try:
+        node_registry = build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())
+    except StargraphError as e:
+        # Registry failures are graph-authoring mistakes (unknown kind, bad
+        # module ref, missing sub-IR) — surface them as parameter errors.
+        raise typer.BadParameter(str(e)) from e
     run = GraphRun(
         run_id=run_id,
         graph=g,

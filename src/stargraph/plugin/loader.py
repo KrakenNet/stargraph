@@ -54,6 +54,7 @@ GROUPS: tuple[str, ...] = (
     "stargraph.packs",
     "stargraph.triggers",
     "stargraph.mcp_adapters",
+    "stargraph.nodes",
 )
 """Entry-point groups discovered by the Stargraph plugin loader."""
 

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 __all__ = [
     "BosunAction",
     "MCPAdapterSpec",
+    "NodeKindSpec",
     "PackSpec",
     "PluginManager",
     "Route",
@@ -130,6 +131,32 @@ class PackSpec:
 # starlette type lands when the serve module's FastAPI dep is
 # unconditional.
 type Route = Any
+
+
+@dataclass(slots=True, frozen=True)
+class NodeKindSpec:
+    """Plugin-contributed node kind for the graph-build registry.
+
+    A plugin's ``register_nodes()`` hook returns a list of these;
+    :func:`stargraph.nodes.registry.install_plugin_node_kinds` merges
+    them into the short-kind table so IR YAML can reference the kind
+    directly (``kind: my_plugin_kind``) instead of a
+    ``module.path:ClassName`` ref.
+
+    ``builder`` is called with the full :class:`stargraph.ir.NodeSpec`
+    and must return a constructed
+    :class:`~stargraph.nodes.base.NodeBase` — the same contract as the
+    built-in short-kind builders, so ``NodeSpec.config`` flows into the
+    plugin node's constructor however the plugin chooses.
+    """
+
+    kind: str
+    """Short kind name as referenced from IR YAML. Collisions with an
+    already-registered kind raise ``PluginLoadError`` at install time."""
+
+    builder: Any
+    """``Callable[[NodeSpec], NodeBase]`` — typed loosely to keep this
+    module import-light (NodeBase drags the runtime event types)."""
 
 
 @dataclass(slots=True, frozen=True)
