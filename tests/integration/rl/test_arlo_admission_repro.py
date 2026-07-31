@@ -17,13 +17,19 @@ unless the heavy deps are importable and the ARLO checkout + assets exist;
 point ``ARLO_DIR`` at a checkout to run it elsewhere. ARLO is a plain package
 directory (its pyproject pins local path deps that don't resolve outside its
 own workspace), so the checkout root is added to ``sys.path`` rather than
-pip-installed -- the assets stay OUTSIDE this repo and nothing binary is
-committed.
+pip-installed -- along with the sibling ``starcult`` checkout it pins the same
+way, since ARLO's receipt minting imports it. The assets stay OUTSIDE this repo
+and nothing binary is committed.
 
 Run it from the repo root with the rl-extra environment, e.g.::
 
     UV_PROJECT_ENVIRONMENT=/tmp/venv-rl uv sync --group dev --extra rl
+    VIRTUAL_ENV=/tmp/venv-rl uv pip install -e ~/leagues/nautilus
     /tmp/venv-rl/bin/python -m pytest tests/integration/rl/ -o addopts="" --runslow
+
+ARLO's read door is brokered, so the environment needs the Nautilus checkout its
+policy was written against (the published wheel predates adapter-declared source
+types and rejects the config).
 """
 
 from __future__ import annotations
@@ -52,9 +58,11 @@ pytest.importorskip("gymnasium")
 pytest.importorskip("torch")
 pytest.importorskip("stable_baselines3")
 
-if _ARLO_DIR.is_dir() and str(_ARLO_DIR) not in sys.path:
-    sys.path.insert(0, str(_ARLO_DIR))
+for _mount in (_ARLO_DIR, Path(os.environ.get("STARCULT_DIR", _ARLO_DIR.parent / "starcult"))):
+    if _mount.is_dir() and str(_mount) not in sys.path:
+        sys.path.insert(0, str(_mount))
 pytest.importorskip("arlo.config", reason=f"no importable arlo package under {_ARLO_DIR}")
+pytest.importorskip("starcult", reason="no importable starcult sibling (set STARCULT_DIR)")
 
 pytestmark = [
     pytest.mark.integration,
@@ -64,6 +72,21 @@ pytestmark = [
         reason=f"ARLO assets missing under {_ARLO_DIR} (set ARLO_DIR)",
     ),
 ]
+
+
+def load_events(dataset_path: Path) -> list[Any]:
+    """Adapt ARLO's only read door to the loader contract (``callable(Path)``).
+
+    ARLO opens no dataset file directly: every read goes through one Nautilus
+    broker call whose JWS attestation is verified before the rows are handed
+    back. The mount therefore exercises the same governed data plane the ARLO
+    admission run does, under the same purpose and agent identity.
+    """
+    from arlo.data.broker_read import read_events
+    from arlo.gauntlet.run_admission import AGENT_ID, PURPOSE
+
+    events: list[Any] = read_events(dataset_path, purpose=PURPOSE, agent_id=AGENT_ID).events
+    return events
 
 
 def make_family(candidate: Any, cfg: dict[str, Any]) -> list[Any]:
@@ -91,7 +114,7 @@ def test_eval_graph_reproduces_ppo_v4_refusal(tmp_path: Path) -> None:
     for pair in (
         f"dataset_path={_DATASET}",
         f"model_dir={_MODEL_DIR}",
-        "events_loader=arlo.envs.scenario_gen:replay",
+        "events_loader=tests.integration.rl.test_arlo_admission_repro:load_events",
         "expert_cfg_loader=arlo.config:load_expert_cfg",
         "env_factory=arlo.envs.ca_event_env:CaEventEnv",
         "gate_backend=arlo.envs.backends.j2mc",
@@ -155,14 +178,13 @@ def test_mpc_planner_node_on_held_out_conjunction() -> None:
     import asyncio
 
     from arlo.config import load_expert_cfg
-    from arlo.envs.scenario_gen import replay
     from pydantic import BaseModel
 
     from stargraph.rl.gauntlet import three_way
     from stargraph.rl.planners import PlannerNode
 
     cfg = load_expert_cfg()
-    events = replay(_DATASET)
+    events = load_events(_DATASET)
     split = three_way(events)
     by_id = {e["event_id"]: e for e in events}
     deploy = [by_id[i] for i in split.deploy]
