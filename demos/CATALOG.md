@@ -1,8 +1,7 @@
 # Demo Catalog
 
-A backlog of demos to build across Railyard's primitive types. Each subfolder
-has its own focused catalog (`agents/CATALOG.md`, `tools/CATALOG.md`, etc.);
-this file is the master index.
+A backlog of demos to build across Railyard's primitive types. This is a
+single inline index of all demos.
 
 - **Generic** entries are broadly reusable, off-the-shelf primitives — the
   kind every Railyard deployment will want available.
@@ -15,7 +14,7 @@ when promoted into their own folder.
 
 ---
 
-## Tools — see [`tools/CATALOG.md`](tools/CATALOG.md)
+## Tools
 
 ### Generic
 
@@ -41,7 +40,7 @@ when promoted into their own folder.
 
 ---
 
-## Agents — see [`agents/CATALOG.md`](agents/CATALOG.md)
+## Agents
 
 ### Generic
 
@@ -81,7 +80,7 @@ when promoted into their own folder.
 
 ---
 
-## Workflows — see [`flows/CATALOG.md`](flows/CATALOG.md)
+## Workflows
 
 Existing flow demos: `code-graph/`.
 
@@ -123,7 +122,7 @@ Existing flow demos: `code-graph/`.
 
 ---
 
-## Machine Learning — see [`machine-learning/CATALOG.md`](machine-learning/CATALOG.md)
+## Machine Learning
 
 ### Generic
 

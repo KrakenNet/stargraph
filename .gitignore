@@ -52,3 +52,9 @@ live-watcher-2.png
 live-watcher-done.png
 TODO.md
 demos/code-graph/ISSUE_DRAFT.md
+
+### internal cruft (kept local, not shipped) ###
+AGENTS.md
+CLAUDE.md
+scripts/rename_to_stargraph.sh
+demos/soc-triage/bosun-packs/keys/dev_signing_key.pem

@@ -81,7 +81,7 @@ demos/everything-demo/
 ### Structural smoke
 
 ```bash
-cd /home/sean/leagues/stargraph
+cd /path/to/stargraph
 uv run pytest demos/everything-demo/graph/tests/ -v
 ```
 

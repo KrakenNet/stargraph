@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/KrakenNet/stargraph/compare/v0.5.2...v0.5.3) (2026-06-25)
+
+
+### Documentation
+
+* add per-member docstrings to ReplayPolicy ([#157](https://github.com/KrakenNet/stargraph/issues/157)) ([085e0e1](https://github.com/KrakenNet/stargraph/commit/085e0e1e9e465d18c7ea83b262bcf2bdd07daebf)), closes [#140](https://github.com/KrakenNet/stargraph/issues/140)
+
 ## [0.5.2](https://github.com/KrakenNet/stargraph/compare/v0.5.1...v0.5.2) (2026-06-24)
 
 

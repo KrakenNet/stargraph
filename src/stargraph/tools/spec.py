@@ -36,5 +36,15 @@ class ReplayPolicy(StrEnum):
     """Tool replay policy (FR-33, FR-21, NFR-8, design 3.4.2)."""
 
     must_stub = "must-stub"
+    """Replay must hit a recorded cassette. Re-running mutates the world;
+    not stubbing is a hard error.  Default for ``write`` / ``external``
+    side-effects (decorator.py NFR-8)."""
+
     fail_loud = "fail-loud"
+    """No cassette exists and re-execution is disallowed.  Replay raises so
+    the operator sees the gap.  Used for tools where silent re-execution
+    would be unsafe or produce nondeterministic results."""
+
     recorded_result = "recorded-result"
+    """Prefer the recorded cassette but fall back to re-execution if absent.
+    Only safe for ``none`` / ``read`` side-effects (decorator.py NFR-8)."""

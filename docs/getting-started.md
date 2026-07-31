@@ -45,7 +45,7 @@ Stargraph ships a minimal two-node fixture — `node_a` (echo) transitions to
 anywhere the package is installed. From a checkout of the repository:
 
 ```bash
-uv run stargraph run tests/fixtures/sample-graph.yaml
+uv run stargraph run examples/hello.yaml
 ```
 
 ```text

@@ -20,20 +20,20 @@ Two governance packs, both **Ed25519/JWS-signed** with stargraph's real
 Each firing asserts a `soc.policy.action` fact; the graph's `stargraph.yaml` routing
 rules read those (`interrupt` / `escalate`) to drive the `analyst_gate` HITL branch.
 
-## Signing — COMMITTED dev key (demo only)
+## Signing — dev key (demo only)
 
 ```
 keys/
-  dev_signing_key.pem        <-- Ed25519 PKCS8 PRIVATE key, COMMITTED on purpose
+  dev_signing_key.pem        <-- Ed25519 PKCS8 PRIVATE key (gitignored — local only, not shipped)
   dev-soc-<8hex>.pub.pem      <-- matching public key
 ```
 
 > ⚠️ **DEMO-ONLY KEY — DO NOT USE IN PRODUCTION.**
-> `keys/dev_signing_key.pem` is a committed private signing key. This is a
-> deliberate, resolved design decision (`specs/all-demo-ui` task 1.31):
-> **reproducibility over secrecy** — anyone who checks out this repo can re-sign
-> and re-verify the packs deterministically. In production, Bosun packs are signed
-> with a key held in a KMS/HSM and only the `<key_id>.pub.pem` sidecar ships.
+> `keys/dev_signing_key.pem` is a dev-only private signing key and is **not
+> shipped** (gitignored). Only the `<key_id>.pub.pem` sidecar and `manifest.jwt`
+> are committed, so `verify_pack` works on a fresh checkout. To re-sign the packs,
+> generate your own key. In production, Bosun packs are signed with a key held in
+> a KMS/HSM and only the `<key_id>.pub.pem` sidecar ships.
 
 Each pack dir also carries the TOFU sidecar `<key_id>.pub.pem` (read by
 `verify_pack`) and the detached `manifest.jwt` (compact EdDSA-JWT over the pack

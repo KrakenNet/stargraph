@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stargraph"
-version = "0.5.2"
+version = "0.5.3"
 description = "Stateful agent-graph framework with deterministic governance: rules route transitions, not the LLM. Auditable, replayable — built on Fathom."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -101,7 +101,7 @@ stores = [
 ]
 sdw = [
     "ultralytics>=8.3",  # 8.3+ includes YOLO11 model architecture despite 8.x version numbering
-    "torch>=2.0",
+    "torch>=2.1",
     "torchvision>=0.15",
     "rasterio>=1.3",
     "geopandas>=0.14",
@@ -146,9 +146,9 @@ rl = [
 ]
 
 [project.urls]
-Homepage = "https://krakennet.github.io/stargraph"
+Homepage = "https://krakn.ai"
 Repository = "https://github.com/KrakenNet/stargraph"
-Documentation = "https://krakennet.github.io/stargraph"
+Documentation = "https://stargraph.krakn.ai"
 Changelog = "https://github.com/KrakenNet/stargraph/blob/main/CHANGELOG.md"
 Issues = "https://github.com/KrakenNet/stargraph/issues"
 
@@ -243,6 +243,11 @@ release = [
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
+[tool.uv]
+# Transitive security floor: litellm reaches Dependabot-patched 1.84.0
+# (pulled in via dspy). Remove once dspy's pin moves past it.
+constraint-dependencies = ["litellm>=1.84.0"]
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu" }]
