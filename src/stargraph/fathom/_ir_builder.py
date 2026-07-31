@@ -95,6 +95,18 @@ def _defrule(rule: RuleSpec) -> str | None:
     return f"(defrule {rule.id} {rule.when} => {' '.join(rhs)})"
 
 
+def _clips_name(template: str) -> str:
+    """CLIPS-safe encoding of a dotted fact name (``stargraph.tool-call``
+    -> ``stargraph-tool-call``).
+
+    Fathom restricts template identifiers to ``[A-Za-z_][A-Za-z0-9_-]*``,
+    so the dotted names of the documented fact vocabulary cannot register
+    verbatim. The routing engine stores and asserts them dot-mangled;
+    rule ``when`` patterns must use the mangled spelling.
+    """
+    return template.replace(".", "-")
+
+
 class _IRRoutingFathom(FathomAdapter):
     """Assert the current node-id fact per tick; retract stale routing facts."""
 
@@ -102,12 +114,22 @@ class _IRRoutingFathom(FathomAdapter):
         super().__init__(engine)
         self._mirror_templates = mirror_templates
 
+    def assert_with_provenance(
+        self,
+        template: str,
+        slots: dict[str, Any],
+        provenance: Any,
+    ) -> None:
+        # Runtime emitters (``runtime.tool_exec``) use the documented dotted
+        # names; translate to the registered CLIPS-safe spelling.
+        super().assert_with_provenance(_clips_name(template), slots, provenance)
+
     def mirror_state(
         self, state: BaseModel, annotations: dict[str, Any]
     ) -> list[fathom.AssertSpec]:
         self.engine.retract("node-id")
         for template in self._mirror_templates:
-            self.engine.retract(template)
+            self.engine.retract(_clips_name(template))
         self.engine.assert_fact("node-id", {"id": str(annotations.get("node_id", ""))})
         return super().mirror_state(state, annotations)
 
@@ -137,8 +159,40 @@ def build_ir_routing(ir: IRDocument, state_cls: type[BaseModel]) -> FathomAdapte
                 {"name": "reason", "type": "string"},
             ],
         },
+        # Tool-execution runtime vocabulary (design §3.4.4 steps 4/8/9):
+        # ``runtime.tool_exec`` emits these through the adapter for every
+        # ``kind: tool`` node, so the routing engine must know the shapes
+        # even when no rule matches them. Registered dot-mangled (see
+        # :func:`_clips_name`); rules match e.g. ``(stargraph-tool-result ...)``.
+        {
+            "name": _clips_name("stargraph.tool-call"),
+            "slots": [
+                {"name": "tool_id", "type": "string"},
+                {"name": "args_count", "type": "integer"},
+                *prov_slots,
+            ],
+        },
+        {
+            "name": _clips_name("stargraph.tool-result"),
+            "slots": [
+                {"name": "tool_id", "type": "string"},
+                {"name": "fields", "type": "integer"},
+                *prov_slots,
+            ],
+        },
+        {
+            "name": _clips_name("stargraph.tokens-used"),
+            "slots": [
+                {"name": "tool_id", "type": "string"},
+                {"name": "total", "type": "integer"},
+                *prov_slots,
+            ],
+        },
         *(
-            {"name": template, "slots": [{"name": "value", "type": "string"}, *prov_slots]}
+            {
+                "name": _clips_name(template),
+                "slots": [{"name": "value", "type": "string"}, *prov_slots],
+            }
             for template in mirror_templates
         ),
     ]

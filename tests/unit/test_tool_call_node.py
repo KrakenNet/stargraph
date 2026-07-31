@@ -75,6 +75,7 @@ class _RecordingFathom:
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.provenances: list[dict[str, Any]] = []
 
     def assert_with_provenance(
         self,
@@ -82,8 +83,8 @@ class _RecordingFathom:
         slots: dict[str, Any],
         provenance: dict[str, Any],
     ) -> None:
-        del provenance
         self.calls.append((template, dict(slots)))
+        self.provenances.append(dict(provenance))
 
 
 class _State(BaseModel):
@@ -105,13 +106,19 @@ def _ctx(
     registry: ToolRegistry | None,
     fathom: _RecordingFathom | None = None,
     capabilities: Any = None,
+    step: int = 0,
+    is_replay: bool = False,
+    tool_cassette: Any = None,
 ) -> Any:
     graph = None if registry is None else SimpleNamespace(registry=registry)
     return SimpleNamespace(
         run_id="run-tool-call",
+        step=step,
         graph=graph,
         fathom=fathom,
         capabilities=capabilities,
+        is_replay=is_replay,
+        tool_cassette=tool_cassette,
     )
 
 
@@ -232,3 +239,43 @@ def test_execute_missing_state_field_fails_loud() -> None:
     node = _node(tool="test.greet@1", inputs={"name": "no_such_field"})
     with pytest.raises(StargraphRuntimeError, match="no_such_field"):
         _run(node.execute(_State(), _ctx(registry=_registry())))
+
+
+@pytest.mark.unit
+def test_execute_rejects_context_missing_tool_call_surface() -> None:
+    """A context without step/is_replay fails loud -- never silent defaults."""
+    node = _node(tool="test.greet@1")
+    bare: Any = SimpleNamespace(run_id="r1", graph=SimpleNamespace(registry=_registry()))
+    with pytest.raises(AttributeError, match="is_replay"):
+        _run(node.execute(_State(), bare))
+
+
+@pytest.mark.unit
+def test_execute_stamps_true_step_into_provenance() -> None:
+    """The run's tick index -- not a default 0 -- reaches the provenance bundle."""
+    fathom = _RecordingFathom()
+    node = _node(tool="test.greet@1", inputs={"name": "user_name"})
+    _run(node.execute(_State(), _ctx(registry=_registry(), fathom=fathom, step=7)))
+    assert fathom.provenances and all(p["step"] == 7 for p in fathom.provenances)
+
+
+@pytest.mark.unit
+def test_execute_replay_must_stub_reads_tool_cassette() -> None:
+    """is_replay + write-side-effect tool routes to the cassette, not the body."""
+    from stargraph.security.capabilities import Capabilities, CapabilityClaim
+
+    class _Cassette:
+        def get(self, tool_id: str, args: dict[str, Any]) -> dict[str, Any] | None:
+            del tool_id, args
+            return {"ok": False}
+
+    caps = Capabilities(granted={CapabilityClaim(name="fs.write", scope="/data/*")})  # pyright: ignore[reportUnhashable]
+    node = _node(tool="test.locked@1")
+    ctx = _ctx(
+        registry=_registry(),
+        capabilities=caps,
+        is_replay=True,
+        tool_cassette=_Cassette(),
+    )
+    out = _run(node.execute(_State(), ctx))
+    assert out == {"tool_result": {"ok": False}}

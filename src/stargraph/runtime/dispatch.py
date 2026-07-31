@@ -55,14 +55,16 @@ async def dispatch_node(
     # ``pre_state`` so the reproducer re-runs the node from the same input.
     entry_state = state
 
-    # 1. Run node body. Stamp the current node id on the run so
+    # 1. Run node body. Stamp the current node id + step on the run so
     # write-side-effect nodes can key the per-node cassette by
-    # ``(node_id, step)`` (design §10.3). Cleared in ``finally`` so the
-    # id never leaks across ticks.
+    # ``(node_id, step)`` (design §10.3) and tool provenance facts carry
+    # the true tick index. The id is cleared in ``finally`` so it never
+    # leaks across ticks; ``step`` is re-stamped before every body.
     node_impl = run.node_registry.get(current_id)
     if node_impl is None:
         raise KeyError(f"no node implementation registered for id={current_id!r}")
     run.node_id = current_id
+    run.step = step
     try:
         outputs = await node_impl.execute(state, run)
     finally:

@@ -16,7 +16,7 @@ without a registry wired; running one without a registry fails loudly.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -27,7 +27,27 @@ from stargraph.runtime.tool_exec import RunContext, execute_tool
 if TYPE_CHECKING:
     from pydantic import BaseModel as PydanticState
 
-__all__ = ["ToolCallNode", "ToolCallNodeConfig"]
+__all__ = ["ToolCallContext", "ToolCallNode", "ToolCallNodeConfig"]
+
+
+@runtime_checkable
+class ToolCallContext(Protocol):
+    """Structural surface :class:`ToolCallNode` reads from the run context.
+
+    Mirrors the :class:`~stargraph.nodes.artifacts.write_artifact_node.WriteArtifactContext`
+    convention: the fields tool execution depends on are *required*, so a
+    context that lacks them fails loudly instead of silently defaulting
+    (a defaulted ``step`` would stamp every provenance fact with ``0``;
+    a defaulted ``is_replay`` would route replay around the must-stub
+    gate). ``GraphRun`` provides all of them; ``dispatch_node`` stamps
+    ``step`` before each node body.
+    """
+
+    run_id: str
+    step: int
+    capabilities: Any
+    fathom: Any
+    is_replay: bool
 
 
 class ToolCallNodeConfig(BaseModel):
@@ -71,9 +91,16 @@ class ToolCallNode(NodeBase):
         state: PydanticState,
         ctx: ExecutionContext,
     ) -> dict[str, Any]:
-        # ``ExecutionContext`` is the minimal protocol; the live driver
-        # passes the concrete ``GraphRun``, which carries graph/capabilities/
-        # fathom. Read structurally so standalone contexts stay usable.
+        # The Phase-1 ``ExecutionContext`` Protocol only pins ``run_id``;
+        # narrow to the tool-call surface loudly (never silent defaults --
+        # a wrong-but-plausible ``step=0``/``is_replay=False`` corrupts
+        # provenance and skips replay routing).
+        if not isinstance(ctx, ToolCallContext):
+            raise AttributeError(
+                "ToolCallNode requires an execution context with `run_id`, "
+                "`step`, `capabilities`, `fathom`, and `is_replay` "
+                "(GraphRun provides these); got " + type(ctx).__name__
+            )
         run: Any = ctx
         registry: Any = getattr(getattr(run, "graph", None), "registry", None)
         if registry is None:
@@ -94,13 +121,16 @@ class ToolCallNode(NodeBase):
                 )
             args[arg] = getattr(state, field_name)
 
+        # ``tool_cassette`` is the args-keyed CassetteStore for tool replay
+        # (distinct from the ``(node_id, step)``-keyed ``node_cassette``);
+        # optional because live runs never consult it.
         run_ctx = RunContext(
-            run_id=getattr(run, "run_id", "") or "unknown-run",
-            step=int(getattr(run, "step", 0) or 0),
-            capabilities=getattr(run, "capabilities", None),
-            fathom=getattr(run, "fathom", None),
-            is_replay=bool(getattr(run, "is_replay", False)),
-            cassette=getattr(run, "cassette", None),
+            run_id=ctx.run_id,
+            step=ctx.step,
+            capabilities=ctx.capabilities,
+            fathom=ctx.fathom,
+            is_replay=ctx.is_replay,
+            cassette=getattr(run, "tool_cassette", None),
         )
         result = await execute_tool(tool, args, run_ctx=run_ctx)
         return {self.config.out: result.output}
