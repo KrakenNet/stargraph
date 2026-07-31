@@ -184,6 +184,14 @@ def _build_subgraph(spec: NodeSpec) -> NodeBase:
     wrapped in a :class:`SubGraphNode` keyed on the parent
     ``NodeSpec.id``.
 
+    When the child IR has live-routable rules, they compile via
+    :func:`stargraph.fathom.build_ir_routing` into a child-owned Fathom
+    engine and the node runs in rule-routed mode (internal loops);
+    ``NodeSpec.config`` then validates as
+    :class:`~stargraph.nodes.subgraph.SubGraphNodeConfig` (input/output
+    projection maps + ``max_steps``). Config on a rule-less child is an
+    IR error -- projection without routing is dead wiring.
+
     Empty / missing ``spec`` falls back to :class:`EchoNode` so legacy
     IRs (no sub-IR yet) still validate and walk.
     """
@@ -208,9 +216,37 @@ def _build_subgraph(spec: NodeSpec) -> NodeBase:
     sub_registry = build_node_registry(sub_ir.nodes, ir_dir=sub_path.parent)
     children = [sub_registry[n.id] for n in sub_ir.nodes]
 
-    from stargraph.nodes.subgraph import SubGraphNode
+    from pydantic import ValidationError as PydanticValidationError
 
-    return SubGraphNode(subgraph_id=spec.id, children=children)
+    from stargraph.nodes.subgraph import SubGraphNode, SubGraphNodeConfig
+
+    try:
+        cfg = SubGraphNodeConfig.model_validate(spec.config)
+    except PydanticValidationError as e:
+        raise IRValidationError(f"subgraph node {spec.id!r}: invalid config: {e}") from e
+
+    from stargraph.fathom import build_ir_routing
+    from stargraph.graph.definition import Graph
+
+    sub_graph = Graph(sub_ir)
+    child_fathom = build_ir_routing(sub_ir, sub_graph.state_schema)
+    if child_fathom is None:
+        if spec.config:
+            raise IRValidationError(
+                f"subgraph node {spec.id!r}: config (inputs/outputs/max_steps) "
+                f"requires a child IR with live-routable rules; {sub_path.name} "
+                "has none"
+            )
+        return SubGraphNode(subgraph_id=spec.id, children=children)
+    return SubGraphNode(
+        subgraph_id=spec.id,
+        children=children,
+        child_ir=sub_ir,
+        child_nodes=sub_registry,
+        child_state_cls=sub_graph.state_schema,
+        child_fathom=child_fathom,
+        config=cfg,
+    )
 
 
 def _build_tool(spec: NodeSpec) -> NodeBase:

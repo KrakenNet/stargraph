@@ -46,6 +46,13 @@ serve, replay. Strictly typed (pyright `strict`), Apache-2.0.
   `kind: code` (`nodes/code.py`) generates a script with CoT then runs it via
   `std.python_exec@1` through the same pipeline; emits
   `code`/`run_result`/`verdict`.
+- `kind: subgraph` (`nodes/subgraph.py`) has two modes: sequential (rule-less
+  child IR, each child once in order) and rule-routed (child IR rules compile
+  via `build_ir_routing` into a child-owned Fathom engine; internal
+  goto/halt/continue loops bounded by `config.max_steps`). State crosses the
+  boundary only by projection (`SubGraphNodeConfig.inputs`/`outputs` maps,
+  else shared field names); `interrupt`/`parallel` inside a subgraph fail
+  loudly (v1). Child events keep parent `run_id`, `branch_id = subgraph id`.
 - Adding a built-in tool: `@tool` decorator + append its `module:attr` ref to
   `_BUILTIN_TOOL_REFS` in `tools/builtin.py` (in-process seeding; the core dist
   has NO `stargraph.tools` entry-points — that pipeline is for external plugin
