@@ -1,20 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Collision-avoidance burn-option geometry, ported from ARLO.
+"""Collision-avoidance burn-option geometry, ported from the upstream pipeline.
 
 Sources (math intentionally IDENTICAL; imports/typing adapted only):
 
-* ``arlo/data/cdm_schema.py`` -- ``tri21_to_matrix`` / ``combined_pos_cov`` /
+* the upstream CDM schema -- ``tri21_to_matrix`` / ``combined_pos_cov`` /
   ``PC_FLOOR`` (CCSDS 508 CDM covariance conventions).
-* ``arlo/envs/pc.py`` -- Foster-style encounter-plane Pc by vectorized polar
-  quadrature.
-* ``arlo/envs/backends/kepler.py`` -- closed-form Clohessy-Wiltshire
+* the upstream Pc module -- Foster-style encounter-plane Pc by vectorized
+  polar quadrature.
+* the upstream Kepler backend -- closed-form Clohessy-Wiltshire
   along-track impulse response + the post/pre Pc *ratio* convention (judged
   outcomes apply the geometric ratio to the recorded operational Pc;
   reconstructed absolute Pc runs ~1.2 dex hot on Kelvins, ratios transfer).
 
 This module carries the F0 (training-toolchain-side) geometry the reference
 MPC planner reasons with. It is deliberately NOT an evaluator: admission /
-shield judgments stay with an independent backend (ARLO's toolchain split).
+shield judgments stay with an independent backend (the upstream toolchain split).
 
 numpy-only; ships under the ``rl`` extra surface (imported lazily via the
 planner entry point, never at ``stargraph.rl`` import time).

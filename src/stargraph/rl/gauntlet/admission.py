@@ -4,12 +4,13 @@ the evaluator toolchain. Refusal reasons are explicit; default is refusal.
 When a config family is supplied, CSCV-PBO must clear the bar too -- a lone
 winning config with overfit siblings is how backtest overfitting sneaks in.
 
-Ported from ARLO (``arlo/gauntlet/admission.py``); the toolchain check, the
-Pareto criterion, the shared-rollout PBO stream and ``PBO_MAX`` are
-intentionally IDENTICAL -- this gate produced the ppo-v4 REFUSED verdict.
-Adaptations: imports/typing; ``backend`` lost its ARLO-local ``j2mc`` default
-and is now a required keyword (Stargraph ships no toolchain of its own); the
-``env_factory`` seam is threaded through.
+Ported from the upstream collision-avoidance governed-RL pipeline; the
+toolchain check, the Pareto criterion, the shared-rollout PBO stream and
+``PBO_MAX`` are intentionally IDENTICAL to the upstream implementation --
+this gate produced the ppo-v4 REFUSED verdict. Adaptations: imports/typing;
+``backend`` lost its upstream-local ``j2mc`` default and is now a required
+keyword (Stargraph ships no toolchain of its own); the ``env_factory`` seam
+is threaded through.
 """
 
 from __future__ import annotations

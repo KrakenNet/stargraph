@@ -5,7 +5,7 @@ Stations are driven directly (``await station.execute(state, ctx)``) against
 the deterministic doubles in :mod:`tests.fixtures.rl_doubles`; the rule-routed
 end-to-end run of ``eval-graph.yaml`` lives in
 ``tests/integration/rl/test_eval_graph.py``. The invariants pinned here are
-the ARLO postures the port must keep: default = refusal, evaluation failures
+the upstream postures the port must keep: default = refusal, evaluation failures
 fail CLOSED (a verdict, never a silent pass), misconfiguration fails LOUD
 (:class:`~stargraph.errors.RLNodeError`), and the gate binds the candidate's
 train-split sha to its OWN re-derived split.
@@ -197,7 +197,7 @@ async def test_gate_binds_split_sha_and_refuses_mismatch(tmp_path: Path) -> None
 @pytest.mark.asyncio
 async def test_gate_accepts_sha_recorded_by_its_own_trainer(tmp_path: Path) -> None:
     # trainer_double records the canonical train-partition sha, exactly like
-    # ARLO's trainer; the gate re-derives the split and must agree.
+    # the upstream trainer; the gate re-derives the split and must agree.
     model_dir = tmp_path / "model"
     await TrainStation().execute(
         _state(model_dir=str(model_dir), trainer=f"{_DBL}:trainer_double"), _Ctx()

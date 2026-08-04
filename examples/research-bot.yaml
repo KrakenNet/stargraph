@@ -24,4 +24,8 @@ nodes:
     input: answer
     rubric: "Fully answers the question with specific, sourced facts."
 routes:
+  # Total by contract: a judge node emits exactly "pass" or "fail" -- it
+  # normalizes case/whitespace and fails the run loudly on anything else,
+  # so no third verdict can leave this route unmatched. fail -> regenerate
+  # the brief with the judge's rationale folded in; pass -> halt.
   judge: {fail: brief, pass: done}

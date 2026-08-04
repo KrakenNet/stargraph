@@ -3,9 +3,9 @@
 cut at cumulative fractions -- train strictly precedes admission strictly
 precedes deploy on the timeline.
 
-Ported from ARLO (``arlo/gauntlet/splits.py``), itself a port of the fund's
-holdout discipline (``seat._build_train_csv holdout_levels=2``) re-expressed
-over events. The split arithmetic is intentionally IDENTICAL to ARLO's --
+Ported from the upstream collision-avoidance governed-RL pipeline, itself a
+port of the fund's holdout discipline (``holdout_levels=2``) re-expressed
+over events. The split arithmetic is intentionally IDENTICAL to upstream's --
 these cuts define the partitions behind the ppo-v4 admission verdict; only
 imports and typing were adapted.
 

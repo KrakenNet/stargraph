@@ -3,7 +3,7 @@
 
 ``load_planner`` resolves through the real installed ``stargraph.planners``
 entry-point group (the package registers ``mpc-ca-burn``); the planner's
-geometry is the ARLO port, so the assertions here pin *decision structure*
+geometry is the upstream port, so the assertions here pin *decision structure*
 (fuel-minimality, encoding round-trip, hold-out honesty) on a hand-checkable
 synthetic event, not re-derived orbital numbers.
 """
@@ -40,7 +40,7 @@ def _tri21(diag: float) -> list[float]:
 
 
 def _event(budget: float = 5.0, reserve: float = 0.5) -> dict[str, Any]:
-    """One event, 3 CDMs, ARLO CDM-schema geometry chosen to be hand-checkable.
+    """One event, 3 CDMs, upstream CDM-schema geometry chosen to be hand-checkable.
 
     50 m along-track miss with sigma = 20 m per axis (200 m^2 per object,
     combined 400): recorded operational pc 3e-3 sits ~2.5 sigma out, and any
@@ -80,8 +80,8 @@ def test_load_planner_unknown_name_lists_available() -> None:
 # -- action encoding -------------------------------------------------------
 
 
-def test_encode_action_is_inverse_of_arlo_decode() -> None:
-    # ARLO decode_action: 1..K = +1 over bins, K+1..2K = -1 over bins.
+def test_encode_action_is_inverse_of_upstream_decode() -> None:
+    # Upstream decode_action: 1..K = +1 over bins, K+1..2K = -1 over bins.
     n_bins = 4
     assert encode_action(1, 0, n_bins) == 1
     assert encode_action(1, 3, n_bins) == 4

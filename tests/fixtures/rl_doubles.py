@@ -37,7 +37,7 @@ DV_BINS = [0.1, 0.2, 0.3]  # action 1 / 2 / 3
 
 
 def make_events(n: int = N_EVENTS) -> list[dict[str, Any]]:
-    """Deterministic event list (timeline-ordered, ARLO-shaped)."""
+    """Deterministic event list (timeline-ordered, upstream-shaped)."""
     events: list[dict[str, Any]] = []
     for i in range(n):
         hot = i % HOT_EVERY == 0
@@ -228,7 +228,7 @@ def make_family(candidate: Any, cfg: dict[str, Any]) -> list[Any]:
 def trainer_double(
     train_events: list[dict[str, Any]], cfg: dict[str, Any], model_dir: Path, timesteps: int
 ) -> None:
-    """TrainStation double: records the canonical train-split sha like ARLO's trainer."""
+    """TrainStation double: records the canonical train-split sha like the upstream trainer."""
     del cfg, timesteps
     model_dir.mkdir(parents=True, exist_ok=True)
     sha = hashlib.sha256(json.dumps(train_events, sort_keys=True).encode()).hexdigest()
@@ -245,7 +245,7 @@ def trainer_raises(
     raise RuntimeError("gpu on fire")
 
 
-# -- shield double (arlo-style rule dataclasses, evaluated deterministically) --
+# -- shield double (upstream-style rule dataclasses, evaluated deterministically) --
 
 
 @dataclass
@@ -256,7 +256,7 @@ class DoubleShieldVerdict:
 
 
 class DoubleShield:
-    """Two deterministic gates over the recommendation, ARLO ``ShieldVerdict`` shape."""
+    """Two deterministic gates over the recommendation, upstream ``ShieldVerdict`` shape."""
 
     def __init__(self, cfg: dict[str, Any], backend: Any) -> None:
         self.cfg = cfg

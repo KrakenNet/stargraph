@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """W4 acceptance: real SB3 PPO candidate -> ONNX -> registry -> MLNode inference.
 
-Exercises :func:`stargraph.ml.export.export_sb3_policy` against the trained
-ARLO ``ppo-v4`` candidate (an SB3 ``.zip`` living OUTSIDE this repo -- no
-binary artifacts are committed). Self-skips unless torch, stable-baselines3
-and onnxruntime are importable and the model zip exists; point
-``ARLO_PPO_V4_DIR`` at a directory containing the ``.zip`` to run it
-elsewhere.
+Exercises :func:`stargraph.ml.export.export_sb3_policy` against a real trained
+PPO candidate (an SB3 ``.zip`` living OUTSIDE this repo -- no binary
+artifacts are committed). Self-skips unless torch, stable-baselines3 and
+onnxruntime are importable and the model zip exists; point
+``STARGRAPH_PPO_V4_DIR`` at a directory containing the ``.zip`` to run it.
 
 Covers the full W4 acceptance chain:
 
@@ -39,14 +38,15 @@ pytest.importorskip("onnxruntime")
 
 # pyright: reportMissingImports=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
-_PPO_DIR = Path(os.environ.get("ARLO_PPO_V4_DIR", "~/leagues/arlo/models/ppo-v4")).expanduser()
-_PPO_ZIP = next(iter(_PPO_DIR.glob("*.zip")), None)
+_PPO_DIR_ENV = os.environ.get("STARGRAPH_PPO_V4_DIR")
+_PPO_DIR = Path(_PPO_DIR_ENV).expanduser() if _PPO_DIR_ENV else None
+_PPO_ZIP = next(iter(_PPO_DIR.glob("*.zip")), None) if _PPO_DIR else None
 
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
         _PPO_ZIP is None,
-        reason=f"no SB3 .zip under {_PPO_DIR} (set ARLO_PPO_V4_DIR)",
+        reason="no SB3 .zip found (set STARGRAPH_PPO_V4_DIR to a directory containing one)",
     ),
 ]
 

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``mpc-ca-burn`` -- convex-MPC-style burn-option planner over the ARLO CA problem.
+"""``mpc-ca-burn`` -- convex-MPC-style burn-option planner over the CA burn problem.
 
 The reference :class:`~stargraph.rl.planners.Planner` implementation. The
-burn-option problem (ARLO Area-4 design, which pairs RL with convex
+burn-option problem (the upstream design, which pairs RL with convex
 optimization): given a recorded conjunction event, choose *when* to burn
 (which CDM epoch), *which way* (+/- along-track) and *how hard* (a dv bin)
 to minimize fuel subject to the post-burn collision probability clearing the
@@ -12,9 +12,9 @@ Structure, MPC-style: enumerate the (burn epoch x direction) option lattice;
 per option pick the fuel-minimal admissible impulse -- the objective is
 linear in dv and post-burn Pc is monotone along the CW displacement ray in
 the admissible regime, so the smallest clearing bin on the dv grid is the
-per-option optimum (the same smallest-clearing-bin selection ARLO's ops
+per-option optimum (the same smallest-clearing-bin selection the upstream ops
 baseline uses); rank options by fuel cost. Dynamics and Pc come verbatim
-from the ported ARLO geometry (:mod:`~stargraph.rl.planners._ca_geometry` --
+from the ported geometry (:mod:`~stargraph.rl.planners._ca_geometry` --
 closed-form Clohessy-Wiltshire response + Foster encounter-plane Pc), NOT
 invented here.
 
@@ -25,18 +25,18 @@ Honest scope notes:
   it for burn-option analysis / candidate generation, not as a deployable
   policy.
 * It reasons on the F0 (training-side) geometry; judged outcomes belong to
-  an independent evaluator backend (ARLO toolchain split). Re-score plans
+  an independent evaluator backend (the upstream toolchain split). Re-score plans
   through :class:`~stargraph.rl.planners.PlannerNode`'s ``rollout_ref`` seam
   against the evaluator env for judged rankings.
 
-``observation`` contract: an ARLO-shaped event dict
+``observation`` contract: an upstream-shaped event dict
 (``{"cdms": [...], "ownship": {"dv_budget_ms": ..., "dv_reserve_ms": ...}}``);
 ``context`` must carry ``{"expert_cfg": {...}}`` with ``pc_threshold`` /
 ``dv_bins_ms`` / ``mean_motion_rad_s`` / ``hbr_m``.
 
-Action encoding is ARLO's ``Discrete(1 + 2K)``: ``0`` = hold/advance;
+Action encoding is the upstream ``Discrete(1 + 2K)``: ``0`` = hold/advance;
 ``1..2K`` = burn now, ``+1`` block then ``-1`` block over the dv bins
-(inverse of ``arlo.envs.ca_event_env.decode_action``). A plan is therefore
+(inverse of the upstream env's ``decode_action``). A plan is therefore
 ``[0] * burn_cdm_index + [burn_action]``.
 """
 
@@ -55,7 +55,7 @@ __all__ = ["CaBurnMpcPlanner", "encode_action"]
 
 
 def encode_action(direction: int, bin_index: int, n_bins: int) -> int:
-    """Inverse of ARLO's ``decode_action``: (direction, dv-bin index) -> Discrete id."""
+    """Inverse of the upstream ``decode_action``: (direction, dv-bin index) -> Discrete id."""
     return 1 + (0 if direction == 1 else n_bins) + bin_index
 
 
@@ -91,7 +91,7 @@ class CaBurnMpcPlanner:
             for direction in (1, -1):
                 # Fuel-minimal admissible impulse for this (epoch, direction):
                 # smallest dv bin whose post-burn operational Pc clears the
-                # threshold (cdm.pc * geometric post/pre ratio -- the ARLO
+                # threshold (cdm.pc * geometric post/pre ratio -- the upstream
                 # judge convention).
                 for b_idx, dv in enumerate(bins):
                     if dv > budget:

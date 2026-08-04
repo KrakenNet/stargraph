@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """stargraph.rl -- RL toolkit: env/policy nodes, admission gauntlet, planners (W7).
 
-Promotes the PROVEN machinery of the ARLO governed-RL pipeline
-(``~/leagues/arlo``, the Area-4 collision-avoidance work) into Stargraph as a
-reusable library:
+Promotes the PROVEN machinery of an upstream collision-avoidance governed-RL
+pipeline into Stargraph as a reusable library:
 
 * :class:`~stargraph.rl.envs.GymEnvNode` -- a graph node wrapping a registered
   gymnasium environment (``rl`` extra).
@@ -11,7 +10,7 @@ reusable library:
   ONNX policies published by :func:`stargraph.ml.export.export_sb3_policy`
   (observation -> actions / values / log_prob).
 * :mod:`stargraph.rl.gauntlet` -- the 3-way split discipline, CSCV-PBO, Pareto
-  metrics and the admission gate, ported math-identical from ARLO, plus the
+  metrics and the admission gate, ported math-identical from upstream, plus the
   reference wall -> train -> gate -> shield eval graph.
 * :mod:`stargraph.rl.planners` -- the ``stargraph.planners`` entry-point group,
   the :class:`~stargraph.rl.planners.PlannerNode` contract, and the reference

@@ -15,7 +15,7 @@ learned model's rollout, indistinguishably).
 
 Built-in reference implementation: ``mpc-ca-burn``
 (:class:`stargraph.rl.planners.mpc.CaBurnMpcPlanner`), a convex-MPC-style
-burn-option planner over the ARLO collision-avoidance geometry.
+burn-option planner over the ported collision-avoidance geometry.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ class Planner(Protocol):
     """The ``stargraph.planners`` contract: propose ``k`` candidate action sequences.
 
     ``observation`` is planner-defined (a raw env observation, or a richer
-    record like ARLO's conjunction-event dict); ``context`` carries
+    record like a conjunction-event dict); ``context`` carries
     planner-specific configuration (e.g. ``{"expert_cfg": ...}``). Planners
     must be deterministic in ``(observation, k, context)`` -- stochastic
     search belongs behind a seeded, pinned context knob.

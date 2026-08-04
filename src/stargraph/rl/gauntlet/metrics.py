@@ -4,9 +4,10 @@ improvement if it does no worse on risk AND strictly better on fuel, or
 strictly better on risk at no more fuel. Outcomes are judged by the backend
 passed in -- the gate passes the evaluator toolchain, never the training one.
 
-Ported from ARLO (``arlo/gauntlet/metrics.py``); the aggregation and Pareto
-arithmetic are intentionally IDENTICAL. The single adaptation: ARLO's hard
-``CaEventEnv`` import became the :data:`EnvFactory` seam, so any env honoring
+Ported from the upstream collision-avoidance governed-RL pipeline; the
+aggregation and Pareto arithmetic are intentionally IDENTICAL. The single
+adaptation: the upstream pipeline's hard env import became the
+:data:`EnvFactory` seam, so any env honoring
 the event-episode protocol (gymnasium 5-tuple ``step``, ``reset`` with
 ``options={"scenario_index": i}``, terminal ``info`` carrying ``pc_post`` /
 ``pc_noaction`` / ``maneuvered`` / ``dv_spent_ms``) plugs in.
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class EventPolicy(Protocol):
-    """Anything with ``act(obs, info) -> int`` (ARLO's policy calling convention)."""
+    """Anything with ``act(obs, info) -> int`` (the upstream policy calling convention)."""
 
     def act(self, obs: Any, info: dict[str, Any]) -> int: ...
 
@@ -48,7 +49,7 @@ class EpisodeEnv(Protocol):
 
 type EnvFactory = Callable[[list[Event], dict[str, Any], Backend], EpisodeEnv]
 """Builds an :class:`EpisodeEnv` over ``(events, expert_cfg, backend)`` -- the seam
-that replaced ARLO's hard ``CaEventEnv`` import (``CaEventEnv`` itself satisfies it)."""
+that replaced the upstream pipeline's hard env import (any env with this shape satisfies it)."""
 
 
 def rollout(

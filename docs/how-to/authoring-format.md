@@ -69,6 +69,15 @@ uses the `when`-mapping sugar; there is no CLIPS in an authored file,
 and no LLM ever picks a route — the lowered rules run in Fathom like any
 hand-written pack.
 
+Value routes over the prebuilt emitters are total: `judge` normalizes
+its output to exactly `pass`/`fail` and `classify` to one of its
+configured labels, and both fail the run loudly
+(`StargraphRuntimeError`) on anything else, so no third verdict can
+slip past a route. A custom node that emits a verdict value you did
+not route falls back to the declared node order (and cleanly ends the
+run after the last node) — route every value a custom emitter can
+produce.
+
 Every shape error is an `IRValidationError` prefixed `authoring:` that
 names the offending key and the fix.
 

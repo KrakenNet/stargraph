@@ -13,10 +13,11 @@ as `stargraph.ml.export`); only constructing a gym/SB3 surface raises
 `RLNodeError` with the install hint. The gauntlet library and the reference
 eval graph run on the base install.
 
-The gauntlet is a port of the ARLO governed-RL pipeline — the machinery behind
-a real admission refusal on the ESA Kelvins collision-avoidance dataset. The
-split/PBO/metrics/admission arithmetic is intentionally identical to ARLO's;
-attribution and any adaptation are documented per module docstring.
+The gauntlet is a port of an upstream governed-RL pipeline — the machinery
+behind a real admission refusal on the ESA Kelvins collision-avoidance
+dataset. The split/PBO/metrics/admission arithmetic is intentionally identical
+to the upstream implementation; any adaptation is documented per module
+docstring.
 
 ## Nodes
 
@@ -63,14 +64,14 @@ unchanged.
 A `@tool` (entry point `rl_train_ppo`, capability `tools:rl_train_ppo`)
 wrapping stable-baselines3 PPO on a registered env id. Writes
 `<out_dir>/ppo_policy.zip` + `policy_meta.json`. Hyperparameter defaults
-mirror ARLO's trainer (`n_steps=512`, `batch_size=128`). `side_effects=write`,
+mirror the upstream trainer (`n_steps=512`, `batch_size=128`). `side_effects=write`,
 so replays stub it — a replayed run never silently retrains. Serve the result
 through the governed path: export to ONNX, run with `PolicyNode`, and gate
 with the gauntlet before anything downstream consumes it.
 
 ## The admission gauntlet (`stargraph.rl.gauntlet`)
 
-Library surface (math identical to ARLO's `arlo/gauntlet/`):
+Library surface (math identical to the upstream implementation):
 
 | Piece | What it does |
 |---|---|
@@ -80,7 +81,7 @@ Library surface (math identical to ARLO's `arlo/gauntlet/`):
 | `cscv_pbo` | CSCV probability of backtest overfitting (López de Prado 2015) over a config family's per-event utility streams; fails closed to 1.0. |
 | `gate` | The admission verdict: toolchain split (a candidate trained on the gate's own backend is refused unheard), Pareto vs the ops baseline, family PBO ≤ 0.5. |
 
-Postures the port keeps from ARLO: **default = refusal**, evaluation failures
+Postures the port keeps from upstream: **default = refusal**, evaluation failures
 **fail closed** (a refusal verdict, never a silent pass), misconfiguration
 **fails loud** (`RLNodeError`), and the **generator is never the sole
 evaluator** — the gate re-derives its own split and binds the candidate's
@@ -112,17 +113,14 @@ Stations:
 - **`WallStation`** — structural admission of the dataset (refuse > repair);
 - **`TrainStation`** — `cached` when `policy_meta.json` exists; else runs the
   dotted `trainer` on ONLY the re-derived train partition;
-- **`GateStation`** — `arlo/gauntlet/run_admission.py` as a node: re-derive
+- **`GateStation`** — the upstream admission run as a node: re-derive
   the split, bind the candidate's train-split sha, gate Pareto + PBO;
-- **`ShieldStation`** — wraps an ARLO-style deterministic rule evaluator
+- **`ShieldStation`** — wraps an upstream-style deterministic rule evaluator
   (`factory(cfg, backend) -> evaluator.evaluate(rec, ctx)`); it only ever
   emits a verdict, it commands nothing.
 
-The acceptance test
-(`tests/integration/rl/test_arlo_admission_repro.py`) reproduces ARLO's real
-ppo-v4 refusal through this graph number-for-number (n=2629, candidate risk
-rate 0.0019 vs baseline 0.0004, Δv 0.14 vs 0.22 m/s, PBO 4/70) against the
-frozen `admission_report.json`.
+The self-contained unit suite (`tests/unit/rl/test_gauntlet_math.py`) pins the
+ported split/PBO/metrics/admission arithmetic.
 
 ## Planners (`stargraph.planners` entry-point group)
 
@@ -151,11 +149,11 @@ rollout or a learned dynamics model's rollout, indistinguishably.
 
 ### Reference implementation: `mpc-ca-burn`
 
-A convex-MPC-style burn-option planner over the ARLO collision-avoidance
+A convex-MPC-style burn-option planner over the collision-avoidance
 problem: enumerate the (burn epoch × direction) option lattice, pick the
 fuel-minimal Δv bin whose post-burn operational Pc clears the maneuver
 threshold (closed-form Clohessy–Wiltshire response + Foster encounter-plane
-Pc, ported from ARLO's geometry — not invented here), rank by fuel. When
+Pc, ported from the upstream geometry — not invented here), rank by fuel. When
 nothing clears, it returns an explicit hold-out plan with the reason — never
 an empty list. It is an offline option study (it sees the full recorded
 event); use it for candidate generation, not as a deployable policy.

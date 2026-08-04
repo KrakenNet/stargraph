@@ -10,20 +10,19 @@
 # All pluggable pieces (event loader, expert config, env factory, evaluator
 # backend, candidate/baseline/family, trainer, shield) arrive as dotted
 # references in EvalState -- see stargraph/rl/gauntlet/eval_state.py. Run it
-# with, e.g. the ARLO collision-avoidance stack mounted:
+# with, e.g. a collision-avoidance stack mounted:
 #
 #     stargraph run $(python -c 'import stargraph.rl.gauntlet as g; print(g.eval_graph_path())') \
 #       --inputs dataset_path=... --inputs model_dir=... \
-#       --inputs events_loader=my_pkg.arlo_glue:load_events \
-#       --inputs expert_cfg_loader=arlo.config:load_expert_cfg \
-#       --inputs env_factory=arlo.envs.ca_event_env:CaEventEnv \
-#       --inputs gate_backend=arlo.envs.backends.j2mc \
-#       --inputs candidate_loader=arlo.train.ppo_train:PPOPolicy.load \
-#       --inputs baseline_factory=arlo.train.baseline_threshold:ThresholdPolicy
+#       --inputs events_loader=my_pkg.glue:load_events \
+#       --inputs expert_cfg_loader=my_pkg.glue:load_expert_cfg \
+#       --inputs env_factory=my_pkg.envs:CaEventEnv \
+#       --inputs gate_backend=my_pkg.backends:j2mc_backend \
+#       --inputs candidate_loader=my_pkg.train:PPOPolicy.load \
+#       --inputs baseline_factory=my_pkg.train:ThresholdPolicy
 #
-# The event loader is `callable(Path) -> list[Event]`; for the ARLO mount it is
-# a thin adapter over `arlo.data.broker_read:read_events`, which is brokered and
-# keyword-shaped (see tests/integration/rl/test_arlo_admission_repro.py).
+# The event loader is `callable(Path) -> list[Event]`; typically a thin
+# adapter over your stack's brokered event reader.
 #
 # Verdict routing: wall refuse / train refuse / gate refused halt the run with
 # an explicit reason (default = refusal); only an admitted candidate reaches

@@ -6,12 +6,11 @@ Each station is a zero-arg-constructible :class:`~stargraph.nodes.base.NodeBase`
 pieces as dotted references from :class:`~stargraph.rl.gauntlet.eval_state.EvalState`
 and writing a Mirror-annotated ``*_verdict`` the graph's Fathom rules route on.
 
-Posture (ported from ARLO's pipeline, ``arlo/gauntlet/run_admission.py`` +
-``arlo/shield/rules.py``):
+Posture (ported from the upstream collision-avoidance governed-RL pipeline):
 
 * **default = refusal, fail-closed** -- an exception while *evaluating*
   becomes a ``refuse``/``refused`` verdict with the error in the reasons
-  (the ARLO shield's stance), never a silent pass. ARLO's ``run_admission``
+  (the upstream shield's stance), never a silent pass. The upstream admission
   script *raises* on a split-binding mismatch; as a graph station that
   condition is a first-class ``refused`` verdict instead -- same fail-closed
   outcome, graph-shaped. That is the only behavioral adaptation.
@@ -19,7 +18,7 @@ Posture (ported from ARLO's pipeline, ``arlo/gauntlet/run_admission.py`` +
   :class:`~stargraph.errors.RLNodeError` (FR-6 force-loud), it does not
   masquerade as a refusal.
 
-:class:`GateStation` is the port of ``run_admission.run``: re-derive the
+:class:`GateStation` is the port of the upstream admission run: re-derive the
 deterministic 3-way split, bind the candidate's recorded train-split sha to
 the gate's OWN re-derived partition (never trainer-authored files), then gate
 Pareto + CSCV-PBO via :func:`stargraph.rl.gauntlet.admission.gate`.
@@ -136,7 +135,7 @@ class WallStation(NodeBase):
     non-empty ``cdms`` list; every CDM carries ``creation_epoch`` / ``tca``;
     CDM epochs are non-decreasing within an event. Anything deeper
     (covariance quality, source lineage) belongs to a domain wall upstream --
-    this station only refuses, it never repairs (the ARLO wall stance).
+    this station only refuses, it never repairs (the upstream wall stance).
     """
 
     async def execute(self, state: BaseModel, ctx: ExecutionContext) -> dict[str, Any]:
@@ -185,7 +184,7 @@ class TrainStation(NodeBase):
 
     ``policy_meta.json`` already present -> ``cached`` (nothing runs). Else the
     dotted ``trainer`` callable gets ONLY the re-derived train partition
-    (ARLO's isolation posture: the trainer never sees admission/deploy events)
+    (the upstream isolation posture: the trainer never sees admission/deploy events)
     and must leave ``policy_meta.json`` behind. No cached candidate and no
     trainer -> ``refuse``.
     """
@@ -300,16 +299,16 @@ class GateStation(NodeBase):
 
 
 class ShieldStation(NodeBase):
-    """Assurance-shield station: wrap an ARLO-style rule evaluator, deterministically.
+    """Assurance-shield station: wrap an upstream-style rule evaluator, deterministically.
 
     The dotted ``shield`` reference names a factory
     ``factory(expert_cfg, backend) -> evaluator`` whose
     ``evaluate(recommendation, ctx)`` returns an object with ``approved`` /
-    ``reasons`` / ``facts`` (ARLO's ``ShieldVerdict`` dataclass shape). The
+    ``reasons`` / ``facts`` (the upstream ``ShieldVerdict`` dataclass shape). The
     recommendation under review comes from state
     (``shield_dv_ms`` / ``shield_direction`` on event
     ``shield_event_index``). The shield only ever emits a verdict --
-    it commands nothing (ARLO S5).
+    it commands nothing (the upstream shield posture).
     """
 
     async def execute(self, state: BaseModel, ctx: ExecutionContext) -> dict[str, Any]:
@@ -332,7 +331,7 @@ class ShieldStation(NodeBase):
         }
         try:
             verdict: Any = await asyncio.to_thread(evaluator.evaluate, rec, shield_ctx)
-        except Exception as exc:  # fail-closed (mirrors the ARLO shield itself)
+        except Exception as exc:  # fail-closed (mirrors the upstream shield itself)
             return {
                 "shield_verdict": "refused",
                 "shield_reasons": [f"fail-closed: {type(exc).__name__}: {exc}"],

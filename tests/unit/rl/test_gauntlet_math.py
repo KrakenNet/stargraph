@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for the ARLO-ported gauntlet math (splits / PBO / metrics / gate).
+"""Unit tests for the ported gauntlet math (splits / PBO / metrics / gate).
 
-The arithmetic under test is the port of ``arlo/gauntlet/`` -- the library
+The arithmetic under test is a port of the upstream gauntlet -- the library
 behind the ppo-v4 admission refusal -- so these tests pin its *invariants*
-(ordering, fail-closed defaults, Pareto truth table, refusal reasons); the
-number-for-number reproduction against the real ARLO artifacts lives in
-``tests/integration/test_rl_arlo_admission_repro.py``.
+(ordering, fail-closed defaults, Pareto truth table, refusal reasons).
 """
 
 from __future__ import annotations

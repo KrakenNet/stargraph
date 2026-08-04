@@ -183,7 +183,7 @@ webhook = "stargraph.triggers.webhook:WebhookTrigger"
 # Planner plugins (design W7): each entry is a zero-arg-constructible class
 # satisfying the stargraph.rl.planners.Planner protocol. ``mpc-ca-burn`` is the
 # built-in reference implementation (convex-MPC-style burn-option planner over
-# the ARLO collision-avoidance geometry).
+# the ported collision-avoidance geometry).
 [project.entry-points."stargraph.planners"]
 mpc-ca-burn = "stargraph.rl.planners.mpc:CaBurnMpcPlanner"
 

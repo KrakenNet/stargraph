@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""stargraph.rl.gauntlet -- RL admission gauntlet, ported from ARLO (W7).
+"""stargraph.rl.gauntlet -- RL admission gauntlet, ported from upstream (W7).
 
-The evaluation discipline that produced ARLO's government-cited ppo-v4
-refusal (``models/ppo-v4/admission_report.json`` in the ARLO repo),
-promoted into Stargraph as a library:
+The evaluation discipline that produced the upstream pipeline's cited ppo-v4
+refusal decision, promoted into Stargraph as a library:
 
 * :mod:`~stargraph.rl.gauntlet.splits` -- 3-way disjoint event+time split.
 * :mod:`~stargraph.rl.gauntlet.pbo` -- CSCV Probability of Backtest
@@ -17,7 +16,7 @@ promoted into Stargraph as a library:
   file; transitions decided by its Fathom rule pack, not static edges).
 
 The math in ``splits`` / ``pbo`` / ``metrics`` / ``admission`` is
-intentionally IDENTICAL to ARLO's ``arlo/gauntlet/`` -- only imports and
+intentionally IDENTICAL to the upstream implementation -- only imports and
 typing were adapted, and the hard ``CaEventEnv`` import was replaced by the
 ``env_factory`` seam (:data:`~stargraph.rl.gauntlet.metrics.EnvFactory`) so
 any event-episode env can plug in. Everything here is pure Python -- no

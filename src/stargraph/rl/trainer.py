@@ -9,8 +9,8 @@ through the governed path: publish it as ONNX via
 :class:`~stargraph.rl.policy.PolicyNode`, or gate it with
 :mod:`stargraph.rl.gauntlet` before anything downstream consumes it.
 
-Hyperparameter defaults mirror ARLO's trainer (``arlo/train/ppo_train.py``:
-``n_steps=512, batch_size=128``). ``stable_baselines3`` is imported lazily
+Hyperparameter defaults mirror the upstream pipeline's trainer
+(``n_steps=512, batch_size=128``). ``stable_baselines3`` is imported lazily
 inside the function per the ``ml/export.py`` optional-dep seam; install::
 
     pip install 'stargraph[rl]'
@@ -75,8 +75,8 @@ async def train_ppo(
     :param out_dir: Directory for ``ppo_policy.zip`` + ``policy_meta.json``.
     :param total_timesteps: SB3 ``learn`` budget.
     :param seed: PPO seed (pins the run for reproducibility claims).
-    :param n_steps: Rollout-buffer length per update (ARLO default).
-    :param batch_size: Minibatch size (ARLO default).
+    :param n_steps: Rollout-buffer length per update (upstream default).
+    :param batch_size: Minibatch size (upstream default).
     :param policy: SB3 policy class name (e.g. ``"MlpPolicy"``).
     :returns: The written ``policy_meta.json`` contents plus ``model_path``.
     """

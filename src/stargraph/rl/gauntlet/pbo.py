@@ -4,9 +4,8 @@ re-expressed over episode scenarios: ``series`` holds one per-event utility
 stream per policy config, events in timeline order. Fail-closed: a single
 config, or too few events, scores PBO 1.0.
 
-Ported from ARLO (``arlo/gauntlet/pbo.py``), itself the P1 substrate
-extraction of the fund gauntlet
-(``starcult/reference-cults/quant/data/run_gauntlet.py``). The CSCV
+Ported from the upstream collision-avoidance governed-RL pipeline, itself
+derived from an earlier quantitative-research gauntlet. The CSCV
 combinatorics and Sharpe arithmetic are intentionally IDENTICAL -- this is
 the PBO behind the ppo-v4 admission verdict; only imports/typing were
 adapted (plus the ``env_factory`` seam threaded through
