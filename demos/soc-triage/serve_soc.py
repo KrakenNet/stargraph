@@ -25,8 +25,10 @@ Thin argparse wrapper around :func:`stargraph.serve.api.create_app` modelled on
   app to ``uvicorn``.
 
 The ``triage_decide`` ``dspy`` node's LM is configured from ``LLM_BASE_URL`` /
-``LLM_MODEL`` (CLI ``--lm-url`` / ``--lm-model`` override). When neither is set
-the server still boots — the LM is only needed at run time. graph_viewer
+``LLM_MODEL`` (CLI ``--lm-url`` / ``--lm-model`` override) and runs the real
+ChainOfThought triage config committed in the IR. When neither is set the
+server still boots: an explicit ``stub: true`` is injected into the node
+config (logged loudly) so the run uses the deterministic stub. graph_viewer
 attaches via its ``--upstream http://127.0.0.1:9020`` flag (proxies
 ``/api/runs*`` → ``/v1/runs*``).
 
@@ -162,9 +164,10 @@ def main(argv: list[str] | None = None) -> int:
         _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
         logger.info("dspy.LM → %s @ %s", lm_model, lm_url)
     else:
-        logger.info(
-            "no LLM_BASE_URL/LLM_MODEL set — triage_decide LM unconfigured "
-            "(server boots; LM only needed at run time)"
+        logger.warning(
+            "no LLM_BASE_URL/LLM_MODEL set — injecting explicit stub config into "
+            "triage_decide (deterministic offline stub; set LLM_BASE_URL/LLM_MODEL "
+            "for a real triage decision)"
         )
 
     # ---- Load graph + inject ONNX file:// URI --------------------------
@@ -180,6 +183,10 @@ def main(argv: list[str] | None = None) -> int:
     for node in ir_doc.nodes:
         if node.id == "risk_score":
             node.config["file_uri"] = model_uri
+        # No LM configured → explicit stub flag (a real kind:dspy node with a
+        # signature but no LM fails the registry build loudly, by design).
+        if node.id == "triage_decide" and not (lm_url and lm_model):
+            node.config["stub"] = True
     graph_obj = Graph(ir=ir_doc)
     node_registry = _build_node_registry(ir_doc.nodes, ir_dir=graph_path.parent.resolve())
     logger.info(

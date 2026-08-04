@@ -1,0 +1,35 @@
+# Keep the image build context small and reproducible. Everything the
+# builder stage needs is: pyproject.toml, uv.lock, README.md, LICENSE,
+# src/, and (optionally) wheelhouse/ for air-gapped builds.
+.git
+.venv
+.forge
+.harbor
+.stargraph
+.remember
+.checkpoints
+.hypothesis
+.pytest_cache
+.ruff_cache
+.playwright-mcp
+site
+runs
+test-results
+data
+graphify-out
+coverage.xml
+audit.jsonl
+__pycache__
+*.pyc
+*.pt
+bench
+demos
+design-docs
+docs
+examples
+specs
+scripts
+tests
+deploy
+compose.yaml
+Dockerfile

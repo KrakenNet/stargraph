@@ -236,7 +236,7 @@ class GraphRun:
 
     Attributes:
         run_id: UUIDv7 (or caller-supplied) string. Stable across restarts;
-            re-used by :meth:`resume` to bind a fresh GraphRun to the same
+            reused by :meth:`resume` to bind a fresh GraphRun to the same
             logical run.
         graph: The parent :class:`stargraph.graph.Graph` instance. The run holds a
             strong reference so ``graph_hash``, ``runtime_hash``, the compiled
@@ -296,6 +296,7 @@ class GraphRun:
         fathom: Any = None,
         fact_store: Any = None,
         audit_sink: Any = None,
+        receipt_sink: Any = None,
     ) -> None:
         self.run_id = run_id
         self.graph = graph
@@ -309,6 +310,11 @@ class GraphRun:
         # Scaffold stub -- task T01 (consumed by T13/T02). Optional, default None.
         self.fact_store = fact_store
         self.audit_sink = audit_sink
+        # Optional OVARP receipt sink (ADR-0012). ``None`` (default) skips
+        # attestation; when set, ``stargraph.runtime.dispatch.dispatch_node``
+        # calls ``receipt_sink.record(...)`` once per committed tick so each
+        # routing decision can be emitted as an offline-verifiable receipt.
+        self.receipt_sink = receipt_sink
         # Per-node cassette wiring (design §10.3). ``node_cassette`` is
         # ``None`` until a caller wires one; ``node_id`` is stamped by
         # :func:`stargraph.runtime.dispatch.dispatch_node` for the duration
@@ -316,6 +322,16 @@ class GraphRun:
         # entries by ``(node_id, step)``.
         self.node_cassette: Any = None
         self.node_id: str = ""
+        # Tool-execution context (design §3.4.4). ``step`` is stamped by
+        # ``dispatch_node`` alongside ``node_id`` so tool provenance facts
+        # carry the true tick index; ``is_replay``/``tool_cassette`` keep
+        # their live-run defaults until a replay driver wires them
+        # (``tool_cassette`` is the args-keyed CassetteStore consumed by
+        # ``runtime.tool_exec``, distinct from the ``(node_id, step)``-keyed
+        # ``node_cassette`` above).
+        self.step: int = 0
+        self.is_replay: bool = False
+        self.tool_cassette: Any = None
         # Per-run primitives: each :class:`GraphRun` owns a fresh bus + mirror
         # scheduler. Cloning sender handles for parallel branches lands in
         # Phase 3; v1 is single-consumer (the ``stream()`` async iterator).
@@ -679,6 +695,7 @@ class GraphRun:
         :class:`stargraph.checkpoint.protocol.Checkpoint` Pydantic model (INV-2).
         """
         from stargraph.checkpoint.protocol import Checkpoint as _Ckpt
+        from stargraph.replay.cassettes import args_hash
 
         state_dict: dict[str, Any] = (
             self.initial_state.model_dump(mode="json") if self.initial_state is not None else {}
@@ -696,7 +713,9 @@ class GraphRun:
             next_action=None,
             timestamp=datetime.now(UTC),
             parent_run_id=self.parent_run_id,
-            side_effects_hash="",
+            # On-demand snapshot, not a tick: no side effects → canonical empty-effects hash
+            # (consistent with the per-tick `args_hash(outputs)` in dispatch step 7).
+            side_effects_hash=args_hash({}),
         )
 
     @classmethod
@@ -803,7 +822,7 @@ class GraphRun:
         # Step 2: derived hash (domain-separated; FR-27 design §3.8.3).
         cf_graph_hash = derived_graph_hash(ckpt.graph_hash, mutate)
 
-        # Step 3: mint a fresh run_id for the cf child. Never re-uses the
+        # Step 3: mint a fresh run_id for the cf child. Never reuses the
         # parent's id so cf checkpoints cannot shadow original rows.
         cf_run_id = f"cf-{uuid.uuid4()}"
 

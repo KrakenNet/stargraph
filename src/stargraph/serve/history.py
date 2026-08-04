@@ -471,6 +471,37 @@ class RunHistory:
             return 0
         return int(row[0])
 
+    async def count_by_status(self) -> dict[str, int]:
+        """Return ``{status: row_count}`` over all ``runs_history`` rows.
+
+        One ``GROUP BY`` scan; powers the ``GET /metrics``
+        ``stargraph_runs_total`` series. ``status`` is free-form TEXT
+        (the column is unconstrained), so the keys are whatever the
+        lattice wrote — no fixed enum is assumed.
+        """
+        sql = "SELECT status, COUNT(*) FROM runs_history GROUP BY status"
+        async with self._db.execute(sql) as cur:
+            rows = await cur.fetchall()
+        return {str(r[0]): int(r[1]) for r in rows}
+
+    async def duration_summary(self) -> tuple[int, int]:
+        """Return ``(count, sum_ms)`` over finished runs' ``duration_ms``.
+
+        Backs the ``GET /metrics`` run-duration summary. Run-level
+        wall-clock duration is the only execution-latency bookkeeping
+        the engine persists (there is no per-node latency table), so
+        this is the honest latency surface.
+        """
+        sql = (
+            "SELECT COUNT(duration_ms), COALESCE(SUM(duration_ms), 0) "
+            "FROM runs_history WHERE duration_ms IS NOT NULL"
+        )
+        async with self._db.execute(sql) as cur:
+            row = await cur.fetchone()
+        if row is None:
+            return (0, 0)
+        return (int(row[0]), int(row[1]))
+
     # ------------------------------------------------------------------ #
     # PendingStore Protocol (design §6.1)                                #
     # ------------------------------------------------------------------ #

@@ -16,6 +16,7 @@ from ._action import (
     extract_actions,
 )
 from ._adapter import FathomAdapter
+from ._ir_builder import build_ir_routing
 from ._provenance import ProvenanceBundle
 from ._template import STARGRAPH_ACTION_DEFTEMPLATE, register_stargraph_action_template
 
@@ -30,6 +31,7 @@ __all__ = [
     "ProvenanceBundle",
     "RetractAction",
     "RetryAction",
+    "build_ir_routing",
     "extract_actions",
     "register_stargraph_action_template",
 ]

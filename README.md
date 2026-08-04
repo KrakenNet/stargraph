@@ -47,9 +47,10 @@ inspectable, versioned, replayable, and free of stochastic drift.
 - **Provenance-typed facts.** Every fact carries
   `(origin, source, run_id, step, confidence, timestamp)`. Origins are typed:
   `llm | tool | user | rule | model | external`. Trust is a first-class type.
-- **Classical ML as first-class nodes.** sklearn, XGBoost, PyTorch, ONNX run
-  alongside DSPy LLM modules. Route on confidence, fall back to LLMs only when
-  the cheap model is unsure.
+- **Classical ML as first-class nodes.** sklearn, XGBoost, and ONNX models run
+  alongside DSPy LLM modules; PyTorch (incl. SB3 policies) publishes into the
+  ONNX runtime via the `stargraph[onnx-export]` export path. Route on
+  confidence, fall back to LLMs only when the cheap model is unsure.
 - **Counterfactual replay.** Checkpoint pinning + structural graph hashing
   makes deterministic replay free. Re-execute from any step with mutated rule,
   node output, or fact, and diff against the original run.

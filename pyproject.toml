@@ -58,6 +58,23 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Heavy deps for the batteries-included std tool pack (stargraph.tools.std).
+# The pack itself rides on hard deps only; this extra unlocks std.web_search
+# (ddgs), std.fetch_page HTML extraction (readability-lxml), and
+# std.sql_query's duckdb engine. Missing-extra calls fail with a pip hint.
+tools = [
+    "ddgs>=9",
+    "readability-lxml>=0.8.1",
+    "duckdb>=1.0",
+]
+# Heavy deps for the SaaS tool packs (stargraph.tools.{s3,postgres}).
+# slack/github/email ride on hard deps (httpx / stdlib); this extra unlocks
+# s3.* (boto3) and postgres.* (psycopg). Missing-extra calls fail with a
+# pip hint.
+tools-saas = [
+    "boto3>=1.34",
+    "psycopg[binary]>=3.1",
+]
 ml = [
     "scikit-learn",
     "xgboost>=2.1",
@@ -105,6 +122,28 @@ skills-rag = [
     # deps, not transitives pulled by sentence-transformers).
     "torch>=2.1",
 ]
+# torch/SB3 -> ONNX publish path (stargraph.ml.export). torch is NOT an
+# MLNode runtime and never a core dep; it enters via export only (W4).
+onnx-export = [
+    "torch>=2.5",  # 2.5 adds the torch.onnx.export(dynamo=) keyword we rely on
+    "onnx>=1.16",
+    "onnxscript>=0.2",  # torch>=2.9 dynamo ONNX exporter requires it
+    "stable-baselines3>=2.0",
+]
+# RL toolkit (stargraph.rl, W7): GymEnvNode, PolicyNode, the SB3 PPO trainer
+# tool, the admission gauntlet's heavy consumers, and the reference MPC
+# planner. The gauntlet library itself (splits/PBO/metrics/admission) is pure
+# Python and needs none of these. torch is declared directly so the
+# pytorch-cpu source pin applies (uv <0.9 only honors the source map for
+# direct deps).
+rl = [
+    "gymnasium>=1.0",
+    "stable-baselines3>=2.0",
+    "torch>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "onnxruntime>=1.18",
+]
 
 [project.urls]
 Homepage = "https://krakn.ai"
@@ -135,14 +174,18 @@ manual = "stargraph.triggers.manual:ManualTrigger"
 cron = "stargraph.triggers.cron:CronTrigger"
 webhook = "stargraph.triggers.webhook:WebhookTrigger"
 
-# Built-in Nautilus tool plugin (design §8.2, FR-45). Registry-discoverable
-# `@tool`-decorated coroutine that calls the lifespan-singleton Broker.
-[project.entry-points."stargraph.tools"]
-broker_request = "stargraph.tools.nautilus.broker_request:broker_request"
-servicenow_create_change_request = "stargraph.tools.servicenow.create_change_request:create_change_request"
-servicenow_cmdb_query_software = "stargraph.tools.servicenow.cmdb_query_software:cmdb_query_software"
-servicenow_cmdb_traverse_runs_on = "stargraph.tools.servicenow.cmdb_traverse_runs_on:cmdb_traverse_runs_on"
-servicenow_cmdb_resolve_hosts = "stargraph.tools.servicenow.cmdb_resolve_hosts:cmdb_resolve_hosts"
+# NOTE: Stargraph declares NO ``stargraph.tools`` entries for itself. In-tree
+# built-in tools (nautilus, servicenow, rl) are seeded in-process via
+# ``stargraph.tools.builtin.seed_builtin_tools`` — the entry-point pipeline is
+# for external plugin distributions only (each must ship a ``stargraph_plugin``
+# manifest factory), and the loader skips the core dist during discovery.
+
+# Planner plugins (design W7): each entry is a zero-arg-constructible class
+# satisfying the stargraph.rl.planners.Planner protocol. ``mpc-ca-burn`` is the
+# built-in reference implementation (convex-MPC-style burn-option planner over
+# the ported collision-avoidance geometry).
+[project.entry-points."stargraph.planners"]
+mpc-ca-burn = "stargraph.rl.planners.mpc:CaBurnMpcPlanner"
 
 # Built-in reranker plug-ins discoverable through stargraph.stores._rerank_loader.
 # RRFReranker is the always-available default; cross-encoder requires the
@@ -170,6 +213,11 @@ dev = [
     "skl2onnx>=1.17",
     "textual>=0.80",
     "pytest-xdist>=3.8.0",
+    # std tool pack offline parse tests (fetch_page extraction, sql_query
+    # duckdb engine). ddgs is deliberately absent: its offline tests fake the
+    # client, and live search tests are env-gated.
+    "readability-lxml>=0.8.1",
+    "duckdb>=1.0",
 ]
 docs = [
     "mkdocs-material>=9.5",

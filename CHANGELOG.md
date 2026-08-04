@@ -56,6 +56,20 @@
 
 ## [Unreleased]
 
+### Added (batteries-included, #189)
+- IR `RuleSpec.when` now accepts mapping sugar alongside the raw CLIPS
+  string: `{node: <node-id>, <mirror-field>: <value>, ...}` compiles to
+  CLIPS via `stargraph.ir._when.compile_when` (reserved `node` key →
+  `(node-id (id ...))` pattern, other keys → equality tests on the
+  mirrored field's `value` slot, conditions ANDed). Raw strings are
+  unchanged; JSON schemas + openapi.json regenerated for the
+  `str | dict` union.
+- Authoring compile-down format (`stargraph run`/`compile`/`new`): short
+  YAML (state/nodes/routes, `route: true` marks Mirror fields) lowers to
+  strict IR 1.1 — no schema changes beyond the `when` sugar above.
+- `std.graph_invoke@1`: run another graph YAML in-process
+  (capability-gated `tools:std:graph_invoke`, default-deny).
+
 ### Changed (BREAKING — harbor renamed to stargraph)
 - Project renamed wholesale: package `src/harbor` → `src/stargraph`,
   CLI console script `harbor` → `stargraph`, entry-point groups

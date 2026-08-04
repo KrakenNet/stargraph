@@ -43,6 +43,7 @@ from stargraph.errors import IRValidationError, SimulationError, ValidationError
 from stargraph.graph.hash import runtime_hash, structural_hash
 from stargraph.graph.run import GraphRun
 from stargraph.ir._validate import validate as _validate_ir
+from stargraph.ir._when import compile_when
 from stargraph.tools.spec import SideEffects
 
 if TYPE_CHECKING:
@@ -479,13 +480,15 @@ class Graph:
                     violation="missing-fixture",
                 )
 
-        # Build the rule-firing trace. ``when`` is a free-form POC string;
-        # treat any IR node id appearing as a substring as a match. Iterate
-        # rules in IR declaration order so the trace is replay-stable.
+        # Build the rule-firing trace. ``when`` is a free-form POC string
+        # (mapping sugar compiles to its CLIPS text first); treat any IR
+        # node id appearing as a substring as a match. Iterate rules in IR
+        # declaration order so the trace is replay-stable.
         firings: list[RuleFiring] = []
         node_ids = [n.id for n in self.ir.nodes]
         for rule in self.ir.rules:
-            matched = [nid for nid in node_ids if nid and nid in rule.when]
+            when_text = compile_when(rule.when)
+            matched = [nid for nid in node_ids if nid and nid in when_text]
             firings.append(
                 RuleFiring(
                     rule_id=rule.id,

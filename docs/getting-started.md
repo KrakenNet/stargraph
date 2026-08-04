@@ -111,8 +111,28 @@ rule_firings=2
 `counterfactual`, `replay`, `respond`, `serve`, and `verify-audit`. Run
 `stargraph <command> --help` for the options of any one.
 
+## Write your own agent in one file
+
+The fastest path to a real agent is the
+[authoring format](how-to/authoring-format.md) — state, LLM nodes, tools,
+and rule-based routing in one short YAML (no `ir_version` needed;
+`stargraph run` compiles it transparently):
+
+```bash
+uv run stargraph new research-bot     # writes research-bot.yaml
+uv run stargraph run research-bot.yaml --lm-url <url> --lm-model <model> \
+  --inputs question="what routes stargraph?"
+```
+
+Or start from a shipped bundle (`stargraph new rag-qa`, `coding-agent`,
+`triage-router`, …) — see the
+[prebuilt nodes reference](reference/nodes/prebuilt.md) for the kinds you
+can compose.
+
 ## Next steps
 
+- [Author a graph in simple YAML](how-to/authoring-format.md) — the
+  compile-down format, `stargraph compile`, and the bundle catalog.
 - [Tutorial: Your First Graph](tutorials/first-graph.md) — build this graph
   from scratch, line by line, and learn how the IR YAML maps onto the runtime.
 - Browse the other [tutorials](tutorials/index.md) for retrieval, Fathom rule

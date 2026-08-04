@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# triage-router bundle: classify -> per-label dispatch (T4, the
+# router-that-isn't). The classifier emits verdict=label as a mirrored
+# fact; Fathom rules -- not the LLM -- route to the label's handler.
+# Generalized from the soc-triage demo.
+ir_version: "1.0.0"
+id: "graph:bundle-triage-router"
+state_class: "stargraph.bundles.triage_router:TriageState"
+nodes:
+  - id: classify
+    kind: classify
+    config:
+      input: item
+      labels:
+        - urgent
+        - routine
+        - irrelevant
+  - id: urgent-path
+    kind: reason
+    config:
+      input: item
+      instructions: "This item was triaged as urgent. Propose concrete, immediate next actions: who to notify, what to check first, and what to contain. Be specific."
+  - id: routine-path
+    kind: summarize
+    config:
+      input: item
+rules:
+  - id: r-triage-urgent
+    when: {node: classify, verdict: urgent}
+    then:
+      - kind: goto
+        target: urgent-path
+  - id: r-triage-routine
+    when: {node: classify, verdict: routine}
+    then:
+      - kind: goto
+        target: routine-path
+  - id: r-triage-irrelevant
+    when: {node: classify, verdict: irrelevant}
+    then:
+      - kind: halt
+        reason: "triaged irrelevant"
+  - id: r-urgent-done
+    when: {node: urgent-path}
+    then:
+      - kind: halt
+        reason: "urgent path handled"
+  - id: r-routine-done
+    when: {node: routine-path}
+    then:
+      - kind: halt
+        reason: "routine path handled"

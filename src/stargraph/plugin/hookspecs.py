@@ -23,10 +23,11 @@ from typing import TYPE_CHECKING, Any
 from stargraph.plugin._markers import hookspec
 
 if TYPE_CHECKING:
-    from stargraph.ir._models import SkillSpec, ToolSpec
+    from stargraph.ir._models import SkillSpec
     from stargraph.plugin.types import (
         BosunAction,
         MCPAdapterSpec,
+        NodeKindSpec,
         PackSpec,
         PluginManager,
         Route,
@@ -47,8 +48,16 @@ def stargraph_shutdown(pm: PluginManager) -> None:
 
 
 @hookspec
-def register_tools() -> list[ToolSpec]:
-    """Collect-all: each plugin returns the tools it provides."""
+def register_tools() -> list[Any]:
+    """Collect-all: each plugin returns the tools it provides.
+
+    Return the ``@tool``-decorated *callables* themselves (each carries
+    ``.spec: ToolSpec``), not bare :class:`ToolSpec` records -- a spec
+    cannot be invoked. Merged into the run's
+    :class:`~stargraph.registry.tools.ToolRegistry` by
+    :func:`stargraph.registry.tools.install_plugin_tools`, which
+    loud-fails on non-callable entries and id conflicts.
+    """
     return []
 
 
@@ -60,6 +69,17 @@ def before_tool_call(call: ToolCall) -> None:
 @hookspec
 def after_tool_call(call: ToolCall, result: ToolResult) -> None:
     """Observation hook fired immediately after a tool invocation."""
+
+
+@hookspec
+def register_nodes() -> list[NodeKindSpec]:
+    """Collect-all: each plugin returns the node kinds it provides.
+
+    Merged into the graph-build short-kind table by
+    :func:`stargraph.nodes.registry.install_plugin_node_kinds`; kind
+    collisions fail loud with ``PluginLoadError``.
+    """
+    return []
 
 
 @hookspec

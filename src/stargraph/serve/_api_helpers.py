@@ -14,6 +14,8 @@ Contents:
 * :func:`_replay_audit_after_cursor` -- forward JSONL replay from a cursor.
 * :func:`_resolve_run_registry` / :func:`_resolve_broadcaster_registry` --
   in-memory ``deps`` registry accessors.
+* :func:`_scan_audit_metrics` -- JSONL chain height + transition count for
+  ``GET /metrics``.
 * :func:`_summarize` -- live :class:`GraphRun` -> :class:`RunSummary` fold.
 """
 
@@ -43,6 +45,7 @@ __all__ = [
     "_replay_audit_after_cursor",
     "_resolve_broadcaster_registry",
     "_resolve_run_registry",
+    "_scan_audit_metrics",
     "_summarize",
 ]
 
@@ -155,6 +158,44 @@ def _replay_audit_after_cursor(
             if (ev_step, seq) > (step_cursor, seq_cursor):
                 out.append(payload)
     return out
+
+
+def _scan_audit_metrics(audit_path: Path) -> tuple[int, int]:
+    """Return ``(chain_height, transition_count)`` for a JSONL audit log.
+
+    One forward pass: ``chain_height`` counts every non-blank record
+    line (the audit chain height for ``GET /metrics``);
+    ``transition_count`` counts records whose unwrapped payload has
+    ``type == "transition"`` (rule-routed
+    :class:`~stargraph.runtime.events.TransitionEvent` entries — the
+    closest cheaply-available proxy for rule activity; per-evaluation
+    counters are not bookkept). Dual-read across chained / signed /
+    bare line shapes via :func:`unwrap_audit_record`. Malformed lines
+    are skipped for the transition count but still counted as height
+    (they occupy a chain position). Cost is O(file); acceptable at the
+    POC retention scale — flagged in the route docstring.
+    """
+    height = 0
+    transitions = 0
+    if not audit_path.exists():
+        return (0, 0)
+    with audit_path.open("rb") as fh:
+        for raw in fh:
+            if not raw.strip():
+                continue
+            height += 1
+            try:
+                record_any: Any = json.loads(raw)
+            except (ValueError, TypeError):
+                continue
+            if not isinstance(record_any, dict):
+                continue
+            payload_any: Any = unwrap_audit_record(cast("dict[str, Any]", record_any))
+            if isinstance(payload_any, dict):
+                payload = cast("dict[str, Any]", payload_any)
+                if payload.get("type") == "transition":
+                    transitions += 1
+    return (height, transitions)
 
 
 def _resolve_run_registry(deps: dict[str, Any]) -> dict[str, GraphRun]:

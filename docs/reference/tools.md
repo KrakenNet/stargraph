@@ -151,17 +151,23 @@ graph: nautilus_demo
 nodes:
   - id: ask_broker
     kind: tool
-    tool: nautilus.broker_request@1
-    inputs:
-      agent_id: "agent-42"
-      intent: "{{state.user_intent}}"
-    out: broker_reply
+    config:
+      tool: nautilus.broker_request@1
+      inputs:
+        intent: user_intent        # tool arg <- run-state field
+      static:
+        agent_id: "agent-42"       # tool arg <- literal baked into the IR
+      out: broker_reply            # state field the sanitized output merges into
 ```
 
-The runtime resolves `nautilus.broker_request@1` against the registry, runs
-the capability gate, validates `state`-derived inputs against
-`ToolSpec.input_schema`, and routes through the replay layer per
-`ToolSpec.replay_policy`.
+`ToolCallNode` (`stargraph.nodes.tool_call`) resolves
+`nautilus.broker_request@1` against the run's graph registry
+(`Graph(..., registry=ToolRegistry())`) at execute time and routes the call
+through the full nine-step `execute_tool` pipeline: input-schema validation,
+capability gate, replay routing per `ToolSpec.replay_policy`,
+`stargraph.tool-call` / `stargraph.tool-result` provenance facts, output
+validation, and sanitization. A `kind: tool` node with an **empty** config is
+a legacy placeholder (no-op) kept for historic IRs.
 
 ## Nautilus broker tool
 

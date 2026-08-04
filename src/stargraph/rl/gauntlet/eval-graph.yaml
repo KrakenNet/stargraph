@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Reference RL eval graph (W7): wall -> train -> gate -> shield stations,
+# transitions decided by the Fathom rule pack below over the Mirror-annotated
+# *_verdict facts -- there are no static edges (rules-not-edges, like
+# examples/pipeline.yaml). This graph is the VVT harness shape: every hop is
+# a governed verdict, refusal is a first-class terminal, and the run's
+# checkpoints/facts make the evaluation replayable.
+#
+# All pluggable pieces (event loader, expert config, env factory, evaluator
+# backend, candidate/baseline/family, trainer, shield) arrive as dotted
+# references in EvalState -- see stargraph/rl/gauntlet/eval_state.py. Run it
+# with, e.g. a collision-avoidance stack mounted:
+#
+#     stargraph run $(python -c 'import stargraph.rl.gauntlet as g; print(g.eval_graph_path())') \
+#       --inputs dataset_path=... --inputs model_dir=... \
+#       --inputs events_loader=my_pkg.glue:load_events \
+#       --inputs expert_cfg_loader=my_pkg.glue:load_expert_cfg \
+#       --inputs env_factory=my_pkg.envs:CaEventEnv \
+#       --inputs gate_backend=my_pkg.backends:j2mc_backend \
+#       --inputs candidate_loader=my_pkg.train:PPOPolicy.load \
+#       --inputs baseline_factory=my_pkg.train:ThresholdPolicy
+#
+# The event loader is `callable(Path) -> list[Event]`; typically a thin
+# adapter over your stack's brokered event reader.
+#
+# Verdict routing: wall refuse / train refuse / gate refused halt the run with
+# an explicit reason (default = refusal); only an admitted candidate reaches
+# the shield, and the shield only ever emits a verdict (it commands nothing).
+ir_version: "1.0.0"
+id: "graph:rl-eval-gauntlet"
+state_class: "stargraph.rl.gauntlet.eval_state:EvalState"
+nodes:
+  - id: wall
+    kind: "stargraph.rl.gauntlet.stations:WallStation"
+  - id: train
+    kind: "stargraph.rl.gauntlet.stations:TrainStation"
+  - id: gate
+    kind: "stargraph.rl.gauntlet.stations:GateStation"
+  - id: shield
+    kind: "stargraph.rl.gauntlet.stations:ShieldStation"
+  - id: done
+    kind: halt
+rules:
+  # -- wall ---------------------------------------------------------------
+  - id: r-wall-pass
+    when: '?n <- (node-id (id wall)) (wall_verdict (value "pass"))'
+    then: [{ kind: goto, target: train }]
+  - id: r-wall-refuse
+    when: '?n <- (node-id (id wall)) (wall_verdict (value "refuse"))'
+    then: [{ kind: halt, reason: "wall refused: dataset failed structural admission" }]
+  # -- train --------------------------------------------------------------
+  - id: r-train-cached
+    when: '?n <- (node-id (id train)) (train_verdict (value "cached"))'
+    then: [{ kind: goto, target: gate }]
+  - id: r-train-trained
+    when: '?n <- (node-id (id train)) (train_verdict (value "trained"))'
+    then: [{ kind: goto, target: gate }]
+  - id: r-train-refuse
+    when: '?n <- (node-id (id train)) (train_verdict (value "refuse"))'
+    then: [{ kind: halt, reason: "train refused: no candidate produced" }]
+  # -- gate ---------------------------------------------------------------
+  - id: r-gate-admitted
+    when: '?n <- (node-id (id gate)) (gate_verdict (value "admitted"))'
+    then: [{ kind: goto, target: shield }]
+  - id: r-gate-refused
+    when: '?n <- (node-id (id gate)) (gate_verdict (value "refused"))'
+    then: [{ kind: halt, reason: "gate refused: candidate not admitted" }]
+  # -- shield -------------------------------------------------------------
+  - id: r-shield-approved
+    when: '?n <- (node-id (id shield)) (shield_verdict (value "approved"))'
+    then: [{ kind: goto, target: done }]
+  - id: r-shield-refused
+    when: '?n <- (node-id (id shield)) (shield_verdict (value "refused"))'
+    then: [{ kind: halt, reason: "shield refused: recommendation blocked" }]
+  - id: r-done
+    when: "?n <- (node-id (id done))"
+    then: [{ kind: halt, reason: "rl-eval-gauntlet: run complete" }]

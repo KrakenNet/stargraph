@@ -24,7 +24,6 @@ Stargraph runs agent workflows as graphs whose node transitions are decided by F
 - [Build a graph](https://stargraph.krakn.ai/latest/how-to/build-graph/)
 - [Write a tool plugin](https://stargraph.krakn.ai/latest/how-to/write-tool-plugin/)
 - [Add a trigger](https://stargraph.krakn.ai/latest/how-to/add-trigger/)
-- [Air-gap deployment (operator playbook)](https://stargraph.krakn.ai/latest/guides/air-gap-deployment/)
 
 ## Reference
 - [CLI](https://stargraph.krakn.ai/latest/reference/cli/)

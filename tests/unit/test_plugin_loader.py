@@ -316,11 +316,11 @@ def _make_v2_manifest() -> PluginManifest:  # pyright: ignore[reportUnusedFuncti
 
 
 # ---------------------------------------------------------------------------
-# Sanity: the loader knows about all five plugin groups
+# Sanity: the loader knows about all plugin groups
 # ---------------------------------------------------------------------------
 
 
-def test_groups_constant_covers_all_six_plugin_kinds() -> None:
+def test_groups_constant_covers_all_plugin_kinds() -> None:
     """``GROUPS`` is the source of truth for stage-1 enumeration."""
     assert set(GROUPS) == {
         "stargraph.tools",
@@ -329,6 +329,7 @@ def test_groups_constant_covers_all_six_plugin_kinds() -> None:
         "stargraph.packs",
         "stargraph.triggers",
         "stargraph.mcp_adapters",
+        "stargraph.nodes",
     }
 
 

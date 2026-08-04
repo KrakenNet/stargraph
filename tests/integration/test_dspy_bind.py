@@ -59,3 +59,43 @@ def test_bind_invokes_module_with_mapped_field_names() -> None:
     assert module.calls == [{"question": "what is stargraph?"}], (
         "bind() must rename stargraph state-field keys to DSPy signature input names"
     )
+
+
+def test_prediction_outputs_project_without_internal_leak() -> None:
+    """A real ``dspy.Prediction`` projects its signature outputs only.
+
+    Reading ``Prediction.__dict__`` would return ``{"_store": ..., "_completions":
+    ..., "_lm_usage": ...}`` -- none of which may reach run state.
+    """
+    import dspy  # pyright: ignore[reportMissingTypeStubs]
+
+    def module(**kwargs: Any) -> Any:
+        return dspy.Prediction(answer="42", rationale="because")
+
+    node = bind(
+        module=module,
+        signature_map={"user_query": "question"},
+    )
+
+    out = node.acall({"user_query": "meaning of life?"})
+
+    assert out == {"answer": "42", "rationale": "because"}
+    assert not any(k.startswith("_") for k in out)
+
+
+def test_prediction_outputs_reverse_mapped_to_state_fields() -> None:
+    """Output keys named in ``signature_map`` are renamed back to state fields."""
+    import dspy  # pyright: ignore[reportMissingTypeStubs]
+
+    def module(**kwargs: Any) -> Any:
+        return dspy.Prediction(answer="yes")
+
+    # State field "final_answer" <-> DSPy signature output "answer".
+    node = bind(
+        module=module,
+        signature_map={"final_answer": "answer"},
+    )
+
+    out = node.acall({})
+
+    assert out == {"final_answer": "yes"}

@@ -9,6 +9,9 @@ stargraph`) and have read the [Plugin Model](../concepts/plugins.md) and
 
 Build the things that run inside Stargraph.
 
+- [Author a graph in simple YAML](authoring-format.md) — the shortest
+  path: state, prebuilt nodes, tools, and verdict routing in ~12 lines;
+  `stargraph compile`/`new` included.
 - [Build a skill](build-skill.md) — instantiate `Skill(...)`, declare
   `state_schema`, and register via the `register_skills` hook.
 - [Write a tool plugin](write-tool-plugin.md) — package a `@tool`-decorated

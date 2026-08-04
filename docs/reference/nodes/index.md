@@ -18,6 +18,12 @@ never mutate state in place.
 | [`write_artifact`](write-artifact.md) | `WriteArtifactNode` | Persists a state-resident payload through `ArtifactStore`. | `write` | `must_stub` / `fail_loud` |
 | [`interrupt`](interrupt.md) | `InterruptNode` | Bypass-Fathom HITL pause primitive. | `read` | re-execute (loop owns) |
 | [`broker`](broker.md) | `BrokerNode` | Calls `nautilus.Broker.arequest`. | `read` | re-execute |
+| [`tool`](../tools.md) | `ToolCallNode` | Executes one registry tool through `execute_tool` (capability gate + provenance facts). | tool's | tool's |
+| [`reason` … `plan`](prebuilt.md) | `PrebuiltNode` | Six signature-preset LLM kinds (`reason`/`summarize`/`classify`/`extract`/`judge`/`plan`) emitting standardized routing fields. | `external` (LLM) | `must-stub` |
+| [`react`](prebuilt.md) | `ReactAgentNode` | `dspy.ReAct` over allowlisted registry tools. | `external` | `must-stub` |
+| [`code`](prebuilt.md) | `CodeNode` | Generate Python, run via `std.python_exec` (capability-gated). | `external` | `must-stub` |
+| [`rag`](prebuilt.md) | `RagNode` | Store-bound retrieve-then-answer with citations. | `read` + LLM | `must-stub` |
+| [`template`](prebuilt.md) | `TemplateNode` | Pure `str.format` over state fields into one output field. | `none` | re-execute |
 
 The `kind` strings above are the IR-level node-factory keys; the registry resolves
 each one to a concrete class. See [`stargraph.cli.run._NODE_FACTORIES`][cli-factories]

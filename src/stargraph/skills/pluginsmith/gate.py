@@ -95,7 +95,11 @@ except Exception as e:
 
 # register_tools must advertise the declared tool.
 try:
-    specs = [s for lst in pm.hook.register_tools() for s in (lst or [])]
+    # register_tools returns @tool callables (each carrying .spec); accept
+    # legacy bare-ToolSpec returns too so older generated plugins still gate.
+    specs = [
+        getattr(s, "spec", s) for lst in pm.hook.register_tools() for s in (lst or [])
+    ]
 except Exception as e:
     _fail(f"register_tools() raised: {type(e).__name__}: {e}")
 match = [

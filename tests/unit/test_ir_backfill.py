@@ -143,3 +143,35 @@ def test_node_id_pattern_extracts_name_with_dashes_and_dots() -> None:
     m = NODE_ID_PATTERN.search("?n <- (node-id (id sub-graph.enrichment_v2))")
     assert m is not None
     assert m.group(1) == "sub-graph.enrichment_v2"
+
+
+@pytest.mark.unit
+def test_mapping_sugar_declares_ownership_directly() -> None:
+    """``when: {node: alpha, ...}`` fills ``node_id`` without regex inference."""
+    doc = _doc(
+        [
+            RuleSpec(
+                id="r1",
+                when={"node": "alpha", "phase_verdict": "refine"},
+                then=[GotoAction(target="beta")],
+            ),
+        ],
+    )
+    backfill_rule_node_ids(doc)
+    assert doc.rules[0].node_id == "alpha"
+
+
+@pytest.mark.unit
+def test_mapping_sugar_unknown_node_leaves_node_id_none() -> None:
+    """A sugar ``node`` not in the document stays unowned (orphan-reported)."""
+    doc = _doc(
+        [
+            RuleSpec(
+                id="r1",
+                when={"node": "ghost"},
+                then=[HaltAction(reason="x")],
+            ),
+        ],
+    )
+    backfill_rule_node_ids(doc)
+    assert doc.rules[0].node_id is None

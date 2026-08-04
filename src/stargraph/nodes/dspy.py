@@ -17,15 +17,22 @@ swaps adapters -- the FR-6 seam guarantees any latent fallback raises
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, cast
+import os
+from typing import TYPE_CHECKING, Any, Literal, cast
+
+from pydantic import BaseModel as _PydanticBaseModel
+from pydantic import ConfigDict
+from pydantic import ValidationError as _PydanticValidationError
 
 from stargraph.adapters.dspy import FALLBACK_NEEDLE
+from stargraph.errors import IRValidationError
 from stargraph.nodes.base import ExecutionContext, NodeBase
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
     from stargraph.adapters.dspy import SignatureMap
+    from stargraph.ir._models import NodeSpec
 
 
 _FALLBACK_LOGGER = logging.getLogger("dspy.adapters.json_adapter")
@@ -131,17 +138,26 @@ class DSPyNode(NodeBase):
     def _project_outputs(self, result: Any) -> dict[str, Any]:
         """Map DSPy module outputs back to stargraph state-field names.
 
-        DSPy ``Prediction`` objects expose attributes per signature
-        output; ``dict``-shaped results are passed through. Anything
-        else is wrapped under ``"output"`` so the merge contract still
-        receives a dict (FR-11).
+        DSPy ``Prediction``/``Example`` objects expose exactly the signature
+        outputs via ``.items()`` -- reading ``__dict__`` instead would leak
+        internals (``_store``, ``_completions``, ``_lm_usage``) into run
+        state. ``dict``-shaped results are taken as-is. Anything else is
+        wrapped under ``"output"`` so the merge contract still receives a
+        dict (FR-11). With a ``dict`` signature map, output keys are then
+        renamed DSPy-name -> stargraph state-field (the inverse of the
+        input projection).
         """
         if isinstance(result, dict):
-            return cast("dict[str, Any]", result).copy()
-        as_dict = getattr(result, "__dict__", None)
-        if isinstance(as_dict, dict) and as_dict:
-            return cast("dict[str, Any]", as_dict).copy()
-        return {"output": result}
+            out = cast("dict[str, Any]", result).copy()
+        elif callable(getattr(result, "items", None)):
+            out = dict(result.items())
+        else:
+            return {"output": result}
+        sig_map = self._signature_map
+        if isinstance(sig_map, dict):
+            reverse = {v: k for k, v in cast("dict[str, str]", sig_map).items()}
+            out = {reverse.get(k, k): v for k, v in out.items()}
+        return out
 
     def _iter_input_keys(self) -> list[str]:
         """List stargraph state-field keys to project as inputs.
@@ -157,4 +173,94 @@ class DSPyNode(NodeBase):
         return []
 
 
-__all__ = ["DSPyNode"]
+class DSPyNodeConfig(_PydanticBaseModel):
+    """``NodeSpec.config`` schema for ``kind: dspy`` (extra keys rejected).
+
+    ``stub`` is accepted here for schema completeness but is short-circuited
+    by the registry builder before this model is ever validated -- a stub
+    node never imports DSPy machinery.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    signature: str
+    instructions: str | None = None
+    module: Literal["predict", "cot"] = "predict"
+    signature_map: dict[str, str] | None = None
+    model: str | None = None
+    api_base: str | None = None
+    api_key_env: str | None = None
+    stub: bool = False
+
+
+def dspy_node_from_config(spec: NodeSpec) -> DSPyNode:
+    """Build a real :class:`DSPyNode` from ``NodeSpec.config`` (``kind: dspy``).
+
+    Config keys (:class:`DSPyNodeConfig`):
+
+    - ``signature`` (required) -- inline DSPy signature spec, e.g.
+      ``"question -> answer"`` (typed fields allowed).
+    - ``instructions`` -- optional signature instructions (task prompt).
+    - ``module`` -- ``predict`` (default) or ``cot`` (ChainOfThought).
+    - ``signature_map`` -- stargraph state-field -> signature-field names;
+      defaults to the identity map over the signature's input fields.
+    - ``model`` / ``api_base`` / ``api_key_env`` -- optional per-node LM
+      override (litellm model string; the API key is read from the named
+      env var, never from the IR). Without an override, the globally
+      configured LM (``--lm-url``/``--lm-model`` or ``dspy.configure``)
+      is required -- a dspy node with no LM anywhere fails the graph
+      build loudly instead of failing mid-run.
+    """
+    try:
+        cfg = DSPyNodeConfig.model_validate(spec.config)
+    except _PydanticValidationError as e:
+        raise IRValidationError(f"dspy node {spec.id!r}: invalid config: {e}") from e
+
+    import dspy  # type: ignore[import-untyped]
+
+    settings: Any = dspy.settings
+    if cfg.model is None and settings.lm is None:
+        raise IRValidationError(
+            f"dspy node {spec.id!r}: no LM configured -- pass --lm-url/--lm-model "
+            "(or call dspy.configure(lm=...)), set config.model for a per-node LM, "
+            "or set config.stub: true for the offline test stub"
+        )
+
+    # dspy is untyped: route the Signature metaclass call through Any so
+    # strict pyright doesn't reject the (str, str) positional form.
+    signature_factory: Any = dspy.Signature
+    try:
+        signature: Any = (
+            signature_factory(cfg.signature, cfg.instructions)
+            if cfg.instructions
+            else signature_factory(cfg.signature)
+        )
+    except (ValueError, TypeError) as e:
+        raise IRValidationError(
+            f"dspy node {spec.id!r}: invalid signature {cfg.signature!r}: {e}"
+        ) from e
+
+    module: Any = (
+        dspy.Predict(signature) if cfg.module == "predict" else dspy.ChainOfThought(signature)
+    )
+
+    if cfg.model is not None:
+        lm_kwargs: dict[str, Any] = {}
+        if cfg.api_base is not None:
+            lm_kwargs["api_base"] = cfg.api_base
+        if cfg.api_key_env is not None:
+            lm_kwargs["api_key"] = os.environ.get(cfg.api_key_env, "")
+        module.set_lm(dspy.LM(cfg.model, **lm_kwargs))
+
+    if cfg.signature_map is not None:
+        sig_map: dict[str, str] = dict(cfg.signature_map)
+    else:
+        input_fields: Any = signature.input_fields
+        sig_map = {name: name for name in input_fields}
+
+    from stargraph.adapters.dspy import bind
+
+    return bind(module, signature_map=sig_map)
+
+
+__all__ = ["DSPyNode", "DSPyNodeConfig", "dspy_node_from_config"]

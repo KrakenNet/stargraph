@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# deep-research bundle: tool-loop research -> completeness judge. The
+# react node searches and reads pages through the governed tool
+# pipeline; the judge names the gaps, and the loop re-researches with
+# those gaps in the brief until the answer is complete.
+ir_version: "1.0.0"
+id: "graph:bundle-deep-research"
+state_class: "stargraph.bundles.deep_research:ResearchState"
+nodes:
+  - id: brief
+    kind: template
+    config:
+      template: "{question}\n\nGaps identified by the completeness check (empty on the first pass):\n{rationale}"
+      out: brief
+  - id: research
+    kind: react
+    config:
+      input: brief
+      max_iters: 8
+      tools:
+        - "std.web_search@1"
+        - "std.fetch_page@1"
+  - id: check
+    kind: judge
+    config:
+      input: answer
+      rubric: "The answer fully addresses the question with specific, sourced facts; no major aspect of the question is left uncovered."
+rules:
+  - id: r-check-fail-research
+    when: {node: check, verdict: fail}
+    then:
+      - kind: goto
+        target: brief
+  - id: r-check-pass-halt
+    when: {node: check, verdict: pass}
+    then:
+      - kind: halt
+        reason: "research complete"

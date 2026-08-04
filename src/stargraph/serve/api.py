@@ -73,7 +73,7 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
 from stargraph.errors import ArtifactNotFound, BroadcasterOverflow, StargraphRuntimeError
 from stargraph.ir import dumps as ir_dumps
@@ -92,6 +92,7 @@ from stargraph.serve._api_helpers import (
     _replay_audit_after_cursor,
     _resolve_broadcaster_registry,
     _resolve_run_registry,
+    _scan_audit_metrics,
     _summarize,
 )
 from stargraph.serve._api_models import (
@@ -1065,5 +1066,152 @@ def create_app(
             else:
                 out.append(dict(spec))
         return out
+
+    @app.get("/health")
+    async def health() -> JSONResponse:  # pyright: ignore[reportUnusedFunction]
+        """Per-component readiness probe (W2 ops surface).
+
+        Deliberately **ungated**: Kubernetes liveness/readiness probes
+        and load balancers cannot present credentials, and the response
+        carries only component up/down status — no run data. (The WS
+        stream route above is the existing no-auth precedent.)
+
+        Components:
+
+        * ``store`` — the run-history/checkpointer SQLite surface.
+          Probed with a real ``SELECT COUNT(*)`` via
+          :meth:`RunHistory.count`; ``unconfigured`` when the lifespan
+          factory has not wired ``deps["run_history"]`` yet.
+        * ``artifact_store`` — presence-only (the
+          :class:`~stargraph.artifacts.base.ArtifactStore` Protocol has
+          no cheap probe surface; labelled as such).
+        * ``fathom`` — constructs a throwaway ``fathom.Engine()`` (an
+          in-memory CLIPS environment, no sinks) so a broken CLIPS
+          native dependency is caught here rather than on first run.
+        * ``registry`` — presence of the plugin registry container.
+
+        Overall status is ``ok`` (HTTP 200) unless any component probe
+        **errored** (HTTP 503). ``unconfigured`` components do not fail
+        the probe — consistent with this module's permissive POC
+        default for missing deps.
+        """
+        import logging
+
+        log = logging.getLogger("stargraph.serve.api")
+        components: dict[str, dict[str, str]] = {}
+
+        run_history: RunHistory | None = app.state.deps.get("run_history")
+        if run_history is None:
+            components["store"] = {
+                "status": "unconfigured",
+                "detail": "run_history not wired in deps",
+            }
+        else:
+            try:
+                await run_history.count()
+                components["store"] = {"status": "ok", "detail": "runs_history queryable"}
+            except Exception:
+                log.exception("health: run_history probe failed")
+                components["store"] = {"status": "error", "detail": "probe failed"}
+
+        if app.state.deps.get("artifact_store") is None:
+            components["artifact_store"] = {
+                "status": "unconfigured",
+                "detail": "artifact_store not wired in deps",
+            }
+        else:
+            components["artifact_store"] = {
+                "status": "ok",
+                "detail": "wired (presence check only)",
+            }
+
+        try:
+            import fathom
+
+            fathom.Engine()
+            components["fathom"] = {"status": "ok", "detail": "CLIPS engine constructible"}
+        except Exception:
+            log.exception("health: fathom engine probe failed")
+            components["fathom"] = {"status": "error", "detail": "probe failed"}
+
+        if app.state.deps.get("registry") is None:
+            components["registry"] = {
+                "status": "unconfigured",
+                "detail": "registry not wired in deps",
+            }
+        else:
+            components["registry"] = {"status": "ok", "detail": "wired"}
+
+        unhealthy = any(c["status"] == "error" for c in components.values())
+        return JSONResponse(
+            status_code=(status.HTTP_503_SERVICE_UNAVAILABLE if unhealthy else status.HTTP_200_OK),
+            content={
+                "status": "unhealthy" if unhealthy else "ok",
+                "components": components,
+            },
+        )
+
+    @app.get("/metrics")
+    async def metrics(  # pyright: ignore[reportUnusedFunction]
+        _ctx: Annotated[AuthContext, Depends(require("metrics:read"))],
+    ) -> PlainTextResponse:
+        """Prometheus text-exposition metrics (W2 ops surface, hand-rolled).
+
+        No prometheus-client dependency (air-gap posture: fewer wheels
+        to stage). Emits format version 0.0.4 text:
+
+        * ``stargraph_runs_total{status=...}`` — gauge, one ``GROUP BY``
+          over ``runs_history`` (gauge not counter: retention sweeps can
+          shrink it).
+        * ``stargraph_run_duration_milliseconds`` — summary
+          (``_count``/``_sum``) over finished runs. Run-level duration
+          is the only execution-latency bookkeeping the engine persists
+          (no per-node latency table exists), so that is what is
+          exposed.
+        * ``stargraph_audit_chain_height`` /
+          ``stargraph_rule_transitions_total`` — one O(file) forward
+          pass over the JSONL audit log (only when a log is wired via
+          ``run_history.jsonl_audit_path``). Fine at POC retention
+          scale; a long-lived deployment with a large chain should
+          scrape at a modest interval.
+
+        Gated on ``metrics:read`` following the module's capability
+        pattern: permissive under the OSS-default profile (no
+        default-deny), denied under the cleared profile unless the
+        scraper's identity is granted ``metrics:read``.
+        """
+        lines: list[str] = []
+        run_history: RunHistory | None = app.state.deps.get("run_history")
+        if run_history is not None:
+            by_status = await run_history.count_by_status()
+            lines.append("# HELP stargraph_runs_total Runs recorded in run history, by status.")
+            lines.append("# TYPE stargraph_runs_total gauge")
+            for status_name in sorted(by_status):
+                escaped = status_name.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+                lines.append(f'stargraph_runs_total{{status="{escaped}"}} {by_status[status_name]}')
+            d_count, d_sum = await run_history.duration_summary()
+            lines.append(
+                "# HELP stargraph_run_duration_milliseconds "
+                "Wall-clock duration of finished runs (run-level; no per-node bookkeeping)."
+            )
+            lines.append("# TYPE stargraph_run_duration_milliseconds summary")
+            lines.append(f"stargraph_run_duration_milliseconds_count {d_count}")
+            lines.append(f"stargraph_run_duration_milliseconds_sum {d_sum}")
+            audit_path = run_history.jsonl_audit_path
+            if audit_path is not None and audit_path.exists():
+                height, transitions = _scan_audit_metrics(audit_path)
+                lines.append("# HELP stargraph_audit_chain_height Records in the JSONL audit log.")
+                lines.append("# TYPE stargraph_audit_chain_height gauge")
+                lines.append(f"stargraph_audit_chain_height {height}")
+                lines.append(
+                    "# HELP stargraph_rule_transitions_total "
+                    "Rule-routed transition events recorded in the audit log."
+                )
+                lines.append("# TYPE stargraph_rule_transitions_total counter")
+                lines.append(f"stargraph_rule_transitions_total {transitions}")
+        return PlainTextResponse(
+            "\n".join(lines) + "\n",
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     return app

@@ -14,11 +14,12 @@ Phase 1 implementation; this is a pure extraction.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from stargraph.checkpoint.protocol import Checkpoint
 from stargraph.ir._models import GotoAction, HaltAction, InterruptAction, ParallelAction
+from stargraph.replay.cassettes import args_hash
+from stargraph.replay.determinism import now_dt
 from stargraph.runtime.action import ContinueAction, translate_actions
 from stargraph.runtime.events import TransitionEvent
 from stargraph.runtime.parallel import execute_parallel
@@ -49,15 +50,21 @@ async def dispatch_node(
     ``"parallel"`` decision raises :class:`NotImplementedError` (Phase 3).
     """
     current_id = current_node.id
+    # The entry state, retained before step 2 reassigns ``state`` to the
+    # post-node value. An OVARP receipt sink (step 7b) needs it as the tick's
+    # ``pre_state`` so the reproducer re-runs the node from the same input.
+    entry_state = state
 
-    # 1. Run node body. Stamp the current node id on the run so
+    # 1. Run node body. Stamp the current node id + step on the run so
     # write-side-effect nodes can key the per-node cassette by
-    # ``(node_id, step)`` (design §10.3). Cleared in ``finally`` so the
-    # id never leaks across ticks.
+    # ``(node_id, step)`` (design §10.3) and tool provenance facts carry
+    # the true tick index. The id is cleared in ``finally`` so it never
+    # leaks across ticks; ``step`` is re-stamped before every body.
     node_impl = run.node_registry.get(current_id)
     if node_impl is None:
         raise KeyError(f"no node implementation registered for id={current_id!r}")
     run.node_id = current_id
+    run.step = step
     try:
         outputs = await node_impl.execute(state, run)
     finally:
@@ -93,7 +100,7 @@ async def dispatch_node(
     event = TransitionEvent(
         run_id=run.run_id,
         step=step,
-        ts=datetime.now(UTC),
+        ts=now_dt(),
         from_node=current_id,
         to_node=target_for_event,
         rule_id="",
@@ -116,11 +123,20 @@ async def dispatch_node(
         next_action=(
             None if isinstance(decision, ContinueAction) else decision.model_dump(mode="json")
         ),
-        timestamp=datetime.now(UTC),
+        timestamp=now_dt(),
         parent_run_id=run.parent_run_id,
-        side_effects_hash="",
+        # sha256 over the tick's side-effect payload (the node's output writes), canonical
+        # JSON — the divergence axis `compare()` reads (FR-10). Replaces the earlier "" stub.
+        side_effects_hash=args_hash(outputs),
     )
     await asyncio.shield(run.checkpointer.write(checkpoint))
+
+    # 7b. OVARP attestation seam (ADR-0012). When a receipt sink is wired, hand it
+    #     the committed checkpoint + the tick's entry state so the routing decision
+    #     can be emitted as an offline-verifiable receipt. Gated on ``receipt_sink``
+    #     so unattested runs pay nothing.
+    if run.receipt_sink is not None:
+        await run.receipt_sink.record(run, entry_state, checkpoint)
 
     # 8. Mirror lifecycle: retract step-scoped mirrors at the boundary, then
     #    flush pinned specs to the FactStore (T13).
@@ -229,7 +245,6 @@ def _retract_stargraph_actions(fathom: Any) -> None:
 
 def _assert_specs(fathom: Any, specs: list[Any], run_id: str, step: int) -> None:
     """Assert each AssertSpec via the Fathom adapter with a minimal provenance bundle."""
-    from datetime import UTC, datetime
     from decimal import Decimal
 
     for spec in specs:
@@ -242,6 +257,6 @@ def _assert_specs(fathom: Any, specs: list[Any], run_id: str, step: int) -> None
                 "run_id": run_id,
                 "step": step,
                 "confidence": Decimal("1.0"),
-                "timestamp": datetime.now(UTC),
+                "timestamp": now_dt(),
             },
         )

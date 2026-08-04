@@ -7,8 +7,9 @@ graph under test. Each test builds the actual
 sha256-pinned ONNX model URI injected, exactly as ``serve_soc.py`` does) and,
 where a run is needed, drives a real :class:`~stargraph.graph.run.GraphRun` the way
 ``stargraph.serve.scheduler._drive_real_run`` builds it — minus the HTTP layer. No
-LLM is required: ``triage_decide`` (``kind: dspy``) resolves to stargraph's
-deterministic stub DSPy node, so the run is reproducible offline.
+LLM is required: ``build_graph()`` injects the explicit ``stub: true`` flag into
+``triage_decide`` (``kind: dspy``) exactly as the no-LM ``serve_soc.py`` boot path
+does, so the run is reproducible offline.
 
 Coverage (tasks.md 3.7 + Phase-2 reviewer suggestion):
 

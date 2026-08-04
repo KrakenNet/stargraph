@@ -58,8 +58,10 @@ nav:
       - Serve and replay: tutorials/serve-and-replay.md
   - How-to Guides:
       - Overview: how-to/index.md
+      - Author a graph in simple YAML: how-to/authoring-format.md
       - Write a tool plugin: how-to/write-tool-plugin.md
       - Build a skill: how-to/build-skill.md
+      - Write a markdown skill (SKILL.md): how-to/write-markdown-skill.md
       - Build a graph: how-to/build-graph.md
       - Build an agent: how-to/build-agent.md
       - Author a Bosun pack: how-to/bosun-pack.md
@@ -69,7 +71,7 @@ nav:
       - Add a trigger: how-to/add-trigger.md
       - Add an MCP server: how-to/add-mcp-server.md
       - Add a Nautilus source: how-to/add-nautilus-source.md
-      - Air-gap deployment (operator playbook): guides/air-gap-deployment.md
+      - Containers (Docker & Helm): guides/containers.md
   - Security:
       - STRIDE threat model: security/threat-model.md
       - Sign-off rubric: security/sign-off.md
@@ -115,12 +117,14 @@ nav:
       - CLI: reference/cli.md
       - Tools: reference/tools.md
       - Skills: reference/skills.md
+      - RL toolkit: reference/rl.md
       - Release signing: reference/signing.md
       - v1 limits: reference/v1-limits.md
       - Nodes:
           - Overview: reference/nodes/index.md
           - NodeBase: reference/nodes/base.md
           - DSPyNode: reference/nodes/dspy.md
+          - Prebuilt nodes: reference/nodes/prebuilt.md
           - MLNode: reference/nodes/ml.md
           - MemoryWriteNode: reference/nodes/memory.md
           - RetrievalNode: reference/nodes/retrieval.md

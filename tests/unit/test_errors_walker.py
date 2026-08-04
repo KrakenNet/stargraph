@@ -59,6 +59,10 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         "IncompatibleSklearnVersion",
         "IncompatibleModelHashError",
         "MLNodeError",
+        # RL toolkit (stargraph.rl, W7) — StargraphRuntimeError subclass in
+        # _hierarchy.py covering the rl-extra gate, env/planner resolution,
+        # and step/plan contract violations.
+        "RLNodeError",
         "SimulationError",
         # foundry assembler — raised by stargraph.skills.foundry.assemble when no
         # runnable graph spine landed. StargraphRuntimeError-rooted so a single
@@ -119,6 +123,11 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         # this same class anyway, so we accept it on its own as a known
         # boundary exception (FR-24 carve-out for HTTP-framework integration).
         "HTTPException",
+        # typer's CLI-exit signal, raised by stargraph.cli.ovarp_reproduce to
+        # set the process exit code (0 reproduced / 2 failed) that ``ovarp
+        # verify --replay`` reads. Same framework-boundary carve-out as
+        # HTTPException — control-flow exit, not an engine error class.
+        "Exit",
         # Stdlib — type/contract violations (caller bug, not a Stargraph failure).
         "TypeError",
         "ValueError",

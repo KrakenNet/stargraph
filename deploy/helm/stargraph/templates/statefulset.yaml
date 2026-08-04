@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "stargraph.fullname" . }}
+  labels:
+    {{- include "stargraph.labels" . | nindent 4 }}
+spec:
+  # Pinned to 1 by design, not configurable: replay determinism and the
+  # fsync'd single-writer audit chain require exactly one serve process
+  # per state volume (locked Decision #5; see chart README). Horizontal
+  # scaling is out of scope — scale by installing additional releases,
+  # each with its own PVC.
+  replicas: 1
+  serviceName: {{ include "stargraph.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "stargraph.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "stargraph.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: stargraph
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+            - --profile
+            - {{ .Values.profile }}
+            - --host
+            - 0.0.0.0
+            - --port
+            - {{ .Values.service.port | quote }}
+            - --db
+            - /data/checkpoint.sqlite
+            - --audit-log
+            - /data/audit.jsonl
+          env:
+            - name: TZ
+              value: UTC
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: state
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.persistence.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

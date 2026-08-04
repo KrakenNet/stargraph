@@ -35,7 +35,7 @@ rules:
         target: node_b
   # When node_b is reached, halt.
   - id: r-halt
-    when: "?n <- (node-id (id node_b))"
+    when: {node: node_b}
     then:
       - kind: halt
         reason: "hello example reached node_b"

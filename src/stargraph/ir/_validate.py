@@ -33,6 +33,7 @@ from stargraph.errors import ValidationError
 from ._ids import validate_node_id, validate_pack_id, validate_rule_id
 from ._models import IRDocument
 from ._versioning import check_version
+from ._when import compile_when, when_node_ref
 
 # IR-time Cypher lint hook. Lazily imported so a YAML-only IR doesn't
 # pull graphglot when no node config carries Cypher. The Linter's
@@ -169,6 +170,13 @@ def validate(ir: dict[str, Any] | str) -> list[ValidationError]:
     if id_errors:
         return id_errors
 
+    # Rule when-sugar: a mapping ``when`` must compile to CLIPS, and its
+    # declared ``node`` must exist (raw string ``when`` stays free text —
+    # the engine parses it; only the sugar is checkable here).
+    when_errors = _check_rule_when_sugar(doc)
+    if when_errors:
+        return when_errors
+
     # Stage 5 (FR-17 amendment): within-IR namespace duplicate detection.
     # Plugin loader handles cross-distribution conflicts; this catches the
     # YAML-author case where a single IR document declares two nodes/rules
@@ -189,6 +197,46 @@ def validate(ir: dict[str, Any] | str) -> list[ValidationError]:
     if isinstance(parsed, dict):
         return check_version(cast("dict[str, Any]", parsed))
     return []
+
+
+def _check_rule_when_sugar(doc: IRDocument) -> list[ValidationError]:
+    """Validate mapping-form ``RuleSpec.when`` sugar (raw strings skipped).
+
+    Two checks per sugar rule: the mapping compiles to CLIPS
+    (:func:`compile_when` shape rules), and a declared ``node`` names a
+    node in this document -- a typo'd node id would otherwise become a
+    rule that can never fire.
+    """
+    errors: list[ValidationError] = []
+    node_ids = {n.id for n in doc.nodes}
+    for idx, rule in enumerate(doc.rules):
+        if isinstance(rule.when, str):
+            continue
+        try:
+            compile_when(rule.when)
+        except ValueError as exc:
+            errors.append(
+                ValidationError(
+                    "IR validation failed",
+                    path=f"/rules/{idx}/when",
+                    expected="when sugar {node: <node-id>, <mirror-field>: <scalar>}",
+                    actual=rule.when,
+                    hint=str(exc),
+                ),
+            )
+            continue
+        node_ref = when_node_ref(rule.when)
+        if node_ref is not None and node_ref not in node_ids:
+            errors.append(
+                ValidationError(
+                    "IR validation failed",
+                    path=f"/rules/{idx}/when",
+                    expected="when.node references a node id in this document",
+                    actual=node_ref,
+                    hint=f"no node with id {node_ref!r}; declared: {sorted(node_ids)}",
+                ),
+            )
+    return errors
 
 
 def _detect_within_ir_duplicates(doc: IRDocument) -> list[ValidationError]:

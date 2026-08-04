@@ -33,6 +33,7 @@ import time as _time
 import uuid as _uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import vcr  # pyright: ignore[reportMissingTypeStubs]
@@ -40,7 +41,7 @@ import vcr  # pyright: ignore[reportMissingTypeStubs]
 from stargraph.errors import ReplayError
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from pathlib import Path
 
 
@@ -50,6 +51,7 @@ __all__ = [
     "current_scope",
     "http_cassette",
     "now",
+    "now_dt",
     "random",
     "secrets_token",
     "urandom",
@@ -106,7 +108,13 @@ def current_scope() -> DeterminismScope | None:
     return _CURRENT_SCOPE.get()
 
 
-def _shim(name: str, real: Any) -> Any:
+def _shim(
+    name: str,
+    real: Callable[[], Any],
+    *,
+    encode: Callable[[Any], Any] = lambda v: v,
+    decode: Callable[[Any], Any] = lambda v: v,
+) -> Any:
     """Record-or-replay dispatcher for a single primitive call.
 
     Outside any :class:`DeterminismScope` the shim is a transparent passthrough
@@ -114,6 +122,11 @@ def _shim(name: str, real: Any) -> Any:
     scope just gets the real wall-clock / RNG value. Inside a scope, replay
     mode pops the next recorded value (raising on exhaustion) and record mode
     invokes ``real()`` and appends the result to the recording.
+
+    ``encode``/``decode`` (identity by default) let a shim store a
+    JSON-serializable surrogate rather than the live value -- e.g. :func:`now_dt`
+    records the ISO-8601 string so a scope's recording can ride inside a
+    persisted replay bundle while still returning a ``datetime``.
     """
     scope = _CURRENT_SCOPE.get()
     if scope is None:
@@ -126,15 +139,34 @@ def _shim(name: str, real: Any) -> Any:
                 "the replay produced more calls than were recorded",
                 shim=name,
             )
-        return bucket.pop(0)
+        return decode(bucket.pop(0))
     value = real()
-    bucket.append(value)
+    bucket.append(encode(value))
     return value
 
 
 def now() -> float:
     """Replay-safe wall-clock; mirrors :func:`time.time`."""
     return _shim("now", _time.time)
+
+
+def now_dt() -> datetime:
+    """Replay-safe tz-aware wall-clock datetime; mirrors ``datetime.now(UTC)``.
+
+    The engine's per-tick timestamps (transition events, checkpoint ``timestamp``,
+    mirror provenance) flow through here so a recorded run can be re-executed
+    byte-identically (design §3.8.5, FR-28). Unlike :func:`now`, the recording holds
+    the **ISO-8601 string** rather than a ``datetime`` object, so a scope's recording
+    stays JSON-serializable and can ride inside a persisted replay bundle; the return
+    type is a tz-aware ``datetime`` in both record and replay modes. Outside any
+    :class:`DeterminismScope` this is a transparent passthrough to ``datetime.now(UTC)``.
+    """
+    return _shim(
+        "now_dt",
+        lambda: datetime.now(UTC),
+        encode=lambda d: d.isoformat(),
+        decode=datetime.fromisoformat,
+    )
 
 
 def random() -> float:

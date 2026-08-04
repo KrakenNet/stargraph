@@ -302,14 +302,25 @@ class SQLiteCheckpointer:
         await db.commit()
 
     async def read_latest(self, run_id: str) -> Checkpoint | None:
-        """Return the highest-step checkpoint for ``run_id`` or ``None``."""
+        """Return the most-recently-written checkpoint for ``run_id`` or ``None``.
+
+        Ordered by ``rowid`` (physical write order), NOT by ``step_idx``.
+        ``step_idx`` resets to 0 at the start of every ``loop.execute`` process
+        (it is a per-process tick counter, not a globally-monotonic per-run
+        sequence), so a resume process that runs fewer steps than the original
+        leaves the original's higher ``step_idx`` rows in place while its own
+        lower-index rows REPLACE the originals. Ordering by ``step_idx`` would
+        then return a stale pre-resume checkpoint — a silent correctness bug.
+        ``rowid`` strictly increases per ``INSERT OR REPLACE``, so the highest
+        rowid is always the genuinely latest write.
+        """
         db = self._require_db()
         async with db.execute(
             "SELECT run_id, step_idx, branch_id, parent_step_idx, ts, "
             "state_snapshot, clips_facts, last_node, next_action, "
             "structural_hash, runtime_hash, side_effects_hash, parent_run_id "
             "FROM checkpoints WHERE run_id = ? "
-            "ORDER BY step_idx DESC LIMIT 1",
+            "ORDER BY rowid DESC LIMIT 1",
             (run_id,),
         ) as cur:
             row = await cur.fetchone()

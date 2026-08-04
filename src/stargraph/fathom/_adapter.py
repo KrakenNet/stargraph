@@ -83,6 +83,12 @@ class FathomAdapter:
 
     def __init__(self, engine: fathom.Engine) -> None:
         self.engine = engine
+        #: The most recent ``engine.evaluate()`` result, captured by :meth:`evaluate`.
+        #: FR-4 routing consumes only ``stargraph_action`` facts and discards the
+        #: decision/trace; retaining the full result lets any consumer read the
+        #: governance decision (``allow``/``deny``/…) or rule trace. ``None`` until
+        #: the first :meth:`evaluate` call.
+        self.last_evaluation: fathom.EvaluationResult | None = None
 
     def register_stargraph_action_template(self) -> None:
         """Register the ``stargraph_action`` deftemplate on the wrapped engine.
@@ -121,12 +127,13 @@ class FathomAdapter:
     def evaluate(self) -> list[Action]:
         """Run the engine and translate ``stargraph_action`` facts into typed actions.
 
-        Calls ``engine.evaluate()`` (returns :class:`fathom.EvaluationResult`,
-        whose decision/trace data are out of scope for FR-4), then queries
-        ``stargraph_action`` facts and feeds the slot dicts to
-        :meth:`extract_actions`.
+        Calls ``engine.evaluate()`` (returns :class:`fathom.EvaluationResult`),
+        stashes it on :attr:`last_evaluation` so a caller can read the governance
+        decision or rule trace (out of scope for FR-4 routing, which consumes only
+        ``stargraph_action`` facts), then queries ``stargraph_action`` facts and
+        feeds the slot dicts to :meth:`extract_actions`.
         """
-        self.engine.evaluate()
+        self.last_evaluation = self.engine.evaluate()
         facts = self.engine.query("stargraph_action", None)
         return self.extract_actions(list(facts))
 

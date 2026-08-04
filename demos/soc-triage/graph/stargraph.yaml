@@ -60,8 +60,24 @@ nodes:
       input_field: features
       output_field: risk
 
+  # Triage decision — DSPy ChainOfThought over the enriched alert. Inputs are
+  # RunState fields (identity-mapped to the signature inputs); outputs merge
+  # back as disposition/reason. The committed IR carries the real LM-backed
+  # config; serve_soc.py injects `stub: true` at boot only when no
+  # LLM_BASE_URL/LLM_MODEL is configured (same pattern as the file_uri
+  # injection above), so the server still boots offline.
   - id: triage_decide
     kind: dspy
+    config:
+      module: cot
+      signature: >-
+        signature, severity_raw, asset_tier, risk, risk_confidence, priors
+        -> disposition, reason
+      instructions: >-
+        Triage the SOC alert. disposition must be exactly one of:
+        auto_remediate, escalate, dismiss, needs_human. reason is a short
+        analyst-readable justification citing the risk score and any
+        historical priors.
 
   # soc-policy governance pack (mounted below) fires on this node; the routing
   # rules read the disposition/asset_tier facts it asserts. Passthrough keeps

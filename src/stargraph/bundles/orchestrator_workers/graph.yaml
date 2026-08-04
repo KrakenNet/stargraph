@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# orchestrator-workers bundle: plan -> worker -> synthesize (T5/T10).
+# Sequential v1: the planner decomposes, one react worker executes the
+# subtask list through the governed tool pipeline, a summarizer
+# synthesizes. Parallel worker fan-out lands when the IR's parallel
+# action compiles to live routing.
+ir_version: "1.0.0"
+id: "graph:bundle-orchestrator-workers"
+state_class: "stargraph.bundles.orchestrator_workers:OrchestratorState"
+nodes:
+  - id: plan
+    kind: plan
+    config:
+      input: task
+  - id: work-brief
+    kind: template
+    config:
+      template: "{task}\n\nWork through these subtasks in order and gather everything needed to complete the overall task:\n{tasks}"
+      out: brief
+  - id: worker
+    kind: react
+    config:
+      input: brief
+      max_iters: 12
+      tools:
+        - "std.web_search@1"
+        - "std.fetch_page@1"
+  - id: synth-brief
+    kind: template
+    config:
+      template: "Task:\n{task}\n\nWorker findings:\n{answer}"
+      out: synth_input
+  - id: synthesize
+    kind: summarize
+    config:
+      input: synth_input
+rules:
+  - id: r-synthesize-halt
+    when: {node: synthesize}
+    then:
+      - kind: halt
+        reason: "orchestration complete"

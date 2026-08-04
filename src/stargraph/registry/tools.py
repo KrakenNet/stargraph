@@ -27,7 +27,7 @@ Phase 1 scope:
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from stargraph.errors import CapabilityError, PluginLoadError
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from stargraph.graph import Graph
     from stargraph.ir._models import SkillSpec, ToolSpec
 
-__all__ = ["Tool", "ToolRegistry"]
+__all__ = ["Tool", "ToolRegistry", "install_plugin_tools"]
 
 
 @runtime_checkable
@@ -61,6 +61,32 @@ def _tool_id(spec: ToolSpec) -> str:
     the registry class.
     """
     return f"{spec.namespace}.{spec.name}@{spec.version}"
+
+
+def install_plugin_tools(pm: Any, registry: ToolRegistry) -> None:
+    """Merge every plugin's ``register_tools()`` result into ``registry``.
+
+    ``pm`` is the pluggy manager built by
+    :func:`stargraph.plugin.loader.build_plugin_manager`. Each hook must
+    return ``@tool``-decorated *callables* (each carrying ``.spec``) --
+    a bare :class:`~stargraph.ir._models.ToolSpec` cannot be invoked, so
+    returning one is a loud :class:`PluginLoadError`, not a silent
+    registry entry that fails at call time. Id conflicts raise via
+    :meth:`ToolRegistry.register` (first registration wins is NOT the
+    policy here -- duplicates are fatal, AC-5.5).
+    """
+    results: list[list[Any]] = cast("list[list[Any]]", pm.hook.register_tools())
+    for tools in results:
+        for candidate in tools or []:
+            tool_obj: Any = candidate
+            if not callable(tool_obj) or getattr(tool_obj, "spec", None) is None:
+                type_name: str = type(cast("object", tool_obj)).__name__
+                raise PluginLoadError(
+                    "register_tools() must return @tool-decorated callables "
+                    f"(got {type_name!r}); return the decorated "
+                    "function, not its ToolSpec",
+                )
+            registry.register(cast("Tool", tool_obj))
 
 
 class ToolRegistry:
