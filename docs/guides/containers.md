@@ -2,8 +2,6 @@
 
 **Audience**: Operators running `stargraph serve` in a containerized
 environment.
-**Companion doc**: [Air-gap deployment](air-gap-deployment.md) — the
-wheelhouse recipe and the single-process invariant this page builds on.
 
 Stargraph ships three deployment artifacts at the repo root / `deploy/`:
 
@@ -29,8 +27,8 @@ The builder stage resolves dependencies from the committed `uv.lock`
 `python:3.13-slim` with a non-root `stargraph` user (uid 1000). State
 (SQLite checkpointer + JSONL audit log) lives under `/data`.
 
-**Air-gapped build**: stage a wheelhouse per the
-[air-gap guide §1](air-gap-deployment.md), drop it at `./wheelhouse/` in the
+**Air-gapped build**: stage a wheelhouse (`uv pip download`/`pip wheel`
+against `uv.lock` on a connected host), drop it at `./wheelhouse/` in the
 build context, and build with `--network=none`. When `wheelhouse/*.whl` is
 present the builder installs with `pip --no-index --find-links wheelhouse`
 and never reaches the network.
