@@ -5,6 +5,10 @@ on:
     tags: ["v*.*.*"]
   workflow_dispatch:  # allow manual re-runs without re-tagging
 
+# Least-privilege default; the publish job grants itself id-token: write.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build sdist + wheel

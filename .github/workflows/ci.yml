@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -21,6 +24,10 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # dorny/paths-filter reads the PR's changed-file list via the API.
+      pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
       engine: ${{ steps.filter.outputs.engine }}
