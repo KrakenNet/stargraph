@@ -471,6 +471,49 @@
       "title": "RuleSpec",
       "type": "object"
     },
+    "SGLangServer": {
+      "additionalProperties": false,
+      "description": "Declared LM endpoint: an SGLang server bound to this graph for a run.\n\n``stargraph run`` resolves this block before the first node executes: it\nprobes ``http://{host}:{port}/v1/models`` and **attaches** when a server\nalready serves ``model`` (left running afterwards -- it is not ours),\notherwise it spawns ``python -m sglang.launch_server``, waits for the\nendpoint to answer, and terminates it when the run ends. The derived\nbase URL + ``model`` configure the DSPy LM, so declaring this block is\nequivalent to passing ``--lm-url``/``--lm-model`` at a live endpoint.\n\nNot part of the structural graph hash: like ``--lm-url``, the endpoint is\nan environment binding, not graph topology.\n\nAttributes:\n    provider: Only ``\"sglang\"`` today; the discriminator for future\n        providers.\n    model: ``--model-path`` value; must equal the id the server reports\n        in ``/v1/models`` when attaching to an already-running server.\n    host: Bind address / probe host.\n    port: Bind port (SGLang's own default is 30000).\n    args: Extra argv passed through to ``sglang.launch_server``\n        verbatim (e.g. ``[\"--attention-backend\", \"triton\"]``).\n        Operator-only: a graph-declared value is refused unless the\n        operator re-states it as ``--sglang-arg`` (argv into a\n        subprocess is a code-execution surface, and a graph file can\n        be less trusted than the operator running it). The same holds\n        for a non-loopback ``host``, which would receive the API key\n        and every prompt.\n    startup_timeout_s: How long to wait for a spawned server to answer\n        before failing the run. Big models take minutes to load.",
+      "properties": {
+        "provider": {
+          "const": "sglang",
+          "default": "sglang",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "host": {
+          "default": "127.0.0.1",
+          "title": "Host",
+          "type": "string"
+        },
+        "port": {
+          "default": 30000,
+          "title": "Port",
+          "type": "integer"
+        },
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Args",
+          "type": "array"
+        },
+        "startup_timeout_s": {
+          "default": 600,
+          "title": "Startup Timeout S",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "SGLangServer",
+      "type": "object"
+    },
     "SkillRef": {
       "additionalProperties": false,
       "description": "Reference to a skill by namespaced id.",
@@ -636,6 +679,17 @@
       "anyOf": [
         {
           "$ref": "#/definitions/CheckpointBlock"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "lm": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SGLangServer"
         },
         {
           "type": "null"

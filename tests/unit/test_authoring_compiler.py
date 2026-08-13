@@ -145,3 +145,40 @@ def test_authoring_clips_renders_rules() -> None:
 
     assert any("r-judge-fail" in line and "goto work" in line for line in lines)
     assert any('(verdict (value "pass"))' in line and "halt" in line for line in lines)
+
+
+def test_lm_block_lowers_to_an_ir_endpoint_spec() -> None:
+    ir = compile_authoring(
+        _doc(
+            lm={
+                "provider": "sglang",
+                "model": "Qwen/Qwen3-8B",
+                "port": 41002,
+                "args": ["--attention-backend", "triton"],
+            }
+        )
+    )
+
+    assert ir.lm is not None
+    assert (ir.lm.model, ir.lm.port) == ("Qwen/Qwen3-8B", 41002)
+    assert ir.lm.args == ["--attention-backend", "triton"]
+    assert ir.lm.host == "127.0.0.1"  # default
+
+
+def test_no_lm_block_leaves_the_endpoint_unbound() -> None:
+    assert compile_authoring(_doc()).lm is None
+
+
+@pytest.mark.parametrize(
+    ("block", "match"),
+    [
+        ("sglang", "must be a mapping"),
+        ({"provider": "sglang"}, "model"),
+        ({"model": "m", "bogus": 1}, "bogus"),
+        ({"provider": "vllm", "model": "m"}, "provider"),
+        ({"model": "m", "port": "http"}, "port"),
+    ],
+)
+def test_loud_lm_block_errors(block: Any, match: str) -> None:
+    with pytest.raises(IRValidationError, match=match):
+        compile_authoring(_doc(lm=block))

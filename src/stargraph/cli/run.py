@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import ipaddress
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -54,7 +55,7 @@ from stargraph.cli._summary import SummaryRenderer
 from stargraph.errors import StargraphError
 from stargraph.fathom import build_ir_routing
 from stargraph.graph import Graph, GraphRun
-from stargraph.ir import IRDocument
+from stargraph.ir import IRDocument, SGLangServer
 from stargraph.ir._ids import new_run_id
 
 # Node-kind resolution moved to stargraph.nodes.registry (the CLI is one
@@ -69,11 +70,19 @@ from stargraph.nodes.registry import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from stargraph.checkpoint.protocol import RunSummary
 
 __all__ = ["cmd", "node_kinds"]
 
 _build_node_registry = build_node_registry
+
+
+def _check_lm_pairing(lm_url: str | None, lm_model: str | None) -> None:
+    """Fail loud when exactly one of --lm-url / --lm-model is set."""
+    if (lm_url is None) != (lm_model is None):
+        raise typer.BadParameter("--lm-url and --lm-model must be specified together (or neither)")
 
 
 def _configure_lm(
@@ -88,8 +97,7 @@ def _configure_lm(
     call entirely when both are None lets graphs without DSPy nodes run
     without dragging in dspy at all.
     """
-    if (lm_url is None) != (lm_model is None):
-        raise typer.BadParameter("--lm-url and --lm-model must be specified together (or neither)")
+    _check_lm_pairing(lm_url, lm_model)
     if lm_url is None:
         return
     import dspy  # pyright: ignore[reportMissingTypeStubs]
@@ -102,6 +110,117 @@ def _configure_lm(
             timeout=lm_timeout,
         )
     )
+
+
+def _is_loopback(host: str) -> bool:
+    """True for hosts that cannot leave the box."""
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _check_graph_declared(
+    declared: SGLangServer, *, args_from_flags: bool, host_from_flags: str | None
+) -> None:
+    """Refuse the parts of a graph-declared ``lm:`` block that escape the box.
+
+    A graph file can be less trusted than the operator running it, and this
+    is the only path by which a graph reaches ``subprocess`` at all (every
+    process-spawning std tool is behind the default-deny capability gate).
+    Two fields are therefore operator-only, and must be re-stated as flags
+    (which are trusted) before they take effect:
+
+    * ``args`` -- passthrough argv into ``sglang.launch_server``; a graph
+      that could set it could turn a run into arbitrary code execution
+      (``--trust-remote-code`` executes the model repo's own Python).
+    * a non-loopback ``host`` -- the derived base URL receives ``--lm-key``
+      and every prompt, so a graph-chosen host is an exfiltration channel
+      (and binding a launched server off-loopback publishes it).
+
+    ``model``/``port``/``startup_timeout_s`` stay graph-declarable: they
+    bound the run to a specific local endpoint without handing the graph
+    argv or a network destination.
+    """
+    if declared.args and not args_from_flags:
+        raise typer.BadParameter(
+            f"graph declares lm.args {declared.args} -- passthrough argv is "
+            "operator-only; re-state them as --sglang-arg to allow them"
+        )
+    if host_from_flags is None and not _is_loopback(declared.host):
+        raise typer.BadParameter(
+            f"graph declares a non-loopback lm.host {declared.host!r} -- the "
+            "endpoint receives --lm-key and every prompt; pass "
+            f"--sglang-host {declared.host} to allow it"
+        )
+
+
+def _resolve_sglang(
+    ir: IRDocument,
+    *,
+    model: str | None,
+    host: str | None,
+    port: int | None,
+    args: list[str] | None,
+    timeout: int | None,
+) -> SGLangServer | None:
+    """Merge the graph's ``lm:`` block with the ``--sglang-*`` flags.
+
+    The flags override field-by-field, so ``--sglang-port`` alone re-points a
+    graph-declared server while ``--sglang-model`` alone declares one for a
+    graph that has no ``lm:`` block. Returns ``None`` when neither source
+    asks for a server.
+    """
+    overrides: dict[str, object] = {}
+    if model is not None:
+        overrides["model"] = model
+    if host is not None:
+        overrides["host"] = host
+    if port is not None:
+        overrides["port"] = port
+    if args:
+        overrides["args"] = list(args)
+    if timeout is not None:
+        overrides["startup_timeout_s"] = timeout
+
+    if ir.lm is not None:
+        _check_graph_declared(ir.lm, args_from_flags=args is not None, host_from_flags=host)
+        return ir.lm.model_copy(update=overrides)
+    if "model" in overrides:
+        return SGLangServer.model_validate(overrides)
+    if overrides:
+        raise typer.BadParameter(
+            "--sglang-* flags need --sglang-model (or an `lm:` block in the graph)"
+        )
+    return None
+
+
+@contextlib.contextmanager
+def _lm_endpoint(
+    spec: SGLangServer | None,
+    lm_url: str | None,
+    lm_model: str | None,
+    lm_key: str,
+    lm_timeout: int,
+    echo: Callable[[str], None],
+) -> Generator[None]:
+    """Hold the run's LM endpoint open: boot/attach sglang, then configure dspy.
+
+    A declared ``spec`` supplies both halves of the DSPy binding (base URL +
+    model), so ``--lm-url``/``--lm-model`` are rejected alongside it by the
+    caller. With no spec this is exactly the pre-existing ``_configure_lm``
+    behaviour.
+    """
+    with contextlib.ExitStack() as stack:
+        if spec is not None:
+            from stargraph.lm.sglang import sglang_server
+
+            lm_url = stack.enter_context(sglang_server(spec, echo=echo))
+            lm_model = spec.model
+        _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
+        yield
 
 
 def _build_audit_sink(log_file: Path) -> AuditSink:
@@ -273,6 +392,43 @@ def cmd(
             help="LLM call timeout in seconds.",
         ),
     ] = 60,
+    sglang_model: Annotated[
+        str | None,
+        typer.Option(
+            "--sglang-model",
+            help=(
+                "Serve this model with SGLang for the run: attaches to an "
+                "already-running server on the port, else launches one and "
+                "shuts it down at the end. Sets --lm-url/--lm-model for you."
+            ),
+        ),
+    ] = None,
+    sglang_host: Annotated[
+        str | None,
+        typer.Option("--sglang-host", help="SGLang bind/probe host (default: 127.0.0.1)."),
+    ] = None,
+    sglang_port: Annotated[
+        int | None,
+        typer.Option("--sglang-port", help="SGLang port (default: 30000)."),
+    ] = None,
+    sglang_arg: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--sglang-arg",
+            help=(
+                "Extra argument passed through to sglang.launch_server "
+                "(repeatable, e.g. --sglang-arg=--attention-backend "
+                "--sglang-arg=triton)."
+            ),
+        ),
+    ] = None,
+    sglang_timeout: Annotated[
+        int | None,
+        typer.Option(
+            "--sglang-timeout",
+            help="Seconds to wait for a launched SGLang server to answer (default: 600).",
+        ),
+    ] = None,
 ) -> None:
     """Run a Stargraph graph end-to-end (FR-8 POC).
 
@@ -287,7 +443,9 @@ def cmd(
     if quiet and verbose:
         raise typer.BadParameter("--quiet and --verbose are mutually exclusive")
 
-    _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
+    # The LM is configured later (inside ``_lm_endpoint``, once a declared
+    # sglang server is up); flag pairing is still checked before any work.
+    _check_lm_pairing(lm_url, lm_model)
 
     ir_dict = yaml.safe_load(graph.read_text(encoding="utf-8"))
     if is_authoring_format(ir_dict):
@@ -296,6 +454,20 @@ def cmd(
         ir = compile_authoring(ir_dict, default_id=graph.stem)
     else:
         ir = IRDocument.model_validate(ir_dict)
+
+    sglang_spec = _resolve_sglang(
+        ir,
+        model=sglang_model,
+        host=sglang_host,
+        port=sglang_port,
+        args=sglang_arg,
+        timeout=sglang_timeout,
+    )
+    if sglang_spec is not None and (lm_url is not None or lm_model is not None):
+        raise typer.BadParameter(
+            "--lm-url/--lm-model conflict with an sglang endpoint -- the URL and "
+            "model are derived from it"
+        )
 
     # Builtin-seeded ToolRegistry on the Graph: the ``kind: tool``
     # ToolCallNode resolves its tool id here at execute time.
@@ -373,8 +545,15 @@ def cmd(
             if audit_sink is not None:
                 await audit_sink.close()
 
+    def _echo(message: str) -> None:
+        if not quiet:
+            console.print(message, style="dim", highlight=False, markup=False)
+
     try:
-        summary = asyncio.run(_bootstrap_and_drive())
+        # The endpoint outlives the whole run: a spawned sglang server is torn
+        # down only once the loop is done (or has raised).
+        with _lm_endpoint(sglang_spec, lm_url, lm_model, lm_key, lm_timeout, _echo):
+            summary = asyncio.run(_bootstrap_and_drive())
     except KeyboardInterrupt:
         console.print("[yellow]cancelled[/yellow]")
         raise typer.Exit(code=130) from None

@@ -64,6 +64,9 @@ _ALLOWED_RAISE_NAMES: frozenset[str] = frozenset(
         # and step/plan contract violations.
         "RLNodeError",
         "SimulationError",
+        # LM endpoint launcher (stargraph.lm.sglang) — StargraphRuntimeError
+        # subclass covering attach/spawn/readiness failures of a declared server.
+        "LMServerError",
         # foundry assembler — raised by stargraph.skills.foundry.assemble when no
         # runnable graph spine landed. StargraphRuntimeError-rooted so a single
         # ``except StargraphRuntimeError`` catches it alongside engine runtime failures.

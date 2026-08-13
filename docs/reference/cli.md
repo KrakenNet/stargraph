@@ -77,9 +77,34 @@ on `failed`.
 | `--lm-model NAME`    | str              | _(none)_               | LLM model identifier (e.g. `gpt-oss:20b`).                                 |
 | `--lm-key KEY`       | str              | `placeholder`          | API key for the LLM endpoint (`placeholder` works for ollama).             |
 | `--lm-timeout SEC`   | int              | `60`                   | LLM call timeout in seconds.                                               |
+| `--sglang-model NAME`| str              | _(none)_               | Serve this model with SGLang for the run; sets `--lm-url`/`--lm-model` from it. |
+| `--sglang-host HOST` | str              | `127.0.0.1`            | SGLang bind/probe host.                                                    |
+| `--sglang-port PORT` | int              | `30000`                | SGLang port.                                                               |
+| `--sglang-arg ARG`   | str (repeatable) | _(empty)_              | Extra argv passed through to `sglang.launch_server` verbatim.              |
+| `--sglang-timeout SEC` | int            | `600`                  | Seconds to wait for a launched SGLang server to answer.                    |
 
 `--quiet` and `--verbose` are mutually exclusive. `--lm-url` and
 `--lm-model` must be supplied together (or neither).
+
+The `--sglang-*` flags bind the run to a local
+[SGLang](https://docs.sglang.ai/) server, and derive `--lm-url` /
+`--lm-model` from it — so they conflict with those two flags. Before the
+first node runs, `stargraph run` probes `http://host:port/v1/models`:
+
+- a server already serving that model is **attached to** and left running;
+- a server serving a *different* model is a loud error (pick another port);
+- nothing listening means one is launched
+  (`python -m sglang.launch_server --model-path ...`, plus every
+  `--sglang-arg` verbatim), waited on until it answers, and terminated —
+  process group included — when the run ends.
+
+The same binding can be declared in the graph itself as an `lm:` block
+(see [Author a graph in simple YAML](../how-to/authoring-format.md)); the
+flags override it field by field. A graph-declared block may set
+`model`/`port`/`startup_timeout_s` only — passthrough `args` and a
+non-loopback `host` are operator-only and must be re-stated as
+`--sglang-arg` / `--sglang-host`. Neither is part of the graph hash: like
+`--lm-url`, an endpoint is an environment binding, not topology.
 
 **Examples**
 
@@ -92,6 +117,11 @@ stargraph run graphs/triage.yaml --inspect
 
 # Bind a local LLM for dspy nodes
 stargraph run graphs/triage.yaml --lm-url http://localhost:11434 --lm-model gpt-oss:20b
+
+# Boot SGLang for the run (attaches instead if :41002 already serves it)
+stargraph run graphs/triage.yaml \
+  --sglang-model microsoft/phi-4 --sglang-port 41002 \
+  --sglang-arg=--attention-backend --sglang-arg=triton
 ```
 
 See also: [Concepts: IR](../concepts/ir.md),

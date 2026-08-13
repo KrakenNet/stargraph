@@ -46,12 +46,13 @@ from typing import Annotated, Any, cast
 
 import fathom
 from pydantic import BaseModel, create_model
+from pydantic import ValidationError as PydanticValidationError
 
 from stargraph.checkpoint.sqlite import SQLiteCheckpointer
 from stargraph.errors import CheckpointError, IRValidationError
 from stargraph.fathom import FathomAdapter
 from stargraph.graph import Graph, GraphRun
-from stargraph.ir import IRDocument, NodeSpec, RuleSpec
+from stargraph.ir import IRDocument, NodeSpec, RuleSpec, SGLangServer
 from stargraph.ir._mirror import Mirror
 from stargraph.ir._models import GotoAction, HaltAction
 from stargraph.ir._when import compile_when as _compile_when
@@ -502,7 +503,7 @@ _AUTHORING_TYPES: dict[str, tuple[type, Any]] = {
     "dict": (dict, {}),
 }
 
-_AUTHORING_KEYS = frozenset({"id", "state", "nodes", "routes"})
+_AUTHORING_KEYS = frozenset({"id", "state", "nodes", "routes", "lm"})
 _NAME_RE = _re.compile(r"^[a-z0-9][a-z0-9_.\-]*$")
 
 
@@ -601,6 +602,28 @@ def _compile_node(name: str, raw: Any) -> NodeSpec:
     )
 
 
+def _compile_lm(raw: Any) -> SGLangServer | None:
+    """Lower the optional top-level ``lm:`` block to an IR endpoint spec."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise _authoring_error(
+            f"`lm` must be a mapping, got {type(raw).__name__}",
+            hint="keys: provider (sglang), model, host, port, args, startup_timeout_s",
+        )
+    try:
+        return SGLangServer.model_validate(raw)
+    except PydanticValidationError as exc:
+        problems = "; ".join(
+            f"{'.'.join(str(loc) for loc in err['loc']) or 'lm'}: {err['msg']}"
+            for err in exc.errors()
+        )
+        raise _authoring_error(
+            f"`lm` block is invalid -- {problems}",
+            hint="keys: provider (sglang), model, host, port, args, startup_timeout_s",
+        ) from exc
+
+
 def _compile_routes(
     routes: dict[str, Any],
     node_names: list[str],
@@ -680,6 +703,8 @@ def compile_authoring(doc: dict[str, Any], *, default_id: str = "authored") -> I
     if not isinstance(routes_raw, dict):
         raise _authoring_error("`routes` must be a mapping of node -> target")
 
+    lm = _compile_lm(doc.get("lm"))
+
     node_names = [str(name) for name in nodes_map]
     nodes = [_compile_node(str(name), raw) for name, raw in nodes_map.items()]
     rules = _compile_routes(cast("dict[str, Any]", routes_raw), node_names, routed_fields)
@@ -690,6 +715,7 @@ def compile_authoring(doc: dict[str, Any], *, default_id: str = "authored") -> I
         state_class=state_ref,
         nodes=nodes,
         rules=rules,
+        lm=lm,
     )
 
 

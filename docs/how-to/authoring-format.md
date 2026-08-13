@@ -51,6 +51,44 @@ works: the [prebuilt kinds](../reference/nodes/prebuilt.md), `tool`,
 `NodeBase`. Bare tool ids get `@1` appended (`std.web_search` →
 `std.web_search@1`).
 
+### `lm` (optional)
+
+Pin the model the graph's LLM nodes run against, so the graph carries its
+own endpoint instead of depending on the caller's flags:
+
+```yaml
+lm:
+  provider: sglang            # the only provider today
+  model: microsoft/phi-4      # --model-path, and the id the server must report
+  port: 41002                 # default 30000
+  args: [--attention-backend, triton]   # passed to sglang.launch_server verbatim
+  startup_timeout_s: 600      # weights take minutes on big models
+```
+
+`stargraph run` resolves it before the first node: it attaches to a server
+already serving that model on the port (and leaves it running), otherwise
+it launches `python -m sglang.launch_server`, waits for the endpoint to
+answer, and terminates it at the end of the run. The derived base URL +
+model configure the DSPy LM, so `--lm-url`/`--lm-model` become unnecessary
+(and are rejected alongside it). `--sglang-*` flags override this block
+field by field — `--sglang-port 41010` re-points it without editing the
+graph.
+
+Two fields are **operator-only**, because a graph file can be less trusted
+than the person running it — and this block is the only way a graph reaches
+a subprocess at all (every process-spawning std tool sits behind the
+default-deny capability gate):
+
+- `args` — passthrough argv into `sglang.launch_server`. A graph-declared
+  value is refused; re-state it as `--sglang-arg` to allow it.
+- a non-loopback `host` — the derived endpoint receives `--lm-key` and every
+  prompt. Refused unless the operator passes the same `--sglang-host`.
+
+`model`, `port` and `startup_timeout_s` stay graph-declarable.
+
+The block is not part of the graph hash: an endpoint is an environment
+binding, not topology.
+
 ### `routes`
 
 Declaration order is the default flow: with no rule firing, execution
@@ -111,6 +149,9 @@ overwritten.
 - Value routes branch on `verdict` only — standardize on it (both
   `classify` and `judge` already emit it).
 - One graph per file; `state` fields are flat primitives/containers.
+- `lm:` is honoured by `stargraph run` only — `stargraph serve` binds its
+  LM from its own `--lm-*` flags at boot, one endpoint for every graph it
+  serves.
 - For anything the sugar can't say (custom fact templates, multi-field
   `when` conditions, verifiers), write IR — see
   [Build a graph](build-graph.md).

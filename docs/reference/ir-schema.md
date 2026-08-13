@@ -61,6 +61,7 @@ and `nodes`; every other section defaults to an empty list / dict.
 | `parallel`     | `list[ParallelBlock]` | no       | `[]`       | Top-level parallel/join declarations.                                      |
 | `governance`   | `list[PackMount]`     | no       | `[]`       | Mounted Bosun rule packs.                                                  |
 | `migrate`      | `list[MigrateBlock]`  | no       | `[]`       | Hash-to-hash migration descriptors for resume.                             |
+| `lm`           | `SGLangServer \| None` | no      | `None`     | Local LM endpoint bound to the run (attach-or-launch SGLang). Environment binding, not topology — excluded from the structural hash. |
 
 ```yaml
 ir_version: "1.0.0"
