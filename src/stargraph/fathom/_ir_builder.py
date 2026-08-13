@@ -79,11 +79,15 @@ def _defrule(rule: RuleSpec) -> str | None:
     for action in rule.then:
         if isinstance(action, GotoAction):
             rhs.append(
-                f'(assert (stargraph_action (kind goto) (target "{_clips_string(action.target)}")))'
+                "(assert (stargraph_action (kind goto) "
+                f'(target "{_clips_string(action.target)}") '
+                f'(rule_id "{_clips_string(rule.id)}")))'
             )
         elif isinstance(action, HaltAction):
             rhs.append(
-                f'(assert (stargraph_action (kind halt) (reason "{_clips_string(action.reason)}")))'
+                "(assert (stargraph_action (kind halt) "
+                f'(reason "{_clips_string(action.reason)}") '
+                f'(rule_id "{_clips_string(rule.id)}")))'
             )
         else:
             logger.warning(
@@ -156,10 +160,17 @@ def build_ir_routing(ir: IRDocument, state_cls: type[BaseModel]) -> FathomAdapte
         {"name": "node-id", "slots": [{"name": "id", "type": "symbol"}]},
         {
             "name": "stargraph_action",
+            # Kept in sync with the slots ``_defrule`` actually asserts. This is a
+            # separate, narrower registration from the 16-slot
+            # ``STARGRAPH_ACTION_DEFTEMPLATE`` (``_template.py``) that
+            # ``FathomAdapter.register_stargraph_action_template`` installs -- the
+            # live routing engine built here only ever sees this one, so a slot
+            # missing from this list is a CLIPS build failure at graph load.
             "slots": [
                 {"name": "kind", "type": "symbol"},
                 {"name": "target", "type": "string"},
                 {"name": "reason", "type": "string"},
+                {"name": "rule_id", "type": "string"},
             ],
         },
         # Tool-execution runtime vocabulary (design §3.4.4 steps 4/8/9):

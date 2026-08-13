@@ -20,7 +20,7 @@ from stargraph.checkpoint.protocol import Checkpoint
 from stargraph.ir._models import GotoAction, HaltAction, InterruptAction, ParallelAction
 from stargraph.replay.cassettes import args_hash
 from stargraph.replay.determinism import now_dt
-from stargraph.runtime.action import ContinueAction, translate_actions
+from stargraph.runtime.action import ContinueAction, rule_id_for, translate_actions
 from stargraph.runtime.events import TransitionEvent
 from stargraph.runtime.parallel import execute_parallel
 
@@ -97,13 +97,14 @@ async def dispatch_node(
         if isinstance(decision, GotoAction)
         else (_next_node_id(nodes, current_id) or "")
     )
+    rule_id_for_event = rule_id_for(decision, actions, run.fathom)
     event = TransitionEvent(
         run_id=run.run_id,
         step=step,
         ts=now_dt(),
         from_node=current_id,
         to_node=target_for_event,
-        rule_id="",
+        rule_id=rule_id_for_event,
         reason=decision.kind,
     )
     await run.bus.send(event, fathom=run.fathom)

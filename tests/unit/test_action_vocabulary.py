@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from stargraph.fathom import extract_actions
+from stargraph.fathom import Action, extract_actions
 from stargraph.runtime.action import (
     ContinueAction,
     GotoAction,
@@ -103,3 +103,59 @@ def test_translation_table_exhaustive_five_rows() -> None:
         assert isinstance(decision, expected_type), (
             f"{fact['kind']!r} expected {expected_type.__name__}, got {type(decision).__name__}"
         )
+
+
+# ---------------------------------------------------------------------------
+# rule_id_for -- routing provenance recovered beside the action
+# ---------------------------------------------------------------------------
+
+
+class _Adapter:
+    """Minimal stand-in carrying the adapter's aligned-id attribute."""
+
+    def __init__(self, rule_ids: list[str]) -> None:
+        self.last_action_rule_ids = rule_ids
+
+
+@pytest.mark.unit
+def test_rule_id_for_recovers_the_id_of_the_chosen_action() -> None:
+    from stargraph.runtime.action import rule_id_for
+
+    actions: list[Action] = [GotoAction(target="a"), HaltAction(reason="stop")]
+    # translate_actions picks halt over goto, so the halt rule must win --
+    # positional-first would wrongly return "r-goto".
+    decision = translate_actions(actions)
+    assert rule_id_for(decision, actions, _Adapter(["r-goto", "r-halt"])) == "r-halt"
+
+
+@pytest.mark.unit
+def test_rule_id_for_is_empty_when_no_rule_routed() -> None:
+    from stargraph.runtime.action import rule_id_for
+
+    # No routing-bearing action -> a fresh ContinueAction matches nothing.
+    decision = translate_actions([])
+    assert rule_id_for(decision, [], _Adapter([])) == ""
+
+
+@pytest.mark.unit
+def test_rule_id_for_tolerates_an_adapter_without_the_attribute() -> None:
+    """``GraphRun.fathom`` is an informal ``Any`` protocol that in-tree doubles
+    and out-of-tree engines implement; one predating ``last_action_rule_ids``
+    must degrade to an empty id, never raise. Missing telemetry never aborts a
+    run."""
+    from stargraph.runtime.action import rule_id_for
+
+    actions: list[Action] = [GotoAction(target="a")]
+    decision = translate_actions(actions)
+    assert rule_id_for(decision, actions, object()) == ""
+    assert rule_id_for(decision, actions, None) == ""
+
+
+@pytest.mark.unit
+def test_rule_id_for_tolerates_a_short_id_list() -> None:
+    """A length skew is an adapter bug; it costs the id, not the run."""
+    from stargraph.runtime.action import rule_id_for
+
+    actions: list[Action] = [GotoAction(target="a"), HaltAction(reason="stop")]
+    decision = translate_actions(actions)
+    assert rule_id_for(decision, actions, _Adapter(["r-goto"])) == ""
