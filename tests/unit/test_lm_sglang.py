@@ -81,6 +81,55 @@ def test_launch_argv_passes_model_port_and_extra_args() -> None:
     assert argv[-2:] == ["--attention-backend", "triton"]
 
 
+def test_launch_argv_serves_from_the_named_interpreter() -> None:
+    """``--sglang-python``: the venv that has sglang need not be stargraph's own."""
+    argv = sg._launch_argv(_spec(), "/opt/sglang-venv/bin/python")  # pyright: ignore[reportPrivateUsage]
+
+    assert argv[:3] == ["/opt/sglang-venv/bin/python", "-m", "sglang.launch_server"]
+
+
+def test_the_preflight_and_the_launch_target_the_same_interpreter(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A preflight that checked a different interpreter than the one we launch is a lie."""
+    seen: dict[str, object] = {}
+
+    def _runtime(_spec: SGLangServer, **kwargs: object) -> None:
+        seen["runtime_python"] = kwargs.get("python")
+
+    def _weights(_spec: SGLangServer, **kwargs: object) -> None:
+        seen["weights_python"] = kwargs.get("python")
+
+    monkeypatch.setattr(sg, "ensure_runtime", _runtime)
+    monkeypatch.setattr(sg, "ensure_weights", _weights)
+
+    def _nothing_listening(_url: str) -> list[str] | None:
+        return None
+
+    def _argv(_spec: SGLangServer, python: str | None = None) -> list[str]:
+        seen["argv_python"] = python
+        return ["true"]
+
+    monkeypatch.setattr(sg, "served_models", _nothing_listening)
+    monkeypatch.setattr(sg, "_launch_argv", _argv)
+
+    def _boom(*_args: object, **_kwargs: object) -> None:
+        raise LMServerError("stop after the spawn decision")
+
+    monkeypatch.setattr(sg, "_await_ready", _boom)
+    with (
+        pytest.raises(LMServerError),
+        sg.sglang_server(
+            _spec(port=41999), log_path=tmp_path / "log", python="/opt/sglang-venv/bin/python"
+        ),
+    ):
+        pass
+
+    assert seen["runtime_python"] == "/opt/sglang-venv/bin/python"
+    assert seen["weights_python"] == "/opt/sglang-venv/bin/python"
+    assert seen["argv_python"] == "/opt/sglang-venv/bin/python"
+
+
 def test_served_models_returns_none_when_nothing_answers() -> None:
     # Port 1 is privileged and unbound: the probe must report "no server"
     # rather than raising, so the caller spawns one.

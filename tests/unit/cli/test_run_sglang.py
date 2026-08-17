@@ -11,6 +11,7 @@ and ``tests/integration/test_lm_sglang_spawn.py`` for that.
 from __future__ import annotations
 
 import contextlib
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -439,3 +440,71 @@ def test_install_runtime_flag_reaches_the_launcher(
 
     assert result.exit_code == 0, result.output
     assert seen["install_runtime"] is flag
+
+
+def _run_with(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *extra: str
+) -> tuple[Any, dict[str, Any]]:
+    seen: dict[str, Any] = {}
+    _capture_launcher(monkeypatch, seen)
+    _stub_dspy(monkeypatch, {})
+    result = CliRunner().invoke(
+        _make_app(),
+        [
+            str(SAMPLE_GRAPH),
+            "--checkpoint",
+            str(tmp_path / "ck.sqlite"),
+            "--sglang-model",
+            "LiquidAI/LFM2.5-1.2B-Instruct",
+            "--quiet",
+            "--no-summary",
+            *extra,
+        ],
+    )
+    return result, seen
+
+
+def test_sglang_python_reaches_the_launcher(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The venv that has sglang is rarely the venv that has stargraph."""
+    result, seen = _run_with(monkeypatch, tmp_path, "--sglang-python", sys.executable)
+
+    assert result.exit_code == 0, result.output
+    assert seen["python"] == str(Path(sys.executable).resolve())
+
+
+def test_a_venv_directory_is_resolved_to_its_interpreter(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """What an operator has in hand is the venv, not the path to bin/python."""
+    venv = tmp_path / "sglang-venv"
+    (venv / "bin").mkdir(parents=True)
+    interpreter = venv / "bin" / "python"
+    interpreter.symlink_to(sys.executable)
+
+    result, seen = _run_with(monkeypatch, tmp_path, "--sglang-python", str(venv))
+
+    assert result.exit_code == 0, result.output
+    assert seen["python"] == str(interpreter.resolve())
+
+
+def test_a_bad_interpreter_is_refused_before_the_graph_runs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Fail on the flag, not on an ENOENT from a subprocess minutes later."""
+    result, seen = _run_with(monkeypatch, tmp_path, "--sglang-python", str(tmp_path / "nope"))
+
+    assert result.exit_code != 0
+    assert "not an executable interpreter" in result.output
+    assert seen == {}, "nothing may be launched once the flag is refused"
+
+
+def test_no_flag_means_the_launcher_picks_the_default_interpreter(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Mutation guard: the default must stay None, not this process's path."""
+    result, seen = _run_with(monkeypatch, tmp_path)
+
+    assert result.exit_code == 0, result.output
+    assert seen["python"] is None

@@ -82,6 +82,7 @@ on `failed`.
 | `--sglang-port PORT` | int              | `30000`                | SGLang port.                                                               |
 | `--sglang-arg ARG`   | str (repeatable) | _(empty)_              | Extra argv passed through to `sglang.launch_server` verbatim.              |
 | `--sglang-timeout SEC` | int            | `600`                  | Seconds to wait for a launched SGLang server to answer.                    |
+| `--sglang-python PATH` | str            | _(this interpreter)_   | Interpreter (or venv directory) to serve from. |
 | `--install-runtime`  | flag             | `false`                | Install the sglang build matching the detected accelerator before launching. |
 
 `--quiet` and `--verbose` are mutually exclusive. `--lm-url` and
@@ -96,6 +97,13 @@ it is a CPU (or otherwise mismatched) build -- a `--force-reinstall` off the
 CUDA index at the pin sglang resolved to. Installing sglang alone does not fix
 that torch: `2.11.0+cpu` satisfies `torch==2.11.0`, so the resolver leaves it
 where it is.
+
+`--sglang-python` points the whole spawn -- preflight, weight fetch and launch
+-- at another interpreter, so the venv running stargraph never has to become
+the venv serving the model. A venv directory is accepted and resolved to its
+`bin/python`. There is deliberately no `lm:` key for it: the interpreter is
+argv into a subprocess, the same class of operator-only value as `args` and a
+non-loopback `host`.
 
 The `--sglang-*` flags bind the run to a local
 [SGLang](https://docs.sglang.ai/) server, and derive `--lm-url` /

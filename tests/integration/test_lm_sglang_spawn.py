@@ -93,7 +93,7 @@ def test_spawns_waits_for_ready_then_tears_down(
     port = _free_port()
     spec = SGLangServer(model="stub/model", port=port, startup_timeout_s=30)
 
-    def _stub_argv(spec: SGLangServer) -> list[str]:
+    def _stub_argv(spec: SGLangServer, _python: str | None = None) -> list[str]:
         return [sys.executable, str(stub), spec.model, str(spec.port)]
 
     monkeypatch.setattr(sg, "_launch_argv", _stub_argv)
@@ -114,7 +114,7 @@ def test_launch_that_dies_reports_exit_code_and_log(
 
     spec = SGLangServer(model="stub/model", port=_free_port(), startup_timeout_s=30)
 
-    def _dying_argv(_spec: SGLangServer) -> list[str]:
+    def _dying_argv(_spec: SGLangServer, _python: str | None = None) -> list[str]:
         return [sys.executable, "-c", 'import sys; print("CUDA go boom"); sys.exit(3)']
 
     monkeypatch.setattr(sg, "_launch_argv", _dying_argv)
@@ -135,7 +135,7 @@ def test_startup_timeout_is_loud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
     spec = SGLangServer(model="stub/model", port=_free_port(), startup_timeout_s=1)
 
-    def _hanging_argv(_spec: SGLangServer) -> list[str]:
+    def _hanging_argv(_spec: SGLangServer, _python: str | None = None) -> list[str]:
         return [sys.executable, "-c", "import time; time.sleep(60)"]
 
     monkeypatch.setattr(sg, "_launch_argv", _hanging_argv)

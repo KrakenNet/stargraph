@@ -31,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ipaddress
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -122,6 +123,26 @@ def _is_loopback(host: str) -> bool:
         return False
 
 
+def _validated_python(python: str | None) -> str | None:
+    """Resolve ``--sglang-python`` to an executable interpreter, or fail early.
+
+    A venv directory is accepted and resolved to its ``bin/python``: that is
+    what an operator has in hand ("the venv where sglang lives"), and the
+    alternative is a subprocess that dies with a bare ENOENT much later, after
+    the graph has already been compiled.
+    """
+    if python is None:
+        return None
+    candidate = Path(python).expanduser()
+    if candidate.is_dir():
+        candidate = candidate / "bin" / "python"
+    if not candidate.is_file() or not os.access(candidate, os.X_OK):
+        raise typer.BadParameter(
+            f"--sglang-python {python!r} is not an executable interpreter (looked at {candidate})"
+        )
+    return str(candidate.resolve())
+
+
 def _check_graph_declared(
     declared: SGLangServer, *, args_from_flags: bool, host_from_flags: str | None
 ) -> None:
@@ -206,6 +227,7 @@ def _lm_endpoint(
     lm_timeout: int,
     echo: Callable[[str], None],
     install_runtime: bool = False,
+    sglang_python: str | None = None,
 ) -> Generator[None]:
     """Hold the run's LM endpoint open: boot/attach sglang, then configure dspy.
 
@@ -219,7 +241,12 @@ def _lm_endpoint(
             from stargraph.lm.sglang import sglang_server
 
             lm_url = stack.enter_context(
-                sglang_server(spec, echo=echo, install_runtime=install_runtime)
+                sglang_server(
+                    spec,
+                    echo=echo,
+                    install_runtime=install_runtime,
+                    python=sglang_python,
+                )
             )
             lm_model = spec.model
         _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
@@ -432,6 +459,16 @@ def cmd(
             help="Seconds to wait for a launched SGLang server to answer (default: 600).",
         ),
     ] = None,
+    sglang_python: Annotated[
+        str | None,
+        typer.Option(
+            "--sglang-python",
+            help=(
+                "Interpreter to serve from (default: the one running stargraph). "
+                "Point it at the venv that has sglang installed."
+            ),
+        ),
+    ] = None,
     install_runtime: Annotated[
         bool,
         typer.Option(
@@ -542,7 +579,14 @@ def cmd(
         # sglang server is torn down only once the loop is done (or has
         # raised).
         with _lm_endpoint(
-            sglang_spec, lm_url, lm_model, lm_key, lm_timeout, _echo, install_runtime
+            sglang_spec,
+            lm_url,
+            lm_model,
+            lm_key,
+            lm_timeout,
+            _echo,
+            install_runtime,
+            _validated_python(sglang_python),
         ):
             try:
                 node_registry = build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())

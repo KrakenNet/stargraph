@@ -79,10 +79,10 @@ def served_models(url: str, *, timeout: float = _PROBE_TIMEOUT_S) -> list[str] |
     return [str(entry.get("id", "")) for entry in data]
 
 
-def _launch_argv(spec: SGLangServer) -> list[str]:
+def _launch_argv(spec: SGLangServer, python: str | None = None) -> list[str]:
     """Argv for the launch subprocess (monkeypatched in tests)."""
     return [
-        sys.executable,
+        python or sys.executable,
         "-m",
         "sglang.launch_server",
         "--model-path",
@@ -104,8 +104,10 @@ def _log_tail(log_path: Path) -> str:
     return "\n".join(lines[-_LOG_TAIL_LINES:])
 
 
-def _spawn(spec: SGLangServer, log_path: Path) -> subprocess.Popen[bytes]:
-    argv = _launch_argv(spec)
+def _spawn(
+    spec: SGLangServer, log_path: Path, python: str | None = None
+) -> subprocess.Popen[bytes]:
+    argv = _launch_argv(spec, python)
     handle = log_path.open("wb")
     try:
         return subprocess.Popen(
@@ -117,7 +119,7 @@ def _spawn(spec: SGLangServer, log_path: Path) -> subprocess.Popen[bytes]:
     except OSError as exc:
         raise LMServerError(
             f"failed to launch sglang: {exc}",
-            hint=f"is sglang installed for {sys.executable}? `pip install sglang`",
+            hint=f"is sglang installed for {python or sys.executable}? `pip install sglang`",
             argv=" ".join(argv),
         ) from exc
     finally:
@@ -197,6 +199,7 @@ def sglang_server(
     log_path: Path | None = None,
     echo: Callable[[str], None] | None = None,
     install_runtime: bool = False,
+    python: str | None = None,
 ) -> Generator[str]:
     """Yield the base URL of a server for ``spec``, booting one if needed.
 
@@ -212,6 +215,14 @@ def sglang_server(
     run for you under ``install_runtime``) and the weights are on disk before
     ``startup_timeout_s`` starts counting. The attach branch skips both: that
     server is already up, and it is not ours to diagnose.
+
+    ``python`` names the interpreter to serve from, defaulting to the one
+    running stargraph. It is the answer to "my sglang lives in a different
+    venv": the preflight, the weights fetch and the launch all move there
+    together, so the environment stargraph runs in never has to become the
+    environment sglang serves from. It is an operator-supplied value only --
+    :func:`stargraph.cli.run._check_graph_declared` keeps a graph from
+    choosing which interpreter gets executed.
     """
     url = base_url(spec)
     existing = served_models(url)
@@ -227,8 +238,8 @@ def sglang_server(
         yield url
         return
 
-    ensure_runtime(spec, install=install_runtime, echo=echo)
-    ensure_weights(spec, echo=echo)
+    ensure_runtime(spec, python=python, install=install_runtime, echo=echo)
+    ensure_weights(spec, python=python, echo=echo)
 
     if log_path is None:
         fd, name = tempfile.mkstemp(prefix=f"sglang-{spec.port}-", suffix=".log")
@@ -236,7 +247,7 @@ def sglang_server(
         log_path = Path(name)
     if echo is not None:
         echo(f"starting sglang ({spec.model}) on {url}; output -> {log_path}")
-    proc = _spawn(spec, log_path)
+    proc = _spawn(spec, log_path, python)
     try:
         _await_ready(proc, spec, url, log_path, echo)
         yield url

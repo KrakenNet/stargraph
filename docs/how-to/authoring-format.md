@@ -110,6 +110,11 @@ interpreter agree:
   SGLang publishes plain wheels for NVIDIA only, so ROCm, XPU, Ascend NPU and
   Apple Metal are reported with a pointer to their platform page rather than a
   command that would not work.
+- **The interpreter** is stargraph's own unless `--sglang-python` names
+  another one (a venv directory works). Preflight, weight fetch and launch all
+  move together, so a graph can run from a CPU-only venv and still serve from
+  the venv that has a CUDA sglang. It is a flag, never an `lm:` key -- naming
+  the interpreter to execute is operator-only.
 - **The weights** are fetched before the server starts, so `startup_timeout_s`
   measures server boot rather than racing a multi-gigabyte download.
 - **The format** is validated, not rewritten. A GGUF repo is refused (that is
