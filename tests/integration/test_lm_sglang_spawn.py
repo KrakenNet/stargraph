@@ -13,13 +13,16 @@ import os
 import socket
 import sys
 import textwrap
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from stargraph.errors import LMServerError
 from stargraph.ir import SGLangServer
 from stargraph.lm import sglang as sg
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.integration
 

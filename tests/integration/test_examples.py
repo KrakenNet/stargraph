@@ -131,7 +131,7 @@ _OPENAI_STUB = textwrap.dedent(
     import sys
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
-    MODEL, PORT, ANSWER = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+    MODEL, PORT, ANSWER, HITS = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
 
 
     class Handler(BaseHTTPRequestHandler):
@@ -148,6 +148,8 @@ _OPENAI_STUB = textwrap.dedent(
 
         def do_POST(self):  # noqa: N802
             self.rfile.read(int(self.headers.get("content-length", 0) or 0))
+            with open(HITS, "a", encoding="utf-8") as handle:
+                handle.write(self.path + "\\n")
             content = f"[[ ## answer ## ]]\\n{ANSWER}\\n\\n[[ ## completed ## ]]"
             self._send(
                 {
@@ -197,20 +199,31 @@ def _declared_model(graph: Path) -> str:
 
 @pytest.fixture
 def openai_stub(tmp_path: Path) -> object:
-    """Serve one model id on a free loopback port; yield ``(port, model)``.
+    """Serve one model id on a free loopback port; yield ``(port, model, hits)``.
 
     SGLang is GPU-only, so the example's *spawn* path cannot run in CI. Its
     *attach* path can: a server already serving the requested model is left
     alone and used as-is, which is the production branch taken here -- no
     launch argv is stubbed and no engine code is monkeypatched.
+
+    ``hits`` is the file the stub appends to on every completion request. It
+    exists because DSPy caches responses on disk across processes, keyed by
+    model id + prompt + params: without proof the stub was reached, this test
+    passes on a cache entry written by an earlier run (or writes one that a
+    later *real* run against the same model and question serves instead of
+    calling the GPU). The cache is disabled here for the same reason.
     """
+    import dspy
+
+    dspy.configure_cache(enable_disk_cache=False, enable_memory_cache=False)
     graph = EXAMPLES_DIR / "sglang-qa.yaml"
     model = _declared_model(graph)
     port = _free_port()
+    hits = tmp_path / "stub-hits.txt"
     script = tmp_path / "openai_stub.py"
     script.write_text(_OPENAI_STUB, encoding="utf-8")
     proc = subprocess.Popen(
-        [sys.executable, str(script), model, str(port), _STUB_ANSWER],
+        [sys.executable, str(script), model, str(port), _STUB_ANSWER, str(hits)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -227,7 +240,7 @@ def openai_stub(tmp_path: Path) -> object:
                 time.sleep(0.05)
         else:
             raise AssertionError("stub server never became ready")
-        yield port, model
+        yield port, model, hits
     finally:
         proc.terminate()
         proc.wait(timeout=10)
@@ -235,7 +248,7 @@ def openai_stub(tmp_path: Path) -> object:
 
 @pytest.mark.integration
 def test_sglang_qa_attaches_to_a_running_server(
-    openai_stub: tuple[int, str], runner: CliRunner, tmp_path: Path
+    openai_stub: tuple[int, str, Path], runner: CliRunner, tmp_path: Path
 ) -> None:
     """sglang-qa.yaml binds its LM from the graph, not from --lm-url/--lm-model.
 
@@ -246,7 +259,7 @@ def test_sglang_qa_attaches_to_a_running_server(
     attaching, and the derived base URL + model configured the DSPy LM that
     the ``ask`` node ran against.
     """
-    port, _model = openai_stub
+    port, _model, hits = openai_stub
     result = runner.invoke(
         app,
         [
@@ -269,3 +282,6 @@ def test_sglang_qa_attaches_to_a_running_server(
     payload = json.loads(lines[-1])
     assert payload["status"] == "done"
     assert payload["state_summary"]["answer"] == _STUB_ANSWER
+    # The answer proves nothing on its own -- DSPy would serve it from disk
+    # cache with no server involved at all.
+    assert hits.exists() and hits.read_text().strip(), "the stub was never called"
