@@ -89,6 +89,13 @@ class FathomAdapter:
         #: governance decision (``allow``/``deny``/…) or rule trace. ``None`` until
         #: the first :meth:`evaluate` call.
         self.last_evaluation: fathom.EvaluationResult | None = None
+        #: ``rule_id`` of the defrule behind each action returned by the most recent
+        #: :meth:`evaluate` call, positionally aligned with that return value. The IR
+        #: ``Action`` models are authoring types and carry no runtime provenance, so
+        #: the originating rule travels alongside rather than on them. Empty string
+        #: for any action whose fact carries no ``rule_id`` (native Fathom decisions,
+        #: hand-written ``.clp`` packs that omit the slot).
+        self.last_action_rule_ids: list[str] = []
 
     def register_stargraph_action_template(self) -> None:
         """Register the ``stargraph_action`` deftemplate on the wrapped engine.
@@ -131,11 +138,21 @@ class FathomAdapter:
         stashes it on :attr:`last_evaluation` so a caller can read the governance
         decision or rule trace (out of scope for FR-4 routing, which consumes only
         ``stargraph_action`` facts), then queries ``stargraph_action`` facts and
-        feeds the slot dicts to :meth:`extract_actions`.
+        feeds the slot dicts to :meth:`extract_actions`, and records the
+        originating ``rule_id`` of each action in :attr:`last_action_rule_ids`.
         """
         self.last_evaluation = self.engine.evaluate()
-        facts = self.engine.query("stargraph_action", None)
-        return self.extract_actions(list(facts))
+        facts = list(self.engine.query("stargraph_action", None))
+        # Extract per-fact so each action stays paired with the rule that asserted
+        # it; a single fact may yield zero actions (``allow``/``scope``) or one.
+        actions: list[Action] = []
+        rule_ids: list[str] = []
+        for fact in facts:
+            produced = self.extract_actions([fact])
+            actions.extend(produced)
+            rule_ids.extend([str(fact.get("rule_id", ""))] * len(produced))
+        self.last_action_rule_ids = rule_ids
+        return actions
 
     def extract_actions(self, facts: list[dict[str, Any]]) -> list[Action]:
         """Translate ``stargraph_action`` fact slot dicts into typed :data:`Action` instances.

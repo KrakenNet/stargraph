@@ -46,7 +46,7 @@ from pydantic import ValidationError as _PydanticValidationError
 from stargraph.errors import StargraphRuntimeError
 from stargraph.ir._models import GotoAction, HaltAction
 from stargraph.nodes.base import ExecutionContext, NodeBase
-from stargraph.runtime.action import ContinueAction, translate_actions
+from stargraph.runtime.action import ContinueAction, rule_id_for, translate_actions
 from stargraph.runtime.dispatch import (
     _assert_specs,  # pyright: ignore[reportPrivateUsage]
     _retract_stargraph_actions,  # pyright: ignore[reportPrivateUsage]
@@ -226,10 +226,16 @@ class SubGraphNode(NodeBase):
             if actions:
                 await asyncio.to_thread(_retract_stargraph_actions, self._child_fathom)
             decision = translate_actions(actions)
+            rule_id = rule_id_for(decision, actions, self._child_fathom)
 
             if isinstance(decision, HaltAction):
                 await self._emit_child_transition(
-                    sub_ctx, step=step, from_node=current, to_node="", reason="halt"
+                    sub_ctx,
+                    step=step,
+                    from_node=current,
+                    to_node="",
+                    reason="halt",
+                    rule_id=rule_id,
                 )
                 return self._project_out(child_state, state)
             if isinstance(decision, GotoAction):
@@ -239,6 +245,7 @@ class SubGraphNode(NodeBase):
                     from_node=current,
                     to_node=decision.target,
                     reason="goto",
+                    rule_id=rule_id,
                 )
                 current = decision.target
                 continue
@@ -352,8 +359,13 @@ class SubGraphNode(NodeBase):
         from_node: str,
         to_node: str,
         reason: str = "subgraph",
+        rule_id: str = "",
     ) -> None:
-        """Publish one child :class:`TransitionEvent` onto the parent bus."""
+        """Publish one child :class:`TransitionEvent` onto the parent bus.
+
+        ``rule_id`` is empty on the sequential path (no rule routed the hop) and
+        carries the child rule's id on the routed path.
+        """
         event = TransitionEvent(
             run_id=ctx.run_id,
             step=step,
@@ -361,7 +373,7 @@ class SubGraphNode(NodeBase):
             ts=datetime.now(UTC),
             from_node=from_node,
             to_node=to_node,
-            rule_id="",
+            rule_id=rule_id,
             reason=reason,
         )
         await ctx.bus.send(event, fathom=ctx.fathom)

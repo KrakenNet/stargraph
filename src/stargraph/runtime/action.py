@@ -33,7 +33,7 @@ be duplication without payoff.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import Field
 
@@ -46,6 +46,9 @@ from stargraph.ir._models import (
     ParallelAction,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 __all__ = [
     "ContinueAction",
     "GotoAction",
@@ -53,6 +56,7 @@ __all__ = [
     "InterruptAction",
     "ParallelAction",
     "RoutingDecision",
+    "rule_id_for",
     "translate_actions",
 ]
 
@@ -77,6 +81,34 @@ Pydantic discriminated union over the four tick-routing variants. Callers
 dispatch on ``decision.kind`` (or ``isinstance``) -- pyright narrows the
 variant's fields automatically.
 """
+
+
+def rule_id_for(decision: RoutingDecision, actions: Sequence[Action], fathom: Any) -> str:
+    """``rule_id`` of the rule behind ``decision``, or ``""`` if none routed.
+
+    :func:`translate_actions` returns one of the objects it was handed, so the
+    originating rule is recoverable by identity against the adapter's
+    positionally-aligned :attr:`~stargraph.fathom._adapter.FathomAdapter.last_action_rule_ids`.
+    The IR ``Action`` models are authoring types and carry no runtime
+    provenance, which is why the id travels alongside rather than on them.
+
+    A :class:`ContinueAction` is freshly constructed and matches nothing, which
+    is correct: no rule routed it.
+
+    ``GraphRun.fathom`` is typed ``Any`` -- an informal protocol that in-tree
+    test doubles and out-of-tree engines both implement -- so ``fathom`` may
+    predate :attr:`last_action_rule_ids` and not carry it at all. Both that case
+    and a length skew degrade to ``""`` rather than raising: an absent rule id
+    is missing telemetry, and telemetry must never abort a run. The real
+    adapter path is pinned by
+    ``test_transition_events_name_the_rule_that_routed_them``, so a regression
+    there still fails loudly.
+    """
+    rule_ids: Sequence[str] = getattr(fathom, "last_action_rule_ids", ())
+    for action, rule_id in zip(actions, rule_ids, strict=False):
+        if action is decision:
+            return rule_id
+    return ""
 
 
 def translate_actions(actions: list[Action]) -> RoutingDecision:

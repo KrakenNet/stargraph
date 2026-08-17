@@ -144,8 +144,29 @@ def test_defrule_compiles_sugar_when() -> None:
     assert out == (
         "(defrule r-work-refine "
         '(node-id (id work)) (phase_verdict (value "refine")) '
-        '=> (assert (stargraph_action (kind goto) (target "work"))))'
+        '=> (assert (stargraph_action (kind goto) (target "work") '
+        '(rule_id "r-work-refine"))))'
     )
+
+
+def test_defrule_stamps_rule_id_on_goto_and_halt() -> None:
+    """Routing facts name the rule that asserted them (the ``rule_id`` slot has
+    existed on the deftemplate since FR-3; the emitter now fills it)."""
+    from stargraph.fathom._ir_builder import _defrule  # pyright: ignore[reportPrivateUsage]
+
+    goto = _defrule(RuleSpec(id="r-goto", when={"node": "a"}, then=[GotoAction(target="b")]))
+    halt = _defrule(RuleSpec(id="r-halt", when={"node": "a"}, then=[HaltAction(reason="done")]))
+    assert goto is not None and '(rule_id "r-goto")' in goto
+    assert halt is not None and '(rule_id "r-halt")' in halt
+
+
+def test_defrule_escapes_rule_id() -> None:
+    """A rule id reaching CLIPS is escaped like every other interpolated string."""
+    from stargraph.fathom._ir_builder import _defrule  # pyright: ignore[reportPrivateUsage]
+
+    out = _defrule(RuleSpec(id='r-"x"', when={"node": "a"}, then=[GotoAction(target="b")]))
+    assert out is not None
+    assert '(rule_id "r-\\"x\\"")' in out
 
 
 def test_simulate_matches_sugar_rules() -> None:

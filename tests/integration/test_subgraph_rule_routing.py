@@ -82,6 +82,28 @@ async def test_child_rules_loop_then_halt() -> None:
     assert all(e.run_id == "run-subgraph" for e in bus.events)
 
 
+async def test_transition_events_name_the_rule_that_routed_them() -> None:
+    """Each routed transition carries the ``rule_id`` of the defrule behind it.
+
+    The whole chain is under test: ``_ir_builder`` stamps the id into the
+    ``stargraph_action`` assert, CLIPS carries it, ``FathomAdapter.evaluate``
+    keeps it aligned with the extracted actions, and ``dispatch_node`` recovers
+    it for the event. ``cyclic-graph.yaml`` routes through three distinct rules,
+    so a positional or last-write-wins bug shows up as a wrong id, not an empty
+    one -- which an ``is not None`` assertion would miss.
+    """
+    node = _mount()
+    bus = _RecordingBus()
+
+    await node.execute(_ParentState(), _ctx(bus))
+
+    assert [e.rule_id for e in bus.events] == [
+        "r-work-refine",
+        "r-work-sufficient",
+        "r-finish-halt",
+    ]
+
+
 async def test_projection_maps_rename_fields() -> None:
     class RenamedParent(BaseModel):
         loop_count: int = 5  # must NOT leak into the child (child rounds start 0)
