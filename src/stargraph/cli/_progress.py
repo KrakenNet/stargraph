@@ -12,8 +12,10 @@ Behaviour highlights:
 * :class:`TransitionEvent` boundaries close the prior node line and open
   the next; sentinel nodes (``__start__``, ``__end__``) are excluded
   from rendering and from the step count.
-* :class:`ToolCallEvent` increments the LLM-call counter and is buffered
-  on the in-flight node so the closing line names the tool(s) used.
+* :class:`ToolCallEvent` increments the tool-call counter and is buffered
+  on the in-flight node so the closing line names the tool(s) used. It does
+  *not* count as an LLM call: LM calls leave no event on the bus, so they are
+  read from the LM client afterwards (:func:`stargraph.cli.run._lm_usage`).
 * :class:`ToolResultEvent` adds ``result.usage.total_tokens`` to the
   running total when present; in ``verbose`` mode the result payload is
   also dumped under the node line.
@@ -52,9 +54,13 @@ class ProgressStats:
     """Aggregated counters captured across a run."""
 
     step_count: int
-    llm_call_count: int
+    tool_call_count: int
     total_tool_tokens: int
     node_durations_ms: dict[str, int]
+    llm_call_count: int = 0
+    """Completions the LM client recorded -- cache hits included."""
+    llm_cache_hits: int = 0
+    """How many of those were served from DSPy's cache, without a request."""
 
 
 @dataclass
@@ -84,7 +90,7 @@ class ProgressPrinter:
         self._verbose = verbose
         self._current: _NodeInflight | None = None
         self._step_counter = 0
-        self._llm_calls = 0
+        self._tool_calls = 0
         self._tool_tokens = 0
         self._durations: dict[str, int] = {}
         self._final_state: dict[str, Any] | None = None
@@ -105,12 +111,20 @@ class ProgressPrinter:
                     self.finalize(ev.ts)
                     return
 
-    def stats(self) -> ProgressStats:
+    def stats(self, *, llm_calls: int = 0, llm_cache_hits: int = 0) -> ProgressStats:
+        """Counters for the run; LM usage is supplied by the caller.
+
+        The bus carries no LM event -- a DSPy node calls its client directly --
+        so the two LM numbers come from the client's own history rather than
+        from anything seen here.
+        """
         return ProgressStats(
             step_count=self._step_counter,
-            llm_call_count=self._llm_calls,
+            tool_call_count=self._tool_calls,
             total_tool_tokens=self._tool_tokens,
             node_durations_ms=dict(self._durations),
+            llm_call_count=llm_calls,
+            llm_cache_hits=llm_cache_hits,
         )
 
     def final_state_dict(self) -> dict[str, Any] | None:
@@ -167,7 +181,7 @@ class ProgressPrinter:
             )
 
     def _on_tool_call(self, ev: Any) -> None:
-        self._llm_calls += 1
+        self._tool_calls += 1
         if self._current is not None:
             self._current.tool_calls.append(ev.tool_name)
 

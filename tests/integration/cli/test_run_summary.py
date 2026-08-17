@@ -43,12 +43,14 @@ def _summary(status: str = "done", duration_ms: int = 1234) -> RunSummary:
     )
 
 
-def _stats() -> ProgressStats:
+def _stats(llm_calls: int = 1, cache_hits: int = 0) -> ProgressStats:
     return ProgressStats(
         step_count=3,
-        llm_call_count=1,
+        tool_call_count=2,
         total_tool_tokens=42,
         node_durations_ms={"a": 12, "b": 4200},
+        llm_call_count=llm_calls,
+        llm_cache_hits=cache_hits,
     )
 
 
@@ -76,6 +78,36 @@ def test_human_summary_writes_artifacts_to_disk(tmp_path: Path) -> None:
     assert "a.py" in text
     assert "1.2s" in text or "1234ms" in text
     assert "misc" in text  # state field listed
+
+
+def _render_counters(tmp_path: Path, stats: ProgressStats) -> str:
+    out = StringIO()
+    console = Console(file=out, force_terminal=False, width=120)
+    SummaryRenderer(console).render(
+        summary=_summary(),
+        final_state=_State(),
+        stats=stats,
+        artifacts_dir=tmp_path,
+        run_id="r-test",
+        checkpoint=tmp_path / "ck.sqlite",
+    )
+    return out.getvalue()
+
+
+def test_a_cached_run_says_so(tmp_path: Path) -> None:
+    """DSPy's disk cache is on by default; a run it answered contacted nobody.
+
+    Without this the line is identical to a live run's, which is how a cached
+    answer gets mistaken for a served one.
+    """
+    text = _render_counters(tmp_path, _stats(llm_calls=2, cache_hits=2))
+    assert "2 llm calls, 2 cached" in text
+
+
+def test_a_live_run_carries_no_cache_note(tmp_path: Path) -> None:
+    text = _render_counters(tmp_path, _stats(llm_calls=2, cache_hits=0))
+    assert "2 llm calls)" in text
+    assert "cached" not in text
 
 
 def test_verifier_results_rendered(tmp_path: Path) -> None:
@@ -128,6 +160,8 @@ def test_json_mode_emits_machine_readable(tmp_path: Path) -> None:
     assert payload["duration_ms"] == 500
     assert payload["step_count"] == 3
     assert payload["llm_call_count"] == 1
+    assert payload["llm_cache_hits"] == 0
+    assert payload["tool_call_count"] == 2
     assert payload["artifacts"] == ["a.py"]
     assert payload["verifier_results"] == [
         {"kind": "static", "passed": True, "duration_ms": 0, "findings": []}

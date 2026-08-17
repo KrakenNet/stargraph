@@ -213,9 +213,11 @@ def openai_stub(tmp_path: Path) -> object:
     later *real* run against the same model and question serves instead of
     calling the GPU). The cache is disabled here for the same reason.
     """
-    import dspy
+    import dspy  # pyright: ignore[reportMissingTypeStubs]
 
-    dspy.configure_cache(enable_disk_cache=False, enable_memory_cache=False)
+    dspy.configure_cache(  # pyright: ignore[reportUnknownMemberType]
+        enable_disk_cache=False, enable_memory_cache=False
+    )
     graph = EXAMPLES_DIR / "sglang-qa.yaml"
     model = _declared_model(graph)
     port = _free_port()
@@ -285,3 +287,6 @@ def test_sglang_qa_attaches_to_a_running_server(
     # The answer proves nothing on its own -- DSPy would serve it from disk
     # cache with no server involved at all.
     assert hits.exists() and hits.read_text().strip(), "the stub was never called"
+    # ... and the summary must say the same thing the stub's log does.
+    assert payload["llm_call_count"] == 1
+    assert payload["llm_cache_hits"] == 0

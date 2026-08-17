@@ -32,8 +32,9 @@ import asyncio
 import contextlib
 import ipaddress
 import os
+import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import anyio
 import typer
@@ -255,6 +256,30 @@ def _lm_endpoint(
             lm_model = spec.model
         _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
         yield
+
+
+def _lm_usage() -> tuple[int, int]:
+    """``(completions, cache hits)`` the configured LM recorded for this run.
+
+    Read off the client instead of the bus: a ``kind: dspy`` node calls its LM
+    directly and publishes no event, so the progress printer never sees one.
+    Cache hits are counted apart from the total because DSPy's disk cache is on
+    by default -- a run answered entirely from it contacted no server, and must
+    not read like a run that did.
+
+    Zero on both counts when dspy was never imported (no LM node ran) or when
+    history is disabled: both mean "nothing observable", not "nothing happened".
+    """
+    module = sys.modules.get("dspy")
+    if module is None:
+        return (0, 0)
+    settings: Any = getattr(module, "settings", None)
+    history = cast(
+        "list[dict[str, Any]]",
+        getattr(getattr(settings, "lm", None), "history", None) or [],
+    )
+    hits = sum(1 for entry in history if getattr(entry.get("response"), "cache_hit", False))
+    return (len(history), hits)
 
 
 def _build_audit_sink(log_file: Path) -> AuditSink:
@@ -630,6 +655,7 @@ def cmd(
         raise typer.Exit(code=130) from None
 
     if not no_summary:
+        llm_calls, llm_cache_hits = _lm_usage()
         # Reconstruct final state model from the ResultEvent's snapshot.
         final_state_dict = progress.final_state_dict() or {}
         try:
@@ -643,7 +669,7 @@ def cmd(
         renderer.render(
             summary=summary,
             final_state=final_state,
-            stats=progress.stats(),
+            stats=progress.stats(llm_calls=llm_calls, llm_cache_hits=llm_cache_hits),
             artifacts_dir=artifacts_dir,
             run_id=run.run_id,
             checkpoint=ckpt_path,

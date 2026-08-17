@@ -125,6 +125,19 @@ non-loopback `host` are operator-only and must be re-stated as
 `--sglang-arg` / `--sglang-host`. Neither is part of the graph hash: like
 `--lm-url`, an endpoint is an environment binding, not topology.
 
+The end-of-run summary counts LM calls off the DSPy client, not off the event
+bus -- a `kind: dspy` node calls its LM directly and publishes no event. DSPy's
+disk cache (`~/.dspy_cache`) is on by default and is left on, so the line names
+cache hits when there are any:
+
+```
+✓ done in 1.2s  (1 steps, 1 llm calls, 1 cached)
+```
+
+A cached run reached no server. `--summary-json` carries the same three numbers
+as `llm_call_count`, `llm_cache_hits` and `tool_call_count` (tool calls are
+counted from `ToolCallEvent`, separately from LM calls).
+
 **Examples**
 
 ```bash
