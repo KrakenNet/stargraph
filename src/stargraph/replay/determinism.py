@@ -36,8 +36,6 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-import vcr  # pyright: ignore[reportMissingTypeStubs]
-
 from stargraph.errors import ReplayError
 
 if TYPE_CHECKING:
@@ -249,6 +247,10 @@ def http_cassette(
     Yields the active :class:`vcr.cassette.Cassette` (vcrpy's standard ``use_cassette``
     return value) so callers can introspect the recording in tests if needed.
     """
+    # vcrpy is a dev-group dependency (test recording only); import it lazily so
+    # runtime consumers that never open a cassette don't need it installed.
+    import vcr  # pyright: ignore[reportMissingTypeStubs]
+
     mode = record_mode if record_mode is not None else _default_record_mode()
     instance = vcr.VCR(record_mode=mode)  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
     # Register the body_hash matcher exactly once per cassette open. vcrpy's
