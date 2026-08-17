@@ -91,6 +91,11 @@ interpreter's sglang/torch build is checked against it, and the weights are
 fetched before the startup clock starts. Without `--install-runtime` a runtime
 that cannot serve is reported with the exact install command and the run stops;
 nothing is ever installed implicitly, and kernel drivers are never touched.
+With the flag, repair runs in rounds: sglang first, then -- if the torch beside
+it is a CPU (or otherwise mismatched) build -- a `--force-reinstall` off the
+CUDA index at the pin sglang resolved to. Installing sglang alone does not fix
+that torch: `2.11.0+cpu` satisfies `torch==2.11.0`, so the resolver leaves it
+where it is.
 
 The `--sglang-*` flags bind the run to a local
 [SGLang](https://docs.sglang.ai/) server, and derive `--lm-url` /

@@ -60,6 +60,8 @@ Vendor = Literal["nvidia", "amd", "intel", "ascend", "apple", "none"]
 
 _PROBE_TIMEOUT_S = 20.0
 _INSTALL_TIMEOUT_S = 3600.0
+# sglang first, then the torch its metadata pins; a third is slack, not a plan.
+_MAX_INSTALL_ROUNDS = 3
 
 # CUDA 13 wheels need a r580+ driver (13.0 minimum is 580.65.06 on Linux); an
 # older driver has to stay on the CUDA 12 wheel set.
@@ -105,6 +107,9 @@ class Runtime:
     """``torch.version.hip`` -- set on ROCm builds."""
     torch_xpu: bool = False
     device_count: int = 0
+    pinned_torch: str | None = None
+    """``torch==`` pin of the *installed* sglang -- what a repair must match."""
+    pinned_torchaudio: str | None = None
 
     @property
     def backend(self) -> str:
@@ -243,14 +248,19 @@ def detect_accelerator() -> Accelerator:
 _RUNTIME_PROBE = """
 import json, importlib.util
 out = {"sglang": None, "torch": None, "torch_cuda": None, "torch_hip": None,
-       "torch_xpu": False, "device_count": 0}
+       "torch_xpu": False, "device_count": 0, "pinned_torch": None,
+       "pinned_torchaudio": None}
 spec = importlib.util.find_spec("sglang")
 if spec is not None:
     try:
-        from importlib.metadata import version
+        from importlib.metadata import requires, version
         out["sglang"] = version("sglang")
+        for req in requires("sglang") or []:
+            name, _, rest = req.partition("==")
+            if name.strip() in ("torch", "torchaudio") and rest:
+                out["pinned_" + name.strip()] = rest.split(";")[0].strip()
     except Exception:
-        out["sglang"] = "unknown"
+        out["sglang"] = out["sglang"] or "unknown"
 if importlib.util.find_spec("torch") is not None:
     try:
         import torch
@@ -288,6 +298,8 @@ def probe_runtime(python: str | None = None) -> Runtime:
         torch_hip=data["torch_hip"],
         torch_xpu=bool(data["torch_xpu"]),
         device_count=int(data["device_count"]),
+        pinned_torch=data.get("pinned_torch"),
+        pinned_torchaudio=data.get("pinned_torchaudio"),
     )
 
 
@@ -298,58 +310,102 @@ def _installer(python: str) -> tuple[str, ...]:
     return (python, "-m", "pip", "install")
 
 
+def _driver_major(accel: Accelerator) -> int:
+    head = accel.driver.split(".")[0] if accel.driver else ""
+    return int(head) if head.isdigit() else 0
+
+
+def _torch_repair(runtime: Runtime, install: tuple[str, ...], index: str) -> tuple[str, ...]:
+    """Force the torch family back onto ``index``, at the pins sglang resolved to.
+
+    The versions come from the installed sglang's own metadata rather than a
+    number written down here: sglang moves its torch pin every release, and a
+    stale hard-coded pin would fight the resolver instead of satisfying it.
+    """
+    packages = [f"torch=={runtime.pinned_torch}" if runtime.pinned_torch else "torch"]
+    if runtime.pinned_torchaudio:
+        packages.append(f"torchaudio=={runtime.pinned_torchaudio}")
+    packages.append("torchvision")
+    return (*install, "--force-reinstall", *packages, "--index-url", index)
+
+
+_CUDA13_INDEX = "https://download.pytorch.org/whl/cu130"
+_CUDA12_INDEX = "https://download.pytorch.org/whl/cu129"
+_SGLANG_CU129_WHL = "https://docs.sglang.ai/whl/cu129/"
+
+
 def _nvidia_plan(accel: Accelerator, runtime: Runtime, install: tuple[str, ...]) -> InstallPlan:
-    """CUDA 13 wheels on a r580+ driver; the pinned CUDA 12 set below that."""
-    driver_major = 0
-    if accel.driver:
-        head = accel.driver.split(".")[0]
-        driver_major = int(head) if head.isdigit() else 0
-    reason = (
-        f"sglang is not installed for {runtime.python}"
-        if runtime.sglang is None
-        else f"torch in {runtime.python} is a {runtime.backend} build, "
-        f"but {accel.describe()} needs cuda"
+    """CUDA 13 wheels on an r580+ driver; the CUDA 12.9 wheel set below that.
+
+    Two failures live here and they need different commands. A *missing*
+    sglang is one ``uv pip install`` away. A torch built for the wrong
+    accelerator is not: ``2.11.0+cpu`` satisfies sglang's ``torch==2.11.0``
+    pin (PEP 440 ignores the local segment), so installing sglang next to it
+    resolves cleanly and leaves the CPU wheel exactly where it was. That case
+    needs an explicit ``--force-reinstall`` off the CUDA index, which is also
+    why :func:`ensure_runtime` re-plans after each round: the torch pin to
+    repair to is only knowable once sglang is installed.
+    """
+    driver = _driver_major(accel)
+    cuda13 = driver >= _CUDA13_MIN_DRIVER_MAJOR
+    index = _CUDA13_INDEX if cuda13 else _CUDA12_INDEX
+    driver_note = (
+        f"driver {accel.driver} supports the CUDA 13 wheels"
+        if cuda13
+        else f"driver {accel.driver or 'unknown'} predates r{_CUDA13_MIN_DRIVER_MAJOR}, "
+        "so the CUDA 12.9 wheel set is used"
     )
-    if driver_major >= _CUDA13_MIN_DRIVER_MAJOR:
+
+    if runtime.sglang is None:
         return InstallPlan(
-            reason=reason,
+            reason=f"sglang is not installed for {runtime.python}",
             commands=((*install, "--prerelease=allow", "sglang"),),
-            notes=(f"driver {accel.driver} supports the CUDA 13 wheels",),
+            notes=(driver_note,),
         )
-    return InstallPlan(
-        reason=reason,
-        commands=(
-            (*install, "--prerelease=allow", "sglang"),
-            (
-                *install,
-                "--force-reinstall",
-                "torch==2.13.0",
-                "torchaudio==2.11.0",
-                "torchvision",
-                "--index-url",
-                "https://download.pytorch.org/whl/cu129",
+
+    if runtime.backend == "cuda" and runtime.device_count == 0 and cuda13:
+        # Right wheel, current driver, no devices: nothing pip can install
+        # fixes this -- it is a container started without --gpus, or a driver
+        # that is not loaded.
+        return InstallPlan(
+            reason=(
+                f"torch in {runtime.python} is a cuda build but sees 0 devices, "
+                f"while {accel.describe()} is present"
             ),
-            (
-                *install,
-                "--force-reinstall",
-                "sglang-kernel",
-                "--index-url",
-                "https://docs.sglang.ai/whl/cu129/",
+            manual=_INSTALL_DOC,
+            notes=(
+                "the GPUs are not visible to that interpreter -- a container "
+                "started without --gpus all, or a driver that is not loaded",
             ),
+        )
+
+    reason = (
+        f"torch in {runtime.python} is a {runtime.backend} build, but {accel.describe()} needs cuda"
+        if runtime.backend != "cuda"
+        else f"torch in {runtime.python} is a cuda build that sees 0 devices on "
+        f"driver {accel.driver or 'unknown'}"
+    )
+    if runtime.pinned_torch and runtime.torch:
+        reason += (
+            f"; {runtime.torch} already satisfies sglang's torch=="
+            f"{runtime.pinned_torch} pin, so installing sglang alone leaves it in place"
+        )
+    commands: list[tuple[str, ...]] = [_torch_repair(runtime, install, index)]
+    if not cuda13:
+        commands.append(
+            (*install, "--force-reinstall", "sglang-kernel", "--index-url", _SGLANG_CU129_WHL)
+        )
+        commands.append(
             (
                 *install,
                 "--force-reinstall",
                 "sgl-deep-gemm",
                 "--index-url",
-                "https://docs.sglang.ai/whl/cu129/",
+                _SGLANG_CU129_WHL,
                 "--no-deps",
-            ),
-        ),
-        notes=(
-            f"driver {accel.driver or 'unknown'} predates r{_CUDA13_MIN_DRIVER_MAJOR}, "
-            "so the CUDA 12.9 wheel set is used",
-        ),
-    )
+            )
+        )
+    return InstallPlan(reason=reason, commands=tuple(commands), notes=(driver_note,))
 
 
 _INSTALL_DOC = "https://docs.sglang.io/docs/get-started/install"
@@ -463,6 +519,12 @@ def ensure_runtime(
     Raises :class:`~stargraph.errors.LMServerError` when the runtime cannot
     serve and ``install`` is false, so the operator sees the exact command
     rather than a subprocess that dies during startup.
+
+    Repair runs in rounds, because one round cannot see the next problem: a
+    box with no sglang gets sglang, and only then is its torch pin readable --
+    which is what a wrong-backend torch has to be force-reinstalled to. The
+    loop stops as soon as a re-probe plans nothing, and refuses to spin when a
+    round leaves the runtime asking for the same commands again.
     """
 
     def _say(message: str) -> None:
@@ -479,43 +541,58 @@ def ensure_runtime(
     _say(
         f"runtime: {runtime.describe()}" + (f", sglang {runtime.sglang}" if runtime.sglang else "")
     )
-    plan = plan_runtime_install(accel, runtime)
-    if plan is None:
-        return
 
-    if not plan.automatable:
-        raise LMServerError(
-            plan.reason,
-            hint=f"sglang documents this platform at {plan.manual}",
-            notes="; ".join(plan.notes),
-        )
-    rendered = "\n".join("  " + " ".join(command) for command in plan.commands)
-    if not install:
-        raise LMServerError(
-            plan.reason,
-            hint=f"re-run with --install-runtime, or install it yourself:\n{rendered}",
-            notes="; ".join(plan.notes),
-        )
-
-    for note in plan.notes:
-        _say(f"note: {note}")
-    for index, command in enumerate(plan.commands, start=1):
-        _say(f"installing ({index}/{len(plan.commands)}): {' '.join(command)}")
-        completed = subprocess.run(list(command), timeout=_INSTALL_TIMEOUT_S, check=False)
-        if completed.returncode != 0:
+    previous: tuple[tuple[str, ...], ...] | None = None
+    for _round in range(_MAX_INSTALL_ROUNDS):
+        plan = plan_runtime_install(accel, runtime)
+        if plan is None:
+            if previous is not None:
+                _say(f"runtime ready: {runtime.describe()}")
+            return
+        if not plan.automatable:
             raise LMServerError(
-                f"runtime install failed: {' '.join(command)}",
-                hint="install it manually, then re-run without --install-runtime",
-                exit_code=str(completed.returncode),
+                plan.reason,
+                hint=f"sglang documents this platform at {plan.manual or _INSTALL_DOC}",
+                notes="; ".join(plan.notes),
             )
-    repaired = probe_runtime(python)
-    if plan_runtime_install(accel, repaired) is not None:
-        raise LMServerError(
-            f"runtime install completed but the runtime still cannot serve ({repaired.describe()})",
-            hint=f"sglang documents this platform at {_INSTALL_DOC}",
-            python=repaired.python,
-        )
-    _say(f"runtime ready: {repaired.describe()}")
+        rendered = "\n".join("  " + " ".join(command) for command in plan.commands)
+        if not install:
+            raise LMServerError(
+                plan.reason,
+                hint=f"re-run with --install-runtime, or install it yourself:\n{rendered}",
+                notes="; ".join(plan.notes),
+            )
+        if plan.commands == previous:
+            # The round ran and changed nothing the plan cares about. Running
+            # it again would loop, so hand the operator the state and the
+            # commands that did not take.
+            raise LMServerError(
+                f"runtime install ran but did not take: {plan.reason}",
+                hint=f"install it by hand and re-run without --install-runtime:\n{rendered}",
+                python=runtime.python,
+            )
+
+        for note in plan.notes:
+            _say(f"note: {note}")
+        for index, command in enumerate(plan.commands, start=1):
+            _say(f"installing ({index}/{len(plan.commands)}): {' '.join(command)}")
+            completed = subprocess.run(list(command), timeout=_INSTALL_TIMEOUT_S, check=False)
+            if completed.returncode != 0:
+                raise LMServerError(
+                    f"runtime install failed: {' '.join(command)}",
+                    hint="install it manually, then re-run without --install-runtime",
+                    exit_code=str(completed.returncode),
+                )
+        previous = plan.commands
+        runtime = probe_runtime(python)
+        _say(f"runtime: {runtime.describe()}")
+
+    raise LMServerError(
+        f"runtime still cannot serve after {_MAX_INSTALL_ROUNDS} install rounds "
+        f"({runtime.describe()})",
+        hint=f"sglang documents this platform at {_INSTALL_DOC}",
+        python=runtime.python,
+    )
 
 
 _WEIGHTS_PROBE = """

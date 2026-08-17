@@ -101,6 +101,12 @@ interpreter agree:
   the install command for *that* platform. `--install-runtime` runs it;
   without the flag nothing is installed and the run stops. Kernel drivers are
   never touched -- a missing or too-old CUDA/ROCm driver can only be reported.
+- **A CPU torch is repaired explicitly**, because installing sglang does not
+  do it: `2.11.0+cpu` satisfies sglang's `torch==2.11.0` pin (PEP 440 ignores
+  the local version), so the resolver is happy and the CPU wheel stays.
+  Repair therefore runs in rounds -- install sglang, re-probe, then
+  force-reinstall torch off the CUDA index at the pin *that* sglang resolved
+  to. A round that changes nothing stops the loop rather than retrying.
   SGLang publishes plain wheels for NVIDIA only, so ROCm, XPU, Ascend NPU and
   Apple Metal are reported with a pointer to their platform page rather than a
   command that would not work.

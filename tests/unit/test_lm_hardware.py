@@ -11,6 +11,7 @@ it would have run.
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -114,14 +115,19 @@ def test_detection_does_not_consult_torch(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_probe_reports_this_interpreter_honestly() -> None:
-    """No stubbing: the dev venv genuinely has no sglang, and torch is CPU-only.
+    """No stubbing: the probe runs against the interpreter running the tests.
 
     Asserting against the real interpreter keeps the probe script itself under
     test -- a syntax error or renamed key in ``_RUNTIME_PROBE`` fails here.
+    Which packages happen to be in the venv is not asserted: a developer who
+    installs sglang (or a CUDA torch) must not turn this red.
     """
     runtime = hw.probe_runtime()
-    assert runtime.sglang is None
+    assert runtime.python == sys.executable
     assert runtime.backend in {"cpu", "cuda", "rocm", "xpu"}
+    if runtime.sglang is not None:
+        # sglang always pins torch exactly; that pin is what a repair targets.
+        assert runtime.pinned_torch is not None
 
 
 def test_probe_of_a_broken_interpreter_degrades(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -160,42 +166,131 @@ def test_a_working_cuda_runtime_needs_no_plan() -> None:
     assert hw.plan_runtime_install(_NVIDIA, _WORKING_CUDA) is None
 
 
-def test_cpu_torch_on_an_nvidia_box_is_planned_as_cuda13(monkeypatch: pytest.MonkeyPatch) -> None:
+_CPU_TORCH_WITH_SGLANG = hw.Runtime(
+    python="/venv/bin/python",
+    sglang="0.5.17",
+    torch="2.11.0+cpu",
+    pinned_torch="2.11.0",
+    pinned_torchaudio="2.11.0",
+)
+
+
+def test_a_missing_sglang_is_installed_before_anything_is_said_about_torch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Round one is sglang alone -- its torch pin is unreadable until it lands."""
     monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
-    runtime = hw.Runtime(python="/venv/bin/python", sglang="0.5.0", torch="2.11.0+cpu")
-    plan = hw.plan_runtime_install(_NVIDIA, runtime)
+    plan = hw.plan_runtime_install(_NVIDIA, hw.Runtime(python="/venv/bin/python"))
     assert plan is not None
-    assert plan.automatable
     assert plan.commands == (
         ("uv", "pip", "install", "--python", "/venv/bin/python", "--prerelease=allow", "sglang"),
     )
-    assert "cpu build" in plan.reason
+
+
+def test_cpu_torch_beside_an_installed_sglang_is_force_reinstalled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The bug this exists for: ``2.11.0+cpu`` satisfies ``torch==2.11.0``.
+
+    Installing sglang next to a CPU wheel resolves cleanly and leaves it in
+    place, so the plan has to name torch explicitly, off the CUDA index, at
+    the pin sglang itself resolved to.
+    """
+    monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
+    plan = hw.plan_runtime_install(_NVIDIA, _CPU_TORCH_WITH_SGLANG)
+    assert plan is not None
+    assert plan.commands == (
+        (
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            "/venv/bin/python",
+            "--force-reinstall",
+            "torch==2.11.0",
+            "torchaudio==2.11.0",
+            "torchvision",
+            "--index-url",
+            "https://download.pytorch.org/whl/cu130",
+        ),
+    )
+    assert "satisfies sglang's torch==2.11.0 pin" in plan.reason
+
+
+def test_the_torch_pin_comes_from_sglang_not_from_a_constant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mutation guard: a hard-coded pin would fight the installed sglang."""
+    monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
+    runtime = hw.Runtime(
+        python="/venv/bin/python",
+        sglang="9.9.9",
+        torch="3.4.0+cpu",
+        pinned_torch="3.4.0",
+        pinned_torchaudio="3.4.0",
+    )
+    plan = hw.plan_runtime_install(_NVIDIA, runtime)
+    assert plan is not None
+    assert "torch==3.4.0" in " ".join(plan.commands[0])
 
 
 def test_a_pre_r580_driver_gets_the_cuda12_wheel_set(monkeypatch: pytest.MonkeyPatch) -> None:
     """CUDA 13 wheels require r580+; an older driver must not be handed them."""
     monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
-    plan = hw.plan_runtime_install(_NVIDIA_OLD_DRIVER, hw.Runtime(python="/venv/bin/python"))
+    plan = hw.plan_runtime_install(_NVIDIA_OLD_DRIVER, _CPU_TORCH_WITH_SGLANG)
     assert plan is not None
     joined = [" ".join(command) for command in plan.commands]
-    # verbatim from https://docs.sglang.io/get_started/install.html (CUDA 12 path)
+    # the CUDA 12 shape from https://docs.sglang.io/docs/get-started/install
     assert any("whl/cu129" in command for command in joined), joined
-    assert any("torch==2.13.0 torchaudio==2.11.0 torchvision" in command for command in joined), (
+    assert any("torch==2.11.0 torchaudio==2.11.0 torchvision" in command for command in joined), (
         joined
     )
     assert any("sglang-kernel" in command for command in joined), joined
     assert any("sgl-deep-gemm" in command and "--no-deps" in command for command in joined), joined
 
 
-def test_cuda_torch_that_sees_no_devices_still_needs_a_plan(
+def test_the_cuda13_path_carries_no_cuda12_kernel_steps(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mutation guard: the kernel wheels are the old-driver path, not both."""
+    monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
+    plan = hw.plan_runtime_install(_NVIDIA, _CPU_TORCH_WITH_SGLANG)
+    assert plan is not None
+    assert not any("cu129" in " ".join(command) for command in plan.commands)
+
+
+def test_cuda_torch_that_sees_no_devices_is_reported_not_reinstalled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A container started without --gpus all: right wheel, no devices."""
+    """A container started without --gpus all: right wheel, current driver, no devices.
+
+    No wheel fixes that, so it must not be planned as an install.
+    """
     monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
     runtime = hw.Runtime(
         python="/venv/bin/python", sglang="0.5.0", torch="2.13.0", torch_cuda="13.0", device_count=0
     )
-    assert hw.plan_runtime_install(_NVIDIA, runtime) is not None
+    plan = hw.plan_runtime_install(_NVIDIA, runtime)
+    assert plan is not None
+    assert not plan.automatable
+    assert "sees 0 devices" in plan.reason
+
+
+def test_cuda_torch_seeing_no_devices_on_an_old_driver_is_rebuilt_for_cuda12(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The same symptom with a pre-r580 driver *is* fixable: wrong wheel set."""
+    monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
+    runtime = hw.Runtime(
+        python="/venv/bin/python",
+        sglang="0.5.17",
+        torch="2.11.0",
+        torch_cuda="13.0",
+        device_count=0,
+        pinned_torch="2.11.0",
+    )
+    plan = hw.plan_runtime_install(_NVIDIA_OLD_DRIVER, runtime)
+    assert plan is not None
+    assert plan.automatable
+    assert any("cu129" in " ".join(command) for command in plan.commands)
 
 
 def test_amd_is_planned_but_not_automated() -> None:
@@ -402,3 +497,69 @@ def test_a_local_model_path_is_left_alone(monkeypatch: pytest.MonkeyPatch, tmp_p
     monkeypatch.setattr(hw, "_run", _never)
     spec = SGLangServer(provider="sglang", model=str(tmp_path), port=30000)
     hw.ensure_weights(spec)
+
+
+def test_repair_runs_in_rounds_because_round_one_cannot_see_round_two(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Install sglang, re-probe, then repair the torch its metadata pins.
+
+    This is the user-visible bug the rounds exist for: one pass installed
+    sglang, the CPU torch beside it satisfied the pin, and the run died with
+    "install completed but the runtime still cannot serve".
+    """
+    monkeypatch.setattr(hw, "detect_accelerator", _nvidia_box)
+    monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
+    probes = iter([hw.Runtime(python="/venv/bin/python"), _CPU_TORCH_WITH_SGLANG, _WORKING_CUDA])
+
+    def _next_probe(_python: str | None = None) -> hw.Runtime:
+        return next(probes)
+
+    monkeypatch.setattr(hw, "probe_runtime", _next_probe)
+
+    ran: list[list[str]] = []
+
+    class _Completed:
+        returncode = 0
+
+    def _run(argv: list[str], **_kwargs: Any) -> _Completed:
+        ran.append(argv)
+        return _Completed()
+
+    monkeypatch.setattr(hw.subprocess, "run", _run)
+    hw.ensure_runtime(_SPEC, install=True)
+
+    assert len(ran) == 2, ran
+    assert ran[0][-1] == "sglang"
+    assert "torch==2.11.0" in ran[1]
+    assert "https://download.pytorch.org/whl/cu130" in ran[1]
+
+
+def test_a_round_that_changes_nothing_stops_instead_of_looping(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An install that does not take must not be run again and again."""
+    monkeypatch.setattr(hw, "detect_accelerator", _nvidia_box)
+    monkeypatch.setattr(hw.shutil, "which", _uv_on_path)
+
+    def _stuck(_python: str | None = None) -> hw.Runtime:
+        return _CPU_TORCH_WITH_SGLANG
+
+    monkeypatch.setattr(hw, "probe_runtime", _stuck)
+
+    ran: list[list[str]] = []
+
+    class _Completed:
+        returncode = 0
+
+    def _run(argv: list[str], **_kwargs: Any) -> _Completed:
+        ran.append(argv)
+        return _Completed()
+
+    monkeypatch.setattr(hw.subprocess, "run", _run)
+
+    with pytest.raises(LMServerError) as excinfo:
+        hw.ensure_runtime(_SPEC, install=True)
+
+    assert "did not take" in str(excinfo.value)
+    assert len(ran) == 1, "the same command must not be retried"
