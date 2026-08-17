@@ -395,3 +395,47 @@ def test_the_lm_is_configured_before_the_node_registry_is_built(
 
     assert result.exit_code == 0, result.output
     assert order == ["configure-lm", "build-nodes"]
+
+
+def _capture_launcher(monkeypatch: pytest.MonkeyPatch, seen: dict[str, Any]) -> None:
+    import stargraph.lm.sglang as sglang_mod
+
+    @contextlib.contextmanager
+    def _fake(spec: SGLangServer, **kwargs: Any) -> Generator[str]:
+        seen.update(kwargs)
+        seen["spec"] = spec
+        yield "http://stub:41002/v1"
+
+    monkeypatch.setattr(sglang_mod, "sglang_server", _fake)
+
+
+@pytest.mark.parametrize("flag", [True, False])
+def test_install_runtime_flag_reaches_the_launcher(
+    flag: bool, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--install-runtime`` is the only thing that lets a run mutate the environment.
+
+    Parametrized rather than asserted one-way: a wiring bug that hard-codes
+    ``True`` is exactly as bad as one that hard-codes ``False``, and only the
+    false case catches the first.
+    """
+    seen: dict[str, Any] = {}
+    _capture_launcher(monkeypatch, seen)
+    _stub_dspy(monkeypatch, {})
+
+    argv = [
+        str(SAMPLE_GRAPH),
+        "--checkpoint",
+        str(tmp_path / "ck.sqlite"),
+        "--sglang-model",
+        "LiquidAI/LFM2.5-1.2B-Instruct",
+        "--quiet",
+        "--no-summary",
+    ]
+    if flag:
+        argv.append("--install-runtime")
+
+    result = CliRunner().invoke(_make_app(), argv)
+
+    assert result.exit_code == 0, result.output
+    assert seen["install_runtime"] is flag

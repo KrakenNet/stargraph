@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING, Any, cast
 import httpx
 
 from stargraph.errors import LMServerError
+from stargraph.lm.hardware import ensure_runtime, ensure_weights
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -195,6 +196,7 @@ def sglang_server(
     *,
     log_path: Path | None = None,
     echo: Callable[[str], None] | None = None,
+    install_runtime: bool = False,
 ) -> Generator[str]:
     """Yield the base URL of a server for ``spec``, booting one if needed.
 
@@ -203,6 +205,13 @@ def sglang_server(
     its process group) when the block ends. ``log_path`` receives the
     spawned server's stdout+stderr (default: a temp file); ``echo`` gets
     one-line progress messages.
+
+    The spawn branch runs :func:`~stargraph.lm.hardware.ensure_runtime` and
+    :func:`~stargraph.lm.hardware.ensure_weights` first, so an unusable runtime
+    is reported as such (with the install command for the detected hardware,
+    run for you under ``install_runtime``) and the weights are on disk before
+    ``startup_timeout_s`` starts counting. The attach branch skips both: that
+    server is already up, and it is not ours to diagnose.
     """
     url = base_url(spec)
     existing = served_models(url)
@@ -217,6 +226,9 @@ def sglang_server(
             echo(f"attached to running sglang on {url} ({spec.model})")
         yield url
         return
+
+    ensure_runtime(spec, install=install_runtime, echo=echo)
+    ensure_weights(spec, echo=echo)
 
     if log_path is None:
         fd, name = tempfile.mkstemp(prefix=f"sglang-{spec.port}-", suffix=".log")

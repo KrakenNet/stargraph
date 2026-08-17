@@ -82,9 +82,15 @@ on `failed`.
 | `--sglang-port PORT` | int              | `30000`                | SGLang port.                                                               |
 | `--sglang-arg ARG`   | str (repeatable) | _(empty)_              | Extra argv passed through to `sglang.launch_server` verbatim.              |
 | `--sglang-timeout SEC` | int            | `600`                  | Seconds to wait for a launched SGLang server to answer.                    |
+| `--install-runtime`  | flag             | `false`                | Install the sglang build matching the detected accelerator before launching. |
 
 `--quiet` and `--verbose` are mutually exclusive. `--lm-url` and
-`--lm-model` must be supplied together (or neither).
+`--lm-model` must be supplied together (or neither). A spawned SGLang server is
+preflighted first: hardware is detected from the vendor tools, the spawn
+interpreter's sglang/torch build is checked against it, and the weights are
+fetched before the startup clock starts. Without `--install-runtime` a runtime
+that cannot serve is reported with the exact install command and the run stops;
+nothing is ever installed implicitly, and kernel drivers are never touched.
 
 The `--sglang-*` flags bind the run to a local
 [SGLang](https://docs.sglang.ai/) server, and derive `--lm-url` /

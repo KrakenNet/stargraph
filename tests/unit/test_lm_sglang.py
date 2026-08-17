@@ -25,6 +25,24 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.unit
 
 
+@pytest.fixture(autouse=True)
+def _skip_preflight(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
+    """Bypass the hardware/runtime preflight for the lifecycle tests.
+
+    These drive a stub launcher on a box that deliberately has no sglang
+    installed, which is exactly what :func:`stargraph.lm.hardware.ensure_runtime`
+    exists to refuse. The preflight is covered on its own in
+    ``tests/unit/test_lm_hardware.py``; here it would only assert that the dev
+    venv is a dev venv.
+    """
+
+    def _noop(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(sg, "ensure_runtime", _noop)
+    monkeypatch.setattr(sg, "ensure_weights", _noop)
+
+
 def _spec(**overrides: object) -> SGLangServer:
     return SGLangServer.model_validate({"model": "Qwen/Qwen3-8B", **overrides})
 

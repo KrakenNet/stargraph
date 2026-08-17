@@ -89,6 +89,28 @@ default-deny capability gate):
 The block is not part of the graph hash: an endpoint is an environment
 binding, not topology.
 
+Before it launches anything, `stargraph run` checks that the machine and the
+interpreter agree:
+
+- **Hardware** is read from the vendor tools (`nvidia-smi`, `rocm-smi`,
+  `xpu-smi`, `npu-smi`), never from torch. `torch.cuda.is_available()` answers
+  "was this torch built with CUDA", not "does this box have a GPU" -- a
+  CPU-only wheel on a two-GPU machine says `False`.
+- **The runtime** is probed inside the interpreter that would be spawned. A
+  missing sglang, or a torch built for the wrong accelerator, is reported with
+  the install command for *that* platform. `--install-runtime` runs it;
+  without the flag nothing is installed and the run stops. Kernel drivers are
+  never touched -- a missing or too-old CUDA/ROCm driver can only be reported.
+  SGLang publishes plain wheels for NVIDIA only, so ROCm, XPU, Ascend NPU and
+  Apple Metal are reported with a pointer to their platform page rather than a
+  command that would not work.
+- **The weights** are fetched before the server starts, so `startup_timeout_s`
+  measures server boot rather than racing a multi-gigabyte download.
+- **The format** is validated, not rewritten. A GGUF repo is refused (that is
+  llama.cpp's format; sglang serves safetensors) with the servable repo named,
+  and an FP8 checkpoint on pre-sm_89 hardware warns. The graph always runs the
+  weights it declares.
+
 ### `routes`
 
 Declaration order is the default flow: with no rule firing, execution

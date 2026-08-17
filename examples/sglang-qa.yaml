@@ -9,7 +9,8 @@
 # it launches `python -m sglang.launch_server`, waits for the endpoint to
 # answer, and terminates it when the run ends.
 #
-# Run it (SGLang installed, weights downloadable):
+# Run it (weights are fetched on first use; add --install-runtime to have
+# stargraph install the sglang build matching your GPU):
 #     stargraph run examples/sglang-qa.yaml --inputs question="what routes stargraph?"
 #
 # Point it at a server you already have, without editing this file:
@@ -22,7 +23,7 @@
 id: sglang-qa
 lm:
   provider: sglang            # the only provider today
-  model: Qwen/Qwen2.5-0.5B-Instruct
+  model: LiquidAI/LFM2.5-1.2B-Instruct
   port: 30000                 # sglang's own default
   startup_timeout_s: 600      # first run downloads weights
 state:

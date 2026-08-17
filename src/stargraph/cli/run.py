@@ -205,6 +205,7 @@ def _lm_endpoint(
     lm_key: str,
     lm_timeout: int,
     echo: Callable[[str], None],
+    install_runtime: bool = False,
 ) -> Generator[None]:
     """Hold the run's LM endpoint open: boot/attach sglang, then configure dspy.
 
@@ -217,7 +218,9 @@ def _lm_endpoint(
         if spec is not None:
             from stargraph.lm.sglang import sglang_server
 
-            lm_url = stack.enter_context(sglang_server(spec, echo=echo))
+            lm_url = stack.enter_context(
+                sglang_server(spec, echo=echo, install_runtime=install_runtime)
+            )
             lm_model = spec.model
         _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
         yield
@@ -429,6 +432,17 @@ def cmd(
             help="Seconds to wait for a launched SGLang server to answer (default: 600).",
         ),
     ] = None,
+    install_runtime: Annotated[
+        bool,
+        typer.Option(
+            "--install-runtime",
+            help=(
+                "Install the sglang build matching the detected accelerator before "
+                "launching. Without it, a runtime that cannot serve is reported with "
+                "the exact command instead of being repaired."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Run a Stargraph graph end-to-end (FR-8 POC).
 
@@ -527,7 +541,9 @@ def cmd(
         # be live by then. It outlives the whole run as well -- a spawned
         # sglang server is torn down only once the loop is done (or has
         # raised).
-        with _lm_endpoint(sglang_spec, lm_url, lm_model, lm_key, lm_timeout, _echo):
+        with _lm_endpoint(
+            sglang_spec, lm_url, lm_model, lm_key, lm_timeout, _echo, install_runtime
+        ):
             try:
                 node_registry = build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())
             except StargraphError as e:
