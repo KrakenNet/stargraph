@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/KrakenNet/stargraph/compare/v0.6.0...v0.7.0) (2026-08-17)
+
+
+### Features
+
+* **runtime:** populate TransitionEvent.rule_id with the rule that routed the hop ([#196](https://github.com/KrakenNet/stargraph/issues/196)) ([41d13ad](https://github.com/KrakenNet/stargraph/commit/41d13adb732e486a19423a307c0a641489e430c0))
+
+
+### Bug Fixes
+
+* **replay:** import vcr lazily so `import stargraph` works without dev deps ([#195](https://github.com/KrakenNet/stargraph/issues/195)) ([03d6faf](https://github.com/KrakenNet/stargraph/commit/03d6faf47a16b6807bf69c54c821272277470f4c))
+
 ## [0.6.0](https://github.com/KrakenNet/stargraph/compare/v0.5.3...v0.6.0) (2026-08-05)
 
 
