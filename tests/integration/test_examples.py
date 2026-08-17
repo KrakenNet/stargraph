@@ -9,6 +9,13 @@ docs that reference them) from rotting: if an example breaks, CI fails.
 from __future__ import annotations
 
 import json
+import socket
+import subprocess
+import sys
+import textwrap
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -22,7 +29,7 @@ EXAMPLES_DIR = Path(__file__).resolve().parents[2] / "examples"
 # driven below under a scripted DummyLM instead (CliRunner shares the process,
 # so a dspy.context around invoke() is the stub seam). Live runs pass
 # --lm-url/--lm-model.
-_LM_EXAMPLES = {"research-bot.yaml"}
+_LM_EXAMPLES = {"research-bot.yaml", "sglang-qa.yaml"}
 EXAMPLE_GRAPHS = sorted(p for p in EXAMPLES_DIR.glob("*.yaml") if p.name not in _LM_EXAMPLES)
 
 
@@ -107,3 +114,158 @@ def test_research_bot_loop_with_scripted_lm(runner: CliRunner, tmp_path: Path) -
     assert state["answer"] == "draft-2 names CLIPS"  # second round's answer won
     # The judge's round-1 rationale was re-injected into the round-2 brief.
     assert "too vague, name the engine" in state["brief"]
+
+
+# --------------------------------------------------------------------------- #
+# sglang-qa.yaml -- the graph carries its own endpoint via the `lm:` block     #
+# --------------------------------------------------------------------------- #
+
+_OPENAI_STUB = textwrap.dedent(
+    '''
+    """OpenAI-compatible stub: GET /v1/models + POST /v1/chat/completions.
+
+    Speaks just enough for the attach probe to recognise the model and for
+    DSPy's chat adapter to parse one field back out.
+    """
+    import json
+    import sys
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    MODEL, PORT, ANSWER = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+
+
+    class Handler(BaseHTTPRequestHandler):
+        def _send(self, payload):
+            body = json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.send_header("content-length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):  # noqa: N802
+            self._send({"data": [{"id": MODEL}]})
+
+        def do_POST(self):  # noqa: N802
+            self.rfile.read(int(self.headers.get("content-length", 0) or 0))
+            content = f"[[ ## answer ## ]]\\n{ANSWER}\\n\\n[[ ## completed ## ]]"
+            self._send(
+                {
+                    "id": "chatcmpl-stub",
+                    "object": "chat.completion",
+                    "model": MODEL,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "finish_reason": "stop",
+                            "message": {"role": "assistant", "content": content},
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                }
+            )
+
+        def log_message(self, *_args):  # keep the captured log quiet
+            return
+
+
+    HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    '''
+)
+
+_STUB_ANSWER = "Fathom, a CLIPS rules engine, decides every transition."
+
+
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _declared_model(graph: Path) -> str:
+    """The ``lm.model`` the example declares -- the stub must report exactly it.
+
+    Read from the YAML rather than duplicated here so a rename of the model in
+    the example cannot leave this test attaching to something else.
+    """
+    for line in graph.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("model:"):
+            return stripped.split(":", 1)[1].split("#")[0].strip()
+    raise AssertionError(f"no lm.model declared in {graph}")
+
+
+@pytest.fixture
+def openai_stub(tmp_path: Path) -> object:
+    """Serve one model id on a free loopback port; yield ``(port, model)``.
+
+    SGLang is GPU-only, so the example's *spawn* path cannot run in CI. Its
+    *attach* path can: a server already serving the requested model is left
+    alone and used as-is, which is the production branch taken here -- no
+    launch argv is stubbed and no engine code is monkeypatched.
+    """
+    graph = EXAMPLES_DIR / "sglang-qa.yaml"
+    model = _declared_model(graph)
+    port = _free_port()
+    script = tmp_path / "openai_stub.py"
+    script.write_text(_OPENAI_STUB, encoding="utf-8")
+    proc = subprocess.Popen(
+        [sys.executable, str(script), model, str(port), _STUB_ANSWER],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            try:
+                with urllib.request.urlopen(
+                    f"http://127.0.0.1:{port}/v1/models", timeout=1
+                ) as response:
+                    if response.status == 200:
+                        break
+            except (urllib.error.URLError, OSError, TimeoutError):
+                time.sleep(0.05)
+        else:
+            raise AssertionError("stub server never became ready")
+        yield port, model
+    finally:
+        proc.terminate()
+        proc.wait(timeout=10)
+
+
+@pytest.mark.integration
+def test_sglang_qa_attaches_to_a_running_server(
+    openai_stub: tuple[int, str], runner: CliRunner, tmp_path: Path
+) -> None:
+    """sglang-qa.yaml binds its LM from the graph, not from --lm-url/--lm-model.
+
+    ``--sglang-port`` re-points the declared block field-by-field, which is how
+    an operator aims the example at a server they already have. Reaching
+    ``status=done`` with the stub's answer in state proves the whole chain:
+    the block lowered to an ``SGLangServer``, the endpoint resolved by
+    attaching, and the derived base URL + model configured the DSPy LM that
+    the ``ask`` node ran against.
+    """
+    port, _model = openai_stub
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            str(EXAMPLES_DIR / "sglang-qa.yaml"),
+            "--sglang-port",
+            str(port),
+            "--checkpoint",
+            str(tmp_path / "ck.sqlite"),
+            "--inputs",
+            "question=what routes stargraph?",
+            "--quiet",
+            "--summary-json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    lines = [ln for ln in result.stdout.splitlines() if ln.strip().startswith("{")]
+    assert lines, f"no JSON summary in output: {result.stdout!r}"
+    payload = json.loads(lines[-1])
+    assert payload["status"] == "done"
+    assert payload["state_summary"]["answer"] == _STUB_ANSWER

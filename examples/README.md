@@ -9,6 +9,7 @@ golden test (`tests/integration/test_examples.py`) and must reach
 | `hello.yaml` | Smallest graph: 2 nodes, 2 rules, 1 state field, no LLM | `stargraph run examples/hello.yaml --inputs message=hello` |
 | `pipeline.yaml` | Three-step linear routing, one Fathom rule per hop | `stargraph run examples/pipeline.yaml --inputs message=hello` |
 | `research-bot.yaml` | Authoring format (no `ir_version`): react + judge + verdict-routed feedback loop in ~20 lines | `stargraph run examples/research-bot.yaml --lm-url <url> --lm-model <model> --inputs question="..."` |
+| `sglang-qa.yaml` | The `lm:` block: the graph carries its own SGLang endpoint, so no `--lm-url`/`--lm-model` | `stargraph run examples/sglang-qa.yaml --inputs question="..."` |
 
 Trace rule firings without executing nodes:
 
@@ -19,8 +20,11 @@ stargraph run examples/hello.yaml --inspect
 ## What's intentionally *not* here
 
 Most examples use `echo`/`halt` nodes, so they stay self-contained and fast
-(`research-bot.yaml` is the exception: it demonstrates LLM nodes and needs
-`--lm-url`/`--lm-model`; its golden test drives it with a scripted stub LM).
+(`research-bot.yaml` and `sglang-qa.yaml` are the exceptions: both demonstrate
+LLM nodes. `research-bot.yaml` needs `--lm-url`/`--lm-model` and its golden test
+drives it with a scripted stub LM; `sglang-qa.yaml` declares its own endpoint and
+its golden test attaches to a loopback stub server, exercising the real attach
+path without a GPU).
 For the features that need more wiring, read the full graphs under
 [`demos/`](../demos/):
 

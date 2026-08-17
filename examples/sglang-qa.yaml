@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# examples/sglang-qa.yaml — a graph that carries its own LM endpoint.
+#
+# The `lm:` block is the point: instead of the caller supplying
+# --lm-url/--lm-model, the graph names the model it wants and `stargraph run`
+# resolves the endpoint before the first node executes. If a server is already
+# serving that model on that port it attaches and leaves it running; otherwise
+# it launches `python -m sglang.launch_server`, waits for the endpoint to
+# answer, and terminates it when the run ends.
+#
+# Run it (SGLang installed, weights downloadable):
+#     stargraph run examples/sglang-qa.yaml --inputs question="what routes stargraph?"
+#
+# Point it at a server you already have, without editing this file:
+#     stargraph run examples/sglang-qa.yaml --sglang-port 41010 --inputs question="..."
+#
+# See the lowered IR (the `lm:` block becomes an SGLangServer model, and is
+# deliberately excluded from the structural graph hash — an endpoint is an
+# environment binding, not topology):
+#     stargraph compile examples/sglang-qa.yaml
+id: sglang-qa
+lm:
+  provider: sglang            # the only provider today
+  model: Qwen/Qwen2.5-0.5B-Instruct
+  port: 30000                 # sglang's own default
+  startup_timeout_s: 600      # first run downloads weights
+state:
+  question: str
+  answer: str
+nodes:
+  # Every key except `kind` becomes the node's config, so this is a plain
+  # dspy.Predict over the declared signature — bound to the endpoint above.
+  ask: {kind: dspy, signature: "question -> answer"}
+routes:
+  ask: done

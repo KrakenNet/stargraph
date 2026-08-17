@@ -512,47 +512,54 @@ def cmd(
     else:
         initial_values = parse_inputs(inputs or [], ir.state_schema)
     initial_state = g.state_schema(**initial_values)
-    try:
-        node_registry = build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())
-    except StargraphError as e:
-        # Registry failures are graph-authoring mistakes (unknown kind, bad
-        # module ref, missing sub-IR) — surface them as parameter errors.
-        raise typer.BadParameter(str(e)) from e
-    run = GraphRun(
-        run_id=run_id,
-        graph=g,
-        initial_state=initial_state,
-        node_registry=node_registry,
-        checkpointer=checkpointer,
-        fathom=build_ir_routing(ir, g.state_schema),
-    )
-
     console = Console()
     progress = ProgressPrinter(console, quiet=quiet, verbose=verbose)
     hitl: HITLHandler | None = None if non_interactive else HITLHandler(console)
-
-    async def _bootstrap_and_drive() -> RunSummary:
-        await checkpointer.bootstrap()
-        try:
-            if live_broker:
-                from stargraph.serve.lifecycle import broker_lifespan
-
-                async with broker_lifespan():
-                    return await _drive_interactive(run, audit_sink, progress, hitl, console)
-            return await _drive_interactive(run, audit_sink, progress, hitl, console)
-        finally:
-            await checkpointer.close()
-            if audit_sink is not None:
-                await audit_sink.close()
 
     def _echo(message: str) -> None:
         if not quiet:
             console.print(message, style="dim", highlight=False, markup=False)
 
     try:
-        # The endpoint outlives the whole run: a spawned sglang server is torn
-        # down only once the loop is done (or has raised).
+        # The endpoint is resolved *before* the node registry is built: a
+        # ``kind: dspy`` node checks for a configured LM as it is constructed,
+        # so a graph-declared ``lm:`` block (like --lm-url/--lm-model) has to
+        # be live by then. It outlives the whole run as well -- a spawned
+        # sglang server is torn down only once the loop is done (or has
+        # raised).
         with _lm_endpoint(sglang_spec, lm_url, lm_model, lm_key, lm_timeout, _echo):
+            try:
+                node_registry = build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())
+            except StargraphError as e:
+                # Registry failures are graph-authoring mistakes (unknown kind,
+                # bad module ref, missing sub-IR) — surface them as parameter
+                # errors.
+                raise typer.BadParameter(str(e)) from e
+            run = GraphRun(
+                run_id=run_id,
+                graph=g,
+                initial_state=initial_state,
+                node_registry=node_registry,
+                checkpointer=checkpointer,
+                fathom=build_ir_routing(ir, g.state_schema),
+            )
+
+            async def _bootstrap_and_drive() -> RunSummary:
+                await checkpointer.bootstrap()
+                try:
+                    if live_broker:
+                        from stargraph.serve.lifecycle import broker_lifespan
+
+                        async with broker_lifespan():
+                            return await _drive_interactive(
+                                run, audit_sink, progress, hitl, console
+                            )
+                    return await _drive_interactive(run, audit_sink, progress, hitl, console)
+                finally:
+                    await checkpointer.close()
+                    if audit_sink is not None:
+                        await audit_sink.close()
+
             summary = asyncio.run(_bootstrap_and_drive())
     except KeyboardInterrupt:
         console.print("[yellow]cancelled[/yellow]")

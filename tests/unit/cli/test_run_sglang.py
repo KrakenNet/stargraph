@@ -341,3 +341,57 @@ def test_cli_refuses_the_untrusted_halves_of_a_graph_block(
 
     assert result.exit_code != 0
     assert calls == []
+
+
+def test_the_lm_is_configured_before_the_node_registry_is_built(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Endpoint first, nodes second -- ``kind: dspy`` needs a live LM to build.
+
+    :func:`stargraph.nodes.dspy.dspy_node_from_config` raises "no LM
+    configured" while it is *constructing* the node, not when the node runs.
+    Resolving the endpoint after the registry was built therefore made every
+    ``kind: dspy`` graph unrunnable -- with a declared ``lm:`` block *and* with
+    ``--lm-url``/``--lm-model``. Asserting the call order pins the constraint
+    directly, so a future reshuffle of this function fails here rather than in
+    the one example that happens to use a dspy node.
+    """
+    import stargraph.cli.run as run_mod
+
+    order: list[str] = []
+    _stub_launcher(monkeypatch, [])
+
+    import dspy  # pyright: ignore[reportMissingTypeStubs]
+
+    def _fake_lm(*_args: Any, **_kwargs: Any) -> object:
+        return object()
+
+    def _record_configure(**_kwargs: Any) -> None:
+        order.append("configure-lm")
+
+    monkeypatch.setattr(dspy, "LM", _fake_lm)
+    monkeypatch.setattr(dspy, "configure", _record_configure)
+
+    real_build = run_mod.build_node_registry
+
+    def _record_build(*args: Any, **kwargs: Any) -> Any:
+        order.append("build-nodes")
+        return real_build(*args, **kwargs)
+
+    monkeypatch.setattr(run_mod, "build_node_registry", _record_build)
+
+    result = CliRunner().invoke(
+        _make_app(),
+        [
+            str(SAMPLE_GRAPH),
+            "--checkpoint",
+            str(tmp_path / "ck.sqlite"),
+            "--sglang-model",
+            "Qwen/Qwen3-8B",
+            "--quiet",
+            "--no-summary",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert order == ["configure-lm", "build-nodes"]
