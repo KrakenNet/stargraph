@@ -104,6 +104,25 @@ def _log_tail(log_path: Path) -> str:
     return "\n".join(lines[-_LOG_TAIL_LINES:])
 
 
+def _child_env(python: str | None) -> dict[str, str]:
+    """The environment a venv activation would have given the server.
+
+    Launching an interpreter by absolute path runs its packages but not its
+    scripts: nothing puts the venv's ``bin/`` on ``PATH``, which activation
+    (or ``uv run``) would have done. sglang notices at the worst moment --
+    flashinfer JIT-compiles its attention kernels during startup and shells
+    out to ``ninja``, a console script sglang itself depends on. Without it
+    the child dies mid-startup and the parent reports SIGKILL, which reads
+    like an OOM and is not one.
+    """
+    env = os.environ.copy()
+    bindir = str(Path(python or sys.executable).resolve().parent)
+    path = env.get("PATH", "")
+    if bindir not in path.split(os.pathsep):
+        env["PATH"] = os.pathsep.join([bindir, path]) if path else bindir
+    return env
+
+
 def _spawn(
     spec: SGLangServer, log_path: Path, python: str | None = None
 ) -> subprocess.Popen[bytes]:
@@ -115,6 +134,7 @@ def _spawn(
             stdout=handle,
             stderr=subprocess.STDOUT,
             start_new_session=True,
+            env=_child_env(python),
         )
     except OSError as exc:
         raise LMServerError(

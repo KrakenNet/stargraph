@@ -9,18 +9,17 @@ group, real HTTP readiness polling, real SIGTERM teardown.
 
 from __future__ import annotations
 
+import os
 import socket
+import sys
 import textwrap
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
 from stargraph.errors import LMServerError
 from stargraph.ir import SGLangServer
 from stargraph.lm import sglang as sg
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 pytestmark = pytest.mark.integration
 
@@ -145,3 +144,30 @@ def test_startup_timeout_is_loud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         sg.sglang_server(spec, log_path=tmp_path / "sglang.log"),
     ):
         pytest.fail("must not yield before the endpoint answers")
+
+
+def test_the_spawned_child_really_sees_the_venv_bin_on_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """End-to-end on the env, not just on the helper that builds it.
+
+    The unit test covers what ``_child_env`` returns; this covers that the
+    value reaches :class:`subprocess.Popen`. Dropping ``env=`` was invisible
+    to every other test in the suite, and it is the difference between a
+    server that starts and one that dies in flashinfer's JIT looking for
+    ``ninja``.
+    """
+    log_path = tmp_path / "child.log"
+
+    def _print_path_argv(_spec: SGLangServer, python: str | None = None) -> list[str]:
+        return [python or sys.executable, "-c", "import os; print(os.environ['PATH'])"]
+
+    monkeypatch.setattr(sg, "_launch_argv", _print_path_argv)
+    monkeypatch.setenv("PATH", "/usr/bin")
+
+    spec = SGLangServer(model="stub/model", port=_free_port(), startup_timeout_s=30)
+    proc = sg._spawn(spec, log_path, sys.executable)  # pyright: ignore[reportPrivateUsage]
+    proc.wait(timeout=30)
+
+    seen = log_path.read_text().strip().split(os.pathsep)
+    assert seen[0] == str(Path(sys.executable).resolve().parent)

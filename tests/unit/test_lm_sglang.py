@@ -9,7 +9,9 @@ teardown path runs against a stub HTTP server in
 
 from __future__ import annotations
 
+import os
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
 import pytest
@@ -20,7 +22,6 @@ from stargraph.lm import sglang as sg
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
 pytestmark = pytest.mark.unit
 
@@ -128,6 +129,28 @@ def test_the_preflight_and_the_launch_target_the_same_interpreter(
     assert seen["runtime_python"] == "/opt/sglang-venv/bin/python"
     assert seen["weights_python"] == "/opt/sglang-venv/bin/python"
     assert seen["argv_python"] == "/opt/sglang-venv/bin/python"
+
+
+def test_the_child_gets_the_interpreters_bin_on_path() -> None:
+    """Console scripts sglang shells out to (``ninja``) live in the venv's bin/.
+
+    Launching by absolute interpreter path does not put that directory on
+    PATH -- activation does. flashinfer's JIT then cannot find ninja, the
+    child dies during startup, and the parent reports a bare SIGKILL.
+    """
+    env = sg._child_env("/opt/sglang-venv/bin/python")  # pyright: ignore[reportPrivateUsage]
+
+    assert env["PATH"].split(os.pathsep)[0] == "/opt/sglang-venv/bin"
+
+
+def test_a_bin_already_on_path_is_not_duplicated(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mutation guard: prepending unconditionally would grow PATH every run."""
+    bindir = str(Path(sys.executable).resolve().parent)
+    monkeypatch.setenv("PATH", os.pathsep.join([bindir, "/usr/bin"]))
+
+    env = sg._child_env(None)  # pyright: ignore[reportPrivateUsage]
+
+    assert env["PATH"].split(os.pathsep).count(bindir) == 1
 
 
 def test_served_models_returns_none_when_nothing_answers() -> None:
