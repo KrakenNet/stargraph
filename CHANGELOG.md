@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/KrakenNet/stargraph/compare/v0.5.3...v0.6.0) (2026-08-05)
+
+
+### Features
+
+* add compile-to-weights gate routing-failure eval harness ([#171](https://github.com/KrakenNet/stargraph/issues/171)) ([#186](https://github.com/KrakenNet/stargraph/issues/186)) ([0f3bf0f](https://github.com/KrakenNet/stargraph/commit/0f3bf0f7f831a644800daf8bcdc8fcffe7c3ad41))
+* batteries-included — tool packs, SKILL.md loader, prebuilt nodes + bundles, simple-YAML authoring ([#189](https://github.com/KrakenNet/stargraph/issues/189)) ([08698aa](https://github.com/KrakenNet/stargraph/commit/08698aabb567796d2da5474feb914fcff2a42c11))
+
+
+### Bug Fixes
+
+* **security:** workflow permissions + GitPython bump ([#192](https://github.com/KrakenNet/stargraph/issues/192)) ([4e9c592](https://github.com/KrakenNet/stargraph/commit/4e9c5925b81fd6fb893e0608efae1c620edcd5bc))
+
 ## [0.5.3](https://github.com/KrakenNet/stargraph/compare/v0.5.2...v0.5.3) (2026-06-25)
 
 
