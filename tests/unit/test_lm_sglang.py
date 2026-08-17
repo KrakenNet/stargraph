@@ -131,6 +131,24 @@ def test_the_preflight_and_the_launch_target_the_same_interpreter(
     assert seen["argv_python"] == "/opt/sglang-venv/bin/python"
 
 
+def test_a_venv_symlink_keeps_the_venvs_bin_not_the_base_installs(tmp_path: Path) -> None:
+    """A venv's ``bin/python`` is a symlink; resolving it loses the venv.
+
+    This is the failure this whole helper exists to prevent, one level down:
+    prepending the *resolved* parent puts the base interpreter's bin on PATH,
+    where none of the venv's console scripts (``ninja``) live. Every console
+    script is in the venv's own bin, next to the symlink.
+    """
+    bindir = tmp_path / "venv" / "bin"
+    bindir.mkdir(parents=True)
+    interpreter = bindir / "python"
+    interpreter.symlink_to(sys.executable)
+
+    env = sg._child_env(str(interpreter))  # pyright: ignore[reportPrivateUsage]
+
+    assert env["PATH"].split(os.pathsep)[0] == str(bindir)
+
+
 def test_the_child_gets_the_interpreters_bin_on_path() -> None:
     """Console scripts sglang shells out to (``ninja``) live in the venv's bin/.
 

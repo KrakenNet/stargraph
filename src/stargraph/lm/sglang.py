@@ -116,7 +116,10 @@ def _child_env(python: str | None) -> dict[str, str]:
     like an OOM and is not one.
     """
     env = os.environ.copy()
-    bindir = str(Path(python or sys.executable).resolve().parent)
+    # Deliberately not resolved: a venv's ``bin/python`` is a symlink to the
+    # base interpreter, so resolving it lands in the base install's bin and
+    # silently misses every console script the venv actually has.
+    bindir = str(Path(python or sys.executable).absolute().parent)
     path = env.get("PATH", "")
     if bindir not in path.split(os.pathsep):
         env["PATH"] = os.pathsep.join([bindir, path]) if path else bindir

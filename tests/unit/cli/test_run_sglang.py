@@ -471,7 +471,7 @@ def test_sglang_python_reaches_the_launcher(
     result, seen = _run_with(monkeypatch, tmp_path, "--sglang-python", sys.executable)
 
     assert result.exit_code == 0, result.output
-    assert seen["python"] == str(Path(sys.executable).resolve())
+    assert seen["python"] == sys.executable
 
 
 def test_a_venv_directory_is_resolved_to_its_interpreter(
@@ -486,7 +486,9 @@ def test_a_venv_directory_is_resolved_to_its_interpreter(
     result, seen = _run_with(monkeypatch, tmp_path, "--sglang-python", str(venv))
 
     assert result.exit_code == 0, result.output
-    assert seen["python"] == str(interpreter.resolve())
+    # The venv's own path, not the symlink target: resolving it would hand
+    # sglang the base interpreter, which has none of the venv's packages.
+    assert seen["python"] == str(interpreter)
 
 
 def test_a_bad_interpreter_is_refused_before_the_graph_runs(

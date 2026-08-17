@@ -165,9 +165,16 @@ def test_the_spawned_child_really_sees_the_venv_bin_on_path(
     monkeypatch.setattr(sg, "_launch_argv", _print_path_argv)
     monkeypatch.setenv("PATH", "/usr/bin")
 
+    # Through a venv-shaped symlink, because that is what a real venv is and
+    # what makes the difference between the venv's bin and the base install's.
+    bindir = tmp_path / "venv" / "bin"
+    bindir.mkdir(parents=True)
+    interpreter = bindir / "python"
+    interpreter.symlink_to(sys.executable)
+
     spec = SGLangServer(model="stub/model", port=_free_port(), startup_timeout_s=30)
-    proc = sg._spawn(spec, log_path, sys.executable)  # pyright: ignore[reportPrivateUsage]
+    proc = sg._spawn(spec, log_path, str(interpreter))  # pyright: ignore[reportPrivateUsage]
     proc.wait(timeout=30)
 
     seen = log_path.read_text().strip().split(os.pathsep)
-    assert seen[0] == str(Path(sys.executable).resolve().parent)
+    assert seen[0] == str(bindir)

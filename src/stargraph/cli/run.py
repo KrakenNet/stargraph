@@ -126,10 +126,14 @@ def _is_loopback(host: str) -> bool:
 def _validated_python(python: str | None) -> str | None:
     """Resolve ``--sglang-python`` to an executable interpreter, or fail early.
 
-    A venv directory is accepted and resolved to its ``bin/python``: that is
+    A venv directory is accepted and mapped to its ``bin/python``: that is
     what an operator has in hand ("the venv where sglang lives"), and the
     alternative is a subprocess that dies with a bare ENOENT much later, after
     the graph has already been compiled.
+
+    The path is made absolute but never resolved. A venv's ``bin/python`` is
+    a symlink into the base install; following it hands back an interpreter
+    outside the venv the operator named, with none of its packages.
     """
     if python is None:
         return None
@@ -140,7 +144,7 @@ def _validated_python(python: str | None) -> str | None:
         raise typer.BadParameter(
             f"--sglang-python {python!r} is not an executable interpreter (looked at {candidate})"
         )
-    return str(candidate.resolve())
+    return str(candidate.absolute())
 
 
 def _check_graph_declared(
