@@ -77,9 +77,66 @@ on `failed`.
 | `--lm-model NAME`    | str              | _(none)_               | LLM model identifier (e.g. `gpt-oss:20b`).                                 |
 | `--lm-key KEY`       | str              | `placeholder`          | API key for the LLM endpoint (`placeholder` works for ollama).             |
 | `--lm-timeout SEC`   | int              | `60`                   | LLM call timeout in seconds.                                               |
+| `--sglang-model NAME`| str              | _(none)_               | Serve this model with SGLang for the run; sets `--lm-url`/`--lm-model` from it. |
+| `--sglang-host HOST` | str              | `127.0.0.1`            | SGLang bind/probe host.                                                    |
+| `--sglang-port PORT` | int              | `30000`                | SGLang port.                                                               |
+| `--sglang-arg ARG`   | str (repeatable) | _(empty)_              | Extra argv passed through to `sglang.launch_server` verbatim.              |
+| `--sglang-timeout SEC` | int            | `600`                  | Seconds to wait for a launched SGLang server to answer.                    |
+| `--sglang-python PATH` | str            | _(this interpreter)_   | Interpreter (or venv directory) to serve from. |
+| `--install-runtime`  | flag             | `false`                | Install the sglang build matching the detected accelerator before launching. |
 
 `--quiet` and `--verbose` are mutually exclusive. `--lm-url` and
-`--lm-model` must be supplied together (or neither).
+`--lm-model` must be supplied together (or neither). A spawned SGLang server is
+preflighted first: hardware is detected from the vendor tools, the spawn
+interpreter's sglang/torch build is checked against it, and the weights are
+fetched before the startup clock starts. Without `--install-runtime` a runtime
+that cannot serve is reported with the exact install command and the run stops;
+nothing is ever installed implicitly, and kernel drivers are never touched.
+With the flag, repair runs in rounds: sglang first, then -- if the torch beside
+it is a CPU (or otherwise mismatched) build -- a `--force-reinstall` off the
+CUDA index at the pin sglang resolved to. Installing sglang alone does not fix
+that torch: `2.11.0+cpu` satisfies `torch==2.11.0`, so the resolver leaves it
+where it is.
+
+`--sglang-python` points the whole spawn -- preflight, weight fetch and launch
+-- at another interpreter, so the venv running stargraph never has to become
+the venv serving the model. A venv directory is accepted and resolved to its
+`bin/python`. There is deliberately no `lm:` key for it: the interpreter is
+argv into a subprocess, the same class of operator-only value as `args` and a
+non-loopback `host`.
+
+The `--sglang-*` flags bind the run to a local
+[SGLang](https://docs.sglang.ai/) server, and derive `--lm-url` /
+`--lm-model` from it — so they conflict with those two flags. Before the
+first node runs, `stargraph run` probes `http://host:port/v1/models`:
+
+- a server already serving that model is **attached to** and left running;
+- a server serving a *different* model is a loud error (pick another port);
+- nothing listening means one is launched
+  (`python -m sglang.launch_server --model-path ...`, plus every
+  `--sglang-arg` verbatim), waited on until it answers, and terminated —
+  process group included — when the run ends.
+
+The same binding can be declared in the graph itself as an `lm:` block
+(see [Author a graph in simple YAML](../how-to/authoring-format.md)); the
+flags override it field by field. A graph-declared block may set
+`model`/`port`/`startup_timeout_s` only — passthrough `args` and a
+non-loopback `host` are operator-only and must be re-stated as
+`--sglang-arg` / `--sglang-host`. Neither is part of the graph hash: like
+`--lm-url`, an endpoint is an environment binding, not topology.
+
+The end-of-run summary counts LM calls off the DSPy client, not off the event
+bus -- a `kind: dspy` node calls its LM directly and publishes no event. DSPy's
+disk cache (`~/.dspy_cache`) is on by default and is left on, so the line names
+cache hits when there are any:
+
+```
+✓ done in 1.2s  (1 steps, 1 llm calls, 1 cached)
+```
+
+A cached run reached no server. `--summary-json` carries the same three numbers
+as `llm_call_count`, `llm_cache_hits` and `tool_call_count` (tool calls are
+counted from `ToolCallEvent`, separately from LM calls).
 
 **Examples**
 
@@ -92,6 +149,11 @@ stargraph run graphs/triage.yaml --inspect
 
 # Bind a local LLM for dspy nodes
 stargraph run graphs/triage.yaml --lm-url http://localhost:11434 --lm-model gpt-oss:20b
+
+# Boot SGLang for the run (attaches instead if :41002 already serves it)
+stargraph run graphs/triage.yaml \
+  --sglang-model microsoft/phi-4 --sglang-port 41002 \
+  --sglang-arg=--attention-backend --sglang-arg=triton
 ```
 
 See also: [Concepts: IR](../concepts/ir.md),

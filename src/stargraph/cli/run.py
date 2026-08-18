@@ -30,8 +30,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import ipaddress
+import os
+import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import anyio
 import typer
@@ -54,7 +57,7 @@ from stargraph.cli._summary import SummaryRenderer
 from stargraph.errors import StargraphError
 from stargraph.fathom import build_ir_routing
 from stargraph.graph import Graph, GraphRun
-from stargraph.ir import IRDocument
+from stargraph.ir import IRDocument, SGLangServer
 from stargraph.ir._ids import new_run_id
 
 # Node-kind resolution moved to stargraph.nodes.registry (the CLI is one
@@ -69,11 +72,19 @@ from stargraph.nodes.registry import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from stargraph.checkpoint.protocol import RunSummary
 
 __all__ = ["cmd", "node_kinds"]
 
 _build_node_registry = build_node_registry
+
+
+def _check_lm_pairing(lm_url: str | None, lm_model: str | None) -> None:
+    """Fail loud when exactly one of --lm-url / --lm-model is set."""
+    if (lm_url is None) != (lm_model is None):
+        raise typer.BadParameter("--lm-url and --lm-model must be specified together (or neither)")
 
 
 def _configure_lm(
@@ -88,8 +99,7 @@ def _configure_lm(
     call entirely when both are None lets graphs without DSPy nodes run
     without dragging in dspy at all.
     """
-    if (lm_url is None) != (lm_model is None):
-        raise typer.BadParameter("--lm-url and --lm-model must be specified together (or neither)")
+    _check_lm_pairing(lm_url, lm_model)
     if lm_url is None:
         return
     import dspy  # pyright: ignore[reportMissingTypeStubs]
@@ -102,6 +112,174 @@ def _configure_lm(
             timeout=lm_timeout,
         )
     )
+
+
+def _is_loopback(host: str) -> bool:
+    """True for hosts that cannot leave the box."""
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _validated_python(python: str | None) -> str | None:
+    """Resolve ``--sglang-python`` to an executable interpreter, or fail early.
+
+    A venv directory is accepted and mapped to its ``bin/python``: that is
+    what an operator has in hand ("the venv where sglang lives"), and the
+    alternative is a subprocess that dies with a bare ENOENT much later, after
+    the graph has already been compiled.
+
+    The path is made absolute but never resolved. A venv's ``bin/python`` is
+    a symlink into the base install; following it hands back an interpreter
+    outside the venv the operator named, with none of its packages.
+    """
+    if python is None:
+        return None
+    candidate = Path(python).expanduser()
+    if candidate.is_dir():
+        candidate = candidate / "bin" / "python"
+    if not candidate.is_file() or not os.access(candidate, os.X_OK):
+        raise typer.BadParameter(
+            f"--sglang-python {python!r} is not an executable interpreter (looked at {candidate})"
+        )
+    return str(candidate.absolute())
+
+
+def _check_graph_declared(
+    declared: SGLangServer, *, args_from_flags: bool, host_from_flags: str | None
+) -> None:
+    """Refuse the parts of a graph-declared ``lm:`` block that escape the box.
+
+    A graph file can be less trusted than the operator running it, and this
+    is the only path by which a graph reaches ``subprocess`` at all (every
+    process-spawning std tool is behind the default-deny capability gate).
+    Two fields are therefore operator-only, and must be re-stated as flags
+    (which are trusted) before they take effect:
+
+    * ``args`` -- passthrough argv into ``sglang.launch_server``; a graph
+      that could set it could turn a run into arbitrary code execution
+      (``--trust-remote-code`` executes the model repo's own Python).
+    * a non-loopback ``host`` -- the derived base URL receives ``--lm-key``
+      and every prompt, so a graph-chosen host is an exfiltration channel
+      (and binding a launched server off-loopback publishes it).
+
+    ``model``/``port``/``startup_timeout_s`` stay graph-declarable: they
+    bound the run to a specific local endpoint without handing the graph
+    argv or a network destination.
+    """
+    if declared.args and not args_from_flags:
+        raise typer.BadParameter(
+            f"graph declares lm.args {declared.args} -- passthrough argv is "
+            "operator-only; re-state them as --sglang-arg to allow them"
+        )
+    if host_from_flags is None and not _is_loopback(declared.host):
+        raise typer.BadParameter(
+            f"graph declares a non-loopback lm.host {declared.host!r} -- the "
+            "endpoint receives --lm-key and every prompt; pass "
+            f"--sglang-host {declared.host} to allow it"
+        )
+
+
+def _resolve_sglang(
+    ir: IRDocument,
+    *,
+    model: str | None,
+    host: str | None,
+    port: int | None,
+    args: list[str] | None,
+    timeout: int | None,
+) -> SGLangServer | None:
+    """Merge the graph's ``lm:`` block with the ``--sglang-*`` flags.
+
+    The flags override field-by-field, so ``--sglang-port`` alone re-points a
+    graph-declared server while ``--sglang-model`` alone declares one for a
+    graph that has no ``lm:`` block. Returns ``None`` when neither source
+    asks for a server.
+    """
+    overrides: dict[str, object] = {}
+    if model is not None:
+        overrides["model"] = model
+    if host is not None:
+        overrides["host"] = host
+    if port is not None:
+        overrides["port"] = port
+    if args:
+        overrides["args"] = list(args)
+    if timeout is not None:
+        overrides["startup_timeout_s"] = timeout
+
+    if ir.lm is not None:
+        _check_graph_declared(ir.lm, args_from_flags=args is not None, host_from_flags=host)
+        return ir.lm.model_copy(update=overrides)
+    if "model" in overrides:
+        return SGLangServer.model_validate(overrides)
+    if overrides:
+        raise typer.BadParameter(
+            "--sglang-* flags need --sglang-model (or an `lm:` block in the graph)"
+        )
+    return None
+
+
+@contextlib.contextmanager
+def _lm_endpoint(
+    spec: SGLangServer | None,
+    lm_url: str | None,
+    lm_model: str | None,
+    lm_key: str,
+    lm_timeout: int,
+    echo: Callable[[str], None],
+    install_runtime: bool = False,
+    sglang_python: str | None = None,
+) -> Generator[None]:
+    """Hold the run's LM endpoint open: boot/attach sglang, then configure dspy.
+
+    A declared ``spec`` supplies both halves of the DSPy binding (base URL +
+    model), so ``--lm-url``/``--lm-model`` are rejected alongside it by the
+    caller. With no spec this is exactly the pre-existing ``_configure_lm``
+    behaviour.
+    """
+    with contextlib.ExitStack() as stack:
+        if spec is not None:
+            from stargraph.lm.sglang import sglang_server
+
+            lm_url = stack.enter_context(
+                sglang_server(
+                    spec,
+                    echo=echo,
+                    install_runtime=install_runtime,
+                    python=sglang_python,
+                )
+            )
+            lm_model = spec.model
+        _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
+        yield
+
+
+def _lm_usage() -> tuple[int, int]:
+    """``(completions, cache hits)`` the configured LM recorded for this run.
+
+    Read off the client instead of the bus: a ``kind: dspy`` node calls its LM
+    directly and publishes no event, so the progress printer never sees one.
+    Cache hits are counted apart from the total because DSPy's disk cache is on
+    by default -- a run answered entirely from it contacted no server, and must
+    not read like a run that did.
+
+    Zero on both counts when dspy was never imported (no LM node ran) or when
+    history is disabled: both mean "nothing observable", not "nothing happened".
+    """
+    module = sys.modules.get("dspy")
+    if module is None:
+        return (0, 0)
+    settings: Any = getattr(module, "settings", None)
+    history = cast(
+        "list[dict[str, Any]]",
+        getattr(getattr(settings, "lm", None), "history", None) or [],
+    )
+    hits = sum(1 for entry in history if getattr(entry.get("response"), "cache_hit", False))
+    return (len(history), hits)
 
 
 def _build_audit_sink(log_file: Path) -> AuditSink:
@@ -273,6 +451,64 @@ def cmd(
             help="LLM call timeout in seconds.",
         ),
     ] = 60,
+    sglang_model: Annotated[
+        str | None,
+        typer.Option(
+            "--sglang-model",
+            help=(
+                "Serve this model with SGLang for the run: attaches to an "
+                "already-running server on the port, else launches one and "
+                "shuts it down at the end. Sets --lm-url/--lm-model for you."
+            ),
+        ),
+    ] = None,
+    sglang_host: Annotated[
+        str | None,
+        typer.Option("--sglang-host", help="SGLang bind/probe host (default: 127.0.0.1)."),
+    ] = None,
+    sglang_port: Annotated[
+        int | None,
+        typer.Option("--sglang-port", help="SGLang port (default: 30000)."),
+    ] = None,
+    sglang_arg: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--sglang-arg",
+            help=(
+                "Extra argument passed through to sglang.launch_server "
+                "(repeatable, e.g. --sglang-arg=--attention-backend "
+                "--sglang-arg=triton)."
+            ),
+        ),
+    ] = None,
+    sglang_timeout: Annotated[
+        int | None,
+        typer.Option(
+            "--sglang-timeout",
+            help="Seconds to wait for a launched SGLang server to answer (default: 600).",
+        ),
+    ] = None,
+    sglang_python: Annotated[
+        str | None,
+        typer.Option(
+            "--sglang-python",
+            help=(
+                "Interpreter to serve from (default: the one running stargraph). "
+                "Point it at the venv that has sglang installed."
+            ),
+        ),
+    ] = None,
+    install_runtime: Annotated[
+        bool,
+        typer.Option(
+            "--install-runtime",
+            help=(
+                "Install the sglang build matching the detected accelerator before "
+                "launching. Without it, a runtime that cannot serve is reported with "
+                "the exact command instead of being repaired."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Run a Stargraph graph end-to-end (FR-8 POC).
 
@@ -287,7 +523,9 @@ def cmd(
     if quiet and verbose:
         raise typer.BadParameter("--quiet and --verbose are mutually exclusive")
 
-    _configure_lm(lm_url, lm_model, lm_key, lm_timeout)
+    # The LM is configured later (inside ``_lm_endpoint``, once a declared
+    # sglang server is up); flag pairing is still checked before any work.
+    _check_lm_pairing(lm_url, lm_model)
 
     ir_dict = yaml.safe_load(graph.read_text(encoding="utf-8"))
     if is_authoring_format(ir_dict):
@@ -296,6 +534,20 @@ def cmd(
         ir = compile_authoring(ir_dict, default_id=graph.stem)
     else:
         ir = IRDocument.model_validate(ir_dict)
+
+    sglang_spec = _resolve_sglang(
+        ir,
+        model=sglang_model,
+        host=sglang_host,
+        port=sglang_port,
+        args=sglang_arg,
+        timeout=sglang_timeout,
+    )
+    if sglang_spec is not None and (lm_url is not None or lm_model is not None):
+        raise typer.BadParameter(
+            "--lm-url/--lm-model conflict with an sglang endpoint -- the URL and "
+            "model are derived from it"
+        )
 
     # Builtin-seeded ToolRegistry on the Graph: the ``kind: tool``
     # ToolCallNode resolves its tool id here at execute time.
@@ -340,46 +592,70 @@ def cmd(
     else:
         initial_values = parse_inputs(inputs or [], ir.state_schema)
     initial_state = g.state_schema(**initial_values)
-    try:
-        node_registry = build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())
-    except StargraphError as e:
-        # Registry failures are graph-authoring mistakes (unknown kind, bad
-        # module ref, missing sub-IR) — surface them as parameter errors.
-        raise typer.BadParameter(str(e)) from e
-    run = GraphRun(
-        run_id=run_id,
-        graph=g,
-        initial_state=initial_state,
-        node_registry=node_registry,
-        checkpointer=checkpointer,
-        fathom=build_ir_routing(ir, g.state_schema),
-    )
-
     console = Console()
     progress = ProgressPrinter(console, quiet=quiet, verbose=verbose)
     hitl: HITLHandler | None = None if non_interactive else HITLHandler(console)
 
-    async def _bootstrap_and_drive() -> RunSummary:
-        await checkpointer.bootstrap()
-        try:
-            if live_broker:
-                from stargraph.serve.lifecycle import broker_lifespan
-
-                async with broker_lifespan():
-                    return await _drive_interactive(run, audit_sink, progress, hitl, console)
-            return await _drive_interactive(run, audit_sink, progress, hitl, console)
-        finally:
-            await checkpointer.close()
-            if audit_sink is not None:
-                await audit_sink.close()
+    def _echo(message: str) -> None:
+        if not quiet:
+            console.print(message, style="dim", highlight=False, markup=False)
 
     try:
-        summary = asyncio.run(_bootstrap_and_drive())
+        # The endpoint is resolved *before* the node registry is built: a
+        # ``kind: dspy`` node checks for a configured LM as it is constructed,
+        # so a graph-declared ``lm:`` block (like --lm-url/--lm-model) has to
+        # be live by then. It outlives the whole run as well -- a spawned
+        # sglang server is torn down only once the loop is done (or has
+        # raised).
+        with _lm_endpoint(
+            sglang_spec,
+            lm_url,
+            lm_model,
+            lm_key,
+            lm_timeout,
+            _echo,
+            install_runtime,
+            _validated_python(sglang_python),
+        ):
+            try:
+                node_registry = build_node_registry(ir.nodes, ir_dir=graph.parent.resolve())
+            except StargraphError as e:
+                # Registry failures are graph-authoring mistakes (unknown kind,
+                # bad module ref, missing sub-IR) — surface them as parameter
+                # errors.
+                raise typer.BadParameter(str(e)) from e
+            run = GraphRun(
+                run_id=run_id,
+                graph=g,
+                initial_state=initial_state,
+                node_registry=node_registry,
+                checkpointer=checkpointer,
+                fathom=build_ir_routing(ir, g.state_schema),
+            )
+
+            async def _bootstrap_and_drive() -> RunSummary:
+                await checkpointer.bootstrap()
+                try:
+                    if live_broker:
+                        from stargraph.serve.lifecycle import broker_lifespan
+
+                        async with broker_lifespan():
+                            return await _drive_interactive(
+                                run, audit_sink, progress, hitl, console
+                            )
+                    return await _drive_interactive(run, audit_sink, progress, hitl, console)
+                finally:
+                    await checkpointer.close()
+                    if audit_sink is not None:
+                        await audit_sink.close()
+
+            summary = asyncio.run(_bootstrap_and_drive())
     except KeyboardInterrupt:
         console.print("[yellow]cancelled[/yellow]")
         raise typer.Exit(code=130) from None
 
     if not no_summary:
+        llm_calls, llm_cache_hits = _lm_usage()
         # Reconstruct final state model from the ResultEvent's snapshot.
         final_state_dict = progress.final_state_dict() or {}
         try:
@@ -393,7 +669,7 @@ def cmd(
         renderer.render(
             summary=summary,
             final_state=final_state,
-            stats=progress.stats(),
+            stats=progress.stats(llm_calls=llm_calls, llm_cache_hits=llm_cache_hits),
             artifacts_dir=artifacts_dir,
             run_id=run.run_id,
             checkpoint=ckpt_path,

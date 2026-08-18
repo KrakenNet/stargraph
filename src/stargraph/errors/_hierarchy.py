@@ -168,6 +168,18 @@ class RLNodeError(StargraphRuntimeError):
     """
 
 
+class LMServerError(StargraphRuntimeError):
+    """Raised when a declared LM endpoint cannot be attached to or spawned.
+
+    Covers the ``stargraph.lm.sglang`` launcher: an already-running server
+    on the requested port serving a *different* model (never silently used),
+    a launch subprocess that exits before answering, and a startup that
+    exceeds ``startup_timeout_s``. ``context`` carries ``base_url`` plus, on
+    a failed spawn, ``exit_code`` and ``log`` (path to the captured server
+    output).
+    """
+
+
 class SimulationError(StargraphRuntimeError):
     """Raised by :meth:`stargraph.graph.Graph.simulate` for fixture-input violations.
 

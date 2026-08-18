@@ -130,6 +130,8 @@ class SummaryRenderer:
                 "duration_ms": duration_ms,
                 "step_count": stats.step_count,
                 "llm_call_count": stats.llm_call_count,
+                "llm_cache_hits": stats.llm_cache_hits,
+                "tool_call_count": stats.tool_call_count,
                 "total_tool_tokens": stats.total_tool_tokens,
                 "node_durations_ms": dict(stats.node_durations_ms),
                 "artifacts": artifact_relpaths,
@@ -143,10 +145,14 @@ class SummaryRenderer:
         # Human summary.
         status_mark = "✓" if summary.status == "done" else "✗"
         status_color = "green" if summary.status == "done" else "red"
+        # Cache hits are named only when there are any: a run served from
+        # DSPy's disk cache reached no server, and reading "1 llm calls" for
+        # it would be indistinguishable from a live one.
+        cached = f", {stats.llm_cache_hits} cached" if stats.llm_cache_hits else ""
         self._console.print(
             f"\n[{status_color}]{status_mark} {summary.status}[/{status_color}] "
             f"in {_fmt_duration(duration_ms)}  "
-            f"({stats.step_count} steps, {stats.llm_call_count} llm calls)"
+            f"({stats.step_count} steps, {stats.llm_call_count} llm calls{cached})"
         )
 
         if artifact_relpaths:

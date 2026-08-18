@@ -25,7 +25,7 @@ def _now() -> datetime:
 
 @pytest.mark.integration
 @pytest.mark.anyio
-async def test_renders_node_lines_and_counts_llm_calls() -> None:
+async def test_renders_node_lines_and_counts_tool_calls() -> None:
     out = io.StringIO()
     console = Console(file=out, force_terminal=False, width=120)
     printer = ProgressPrinter(console)
@@ -121,7 +121,10 @@ async def test_renders_node_lines_and_counts_llm_calls() -> None:
 
     s = printer.stats()
     assert s.step_count == 2  # nodes a, b (sentinels excluded)
-    assert s.llm_call_count == 1
+    # A tool call is a tool call: the bus carries no LM event, so the printer
+    # has nothing to say about LM calls and leaves that count to the caller.
+    assert s.tool_call_count == 1
+    assert s.llm_call_count == 0
 
 
 @pytest.mark.integration

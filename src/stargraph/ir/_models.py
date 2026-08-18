@@ -44,6 +44,7 @@ __all__ = [
     "RetractAction",
     "RetryAction",
     "RuleSpec",
+    "SGLangServer",
     "SkillRef",
     "SkillSpec",
     "SlotDef",
@@ -337,6 +338,47 @@ class CheckpointBlock(IRBase):
     store: str = "sqlite:./.stargraph/run.sqlite"
 
 
+class SGLangServer(IRBase):
+    """Declared LM endpoint: an SGLang server bound to this graph for a run.
+
+    ``stargraph run`` resolves this block before the first node executes: it
+    probes ``http://{host}:{port}/v1/models`` and **attaches** when a server
+    already serves ``model`` (left running afterwards -- it is not ours),
+    otherwise it spawns ``python -m sglang.launch_server``, waits for the
+    endpoint to answer, and terminates it when the run ends. The derived
+    base URL + ``model`` configure the DSPy LM, so declaring this block is
+    equivalent to passing ``--lm-url``/``--lm-model`` at a live endpoint.
+
+    Not part of the structural graph hash: like ``--lm-url``, the endpoint is
+    an environment binding, not graph topology.
+
+    Attributes:
+        provider: Only ``"sglang"`` today; the discriminator for future
+            providers.
+        model: ``--model-path`` value; must equal the id the server reports
+            in ``/v1/models`` when attaching to an already-running server.
+        host: Bind address / probe host.
+        port: Bind port (SGLang's own default is 30000).
+        args: Extra argv passed through to ``sglang.launch_server``
+            verbatim (e.g. ``["--attention-backend", "triton"]``).
+            Operator-only: a graph-declared value is refused unless the
+            operator re-states it as ``--sglang-arg`` (argv into a
+            subprocess is a code-execution surface, and a graph file can
+            be less trusted than the operator running it). The same holds
+            for a non-loopback ``host``, which would receive the API key
+            and every prompt.
+        startup_timeout_s: How long to wait for a spawned server to answer
+            before failing the run. Big models take minutes to load.
+    """
+
+    provider: Literal["sglang"] = "sglang"
+    model: str
+    host: str = "127.0.0.1"
+    port: int = 30000
+    args: list[str] = Field(default_factory=list[str])
+    startup_timeout_s: int = 600
+
+
 # ---------------------------------------------------------------------------
 # IRDocument -- top-level IR shell. Required: ir_version, id, nodes.
 # ---------------------------------------------------------------------------
@@ -369,6 +411,10 @@ class IRDocument(IRBase):
     governance: list[PackMount] = Field(default_factory=list[PackMount])
     migrate: list[MigrateBlock] = Field(default_factory=list[MigrateBlock])
     checkpoints: CheckpointBlock | None = None
+    # Optional LM endpoint binding (env, not topology -- excluded from the
+    # structural hash by construction: `structural_hash` reads topology,
+    # node signatures, state schema and rule packs only).
+    lm: SGLangServer | None = None
 
 
 # ---------------------------------------------------------------------------

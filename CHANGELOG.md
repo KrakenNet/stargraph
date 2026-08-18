@@ -81,6 +81,18 @@
 
 ## [Unreleased]
 
+### Added (sglang LM block, #199)
+- IR gained `SGLangServer` and an optional `IRDocument.lm` block: a graph can
+  declare the LM endpoint it wants (`provider: sglang`, `model`, `host`,
+  `port`, `args`, `startup_timeout_s`) instead of the caller passing
+  `--lm-url`/`--lm-model`. `stargraph run` resolves it before the first node —
+  attaching to a server already serving that model, else spawning
+  `python -m sglang.launch_server` and terminating it at run end. The block is
+  **excluded from the structural graph hash**: an endpoint is an environment
+  binding, not topology. `args` and a non-loopback `host` are operator-only —
+  a graph-declared value is refused unless re-stated as `--sglang-arg` /
+  `--sglang-host`. JSON schemas + openapi.json regenerated.
+
 ### Added (batteries-included, #189)
 - IR `RuleSpec.when` now accepts mapping sugar alongside the raw CLIPS
   string: `{node: <node-id>, <mirror-field>: <value>, ...}` compiles to
