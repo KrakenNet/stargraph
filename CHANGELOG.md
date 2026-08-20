@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/KrakenNet/stargraph/compare/v0.7.0...v0.8.0) (2026-08-18)
+
+
+### Features
+
+* **lm:** sglang LM block — preflight the hardware, repair the runtime, serve from a named venv ([#199](https://github.com/KrakenNet/stargraph/issues/199)) ([92eaaf0](https://github.com/KrakenNet/stargraph/commit/92eaaf0477b9bc11fd458dc03e37a91dedbc788c))
+
 ## [0.7.0](https://github.com/KrakenNet/stargraph/compare/v0.6.0...v0.7.0) (2026-08-17)
 
 
