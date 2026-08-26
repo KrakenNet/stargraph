@@ -115,7 +115,7 @@ sdw = [
     "plotly>=5.18",
 ]
 skills-rag = [
-    "sentence-transformers>=5.0,<6",
+    "sentence-transformers>=5.0,<7",
     "huggingface_hub>=0.25",
     # Declare torch as a direct dep so the [tool.uv.sources] CPU pin
     # below applies (uv <0.9 only honors the source map for direct
