@@ -95,7 +95,7 @@ nodesmith = [
 # Calver-pinned: floor at the version we swapped on, ceiling at the
 # next major calver bump.
 stores = [
-    "lancedb>=0.30.2,<0.40",
+    "lancedb>=0.30.2,<0.41",
     "ryugraph>=25.9.2,<26",
     "pyarrow>=15",
 ]
